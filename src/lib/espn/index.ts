@@ -1,1 +1,1 @@
-export { getScoreboard, getGameSummary, getRankings, getStandings } from "./client";
+export { getScoreboard, getGameSummary, getRankings, getAllRankings, getStandings, getRoster } from "./client";

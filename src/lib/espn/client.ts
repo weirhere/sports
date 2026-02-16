@@ -6,12 +6,14 @@ import type {
   EspnGameSummaryResponse,
   EspnRankingsResponse,
   EspnStandingsResponse,
+  EspnRosterResponse,
 } from "./types";
 import {
   scoreboardUrl,
   gameSummaryUrl,
   standingsUrl,
   rankingsUrl,
+  teamRosterUrl,
 } from "./endpoints";
 import {
   transformScoreboard,
@@ -19,11 +21,15 @@ import {
   transformRankedTeam,
   transformStandingsEntry,
   transformGameSummary,
+  transformRoster,
 } from "./transformers";
 import type {
   Game,
   GameDetail,
+  Player,
   RankedTeam,
+  RankingsData,
+  PollType,
   ConferenceStanding,
 } from "@/lib/types";
 
@@ -94,6 +100,52 @@ export async function getRankings(params?: {
   return apPoll.ranks.map(transformRankedTeam);
 }
 
+const ESPN_POLL_MAP: Record<string, { type: PollType; label: string }> = {
+  ap: { type: "ap", label: "AP Poll" },
+  coaches: { type: "coaches", label: "Coaches' Poll" },
+  cfp: { type: "cfp", label: "CFB Playoff" },
+};
+
+function matchPollType(
+  espnType: string,
+  espnName: string
+): { type: PollType; label: string } | null {
+  const t = espnType.toLowerCase();
+  const n = espnName.toLowerCase();
+
+  if (t === "ap" || n.includes("ap")) return ESPN_POLL_MAP.ap;
+  if (t === "coaches" || n.includes("coaches")) return ESPN_POLL_MAP.coaches;
+  if (t === "cfp" || n.includes("playoff") || n.includes("cfp"))
+    return ESPN_POLL_MAP.cfp;
+  return null;
+}
+
+export async function getAllRankings(params?: {
+  year?: number;
+}): Promise<RankingsData[]> {
+  const url = rankingsUrl(params);
+  const data = await fetchJson<EspnRankingsResponse>(url, 300);
+
+  const results: RankingsData[] = [];
+
+  for (const ranking of data.rankings ?? []) {
+    const match = matchPollType(ranking.type, ranking.name);
+    if (!match) continue;
+
+    results.push({
+      type: match.type,
+      label: match.label,
+      teams: ranking.ranks.map(transformRankedTeam),
+    });
+  }
+
+  // Ensure a consistent order: cfp, ap, coaches
+  const order: PollType[] = ["cfp", "ap", "coaches"];
+  results.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+
+  return results;
+}
+
 export async function getStandings(params?: {
   conferenceId?: string;
   year?: number;
@@ -113,4 +165,14 @@ export async function getStandings(params?: {
   }
 
   return entries;
+}
+
+export async function getRoster(
+  espnTeamId: number,
+  appTeamId: string,
+  teamName: string
+): Promise<Player[]> {
+  const url = teamRosterUrl(String(espnTeamId));
+  const data = await fetchJson<EspnRosterResponse>(url, 3600);
+  return transformRoster(data, appTeamId, teamName);
 }

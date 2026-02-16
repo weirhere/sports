@@ -90,7 +90,7 @@ export function GameCard({ game, className }: GameCardProps) {
       <div
         className={cn(
           "rounded-lg border bg-card p-4 transition-all hover:bg-accent/50 hover:-translate-y-0.5 hover:shadow-md",
-          live && "border-red-500/20 bg-red-500/[0.02]",
+          live && "border-live/20 bg-live/[0.02]",
           className
         )}
       >

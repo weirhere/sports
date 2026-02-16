@@ -1,4 +1,4 @@
-import { GameCardSkeleton } from "@/components/game-card-skeleton";
+import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ScoresLoading() {
@@ -14,10 +14,10 @@ export default function ScoresLoading() {
       {/* Day header skeleton */}
       <Skeleton className="mt-6 h-6 w-48" />
 
-      {/* Game cards skeleton */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <GameCardSkeleton key={i} />
+      {/* Conference group skeletons */}
+      <div className="mt-4 space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
         ))}
       </div>
     </div>

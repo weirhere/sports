@@ -6,6 +6,7 @@ import { StandingsTable } from "@/components/standings-table";
 import { GameCard } from "@/components/game-card";
 import { EmptyState } from "@/components/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FavoriteButton } from "@/components/favorite-button";
 
 export function generateMetadata({
   params,
@@ -49,9 +50,12 @@ export default async function ConferenceDetailPage({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">{conference.name}</h1>
-        <p className="text-sm text-muted-foreground">{conference.division}</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{conference.name}</h1>
+          <p className="text-sm text-muted-foreground">{conference.division}</p>
+        </div>
+        <FavoriteButton teamId={conferenceId} type="conference" />
       </div>
 
       <Tabs defaultValue="standings" className="w-full">

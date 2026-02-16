@@ -12,31 +12,27 @@ function hasLiveGames(games: Game[]): boolean {
 
 export function useLiveScores(
   week: number,
+  year: number,
   games: Game[],
   onUpdate: (games: Game[]) => void
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visibleRef = useRef(true);
 
+  // poll only fetches and calls onUpdate — no self-rescheduling
   const poll = useCallback(async () => {
     if (!visibleRef.current) return;
 
     try {
-      const data = await getSchedule(week);
+      const data = await getSchedule(week, year);
       onUpdate(data.games);
     } catch {
       // Silently fail, will retry on next interval
     }
+  }, [week, year, onUpdate]);
 
-    const interval = hasLiveGames(games)
-      ? POLL_INTERVAL_LIVE
-      : POLL_INTERVAL_IDLE;
-
-    timerRef.current = setTimeout(poll, interval);
-  }, [week, games, onUpdate]);
-
+  // useEffect is the single owner of the timer lifecycle
   useEffect(() => {
-    // Only poll if there are live or scheduled games
     const shouldPoll = games.some(
       (g) =>
         g.status === "in_progress" ||
@@ -54,7 +50,10 @@ export function useLiveScores(
     timerRef.current = setTimeout(poll, interval);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [poll, games]);
 
