@@ -1,20 +1,33 @@
 "use client";
 
-import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 
 interface FavoriteButtonProps {
   teamId: string;
+  type?: "team" | "conference";
   className?: string;
   size?: "sm" | "md";
 }
 
-export function FavoriteButton({ teamId, className, size = "md" }: FavoriteButtonProps) {
-  const { isFavorite, toggleFavorite } = useFavoritesContext();
-  const active = isFavorite(teamId);
-
-  const iconSize = size === "sm" ? 16 : 20;
+export function FavoriteButton({
+  teamId,
+  type = "team",
+  className,
+  size = "md",
+}: FavoriteButtonProps) {
+  const {
+    isFavorite,
+    toggleFavorite,
+    isFavoriteConference,
+    toggleFavoriteConference,
+  } = useFavoritesContext();
+  const active =
+    type === "conference"
+      ? isFavoriteConference(teamId)
+      : isFavorite(teamId);
+  const toggle =
+    type === "conference" ? toggleFavoriteConference : toggleFavorite;
 
   return (
     <button
@@ -22,25 +35,19 @@ export function FavoriteButton({ teamId, className, size = "md" }: FavoriteButto
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        toggleFavorite(teamId);
+        toggle(teamId);
       }}
       className={cn(
-        "inline-flex items-center justify-center rounded-full transition-all",
-        size === "sm" ? "h-7 w-7" : "h-9 w-9",
+        "shrink-0 rounded-full border text-xs font-medium transition-colors",
+        size === "sm" ? "px-3 py-1" : "px-4 py-1.5",
         active
-          ? "text-yellow-500 hover:text-yellow-600"
-          : "text-muted-foreground hover:text-foreground",
+          ? "border-border bg-transparent text-muted-foreground"
+          : "border-border bg-transparent text-muted-foreground hover:border-foreground/30 hover:text-foreground",
         className
       )}
-      aria-label={active ? "Remove from favorites" : "Add to favorites"}
+      aria-label={active ? "Unfollow" : "Follow"}
     >
-      <Star
-        size={iconSize}
-        className={cn(
-          "transition-transform hover:scale-110 active:scale-95",
-          active && "fill-current"
-        )}
-      />
+      {active ? "Following" : "Follow"}
     </button>
   );
 }

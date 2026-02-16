@@ -48,108 +48,112 @@ export function GameDetailView({ initialData }: GameDetailViewProps) {
   return (
     <div>
       {/* Game Header */}
-      <div className="mb-6 rounded-lg border bg-card p-6">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-12">
+      <div className="mb-6 rounded-xl border bg-card p-5 shadow-card">
+        {/* Top row: Away — Score — Home */}
+        <div className="flex items-center justify-between gap-2">
           {/* Away team */}
           <Link
             href={`/team/${game.awayTeam.team.id}`}
-            className="flex flex-col items-center gap-2 text-center hover:opacity-80"
+            className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center hover:opacity-80"
           >
             <TeamLogo
               espnId={game.awayTeam.team.espnId}
               teamName={game.awayTeam.team.school}
-              size="xl"
+              size="lg"
             />
-            <div>
+            <div className="min-w-0">
               {game.awayTeam.ranking && (
                 <span className="text-xs font-medium text-muted-foreground">
                   #{game.awayTeam.ranking}{" "}
                 </span>
               )}
-              <span className="text-base font-semibold">
+              <span className="text-sm font-semibold">
                 {game.awayTeam.team.school}
               </span>
             </div>
             {game.awayTeam.record && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {game.awayTeam.record}
               </span>
             )}
           </Link>
 
-          {/* Score / Status */}
-          <div className="flex flex-col items-center gap-1">
-            {game.status !== "scheduled" ? (
-              <div className="flex items-center gap-4">
-                <span
-                  className={cn(
-                    "font-score text-4xl",
-                    game.awayTeam.isWinner ? "font-bold" : "text-muted-foreground"
-                  )}
-                >
-                  {game.awayTeam.score}
-                </span>
-                <span className="text-lg text-muted-foreground">-</span>
-                <span
-                  className={cn(
-                    "font-score text-4xl",
-                    game.homeTeam.isWinner ? "font-bold" : "text-muted-foreground"
-                  )}
-                >
-                  {game.homeTeam.score}
-                </span>
-              </div>
-            ) : null}
-
-            <div className="mt-1">
-              {live ? (
-                <LiveIndicator />
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  {getStatusLabel(game)}
-                </span>
-              )}
+          {/* Score */}
+          {game.status !== "scheduled" ? (
+            <div className="flex shrink-0 items-center gap-3">
+              <span
+                className={cn(
+                  "font-score text-3xl",
+                  game.awayTeam.isWinner ? "font-bold" : "text-muted-foreground"
+                )}
+              >
+                {game.awayTeam.score}
+              </span>
+              <span className="text-base text-muted-foreground">-</span>
+              <span
+                className={cn(
+                  "font-score text-3xl",
+                  game.homeTeam.isWinner ? "font-bold" : "text-muted-foreground"
+                )}
+              >
+                {game.homeTeam.score}
+              </span>
             </div>
-
-            {game.broadcast && (
-              <span className="text-xs text-muted-foreground">
-                {game.broadcast}
-              </span>
-            )}
-
-            {game.venue && (
-              <span className="text-xs text-muted-foreground">
-                {game.venue.name} - {game.venue.city}, {game.venue.state}
-              </span>
-            )}
-          </div>
+          ) : (
+            <span className="shrink-0 text-sm font-medium text-muted-foreground">
+              vs
+            </span>
+          )}
 
           {/* Home team */}
           <Link
             href={`/team/${game.homeTeam.team.id}`}
-            className="flex flex-col items-center gap-2 text-center hover:opacity-80"
+            className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center hover:opacity-80"
           >
             <TeamLogo
               espnId={game.homeTeam.team.espnId}
               teamName={game.homeTeam.team.school}
-              size="xl"
+              size="lg"
             />
-            <div>
+            <div className="min-w-0">
               {game.homeTeam.ranking && (
                 <span className="text-xs font-medium text-muted-foreground">
                   #{game.homeTeam.ranking}{" "}
                 </span>
               )}
-              <span className="text-base font-semibold">
+              <span className="text-sm font-semibold">
                 {game.homeTeam.team.school}
               </span>
             </div>
             {game.homeTeam.record && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {game.homeTeam.record}
               </span>
             )}
           </Link>
+        </div>
+
+        {/* Meta row: status, broadcast, venue */}
+        <div className="mt-4 flex flex-col items-center gap-1 border-t pt-3">
+          {live ? (
+            <LiveIndicator />
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {getStatusLabel(game)}
+            </span>
+          )}
+
+          {game.broadcast && (
+            <span className="text-xs text-muted-foreground">
+              {game.broadcast}
+            </span>
+          )}
+
+          {game.venue && (
+            <span className="text-xs text-muted-foreground">
+              {game.venue.name} - {game.venue.city}, {game.venue.state}
+            </span>
+          )}
         </div>
       </div>
 

@@ -18,29 +18,29 @@ export function useLiveGame(gameId: string, initialData: GameDetail) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visibleRef = useRef(true);
 
+  // poll only fetches and updates state — no self-rescheduling
   const poll = useCallback(async () => {
     if (!visibleRef.current) return;
 
     try {
       const updated = await getGameDetail(gameId);
       setData(updated);
-
-      // Stop polling if game is no longer live
-      if (!isLiveStatus(updated.game.status)) return;
     } catch {
       // Silently fail
     }
-
-    timerRef.current = setTimeout(poll, POLL_INTERVAL_LIVE);
   }, [gameId]);
 
+  // useEffect is the single owner of the timer lifecycle
   useEffect(() => {
     if (!isLiveStatus(data.game.status)) return;
 
     timerRef.current = setTimeout(poll, POLL_INTERVAL_LIVE);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [poll, data.game.status]);
 

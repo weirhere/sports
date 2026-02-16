@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { getRankings as getMockRankings } from "@/lib/mock";
-import { getRankings as getEspnRankings } from "@/lib/espn";
+import { getAllRankings as getMockAllRankings } from "@/lib/mock";
+import { getAllRankings as getEspnAllRankings } from "@/lib/espn";
 import { useEspnApi } from "@/lib/data-source";
 
 export async function GET() {
   try {
     if (useEspnApi()) {
-      const rankings = await getEspnRankings();
+      const rankings = await getEspnAllRankings();
       return NextResponse.json(rankings);
     }
 
-    const rankings = getMockRankings();
+    const rankings = getMockAllRankings();
     return NextResponse.json(rankings);
   } catch (err) {
     console.error("Rankings fetch error:", err);

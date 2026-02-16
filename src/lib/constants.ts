@@ -1,4 +1,5 @@
 export const CURRENT_SEASON_YEAR = 2025;
+export const SEASONS = [2025, 2024, 2023, 2022, 2021];
 export const SEASON_TYPE = "regular"; // "regular", "postseason"
 export const MAX_REGULAR_WEEKS = 15;
 export const POLL_INTERVAL_LIVE = 30_000; // 30s for live games

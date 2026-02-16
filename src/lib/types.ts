@@ -66,6 +66,19 @@ export interface Conference {
   logoUrl?: string;
 }
 
+export interface Player {
+  id: string;
+  espnId: number;
+  displayName: string;
+  firstName: string;
+  lastName: string;
+  jersey?: string;
+  position: string; // "QB", "WR", etc.
+  teamId: string; // app team ID
+  teamName: string; // school name
+  headshotUrl?: string;
+}
+
 export interface ConferenceStanding {
   team: Team;
   conferenceWins: number;
@@ -83,6 +96,14 @@ export interface RankedTeam {
   record: string;
   previousRank?: number;
   votes: number;
+}
+
+export type PollType = "cfp" | "ap" | "coaches";
+
+export interface RankingsData {
+  type: PollType;
+  label: string;
+  teams: RankedTeam[];
 }
 
 export interface ScoringDrive {

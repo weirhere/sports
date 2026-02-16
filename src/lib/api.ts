@@ -2,7 +2,7 @@ import type {
   Game,
   GameDetail,
   ConferenceStanding,
-  RankedTeam,
+  RankingsData,
   Team,
 } from "./types";
 
@@ -15,10 +15,12 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export async function getSchedule(
-  week?: number
+  week?: number,
+  year?: number
 ): Promise<{ games: Game[]; week: number }> {
   const params = new URLSearchParams();
   if (week !== undefined) params.set("week", String(week));
+  if (year !== undefined) params.set("year", String(year));
   return fetchJson(`${BASE}/schedule?${params}`);
 }
 
@@ -39,7 +41,7 @@ export async function getStandings(
   return fetchJson(`${BASE}/standings${params}`);
 }
 
-export async function getRankings(): Promise<RankedTeam[]> {
+export async function getRankings(): Promise<RankingsData[]> {
   return fetchJson(`${BASE}/rankings`);
 }
 

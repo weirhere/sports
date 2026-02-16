@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { Game, DayGames, ConferenceGameGroup, Conference } from "@/lib/types";
 import { WeekSelector } from "@/components/week-selector";
 import { DayGroup } from "@/components/day-group";
-import { GameCardSkeleton } from "@/components/game-card-skeleton";
+import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { getSchedule } from "@/lib/api";
@@ -12,10 +13,14 @@ import { ALL_CONFERENCES } from "@/config/conferences";
 import { MyTeamsSection } from "@/components/my-teams-section";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { useLiveScores } from "@/lib/hooks/use-live-scores";
+import { useSwipe } from "@/lib/hooks/use-swipe";
+import { SeasonSelector } from "@/components/season-selector";
+import { CURRENT_SEASON_YEAR, SEASONS, WEEKS } from "@/lib/constants";
 
 interface ScoresViewProps {
   initialGames: Game[];
   initialWeek: number;
+  initialYear?: number;
 }
 
 function groupGamesByDay(games: Game[]): DayGames[] {
@@ -76,8 +81,9 @@ function groupGamesByDay(games: Game[]): DayGames[] {
   return days;
 }
 
-export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
+export function ScoresView({ initialGames, initialWeek, initialYear = CURRENT_SEASON_YEAR }: ScoresViewProps) {
   const [selectedWeek, setSelectedWeek] = useState(initialWeek);
+  const [selectedYear, setSelectedYear] = useState(initialYear);
   const [games, setGames] = useState(initialGames);
   const [loading, setLoading] = useState(false);
 
@@ -86,13 +92,27 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
     setGames(updatedGames);
   }, []);
 
-  useLiveScores(selectedWeek, games, handleLiveUpdate);
+  useLiveScores(selectedWeek, selectedYear, games, handleLiveUpdate);
 
   const handleWeekChange = useCallback(async (week: number) => {
     setSelectedWeek(week);
     setLoading(true);
     try {
-      const data = await getSchedule(week);
+      const data = await getSchedule(week, selectedYear);
+      setGames(data.games);
+    } catch {
+      // Keep existing games on error
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear]);
+
+  const handleYearChange = useCallback(async (year: number) => {
+    setSelectedYear(year);
+    setSelectedWeek(1);
+    setLoading(true);
+    try {
+      const data = await getSchedule(1, year);
       setGames(data.games);
     } catch {
       // Keep existing games on error
@@ -114,8 +134,37 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
   const fbsDays = useMemo(() => groupGamesByDay(fbsGames), [fbsGames]);
   const fcsDays = useMemo(() => groupGamesByDay(fcsGames), [fcsGames]);
 
+  // Swipe left/right to change weeks
+  const maxWeek = WEEKS[WEEKS.length - 1].number;
+  const { ref: swipeRef } = useSwipe({
+    onSwipeLeft: () => {
+      if (selectedWeek < maxWeek) handleWeekChange(selectedWeek + 1);
+    },
+    onSwipeRight: () => {
+      if (selectedWeek > 0) handleWeekChange(selectedWeek - 1);
+    },
+    enabled: !loading,
+  });
+
+  // Portal the season selector into the navbar right slot
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalTarget(document.getElementById("navbar-right-slot"));
+    return () => setPortalTarget(null);
+  }, []);
+
   return (
     <div>
+      {portalTarget &&
+        createPortal(
+          <SeasonSelector
+            selectedYear={selectedYear}
+            onYearChange={handleYearChange}
+            seasons={SEASONS}
+          />,
+          portalTarget
+        )}
+
       <WeekSelector
         selectedWeek={selectedWeek}
         onWeekChange={handleWeekChange}
@@ -124,11 +173,11 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
 
       <OnboardingModal />
 
-      <div className="mt-4 space-y-6">
+      <div ref={swipeRef} className="mt-8 space-y-6">
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <GameCardSkeleton key={i} />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
             ))}
           </div>
         ) : games.length === 0 ? (

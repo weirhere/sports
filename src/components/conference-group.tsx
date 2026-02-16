@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Game, Conference } from "@/lib/types";
-import { GameCard } from "./game-card";
+import { GameRow } from "./game-row";
 import { cn } from "@/lib/utils";
 
 interface ConferenceGroupProps {
@@ -21,45 +21,40 @@ export function ConferenceGroup({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div>
+    <div className="overflow-hidden rounded-xl border bg-card shadow-card">
+      {/* Conference header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center gap-2 py-2 text-left"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left bg-muted/50 transition-colors hover:bg-accent/30"
       >
         <span className="text-sm font-semibold text-foreground">
           {conference.shortName}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {games.length} {games.length === 1 ? "game" : "games"}
-        </span>
         <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
+          animate={{ rotate: isOpen ? 0 : 180 }}
           transition={{ duration: 0.2 }}
           className="ml-auto"
         >
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
         </motion.span>
       </button>
 
+      {/* Game rows */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0 }}
+            animate={{ height: "auto" }}
+            exit={{ height: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="grid gap-3 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="border-t">
               {games.map((game, i) => (
-                <motion.div
-                  key={game.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03, duration: 0.2 }}
-                >
-                  <GameCard game={game} />
-                </motion.div>
+                <div key={game.id}>
+                  {i > 0 && <div className="mx-4 border-t" />}
+                  <GameRow game={game} />
+                </div>
               ))}
             </div>
           </motion.div>

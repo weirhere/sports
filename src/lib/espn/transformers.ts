@@ -10,6 +10,7 @@ import type {
   BoxScore,
   ScoringDrive,
   Play,
+  Player,
   TeamStats,
 } from "@/lib/types";
 import type {
@@ -23,6 +24,8 @@ import type {
   EspnBoxscoreTeam,
   EspnDrive,
   EspnPlay,
+  EspnRosterResponse,
+  EspnAthlete,
 } from "./types";
 import { ESPN_LOGO_BASE } from "@/lib/constants";
 
@@ -311,4 +314,40 @@ export function transformGameSummary(
     homeStats,
     awayStats,
   };
+}
+
+// --- Roster ---
+
+function transformAthlete(
+  athlete: EspnAthlete,
+  appTeamId: string,
+  teamName: string
+): Player {
+  const espnId = parseInt(athlete.id, 10);
+  return {
+    id: `p-${athlete.id}`,
+    espnId,
+    displayName: athlete.displayName,
+    firstName: athlete.firstName,
+    lastName: athlete.lastName,
+    jersey: athlete.jersey,
+    position: athlete.position?.abbreviation ?? "ATH",
+    teamId: appTeamId,
+    teamName,
+    headshotUrl: athlete.headshot?.href,
+  };
+}
+
+export function transformRoster(
+  data: EspnRosterResponse,
+  appTeamId: string,
+  teamName: string
+): Player[] {
+  const players: Player[] = [];
+  for (const group of data.athletes ?? []) {
+    for (const athlete of group.items ?? []) {
+      players.push(transformAthlete(athlete, appTeamId, teamName));
+    }
+  }
+  return players;
 }

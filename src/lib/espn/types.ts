@@ -171,6 +171,31 @@ export interface EspnRank {
   points: number;
 }
 
+// Roster types
+export interface EspnRosterResponse {
+  athletes: EspnAthleteGroup[];
+}
+
+export interface EspnAthleteGroup {
+  position: string; // "Offense", "Defense", "Special Teams"
+  items: EspnAthlete[];
+}
+
+export interface EspnAthlete {
+  id: string;
+  displayName: string;
+  firstName: string;
+  lastName: string;
+  jersey?: string;
+  position: {
+    abbreviation: string;
+    displayName: string;
+  };
+  headshot?: {
+    href: string;
+  };
+}
+
 // Standings types
 export interface EspnStandingsResponse {
   children: EspnStandingsGroup[];

@@ -45,11 +45,16 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-live: var(--color-live);
+  --color-positive: var(--color-positive);
+  --color-negative: var(--color-negative);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: theme(colors.neutral.100);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -61,7 +66,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
@@ -80,10 +85,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Semantic tokens */
+  --color-live: oklch(0.637 0.237 25);
+  --color-positive: oklch(0.6 0.2 145);
+  --color-negative: oklch(0.577 0.245 27.325);
+  --shadow-card: 0 1px 3px 0 oklch(0 0 0 / 4%), 0 1px 2px -1px oklch(0 0 0 / 4%);
+  --shadow-card-hover: 0 4px 12px -2px oklch(0 0 0 / 8%);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: theme(colors.neutral.950);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -95,7 +107,7 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.32 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
@@ -114,6 +126,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Semantic tokens */
+  --color-live: oklch(0.704 0.191 22.216);
+  --color-positive: oklch(0.696 0.17 162.48);
+  --color-negative: oklch(0.704 0.191 22.216);
+  --shadow-card: 0 1px 3px 0 oklch(0 0 0 / 20%), 0 1px 2px -1px oklch(0 0 0 / 20%);
+  --shadow-card-hover: 0 4px 12px -2px oklch(0 0 0 / 30%);
 }
 
 @layer base {
