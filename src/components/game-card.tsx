@@ -89,7 +89,7 @@ export function GameCard({ game, className }: GameCardProps) {
     <Link href={`/game/${game.id}`} className="block">
       <div
         className={cn(
-          "rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50",
+          "rounded-lg border bg-card p-4 transition-all hover:bg-accent/50 hover:-translate-y-0.5 hover:shadow-md",
           live && "border-red-500/20 bg-red-500/[0.02]",
           className
         )}
