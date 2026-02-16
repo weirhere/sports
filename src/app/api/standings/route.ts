@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStandings } from "@/lib/mock";
+import { getStandings as getMockStandings } from "@/lib/mock";
+import { getStandings as getEspnStandings } from "@/lib/espn";
+import { useEspnApi } from "@/lib/data-source";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -12,9 +14,16 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const standings = getStandings(conferenceId);
+
+    if (useEspnApi()) {
+      const standings = await getEspnStandings({ conferenceId });
+      return NextResponse.json(standings);
+    }
+
+    const standings = getMockStandings(conferenceId);
     return NextResponse.json(standings);
-  } catch {
+  } catch (err) {
+    console.error("Standings fetch error:", err);
     return NextResponse.json(
       { error: "Failed to fetch standings" },
       { status: 500 }
