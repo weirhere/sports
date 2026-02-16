@@ -11,6 +11,7 @@ import { getSchedule } from "@/lib/api";
 import { ALL_CONFERENCES } from "@/config/conferences";
 import { MyTeamsSection } from "@/components/my-teams-section";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { useLiveScores } from "@/lib/hooks/use-live-scores";
 
 interface ScoresViewProps {
   initialGames: Game[];
@@ -79,6 +80,13 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
   const [selectedWeek, setSelectedWeek] = useState(initialWeek);
   const [games, setGames] = useState(initialGames);
   const [loading, setLoading] = useState(false);
+
+  // Live score polling
+  const handleLiveUpdate = useCallback((updatedGames: Game[]) => {
+    setGames(updatedGames);
+  }, []);
+
+  useLiveScores(selectedWeek, games, handleLiveUpdate);
 
   const handleWeekChange = useCallback(async (week: number) => {
     setSelectedWeek(week);
