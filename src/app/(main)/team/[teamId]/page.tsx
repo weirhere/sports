@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTeamById, getGamesByTeam } from "@/lib/mock";
 import { TeamLogo } from "@/components/team-logo";
 import { GameCard } from "@/components/game-card";
+import { FavoriteButton } from "@/components/favorite-button";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +49,7 @@ export default async function TeamPage({
               </Badge>
             )}
             <h1 className="text-2xl font-bold">{team.school}</h1>
+            <FavoriteButton teamId={team.id} />
           </div>
           <p className="text-sm text-muted-foreground">
             {team.name} &middot; {team.conferenceName}

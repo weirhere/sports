@@ -9,6 +9,8 @@ import { EmptyState } from "@/components/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { getSchedule } from "@/lib/api";
 import { ALL_CONFERENCES } from "@/config/conferences";
+import { MyTeamsSection } from "@/components/my-teams-section";
+import { OnboardingModal } from "@/components/onboarding-modal";
 
 interface ScoresViewProps {
   initialGames: Game[];
@@ -112,6 +114,8 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
         currentWeek={initialWeek}
       />
 
+      <OnboardingModal />
+
       <div className="mt-4 space-y-6">
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -126,6 +130,9 @@ export function ScoresView({ initialGames, initialWeek }: ScoresViewProps) {
           />
         ) : (
           <>
+            {/* My Teams */}
+            <MyTeamsSection games={games} />
+
             {/* FBS Games */}
             {fbsDays.map((day) => (
               <DayGroup key={day.date} dayGames={day} />
