@@ -88,6 +88,11 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-07-21 | Rankings movement gets red/green (third color-budget exception) | Andy's call; movement direction reads instantly. Down reuses the live red; arrows keep it color-blind safe |
 | 2026-07-20 | Conference logos in section headers render grayscale (inverted in dark mode) | Headers are chrome, and the color budget's logo exception is team-specific (disambiguation); conference headers already carry the name. ESPN has no dark-variant conference logos, so dark mode inverts the grayscale mark |
 | 2026-07-21 | Conference logos render full color (supersedes the grayscale decision) | Andy's call after seeing it in practice; the color budget's logo exception now covers all logos, not just teams. Also drops the dark-mode invert hack |
+| 2026-07-21 | App name: **StatSide** | Andy's call, closing open question #1. Wordmark + `CFBundleDisplayName` updated |
+| 2026-07-21 | Live accent stays red (closes open question #2) | Decided from side-by-side renders; a 6 pt monochrome dot doesn't register at scroll speed, and Reduce Motion removes the pulse fallback |
+| 2026-07-21 | Top 25 = any ranked participant (closes open question #3) | 2025 data: any-ranked is 15–21 games/wk, ranked-vs-ranked 3–6 — too thin for a section named Top 25 |
+| 2026-07-21 | "Other" section = both-sides-unknown only | FCS visitors were double-bucketing ~48 Week-1 games into Other; an FCS visitor now stays in its host's conference section |
+| 2026-07-21 | Dark mode backs conference marks with a light disc (`logoBacking`) | Navy marks (Big Ten, ACC) vanish on black; a backing disc is chrome, not color, so the budget holds |
 
 ## Don'ts
 
@@ -95,6 +100,6 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 - Don't dedupe games across sections.
 - Don't add a date picker or day-based navigation.
 - Don't add third-party packages, analytics, or a backend without an explicit conversation first.
-- Don't edit `project.pbxproj` except for the deployment-target change (synchronized groups make file management automatic).
+- Don't edit `project.pbxproj` except for build settings that have no other home (deployment target, display name); synchronized groups make file management automatic — never touch file references.
 - Don't build for iPad/Mac/Vision idioms in v1.
 - Don't start coding a feature that isn't in BACKLOG.md — add it to the backlog and discuss first.

@@ -67,12 +67,23 @@ private func game(_ id: String, home: Team, away: Team,
         #expect(sections.map(\.id) == ["conf-SEC"])
     }
 
-    @Test func unknownConferenceBucketsIntoOther() async {
-        // FCS opponents come back with no/unknown conference ids.
+    @Test func fcsVisitorStaysInHostConferenceOnly() async {
+        // FCS opponents carry FCS conference ids (unknown to our FBS
+        // table). The game belongs to the host's section; it must NOT
+        // also pile into Other — Week 1 has ~48 of these.
         let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
                                                  away: team("2", conference: 424242))])
         let sections = store.sections(followingIds: [])
-        #expect(sections.map(\.id) == ["conf-SEC", "conf-Other"])
+        #expect(sections.map(\.id) == ["conf-SEC"])
+    }
+
+    @Test func gameWithNoPlaceableSideBucketsIntoOther() async {
+        // Only when neither side has a known conference does Other claim
+        // the game — the never-lose-a-game backstop.
+        let store = await makeStore(games: [game("g1", home: team("1", conference: 424242),
+                                                 away: team("2", conference: nil))])
+        let sections = store.sections(followingIds: [])
+        #expect(sections.map(\.id) == ["conf-Other"])
     }
 
     @Test func liveToggleFiltersAndHidesEmptySections() async {

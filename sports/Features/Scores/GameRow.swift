@@ -14,6 +14,9 @@ struct GameRow: View {
                 teamLine(game.away)
                 teamLine(game.home)
             }
+            // Team names win the width fight with the trailing column —
+            // "New Mexico State" beats a broadcast string's elbow room.
+            .layoutPriority(1)
             Spacer(minLength: Spacing.sm)
             trailing
         }
@@ -71,7 +74,9 @@ struct GameRow: View {
                     .font(.meta)
                     .foregroundStyle(.textPrimary)
                 if let broadcast = game.broadcast {
-                    Text(broadcast)
+                    // First network only: "ESPN Unlmtd/The CW Network"
+                    // otherwise swallows the row.
+                    Text(broadcast.split(separator: "/").first.map(String.init) ?? broadcast)
                         .font(.metaEmphasis)
                         .foregroundStyle(.textSecondary)
                         .lineLimit(1)

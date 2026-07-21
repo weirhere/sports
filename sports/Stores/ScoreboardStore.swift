@@ -265,15 +265,21 @@ final class ScoreboardStore {
                                       games: chronological(ranked)))
         }
 
-        // A cross-conference game lands in both conferences' sections;
-        // unknown conference ids bucket into "Other" (the nil key).
+        // A cross-conference game lands in both conferences' sections.
+        // "Other" (the nil key) is a last resort for games no section can
+        // claim — an FCS visitor at an FBS school stays in the host's
+        // conference only, or Week 1's ~48 FCS matchups would pile up in
+        // Other as duplicates.
         var byConference: [Int?: [Game]] = [:]
         for game in visible {
-            let ids = Set([game.home.team.conferenceId, game.away.team.conferenceId].map { id in
-                Conference.tier(for: id) == .other ? nil : id
-            })
-            for id in ids {
-                byConference[id, default: []].append(game)
+            let known = Set([game.home.team.conferenceId, game.away.team.conferenceId]
+                .compactMap { id in Conference.tier(for: id) == .other ? nil : id })
+            if known.isEmpty {
+                byConference[nil, default: []].append(game)
+            } else {
+                for id in known {
+                    byConference[id, default: []].append(game)
+                }
             }
         }
         // A followed team's conference floats to the top; then P4 → G5 →

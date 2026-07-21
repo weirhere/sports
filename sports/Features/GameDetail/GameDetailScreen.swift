@@ -137,7 +137,9 @@ struct GameDetailScreen: View {
                 .font(side.winner == true ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(.textPrimary)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
+                // Reserved so a wrapping name ("Arkansas-Pine Bluff")
+                // doesn't push its record below the other side's.
+                .lineLimit(2, reservesSpace: true)
             if let record = side.record {
                 Text(record)
                     .font(.meta)

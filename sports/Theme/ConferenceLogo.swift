@@ -18,5 +18,8 @@ struct ConferenceLogo: View {
             }
         }
         .frame(width: 18, height: 18)
+        // Negative padding keeps the layout footprint at 18 so every
+        // section title still starts at the same x.
+        .background(Circle().fill(Color.logoBacking).padding(-3))
     }
 }

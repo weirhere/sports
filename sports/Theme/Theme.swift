@@ -52,6 +52,15 @@ extension Color {
     /// Rankings movement: down. Same red as liveAccent so the app still
     /// carries exactly one red.
     static let rankDown = liveAccent
+
+    /// Backing disc behind conference marks in section headers: clear in
+    /// light mode, a soft light disc in dark so navy marks (Big Ten, ACC)
+    /// don't sink into black. Chrome, not color — stays in budget.
+    static let logoBacking = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 0.92, alpha: 1)
+            : .clear
+    })
 }
 
 // Lets views write .foregroundStyle(.textSecondary) with dot syntax.

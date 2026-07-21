@@ -37,7 +37,9 @@ struct TeamPage: View {
                         .font(.metaEmphasis)
                         .foregroundStyle(.textPrimary)
                 }
-                if let standing = schedule?.standing {
+                // "1st in SEC" next to 0-0 is false precision — ESPN
+                // carries last season's standing until games are played.
+                if let standing = schedule?.standing, schedule?.record != "0-0" {
                     Text(standing)
                         .font(.meta)
                         .foregroundStyle(.textSecondary)

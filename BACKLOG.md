@@ -73,8 +73,8 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 
 ## Open questions
 
-1. **App name.** "sports" is the repo, not the name. Monochrome + CFB suggests something spare. (Parking lot: Gridiron? Kickoff? Saturday?)
-2. **Live accent color.** Red assumed; confirm it's the *only* accent, or go full monochrome with a pulsing white/black dot? Decide when the row is on a real screen.
-3. **Top 25 section: ranked-vs-ranked only, or any game involving a ranked team?** Current assumption: any ranked participant. Revisit if the section gets bloated on full slates.
-4. **FCS games that leak into `groups=80` responses** (FBS-vs-FCS matchups): confirm they render sanely in the FBS opponent's conference section.
+1. ~~**App name.**~~ *Resolved 2026-07-21: **StatSide** (Andy's pick). Wordmark + home-screen display name updated.*
+2. ~~**Live accent color.**~~ *Resolved 2026-07-21: red stays, decided from side-by-side renders of the real live row. At 6 pt a monochrome dot reads as a stray fleck, and Reduce Motion users lose the pulse — color is the remaining signal.*
+3. ~~**Top 25 section scope.**~~ *Resolved 2026-07-21: any ranked participant, confirmed against 2025 data — any-ranked runs 15–21 games/week (~one thumb-scroll), ranked-vs-ranked only 3–6 and breaks the completeness promise.*
+4. ~~**FCS games in `groups=80`.**~~ *Resolved 2026-07-21: rows render cleanly (ESPN ships logos/records; `curatedRank` 99 maps to no badge). Found + fixed: FCS visitors' unknown conference ids were double-bucketing 48 Week-1 games into "Other" — Other is now strictly the both-sides-unknown backstop.*
 5. **Following a conference** (not just teams) — worth it? Wait for field notes.
