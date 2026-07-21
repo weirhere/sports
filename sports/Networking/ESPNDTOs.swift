@@ -169,6 +169,203 @@ nonisolated struct LogoDTO: Decodable {
     let href: String?
 }
 
+// MARK: - Standings (the source of FBS conference membership)
+// Verified 2026-07-20: /apis/v2/.../standings?group=80 returns 11 conference
+// children with exact rosters; the /teams endpoint has no conference data.
+
+nonisolated struct StandingsResponseDTO: Decodable {
+    let name: String?
+    let children: [StandingsGroupDTO]?
+}
+
+nonisolated struct StandingsGroupDTO: Decodable {
+    let id: FlexibleInt?
+    let name: String?
+    let shortName: String?
+    let standings: StandingsListDTO?
+}
+
+nonisolated struct StandingsListDTO: Decodable {
+    let entries: LossyArray<StandingsEntryDTO>?
+}
+
+nonisolated struct StandingsEntryDTO: Decodable {
+    let team: TeamDTO?
+}
+
+// MARK: - Team schedule
+// Quirks vs. the scoreboard shape: score is an object, record is an array
+// under "record", status lives on the competition, broadcasts nest media.
+
+nonisolated struct ScheduleResponseDTO: Decodable {
+    let team: ScheduleTeamDTO?
+    let events: LossyArray<ScheduleEventDTO>?
+}
+
+nonisolated struct ScheduleTeamDTO: Decodable {
+    let id: String?
+    let location: String?
+    let name: String?
+    let nickname: String?
+    let abbreviation: String?
+    let displayName: String?
+    let shortDisplayName: String?
+    let logo: String?
+    let logos: [LogoDTO]?
+    let recordSummary: String?
+    let standingSummary: String?
+}
+
+nonisolated struct ScheduleEventDTO: Decodable {
+    let id: String?
+    let date: String?
+    let name: String?
+    let shortName: String?
+    let week: WeekRefDTO?
+    let competitions: [ScheduleCompetitionDTO]?
+}
+
+nonisolated struct ScheduleCompetitionDTO: Decodable {
+    let date: String?
+    let neutralSite: Bool?
+    let status: StatusDTO?
+    let competitors: [ScheduleCompetitorDTO]?
+    let broadcasts: [ScheduleBroadcastDTO]?
+}
+
+nonisolated struct ScheduleBroadcastDTO: Decodable {
+    let media: ScheduleMediaDTO?
+}
+
+nonisolated struct ScheduleMediaDTO: Decodable {
+    let shortName: String?
+}
+
+nonisolated struct ScheduleCompetitorDTO: Decodable {
+    let homeAway: String?
+    let winner: Bool?
+    let score: ScheduleScoreDTO?
+    let record: [ScheduleRecordDTO]?
+    let curatedRank: CuratedRankDTO?
+    let team: TeamDTO?
+}
+
+nonisolated struct ScheduleScoreDTO: Decodable {
+    let value: Double?
+    let displayValue: String?
+}
+
+nonisolated struct ScheduleRecordDTO: Decodable {
+    let type: String?
+    let displayValue: String?
+    let summary: String?
+}
+
+// MARK: - Game summary
+
+nonisolated struct SummaryResponseDTO: Decodable {
+    let header: SummaryHeaderDTO?
+    let boxscore: BoxscoreDTO?
+    let scoringPlays: [ScoringPlayDTO]?
+    let leaders: LossyArray<SummaryTeamLeadersDTO>?
+    let gameInfo: GameInfoDTO?
+}
+
+nonisolated struct SummaryHeaderDTO: Decodable {
+    let competitions: [HeaderCompetitionDTO]?
+}
+
+nonisolated struct HeaderCompetitionDTO: Decodable {
+    let date: String?
+    let status: StatusDTO?
+    let competitors: [HeaderCompetitorDTO]?
+}
+
+nonisolated struct HeaderCompetitorDTO: Decodable {
+    let homeAway: String?
+    let winner: Bool?
+    let score: FlexibleInt?
+    let rank: FlexibleInt?
+    let linescores: [LinescoreDTO]?
+    let record: [ScheduleRecordDTO]?
+    let team: TeamDTO?
+}
+
+nonisolated struct LinescoreDTO: Decodable {
+    let displayValue: String?
+}
+
+nonisolated struct BoxscoreDTO: Decodable {
+    let teams: [BoxscoreTeamDTO]?
+}
+
+nonisolated struct BoxscoreTeamDTO: Decodable {
+    let team: TeamDTO?
+    let homeAway: String?
+    let statistics: [BoxscoreStatDTO]?
+}
+
+nonisolated struct BoxscoreStatDTO: Decodable {
+    let name: String?
+    let label: String?
+    let displayValue: String?
+}
+
+nonisolated struct ScoringPlayDTO: Decodable {
+    let id: String?
+    let period: PeriodRefDTO?
+    let clock: ClockRefDTO?
+    let text: String?
+    let awayScore: Int?
+    let homeScore: Int?
+    let team: TeamDTO?
+    let type: PlayTypeDTO?
+}
+
+nonisolated struct PeriodRefDTO: Decodable {
+    let number: Int?
+}
+
+nonisolated struct ClockRefDTO: Decodable {
+    let displayValue: String?
+}
+
+nonisolated struct PlayTypeDTO: Decodable {
+    let text: String?
+    let abbreviation: String?
+}
+
+nonisolated struct SummaryTeamLeadersDTO: Decodable {
+    let team: TeamDTO?
+    let leaders: [LeaderCategoryDTO]?
+}
+
+nonisolated struct LeaderCategoryDTO: Decodable {
+    let name: String?
+    let displayName: String?
+    let leaders: [LeaderEntryDTO]?
+}
+
+nonisolated struct LeaderEntryDTO: Decodable {
+    let displayValue: String?
+    let athlete: AthleteDTO?
+}
+
+nonisolated struct AthleteDTO: Decodable {
+    let displayName: String?
+    let shortName: String?
+    let jersey: String?
+}
+
+nonisolated struct GameInfoDTO: Decodable {
+    let venue: VenueDTO?
+    let attendance: Int?
+}
+
+nonisolated struct VenueDTO: Decodable {
+    let fullName: String?
+}
+
 // MARK: - Rankings
 
 nonisolated struct RankingsResponseDTO: Decodable {

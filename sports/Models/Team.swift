@@ -11,6 +11,13 @@ nonisolated struct Team: Identifiable, Hashable, Sendable {
     let conferenceId: Int?
 }
 
+/// One FBS conference with its member teams, for the Teams browse screen.
+nonisolated struct ConferenceTeams: Identifiable, Hashable, Sendable {
+    let id: Int?
+    let name: String
+    let teams: [Team]
+}
+
 /// ESPN conference group ids, hardcoded with an "Other" fallback so an
 /// unknown id degrades to a bucket, never a crash.
 nonisolated enum Conference {

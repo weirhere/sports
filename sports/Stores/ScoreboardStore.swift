@@ -172,7 +172,15 @@ final class ScoreboardStore {
                 byConference[id, default: []].append(game)
             }
         }
+        // A followed team's conference floats to the top; then P4 → G5 →
+        // Independents → Other.
+        let followedConferenceIds = Set(visible.flatMap { [$0.home, $0.away] }
+            .filter { followingIds.contains($0.team.id) }
+            .compactMap(\.team.conferenceId))
         let orderedIds = byConference.keys.sorted { lhs, rhs in
+            let (lf, rf) = (lhs.map(followedConferenceIds.contains) ?? false,
+                            rhs.map(followedConferenceIds.contains) ?? false)
+            if lf != rf { return lf }
             let (lt, rt) = (Conference.tier(for: lhs), Conference.tier(for: rhs))
             return lt == rt ? Conference.name(for: lhs) < Conference.name(for: rhs) : lt < rt
         }

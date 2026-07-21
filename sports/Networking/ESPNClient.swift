@@ -6,6 +6,9 @@ nonisolated protocol ScoresProviding: Sendable {
     /// Fetch the scoreboard. Pass nil for both to get ESPN's current week.
     func scoreboard(weekValue: Int?, seasonType: Int?) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
+    func fbsConferences() async throws -> [ConferenceTeams]
+    func teamSchedule(teamId: String) async throws -> TeamSchedule
+    func gameSummary(eventId: String) async throws -> GameSummary
 }
 
 nonisolated enum ESPNError: Error {
@@ -17,6 +20,9 @@ nonisolated enum ESPNError: Error {
 /// off the main thread (the project defaults types to MainActor).
 actor ESPNClient: ScoresProviding {
     private static let base = "https://site.api.espn.com/apis/site/v2/sports/football/college-football"
+    // Conference membership lives on the standings API (apis/v2, not
+    // site/v2); the /teams endpoint carries no conference data.
+    private static let standingsBase = "https://site.api.espn.com/apis/v2/sports/football/college-football"
 
     private let session: URLSession
     private let decoder = JSONDecoder()
@@ -45,8 +51,32 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.polls(from: dto)
     }
 
+    func fbsConferences() async throws -> [ConferenceTeams] {
+        let dto: StandingsResponseDTO = try await fetch(
+            base: Self.standingsBase, path: "/standings",
+            query: [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+        )
+        return ESPNMapper.conferences(from: dto)
+    }
+
+    func teamSchedule(teamId: String) async throws -> TeamSchedule {
+        let dto: ScheduleResponseDTO = try await fetch(path: "/teams/\(teamId)/schedule", query: [])
+        return ESPNMapper.teamSchedule(from: dto)
+    }
+
+    func gameSummary(eventId: String) async throws -> GameSummary {
+        let dto: SummaryResponseDTO = try await fetch(
+            path: "/summary", query: [URLQueryItem(name: "event", value: eventId)]
+        )
+        return ESPNMapper.gameSummary(from: dto)
+    }
+
     private func fetch<T: Decodable>(path: String, query: [URLQueryItem]) async throws -> T {
-        guard var components = URLComponents(string: Self.base + path) else {
+        try await fetch(base: Self.base, path: path, query: query)
+    }
+
+    private func fetch<T: Decodable>(base: String, path: String, query: [URLQueryItem]) async throws -> T {
+        guard var components = URLComponents(string: base + path) else {
             throw ESPNError.invalidURL
         }
         if !query.isEmpty {
@@ -161,6 +191,216 @@ nonisolated enum ESPNMapper {
             logoURL: logo.flatMap(URL.init(string:)),
             conferenceId: dto.conferenceId?.value
         )
+    }
+
+    static func conferences(from dto: StandingsResponseDTO) -> [ConferenceTeams] {
+        (dto.children ?? []).compactMap { group in
+            let id = group.id?.value
+            // Prefer our short names ("SEC") over ESPN's long ones
+            // ("Southeastern Conference") when the id is known.
+            let name = Conference.tier(for: id) == .other
+                ? (group.shortName ?? group.name ?? "Conference")
+                : Conference.name(for: id)
+            let teams = (group.standings?.entries?.elements ?? []).compactMap { entry -> Team? in
+                guard let mapped = team(from: entry.team) else { return nil }
+                return Team(
+                    id: mapped.id, location: mapped.location, name: mapped.name,
+                    abbreviation: mapped.abbreviation, displayName: mapped.displayName,
+                    shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
+                    conferenceId: id
+                )
+            }
+            guard !teams.isEmpty else { return nil }
+            return ConferenceTeams(id: id, name: name,
+                                   teams: teams.sorted { $0.location < $1.location })
+        }
+        .sorted { lhs, rhs in
+            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            return lt == rt ? lhs.name < rhs.name : lt < rt
+        }
+    }
+
+    static func teamSchedule(from dto: ScheduleResponseDTO) -> TeamSchedule {
+        let selfTeam = dto.team.flatMap { scheduleTeam -> Team? in
+            guard let id = scheduleTeam.id else { return nil }
+            let logo = scheduleTeam.logo ?? scheduleTeam.logos?.first?.href
+            return Team(
+                id: id,
+                location: scheduleTeam.location ?? scheduleTeam.displayName ?? "—",
+                name: scheduleTeam.name ?? scheduleTeam.nickname,
+                abbreviation: scheduleTeam.abbreviation,
+                displayName: scheduleTeam.displayName,
+                shortDisplayName: scheduleTeam.shortDisplayName,
+                logoURL: logo.flatMap(URL.init(string:)),
+                conferenceId: nil
+            )
+        }
+        let games = (dto.events?.elements ?? []).compactMap(game(from:))
+        return TeamSchedule(
+            team: selfTeam,
+            record: dto.team?.recordSummary,
+            standing: dto.team?.standingSummary,
+            games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        )
+    }
+
+    static func game(from event: ScheduleEventDTO) -> Game? {
+        guard let id = event.id,
+              let competition = event.competitions?.first,
+              let competitors = competition.competitors,
+              let home = competitors.first(where: { $0.homeAway == "home" }).flatMap(competitor(from:)),
+              let away = competitors.first(where: { $0.homeAway == "away" }).flatMap(competitor(from:))
+        else { return nil }
+        return Game(
+            id: id,
+            date: ESPNDate.parse(event.date ?? competition.date),
+            name: event.name,
+            shortName: event.shortName,
+            weekNumber: event.week?.number,
+            status: status(from: competition.status, situation: nil),
+            home: home,
+            away: away,
+            broadcast: competition.broadcasts?.first?.media?.shortName
+        )
+    }
+
+    static func competitor(from dto: ScheduleCompetitorDTO) -> Competitor? {
+        guard let team = team(from: dto.team) else { return nil }
+        let rank = dto.curatedRank?.current?.value
+        let score = dto.score?.displayValue.flatMap(Int.init) ?? dto.score?.value.map(Int.init)
+        return Competitor(
+            team: team,
+            score: score,
+            record: dto.record?.first(where: { $0.type == "total" })
+                .flatMap { $0.summary ?? $0.displayValue },
+            rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
+            isHome: dto.homeAway == "home",
+            winner: dto.winner
+        )
+    }
+
+    static func gameSummary(from dto: SummaryResponseDTO) -> GameSummary {
+        let competition = dto.header?.competitions?.first
+        let competitors = competition?.competitors ?? []
+
+        func side(_ homeAway: String) -> GameSummary.Side? {
+            guard let comp = competitors.first(where: { $0.homeAway == homeAway }),
+                  let team = team(from: comp.team) else { return nil }
+            let rank = comp.rank?.value
+            return GameSummary.Side(
+                team: team,
+                score: comp.score?.value,
+                record: comp.record?.first(where: { $0.type == "total" })
+                    .flatMap { $0.summary ?? $0.displayValue },
+                rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
+                winner: comp.winner,
+                linescores: (comp.linescores ?? []).compactMap(\.displayValue)
+            )
+        }
+
+        return GameSummary(
+            home: side("home"),
+            away: side("away"),
+            status: status(from: competition?.status, situation: nil),
+            scoringPlays: (dto.scoringPlays ?? []).enumerated().map { index, play in
+                ScoringPlay(
+                    id: play.id ?? "play-\(index)",
+                    period: play.period?.number,
+                    clock: play.clock?.displayValue,
+                    text: play.text?.trimmingCharacters(in: .whitespaces),
+                    typeAbbreviation: play.type?.abbreviation,
+                    teamId: play.team?.id,
+                    awayScore: play.awayScore,
+                    homeScore: play.homeScore
+                )
+            },
+            teamStats: teamStats(from: dto.boxscore),
+            leaders: leaders(from: dto.leaders?.elements ?? [], competitors: competitors),
+            venue: dto.gameInfo?.venue?.fullName,
+            attendance: dto.gameInfo?.attendance
+        )
+    }
+
+    /// The comparison stats worth a bar, in display order.
+    private static let comparedStats: [(name: String, label: String)] = [
+        ("totalYards", "Total Yards"),
+        ("netPassingYards", "Passing"),
+        ("rushingYards", "Rushing"),
+        ("thirdDownEff", "3rd Down"),
+        ("turnovers", "Turnovers"),
+        ("possessionTime", "Possession"),
+    ]
+
+    static func teamStats(from boxscore: BoxscoreDTO?) -> [StatComparison] {
+        let teams = boxscore?.teams ?? []
+        guard teams.count == 2 else { return [] }
+        // boxscore.teams has no homeAway on some responses; ESPN orders it
+        // away-first, matching the scoreboard convention.
+        let away = teams.first { $0.homeAway == "away" } ?? teams[0]
+        let home = teams.first { $0.homeAway == "home" } ?? teams[1]
+
+        func value(_ name: String, of team: BoxscoreTeamDTO) -> String? {
+            team.statistics?.first { $0.name == name }?.displayValue
+        }
+
+        return comparedStats.compactMap { stat in
+            guard let awayDisplay = value(stat.name, of: away),
+                  let homeDisplay = value(stat.name, of: home) else { return nil }
+            return StatComparison(
+                id: stat.name,
+                label: stat.label,
+                away: awayDisplay,
+                home: homeDisplay,
+                awayValue: statMagnitude(awayDisplay),
+                homeValue: statMagnitude(homeDisplay)
+            )
+        }
+    }
+
+    /// Parses a stat displayValue into a bar magnitude: plain numbers,
+    /// "made-attempts" fractions, and "MM:SS" possession clocks.
+    static func statMagnitude(_ display: String) -> Double? {
+        if let number = Double(display) { return number }
+        let dashParts = display.split(separator: "-")
+        if dashParts.count == 2, let made = Double(dashParts[0]), let attempts = Double(dashParts[1]) {
+            return attempts > 0 ? made / attempts : 0
+        }
+        let clockParts = display.split(separator: ":")
+        if clockParts.count == 2, let minutes = Double(clockParts[0]), let seconds = Double(clockParts[1]) {
+            return minutes * 60 + seconds
+        }
+        return nil
+    }
+
+    /// The three offensive leader categories, one entry per category with
+    /// both sides filled in.
+    private static let leaderCategories: [(name: String, label: String)] = [
+        ("passingYards", "Passing"),
+        ("rushingYards", "Rushing"),
+        ("receivingYards", "Receiving"),
+    ]
+
+    static func leaders(from teamLeaders: [SummaryTeamLeadersDTO],
+                        competitors: [HeaderCompetitorDTO]) -> [LeaderCategory] {
+        let awayId = competitors.first { $0.homeAway == "away" }?.team?.id
+        let homeId = competitors.first { $0.homeAway == "home" }?.team?.id
+
+        func leader(teamId: String?, category: String) -> LeaderCategory.Leader? {
+            guard let teamId,
+                  let entry = teamLeaders.first(where: { $0.team?.id == teamId })?
+                      .leaders?.first(where: { $0.name == category })?
+                      .leaders?.first,
+                  let name = entry.athlete?.displayName ?? entry.athlete?.shortName
+            else { return nil }
+            return LeaderCategory.Leader(name: name, statLine: entry.displayValue ?? "")
+        }
+
+        return leaderCategories.compactMap { category in
+            let away = leader(teamId: awayId, category: category.name)
+            let home = leader(teamId: homeId, category: category.name)
+            guard away != nil || home != nil else { return nil }
+            return LeaderCategory(id: category.name, label: category.label, away: away, home: home)
+        }
     }
 
     static func polls(from dto: RankingsResponseDTO) -> [Poll] {

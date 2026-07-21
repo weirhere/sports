@@ -10,6 +10,13 @@ private struct StubProvider: ScoresProviding {
     }
 
     func rankings() async throws -> [Poll] { [] }
+    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func teamSchedule(teamId: String) async throws -> TeamSchedule {
+        TeamSchedule(team: nil, record: nil, standing: nil, games: [])
+    }
+    func gameSummary(eventId: String) async throws -> GameSummary {
+        throw ESPNError.invalidURL
+    }
 }
 
 private func team(_ id: String, conference: Int?) -> Team {
@@ -46,8 +53,9 @@ private func game(_ id: String, home: Team, away: Team,
         let bigTen = team("2", conference: 5)
         let store = await makeStore(games: [game("g1", home: sec, away: bigTen, homeRank: 3)])
 
+        // SEC leads Big Ten here: the followed team's conference floats up.
         let sections = store.sections(followingIds: ["1"])
-        #expect(sections.map(\.id) == [GameSection.followingId, GameSection.top25Id, "conf-Big Ten", "conf-SEC"])
+        #expect(sections.map(\.id) == [GameSection.followingId, GameSection.top25Id, "conf-SEC", "conf-Big Ten"])
         #expect(sections.allSatisfy { $0.games.map(\.id) == ["g1"] })
     }
 

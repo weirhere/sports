@@ -1,0 +1,163 @@
+import SwiftUI
+
+/// Tap a game, land somewhere worth landing: header, linescore, scoring
+/// plays, team stats, leaders.
+struct GameDetailScreen: View {
+    let game: Game
+
+    @State private var summary: GameSummary?
+    @State private var isLoading = false
+    @State private var lastError: String?
+
+    private let client: any ScoresProviding = ESPNClient()
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                header
+                Divider().overlay(Color.divider)
+                if let summary {
+                    if summary.away?.linescores.isEmpty == false {
+                        LineScoreGrid(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
+                    if !summary.scoringPlays.isEmpty {
+                        ScoringPlaysList(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
+                    if !summary.teamStats.isEmpty {
+                        TeamStatsCompare(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
+                    if !summary.leaders.isEmpty {
+                        LeadersList(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
+                    footer(summary)
+                } else if isLoading {
+                    ProgressView().padding(.vertical, Spacing.xl)
+                } else if lastError != nil {
+                    VStack(spacing: Spacing.sm) {
+                        Text("Couldn't load this game.")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                        Button("Retry") {
+                            Task { await load(force: true) }
+                        }
+                        .font(.teamNameEmphasis)
+                        .foregroundStyle(.textPrimary)
+                    }
+                    .padding(.vertical, Spacing.xl)
+                }
+            }
+        }
+        .background(Color.bgPrimary)
+        .navigationTitle(game.shortName ?? "Game")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .refreshable { await load(force: true) }
+    }
+
+    /// Renders from the scoreboard's Game immediately; the summary fills in.
+    private var header: some View {
+        HStack(alignment: .top, spacing: Spacing.lg) {
+            headerSide(competitor(game.away, summary?.away))
+            VStack(spacing: Spacing.xs) {
+                if game.isLive { LiveDot() }
+                Text(statusLine)
+                    .font(.metaEmphasis)
+                    .foregroundStyle(.textPrimary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, Spacing.md)
+            headerSide(competitor(game.home, summary?.home))
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.lg)
+    }
+
+    private func competitor(_ fallback: Competitor, _ side: GameSummary.Side?)
+        -> (team: Team, score: Int?, record: String?, winner: Bool?) {
+        guard let side else {
+            return (fallback.team, fallback.score, fallback.record, fallback.winner)
+        }
+        return (side.team, side.score, side.record ?? fallback.record, side.winner)
+    }
+
+    private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
+        VStack(spacing: Spacing.xs) {
+            AsyncImage(url: side.team.logoURL) { image in
+                image.resizable().scaledToFit()
+            } placeholder: {
+                Circle().fill(Color.bgElevated)
+            }
+            .frame(width: 44, height: 44)
+            Text(side.team.location)
+                .font(side.winner == true ? .teamNameEmphasis : .teamName)
+                .foregroundStyle(.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            if let record = side.record {
+                Text(record)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+            }
+            if showsScores, let score = side.score {
+                Text("\(score)")
+                    .font(game.isLive ? .scoreLive : .score)
+                    .foregroundStyle(side.winner == false ? .textSecondary : .textPrimary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var showsScores: Bool {
+        if case .pre = summary?.status ?? game.status { return false }
+        return true
+    }
+
+    private var statusLine: String {
+        switch summary?.status ?? game.status {
+        case .pre:
+            let kick = game.date?.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()) ?? "TBD"
+            return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
+        case .live(let clock, let period, let detail, _):
+            let quarter = period.map { $0 <= 4 ? "Q\($0)" : "OT" }
+            return [quarter, clock].compactMap(\.self).joined(separator: " ")
+                .isEmpty ? (detail ?? "Live") : [quarter, clock].compactMap(\.self).joined(separator: " ")
+        case .final(let detail):
+            return detail ?? "Final"
+        case .other(let detail):
+            return detail ?? "—"
+        }
+    }
+
+    private func footer(_ summary: GameSummary) -> some View {
+        VStack(spacing: Spacing.xs) {
+            if let venue = summary.venue {
+                Text(venue)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+            }
+            if let attendance = summary.attendance {
+                Text("Attendance \(attendance.formatted())")
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+            }
+        }
+        .padding(.vertical, Spacing.lg)
+    }
+
+    private func load(force: Bool = false) async {
+        guard summary == nil || force else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            summary = try await client.gameSummary(eventId: game.id)
+            lastError = nil
+        } catch {
+            lastError = "Couldn't load this game."
+        }
+    }
+}

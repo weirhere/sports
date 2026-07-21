@@ -30,8 +30,20 @@ struct SectionAccordion: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                ForEach(section.games) { game in
-                    GameRow(game: game)
+                ForEach(Array(section.games.enumerated()), id: \.element.id) { index, game in
+                    if let label = dayDivider(at: index) {
+                        Text(label)
+                            .font(.meta)
+                            .foregroundStyle(.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Spacing.lg)
+                            .padding(.top, index == 0 ? 0 : Spacing.sm)
+                            .padding(.bottom, Spacing.xs)
+                    }
+                    NavigationLink(value: game) {
+                        GameRow(game: game)
+                    }
+                    .buttonStyle(.plain)
                     if game.id != section.games.last?.id {
                         Divider()
                             .overlay(Color.divider)
@@ -39,7 +51,24 @@ struct SectionAccordion: View {
                     }
                 }
             }
-            Divider().overlay(Color.divider)
         }
+    }
+
+    // MARK: - Day dividers
+    // Whisper-quiet "SAT, AUG 29" labels, only when the section spans more
+    // than one day. Dates included, not just weekdays — ESPN weeks can span
+    // two weekends (2026's Week 1 does).
+
+    private var spansMultipleDays: Bool {
+        Set(section.games.compactMap { $0.date.map(Calendar.current.startOfDay(for:)) }).count > 1
+    }
+
+    private func dayDivider(at index: Int) -> String? {
+        guard spansMultipleDays, let date = section.games[index].date else { return nil }
+        if index > 0, let previous = section.games[index - 1].date,
+           Calendar.current.isDate(previous, inSameDayAs: date) {
+            return nil
+        }
+        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).uppercased()
     }
 }

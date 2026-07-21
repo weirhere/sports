@@ -23,10 +23,16 @@ struct ScoresScreen: View {
                     onJump: { section in jumpTarget = section.id }
                 )
                 Divider().overlay(Color.divider)
+                if store.lastError != nil, !sections.isEmpty {
+                    refreshErrorBanner
+                }
                 content
             }
             .background(Color.bgPrimary)
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Game.self) { game in
+                GameDetailScreen(game: game)
+            }
         }
         .task { await store.loadInitial() }
         .onChange(of: scenePhase) { _, phase in
@@ -75,28 +81,67 @@ struct ScoresScreen: View {
         }
     }
 
-    @ViewBuilder
-    private var emptyState: some View {
-        VStack(spacing: Spacing.md) {
-            Spacer()
-            if store.isLoading {
-                ProgressView()
-            } else if let error = store.lastError {
-                Text(error)
-                    .font(.teamName)
-                    .foregroundStyle(.textSecondary)
-                Button("Retry") {
-                    Task { await store.refresh() }
-                }
-                .font(.teamNameEmphasis)
-                .foregroundStyle(.textPrimary)
-            } else {
-                Text(store.liveOnly ? "No live games right now" : "No games this week")
-                    .font(.teamName)
-                    .foregroundStyle(.textSecondary)
+    /// Quiet one-line banner when a refresh fails but last-good data is
+    /// still on screen.
+    private var refreshErrorBanner: some View {
+        HStack(spacing: Spacing.sm) {
+            Text("Couldn't refresh")
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+            Button("Retry") {
+                Task { await store.refresh() }
             }
-            Spacer()
+            .font(.metaEmphasis)
+            .foregroundStyle(.textPrimary)
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xs)
+        .background(Color.bgElevated)
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if store.isLoading {
+            ScrollView { SkeletonRows() }
+        } else {
+            VStack(spacing: Spacing.md) {
+                Spacer()
+                if let error = store.lastError {
+                    Text(error)
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Button("Retry") {
+                        Task { await store.refresh() }
+                    }
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
+                } else if store.liveOnly {
+                    Text("No live games right now")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                } else {
+                    Text("No games this week")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    if let kickoff = nextKickoff {
+                        Text("Season kicks off \(kickoff.formatted(.dateTime.weekday(.wide).month().day()))")
+                            .font(.metaEmphasis)
+                            .foregroundStyle(.textPrimary)
+                        Text(kickoff, style: .relative)
+                            .font(.meta)
+                            .foregroundStyle(.textSecondary)
+                    }
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// The next week-slot start still in the future — the offseason
+    /// countdown target.
+    private var nextKickoff: Date? {
+        store.weeks.compactMap(\.startDate).filter { $0 > .now }.min()
     }
 }
