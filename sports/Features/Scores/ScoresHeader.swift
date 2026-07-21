@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// The chrome row above the week strip: app wordmark left; grouping toggle
-/// and season picker right, both capsule chips. The wordmark is a
-/// placeholder until the name is settled (BACKLOG open question #1).
+/// The chrome row above the week strip: StatSide wordmark left; grouping
+/// toggle and season picker right, both capsule chips.
 struct ScoresHeader: View {
     let seasonYear: Int?
     let seasons: [Int]
@@ -27,7 +26,7 @@ struct ScoresHeader: View {
         HStack(spacing: Spacing.xs + 2) {
             Image(systemName: "football.fill")
                 .font(.system(size: 15, weight: .semibold))
-            Text("CFB")
+            Text("StatSide")
                 .font(.system(size: 17, weight: .heavy))
         }
         .foregroundStyle(.textPrimary)

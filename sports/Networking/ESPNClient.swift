@@ -438,7 +438,9 @@ nonisolated enum ESPNMapper {
                 name: name,
                 shortName: ranking.shortName,
                 type: ranking.type,
-                headline: ranking.headline,
+                // "2025 AP Poll: Final Rankings" over the long headline,
+                // which says "Rankings" twice under a Rankings title.
+                headline: ranking.shortHeadline ?? ranking.headline,
                 ranks: ranks
             )
         }

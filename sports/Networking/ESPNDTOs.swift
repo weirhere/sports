@@ -397,6 +397,7 @@ nonisolated struct RankingDTO: Decodable {
     let shortName: String?
     let type: String?
     let headline: String?
+    let shortHeadline: String?
     let ranks: LossyArray<RankDTO>?
 }
 
