@@ -102,8 +102,21 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `gameInfo`: `{venue{fullName, address}, attendance}`
 - `drives.previous[]`: full drive log (`result`, `yards`, `offensivePlays`, `timeElapsed`) — future drive-chart material, not v1
 
-### `/teams?limit=1000` and `/teams/{id}/schedule`
-Team browse list and per-team schedule. Shapes to verify at build time (same defensive-decode rules apply).
+### Teams + schedules (shapes verified live 2026-07-20)
+
+**`/teams?limit=1000` is useless for browse**: it returns all 755 teams across every division with *no conference data*, and ignores `groups=` filters. Conference membership comes from the standings API instead:
+
+- **`https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80`** (note: `apis/v2`, not `apis/site/v2`) — one request returns 11 FBS conference `children[]`, each with `standings.entries[].team` carrying id, names, and `logos[]`. This is the Teams-browse source. Offseason quirk: a conference can have zero entries (Sun Belt did on 2026-07-20); render what's there.
+
+**`/teams/{id}/schedule`** — quirks vs. the scoreboard shape, all handled in dedicated DTOs:
+- `score` is an object `{value, displayValue}`, not a string
+- `record` is an array (type `total` carries the summary), not `records`
+- `status` lives on `competitions[0]`, not the event
+- broadcasts nest as `broadcasts[].media.shortName`
+- 2026 schedules unpublished as of July (`events: []`); pass `?season=2025` for last season
+
+### `/summary` extras
+`leaders[]` at the top level (per team: `passingYards`/`rushingYards`/`receivingYards` categories with `athlete` + `displayValue`) is the game-detail leaders source — simpler than reassembling from `boxscore.players`. Header competitors carry `linescores[].displayValue` and a `record` array.
 
 ## Failure posture
 

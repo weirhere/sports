@@ -110,9 +110,9 @@ private func fixture(_ name: String) throws -> Data {
     }
 
     @Test func statMagnitudeParsing() {
-        #expect(ESPNMapper.statMagnitude("391") == 391)
+        #expect(ESPNMapper.statMagnitude("391") == 391.0)
         #expect(ESPNMapper.statMagnitude("5-14") == 5.0 / 14.0)
-        #expect(ESPNMapper.statMagnitude("31:14") == 31 * 60 + 14)
+        #expect(ESPNMapper.statMagnitude("31:14") == 1874.0)
         #expect(ESPNMapper.statMagnitude("—") == nil)
     }
 }

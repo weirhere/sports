@@ -16,7 +16,9 @@ struct TeamsScreen: View {
                 .background(Color.bgPrimary)
                 .navigationTitle("Teams")
                 .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $searchText, prompt: "Find a team")
+                .searchable(text: $searchText,
+                            placement: .navigationBarDrawer(displayMode: .always),
+                            prompt: "Find a team")
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                 }

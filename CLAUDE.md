@@ -50,8 +50,8 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 | Scoreboard | `/scoreboard?groups=80&limit=300&week={n}&seasontype={2\|3}` |
 | Rankings | `/rankings` |
 | Game detail | `/summary?event={eventId}` |
-| Teams list | `/teams?limit=1000` |
-| Team schedule | `/teams/{id}/schedule` |
+| FBS teams by conference | `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80` (the `/teams` endpoint has no conference data — see ARCHITECTURE.md) |
+| Team schedule | `/teams/{id}/schedule` (score is an object here, not a string) |
 
 Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API reference for the field-level breakdown.
 
@@ -84,6 +84,7 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-07-21 | Monochrome + logos-in-color + single red live accent | Distinctive, and live state pops harder |
 | 2026-07-21 | iOS 18.0 deployment target, iOS 26 SDK | Andy's call |
 | 2026-07-20 | Conference jump chips removed (supersedes the jump-scroll decision) | Accordions cover section navigation; the chip row was redundant. The Live toggle stays, now as its own `LiveFilterChip` |
+| 2026-07-20 | Conference logos in section headers render grayscale (inverted in dark mode) | Headers are chrome, and the color budget's logo exception is team-specific (disambiguation); conference headers already carry the name. ESPN has no dark-variant conference logos, so dark mode inverts the grayscale mark |
 
 ## Don'ts
 

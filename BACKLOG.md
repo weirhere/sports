@@ -23,30 +23,31 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [x] **P0** Conference chips = jump anchors. Tap scrolls to that section (expanding it if collapsed). Acceptance: chips never hide content.
 - [x] **P0** Live toggle. One chip; on = each section shows only in-progress games, empty sections hide. Acceptance: toggling never loses scroll position wildly; off restores exactly the prior view. *(Filter logic unit-tested; chip only appears when games are live — on-device check needs real games.)*
 - [x] **P0** Refresh: pull-to-refresh always; 30s auto-poll only while foregrounded AND ≥1 game is live. Acceptance: in-place updates preserve accordion + scroll state; no polling in background (verify with logs). *(Implemented with os.Logger instrumentation; log verification needs live games.)*
-- [ ] **P1** Day dividers inside sections spanning multiple days (Thu/Fri/Sat, whisper-quiet). Field note 2026-07-20: ESPN's 2026 "Week 1" spans two weekends (Aug 22–Sep 8), so weekday alone is ambiguous — dividers need dates ("Sat Aug 29"), and pre-row kick times may too.
-- [ ] **P1** Conference section ordering personalizes: followed team's conference first, then P4 → G5 → Independents.
-- [ ] **P1** Screen states: skeleton loading, error-with-retry (keep last good data), offseason/empty week state with next-kickoff countdown.
+- [x] **P1** Day dividers inside sections spanning multiple days (Thu/Fri/Sat, whisper-quiet). Field note 2026-07-20: ESPN's 2026 "Week 1" spans two weekends (Aug 22–Sep 8), so weekday alone is ambiguous — dividers need dates ("Sat Aug 29"), and pre-row kick times may too. *(Built with dates; verified on-screen.)*
+- [x] **P1** Conference section ordering personalizes: followed team's conference first, then P4 → G5 → Independents. *(Unit-tested; verified on-screen — following Georgia floats SEC above the alphabetical P4.)*
+- [x] **P1** Conference logos in section headers. Grayscale (inverted in dark mode) to stay inside the monochrome chrome budget; URLs hardcoded per conference id alongside the names, verified against ESPN's /scoreboard/conferences endpoint 2026-07-20. Following/Top 25/Other headers stay text-only.
+- [x] **P1** Screen states: skeleton loading, error-with-retry (keep last good data), offseason/empty week state with next-kickoff countdown. *(Skeleton rows + quiet refresh-error banner + countdown from the week calendar.)*
 
 ## E2 — Game detail
 
-- [ ] **P1** Header: teams, records, score, status; linescore grid by quarter (incl. OT columns).
-- [ ] **P1** Scoring plays list, chronological with period markers.
-- [ ] **P1** Team stats comparison (total yards, pass/rush, 3rd down, TOs, possession) as opposing mono bars.
-- [ ] **P1** Leaders (pass/rush/receive per team).
+- [x] **P1** Header: teams, records, score, status; linescore grid by quarter (incl. OT columns). *(Pre-game header verified on-device; linescore decode-verified against the 2025 CFP championship fixture — visual check needs a completed game, see E5.)*
+- [x] **P1** Scoring plays list, chronological with period markers. *(Decode-verified: 8 plays from the championship fixture.)*
+- [x] **P1** Team stats comparison (total yards, pass/rush, 3rd down, TOs, possession) as opposing mono bars. *(Bar magnitudes parse "5-14" and "31:14" shapes; unit-tested.)*
+- [x] **P1** Leaders (pass/rush/receive per team). *(From summary's top-level leaders; decode-verified.)*
 - [ ] **P2** Live auto-refresh on this screen while game is in progress.
 - [ ] **P2** Drive log (data already in `drives.previous[]`).
 
 ## E3 — Rankings
 
-- [ ] **P1** AP Top 25 default; segmented picker for Coaches and CFP (CFP appears only when ESPN returns it).
-- [ ] **P1** Rank row: rank, logo, team, record, movement arrow (▲/▼/–, derived from `previous` − `current`), first-place votes where present. Monochrome arrows; movement shown by weight not color.
+- [x] **P1** AP Top 25 default; segmented picker for Coaches and CFP (CFP appears only when ESPN returns it). *(Chip picker; FCS/DII/DIII polls filtered out; choice persists via ui.pollChoice.)*
+- [x] **P1** Rank row: rank, logo, team, record, movement arrow (▲/▼/–, derived from `previous` − `current`), first-place votes where present. Monochrome arrows; movement shown by weight not color. *(Verified on-device incl. NEW tag for unranked-previous.)*
 - [ ] **P2** Tap rank row → team page.
 
 ## E4 — Teams + following
 
-- [ ] **P1** Team browse: searchable FBS list grouped by conference.
-- [ ] **P1** Follow/unfollow, persisted. Acceptance: follows survive relaunch; Scores Following section updates immediately.
-- [ ] **P1** Team page: identity header, record, current-season schedule with results, follow button.
+- [x] **P1** Team browse: searchable FBS list grouped by conference. *(Sourced from standings?group=80 — the /teams endpoint has no conference data; see ARCHITECTURE. Sun Belt empty in ESPN's offseason data, renders as absent.)*
+- [x] **P1** Follow/unfollow, persisted. Acceptance: follows survive relaunch; Scores Following section updates immediately. *(UI smoke test covers the full flow: search → follow → Following section appears.)*
+- [x] **P1** Team page: identity header, record, current-season schedule with results, follow button. *(Schedule shows "Schedule TBA" until ESPN publishes 2026 season schedules; 2025 fixture decode-verified with W/L results.)*
 - [ ] **P2** Onboarding moment: first launch prompts "pick your teams" (skippable).
 
 ## E5 — Season hardening (in-season, field-notes-driven)
