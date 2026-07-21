@@ -100,7 +100,7 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `scoringPlays` via `drives.previous[].plays[]` (`scoringPlay: true`) and a top-level `scoringPlays[]` when present: `{period, clock, text, awayScore, homeScore, team, type}`
 - `header.competitions[0].competitors[].linescores[]` — per-quarter line score
 - `gameInfo`: `{venue{fullName, address}, attendance}`
-- `drives.previous[]`: full drive log (`result`, `yards`, `offensivePlays`, `timeElapsed`) — future drive-chart material, not v1
+- `drives.previous[]`: full drive log — the DRIVES section's source. `displayResult` ("Punt") beats the ALL-CAPS `result`; `description` is a pre-built "5 plays, 20 yards, 2:39" line; `start.period.number` drives the quarter markers
 
 ### Teams + schedules (shapes verified live 2026-07-20)
 

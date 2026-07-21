@@ -19,9 +19,10 @@ The target user checks scores 20+ times every fall Saturday and is tired of ad-s
 ## Design system
 
 - **Palette:** Black, white, and grays only for all UI chrome, text, dividers, and backgrounds. Support light (white bg) and dark (black bg) via semantic colors from day one.
-- **The color budget:** exactly two exceptions to monochrome:
-  1. Team logos render in full color (grayscale logos would make Michigan and Iowa look like the same team).
-  2. The live indicator (a small pulsing dot + live score emphasis) may use a single red accent. This is the only accent color in the app.
+- **The color budget:** exactly three exceptions to monochrome:
+  1. Logos — team and conference — render in full color (grayscale logos would make Michigan and Iowa look like the same team).
+  2. The live indicator (a small pulsing dot + live score emphasis) may use a single red accent.
+  3. Rankings movement indicators: green up, red down (the same red as the live accent — the app carries exactly one red). Arrows carry the meaning too; color is never the only signal.
 - **Live state spends the visual budget:** heavier type weight on live scores, pulsing dot, possession indicator. Pre-game and final rows stay quiet.
 - **Typography:** system font (SF Pro). Weight and size create hierarchy, not color. Scores use monospaced digits (`.monospacedDigit()`) so they don't jitter as clocks tick.
 - **Density target:** FotMob-level. A game row is one compact line: logo, team, record, score/time, network. No cards-with-shadows padding inflation.
@@ -84,7 +85,9 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-07-21 | Monochrome + logos-in-color + single red live accent | Distinctive, and live state pops harder |
 | 2026-07-21 | iOS 18.0 deployment target, iOS 26 SDK | Andy's call |
 | 2026-07-20 | Conference jump chips removed (supersedes the jump-scroll decision) | Accordions cover section navigation; the chip row was redundant. The Live toggle stays, now as its own `LiveFilterChip` |
+| 2026-07-21 | Rankings movement gets red/green (third color-budget exception) | Andy's call; movement direction reads instantly. Down reuses the live red; arrows keep it color-blind safe |
 | 2026-07-20 | Conference logos in section headers render grayscale (inverted in dark mode) | Headers are chrome, and the color budget's logo exception is team-specific (disambiguation); conference headers already carry the name. ESPN has no dark-variant conference logos, so dark mode inverts the grayscale mark |
+| 2026-07-21 | Conference logos render full color (supersedes the grayscale decision) | Andy's call after seeing it in practice; the color budget's logo exception now covers all logos, not just teams. Also drops the dark-mode invert hack |
 
 ## Don'ts
 

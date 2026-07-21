@@ -267,8 +267,27 @@ nonisolated struct SummaryResponseDTO: Decodable {
     let header: SummaryHeaderDTO?
     let boxscore: BoxscoreDTO?
     let scoringPlays: [ScoringPlayDTO]?
+    let drives: DrivesDTO?
     let leaders: LossyArray<SummaryTeamLeadersDTO>?
     let gameInfo: GameInfoDTO?
+}
+
+nonisolated struct DrivesDTO: Decodable {
+    let previous: LossyArray<DriveDTO>?
+}
+
+nonisolated struct DriveDTO: Decodable {
+    let id: String?
+    let description: String?     // "5 plays, 20 yards, 2:39"
+    let displayResult: String?   // "Punt", not the ALL-CAPS `result`
+    let isScore: Bool?
+    let team: TeamDTO?
+    let start: DriveEndpointDTO?
+}
+
+nonisolated struct DriveEndpointDTO: Decodable {
+    let period: PeriodRefDTO?
+    let text: String?
 }
 
 nonisolated struct SummaryHeaderDTO: Decodable {

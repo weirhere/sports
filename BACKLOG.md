@@ -25,8 +25,11 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [x] **P0** Refresh: pull-to-refresh always; 30s auto-poll only while foregrounded AND ≥1 game is live. Acceptance: in-place updates preserve accordion + scroll state; no polling in background (verify with logs). *(Implemented with os.Logger instrumentation; log verification needs live games.)*
 - [x] **P1** Day dividers inside sections spanning multiple days (Thu/Fri/Sat, whisper-quiet). Field note 2026-07-20: ESPN's 2026 "Week 1" spans two weekends (Aug 22–Sep 8), so weekday alone is ambiguous — dividers need dates ("Sat Aug 29"), and pre-row kick times may too. *(Built with dates; verified on-screen.)*
 - [x] **P1** Conference section ordering personalizes: followed team's conference first, then P4 → G5 → Independents. *(Unit-tested; verified on-screen — following Georgia floats SEC above the alphabetical P4.)*
-- [x] **P1** Conference logos in section headers. Grayscale (inverted in dark mode) to stay inside the monochrome chrome budget; URLs hardcoded per conference id alongside the names, verified against ESPN's /scoreboard/conferences endpoint 2026-07-20. Following/Top 25/Other headers stay text-only.
+- [x] **P1** Conference logos in section headers. URLs hardcoded per conference id alongside the names, verified against ESPN's /scoreboard/conferences endpoint 2026-07-20. Following/Top 25/Other headers stay text-only. *(Originally grayscale for the monochrome chrome budget; switched to full color 2026-07-21 — the budget's logo exception now covers conferences too.)*
 - [x] **P1** Screen states: skeleton loading, error-with-retry (keep last good data), offseason/empty week state with next-kickoff countdown. *(Skeleton rows + quiet refresh-error banner + countdown from the week calendar.)*
+- [x] **P1** Header row above the week strip: placeholder wordmark left (name still open — see open question #1), season selector right. Past seasons via scoreboard `dates={year}` (verified live 2026-07-21), CFP-era floor (2014); a past season lands on its final slot (CFP), current season reapplies the rollover rule.
+- [x] **P1** Logo loading resilience: replace bare `AsyncImage` with `LogoImage` + `LogoCache` (in-memory, dedupes in-flight fetches, retries on reappearance). Field note 2026-07-21: AsyncImage fetches once and never retries, so a network blip at cold launch permanently blanked the first-rendered section's logos (Following) while lazily-rendered rows loaded fine. Bonus: a team duplicated across sections now renders its logo instantly from cache.
+- [ ] **P1** Grouping toggle on Scores: a "By date" chip beside the Live chip switches sections to Following (pinned) → one accordion per calendar day, chronological, expanded by default. Live filter composes with either mode; mode persists (`ui.scoresGrouping`). Acceptance: day sections cover the full slate; nil-kickoff games land in a trailing "TBD" section; conference mode unchanged; chip row reachable with zero live games. Note: week-scoped day *grouping*, not day navigation — the no-date-picker rule stands.
 
 ## E2 — Game detail
 
@@ -35,7 +38,7 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [x] **P1** Team stats comparison (total yards, pass/rush, 3rd down, TOs, possession) as opposing mono bars. *(Bar magnitudes parse "5-14" and "31:14" shapes; unit-tested.)*
 - [x] **P1** Leaders (pass/rush/receive per team). *(From summary's top-level leaders; decode-verified.)*
 - [x] **P2** Live auto-refresh on this screen while game is in progress. *(30s loop, same rules as the scoreboard: foregrounded + live only; stops itself when the summary comes back final. os.Logger instrumented; live verification folds into the E5 first-game pass.)*
-- [ ] **P2** Drive log (data already in `drives.previous[]`).
+- [x] **P2** Drive log (data already in `drives.previous[]`). *(DRIVES section after Leaders: one line per possession — logo, result with weight on scoring drives, ESPN's "5 plays, 20 yards, 2:39" line — grouped by quarter markers like SCORING. Decode-verified: 22 drives / 8 scoring from the championship fixture; VO speaks each drive as one sentence.)*
 
 ## E3 — Rankings
 
@@ -48,7 +51,7 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [x] **P1** Team browse: searchable FBS list grouped by conference. *(Sourced from standings?group=80 — the /teams endpoint has no conference data; see ARCHITECTURE. Sun Belt empty in ESPN's offseason data, renders as absent.)*
 - [x] **P1** Follow/unfollow, persisted. Acceptance: follows survive relaunch; Scores Following section updates immediately. *(UI smoke test covers the full flow: search → follow → Following section appears.)*
 - [x] **P1** Team page: identity header, record, current-season schedule with results, follow button. *(Schedule shows "Schedule TBA" until ESPN publishes 2026 season schedules; 2025 fixture decode-verified with W/L results.)*
-- [ ] **P2** Onboarding moment: first launch prompts "pick your teams" (skippable).
+- [x] **P2** Onboarding moment: first launch prompts "pick your teams" (skippable). *(Sheet over RootView, shown once and only when following nobody — an upgrader with follows never sees it; dismissed any way (Skip, Done, swipe) sets ui.onboardingSeen. Searchable conference-grouped list where the whole row toggles follow. Verified on-simulator: fresh install shows the sheet, flagged relaunch doesn't. Smoke test launches with -ui.onboardingSeen YES to stay deterministic. Field note: sheet content only inherits environment applied outside the .sheet modifier — RootView orders .environment after .sheet for that reason.)*
 
 ## E5 — Season hardening (in-season, field-notes-driven)
 
@@ -56,7 +59,7 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [ ] **P1** Performance pass with a full Saturday slate (60+ events, all sections expanded).
 - [ ] **P2** Rankings ghost-week handling (poll updates Sunday while week still shows Saturday's games).
 - [ ] **P2** Week rollover edge cases: Week 0, Army-Navy solo week, CFP date ranges.
-- [ ] **P2** Accessibility pass: Dynamic Type, VoiceOver labels on rows ("Georgia 24, Tennessee 17, 3rd quarter"), contrast check on grays.
+- [x] **P2** Accessibility pass: Dynamic Type, VoiceOver labels on rows ("Georgia 24, Tennessee 17, 3rd quarter"), contrast check on grays. *(Type tokens scale via UIFontMetrics, row logos via @ScaledMetric; every row speaks one sentence — game/rank/schedule label shapes unit-tested; chips get selected traits, accordion headers speak count + expanded/collapsed, LiveDot hidden from VO + respects Reduce Motion. Contrast: light textSecondary 0.44 → 0.42 to clear WCAG AA 4.5:1 on bgElevated; all other tokens verified. Remaining: an on-device VoiceOver listen-through and large-size layout check — field-notes material.)*
 
 ## Icebox (deliberately not now)
 

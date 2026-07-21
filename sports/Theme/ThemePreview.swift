@@ -9,6 +9,8 @@ struct ThemePreview: View {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("Colors").font(.sectionHeader).foregroundStyle(.textSecondary)
                     swatch("bgPrimary", .bgPrimary)
+                    swatch("bgHeader", .bgHeader)
+                    swatch("bgRecessed", .bgRecessed)
                     swatch("bgElevated", .bgElevated)
                     swatch("textPrimary", .textPrimary)
                     swatch("textSecondary", .textSecondary)

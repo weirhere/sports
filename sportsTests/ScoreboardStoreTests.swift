@@ -5,7 +5,7 @@ import Testing
 private struct StubProvider: ScoresProviding {
     let scoreboard: Scoreboard
 
-    func scoreboard(weekValue: Int?, seasonType: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
         scoreboard
     }
 
@@ -26,7 +26,7 @@ private func team(_ id: String, conference: Int?) -> Team {
 
 private func game(_ id: String, home: Team, away: Team,
                   homeRank: Int? = nil, awayRank: Int? = nil,
-                  live: Bool = false, date: Date = .init(timeIntervalSince1970: 0)) -> Game {
+                  live: Bool = false, date: Date? = .init(timeIntervalSince1970: 0)) -> Game {
     Game(id: id, date: date, name: nil, shortName: nil, weekNumber: 1,
          status: live
             ? .live(displayClock: "5:00", period: 2, detail: nil, possessionTeamId: nil)
@@ -106,6 +106,31 @@ private func game(_ id: String, home: Team, away: Team,
         #expect(ids == ["conf-Big Ten", "conf-MAC", "conf-Independents", "conf-Other"])
     }
 
+    @Test func selectingPastSeasonLandsOnFinalSlot() async {
+        // 2024 calendar: Week 1 in Aug 2024, CFP ending Jan 2025. Season
+        // year omitted from the response, so the store derives it from the
+        // calendar's first slot.
+        let slots = [
+            WeekSlot(label: "Week 1", shortLabel: "Week 1", seasonType: 2, value: 1,
+                     startDate: Date(timeIntervalSince1970: 1_724_457_600),   // 2024-08-24
+                     endDate: Date(timeIntervalSince1970: 1_725_235_200)),    // 2024-09-02
+            WeekSlot(label: "CFP", shortLabel: "CFP", seasonType: 3, value: 999,
+                     startDate: Date(timeIntervalSince1970: 1_735_689_600),   // 2025-01-01
+                     endDate: Date(timeIntervalSince1970: 1_737_763_200)),    // 2025-01-25
+        ]
+        let scoreboard = Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil,
+                                    weeks: slots, games: [])
+        let store = ScoreboardStore(client: StubProvider(scoreboard: scoreboard))
+        await store.loadInitial()
+        #expect(store.currentSeasonYear == 2024)
+        #expect(store.availableSeasons.first == 2024)
+        #expect(store.availableSeasons.last == 2014)
+
+        await store.select(season: 2023)
+        #expect(store.seasonYear == 2023)
+        #expect(store.selectedWeek?.id == "3-999")
+    }
+
     @Test func sectionsAreChronological() async {
         let sec1 = team("1", conference: 8)
         let sec2 = team("2", conference: 8)
@@ -119,5 +144,72 @@ private func game(_ id: String, home: Team, away: Team,
         ])
         let sec = store.sections(followingIds: []).first
         #expect(sec?.games.map(\.id) == ["early", "late"])
+    }
+
+    // MARK: - Date grouping
+
+    /// Expected section id for a date, built the same way the store builds
+    /// it: local-calendar day components.
+    private func dayId(for date: Date) -> String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day],
+                                                    from: Calendar.current.startOfDay(for: date))
+        return String(format: "%@%04d-%02d-%02d", GameSection.dayPrefix,
+                      parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    @Test func dateModePinsFollowingThenGroupsByDay() async {
+        // Ten days apart so the two games land on distinct local days in
+        // any timezone. The ranked, followed game must appear in Following
+        // AND its day — no dedupe — and no Top 25 / conference sections.
+        let dayOne = Date(timeIntervalSince1970: 0)
+        let dayTwo = Date(timeIntervalSince1970: 864_000)
+        let store = await makeStore(games: [
+            game("g2", home: team("3", conference: 5), away: team("4", conference: 5), date: dayTwo),
+            game("g1", home: team("1", conference: 8), away: team("2", conference: 8),
+                 homeRank: 3, date: dayOne),
+        ])
+        let sections = store.sections(followingIds: ["1"], grouping: .date)
+        #expect(sections.map(\.id) == [GameSection.followingId, dayId(for: dayOne), dayId(for: dayTwo)])
+        #expect(sections[0].games.map(\.id) == ["g1"])
+        #expect(sections[1].games.map(\.id) == ["g1"])
+        #expect(sections[2].games.map(\.id) == ["g2"])
+    }
+
+    @Test func dateModeBucketsUndatedGamesIntoTrailingTBD() async {
+        let store = await makeStore(games: [
+            game("tbd", home: team("1", conference: 8), away: team("2", conference: 8), date: nil),
+            game("dated", home: team("3", conference: 8), away: team("4", conference: 8)),
+        ])
+        let sections = store.sections(followingIds: [], grouping: .date)
+        #expect(sections.count == 2)
+        #expect(sections.last?.id == GameSection.tbdDayId)
+        #expect(sections.last?.title == "TBD")
+        #expect(sections.last?.games.map(\.id) == ["tbd"])
+    }
+
+    @Test func dateModeGamesWithinADayAreChronological() async {
+        let store = await makeStore(games: [
+            game("late", home: team("1", conference: 8), away: team("2", conference: 8),
+                 date: Date(timeIntervalSince1970: 5000)),
+            game("early", home: team("3", conference: 8), away: team("4", conference: 8),
+                 date: Date(timeIntervalSince1970: 1000)),
+        ])
+        let sections = store.sections(followingIds: [], grouping: .date)
+        #expect(sections.count == 1)
+        #expect(sections[0].games.map(\.id) == ["early", "late"])
+    }
+
+    @Test func liveToggleComposesWithDateMode() async {
+        let dayOne = Date(timeIntervalSince1970: 0)
+        let dayTwo = Date(timeIntervalSince1970: 864_000)
+        let store = await makeStore(games: [
+            game("pre", home: team("1", conference: 8), away: team("2", conference: 8), date: dayOne),
+            game("live", home: team("3", conference: 1), away: team("4", conference: 1),
+                 live: true, date: dayTwo),
+        ])
+        store.liveOnly = true
+        let sections = store.sections(followingIds: [], grouping: .date)
+        #expect(sections.map(\.id) == [dayId(for: dayTwo)])
+        #expect(sections[0].games.map(\.id) == ["live"])
     }
 }

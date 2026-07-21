@@ -38,6 +38,10 @@ struct GameDetailScreen: View {
                         LeadersList(summary: summary)
                         Divider().overlay(Color.divider)
                     }
+                    if !summary.drives.isEmpty {
+                        DriveLogList(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
                     footer(summary)
                 } else if isLoading {
                     ProgressView().padding(.vertical, Spacing.xl)
@@ -100,6 +104,21 @@ struct GameDetailScreen: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(headerAccessibilityLabel)
+    }
+
+    private var headerAccessibilityLabel: String {
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        func side(_ s: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
+            guard showsScores, let score = s.score else { return s.team.location }
+            return "\(s.team.location) \(score)"
+        }
+        let matchup = showsScores
+            ? "\(side(away)), \(side(home))"
+            : "\(away.team.location) at \(home.team.location)"
+        return "\(matchup), \(statusLine.replacingOccurrences(of: "\n", with: ", "))"
     }
 
     private func competitor(_ fallback: Competitor, _ side: GameSummary.Side?)
@@ -112,12 +131,8 @@ struct GameDetailScreen: View {
 
     private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
         VStack(spacing: Spacing.xs) {
-            AsyncImage(url: side.team.logoURL) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.bgElevated)
-            }
-            .frame(width: 44, height: 44)
+            LogoImage(url: side.team.logoURL)
+                .frame(width: 44, height: 44)
             Text(side.team.location)
                 .font(side.winner == true ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(.textPrimary)

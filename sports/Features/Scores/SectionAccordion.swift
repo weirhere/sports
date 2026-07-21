@@ -1,22 +1,27 @@
 import SwiftUI
 
-/// One collapsible section of the scores list: quiet uppercase header,
+/// One collapsible section of the scores list: gray-filled header,
 /// hairline-divided game rows when expanded.
 struct SectionAccordion: View {
     let section: GameSection
     let isExpanded: Bool
     let onToggle: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onToggle) {
                 HStack(spacing: Spacing.sm) {
-                    if let logoURL = section.logoURL {
-                        conferenceLogo(logoURL)
+                    if section.isConference {
+                        ConferenceLogo(url: section.logoURL)
+                    } else if let symbol = headerSymbol {
+                        // Same footprint as ConferenceLogo so every section
+                        // title starts at the same x.
+                        Image(systemName: symbol)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.textSecondary)
+                            .frame(width: 18, height: 18)
                     }
-                    Text(section.title.uppercased())
+                    Text(section.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
                     Text("\(section.games.count)")
@@ -26,13 +31,17 @@ struct SectionAccordion: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
-                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
+                .background(Color.bgHeader)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
+            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+            .accessibilityAddTraits(.isHeader)
 
             if isExpanded {
                 ForEach(Array(section.games.enumerated()), id: \.element.id) { index, game in
@@ -59,21 +68,16 @@ struct SectionAccordion: View {
         }
     }
 
-    /// Conference mark, kept inside the monochrome chrome budget: grayscale
-    /// in light mode, inverted in dark so dark marks stay legible on black.
-    /// (ESPN has no dark-variant conference logos.)
-    private func conferenceLogo(_ url: URL) -> some View {
-        AsyncImage(url: url) { image in
-            let mono = image.resizable().scaledToFit().grayscale(1)
-            if colorScheme == .dark {
-                mono.colorInvert()
-            } else {
-                mono
-            }
-        } placeholder: {
-            Color.clear
+    /// Header glyph for the non-conference sections. star.fill echoes the
+    /// follow toggle on team pages; trophy.fill marks the poll; day
+    /// sections get a calendar so their titles x-align with Following's.
+    private var headerSymbol: String? {
+        switch section.id {
+        case GameSection.followingId: "star.fill"
+        case GameSection.top25Id: "trophy.fill"
+        case let id where id.hasPrefix(GameSection.dayPrefix): "calendar"
+        default: nil
         }
-        .frame(width: 18, height: 18)
     }
 
     // MARK: - Day dividers

@@ -2,16 +2,30 @@ import Foundation
 import Observation
 import os
 
+/// How the scores list groups its sections: the default Following → Top 25
+/// → conference stack, or Following pinned above one section per day.
+enum ScoresGrouping: String {
+    case conference
+    case date
+}
+
 /// One ordered section of the scores screen. A game appears in every section
 /// whose promise it satisfies — sections are complete, never deduplicated.
 struct GameSection: Identifiable, Hashable {
     static let followingId = "following"
     static let top25Id = "top25"
+    /// Day sections (date grouping) use ids like "day-2026-08-29"; the
+    /// prefix routes their expansion state separately in UIStateStore.
+    static let dayPrefix = "day-"
+    static let tbdDayId = "day-tbd"
 
     let id: String
     let title: String
     let games: [Game]
     var logoURL: URL? = nil
+    /// Conference sections always show a mark (logo or fallback) so their
+    /// titles align; Following shows a star, Top 25 a trophy.
+    var isConference = false
 }
 
 @Observable
@@ -26,9 +40,17 @@ final class ScoreboardStore {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
+    /// The season on screen.
+    private(set) var seasonYear: Int?
+    /// ESPN's "now" season, captured on first load. Tops the picker range
+    /// and marks which year needs no `dates=` override.
+    private(set) var currentSeasonYear: Int?
+
     var liveOnly = false
 
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    /// Non-nil while browsing a past season; forwarded on every fetch.
+    @ObservationIgnored private var seasonOverride: Int?
 
     init(client: any ScoresProviding) {
         self.client = client
@@ -36,6 +58,12 @@ final class ScoreboardStore {
 
     var hasLiveGames: Bool {
         games.contains(where: \.isLive)
+    }
+
+    /// Selectable seasons, newest first. Floor is 2014 — the CFP era.
+    var availableSeasons: [Int] {
+        guard let current = currentSeasonYear else { return [] }
+        return Array(stride(from: current, through: 2014, by: -1))
     }
 
     // MARK: - Loading
@@ -46,8 +74,14 @@ final class ScoreboardStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            let scoreboard = try await client.scoreboard(weekValue: nil, seasonType: nil)
+            let scoreboard = try await client.scoreboard(weekValue: nil, seasonType: nil, year: nil)
             weeks = scoreboard.weeks
+            // The July offseason response can omit season; fall back to the
+            // calendar's first slot (an August date, so its year IS the
+            // season year even for January bowl games).
+            currentSeasonYear = scoreboard.seasonYear
+                ?? scoreboard.weeks.first?.startDate.map { Calendar.current.component(.year, from: $0) }
+            seasonYear = currentSeasonYear
             let defaultSlot = WeekLogic.defaultSelection(
                 in: scoreboard.weeks,
                 currentWeekNumber: scoreboard.currentWeekNumber,
@@ -78,10 +112,62 @@ final class ScoreboardStore {
         startPollingIfNeeded()
     }
 
+    /// Switch seasons. The current year goes back through the initial-load
+    /// path so the Sunday rollover rule reapplies; past years land on the
+    /// season's final slot — a finished season's state is its conclusion.
+    func select(season year: Int) async {
+        guard year != seasonYear else { return }
+        stopPolling()
+        seasonYear = year
+        seasonOverride = year == currentSeasonYear ? nil : year
+        weeks = []
+        games = []
+        selectedWeek = nil
+        if let year = seasonOverride {
+            await loadSeason(year)
+            startPollingIfNeeded()
+        } else {
+            await loadInitial()
+        }
+    }
+
+    /// Load a past season: anchor on regular-season week 1 (always exists —
+    /// a bare `dates=` request dumps the entire season) to get its calendar,
+    /// then land on the last slot (the CFP).
+    private func loadSeason(_ year: Int) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let scoreboard = try await client.scoreboard(weekValue: 1, seasonType: 2, year: year)
+            weeks = scoreboard.weeks
+            seasonYear = scoreboard.seasonYear ?? year
+            // No current week in a finished season: defaultSelection falls
+            // through to the last slot for past dates.
+            let slot = WeekLogic.defaultSelection(
+                in: scoreboard.weeks, currentWeekNumber: nil, seasonType: nil
+            )
+            selectedWeek = slot
+            if let slot, slot.seasonType == 2, slot.value == 1 {
+                games = scoreboard.games
+                lastError = nil
+            } else {
+                await fetchSelectedWeek()
+            }
+        } catch {
+            lastError = describe(error)
+            Self.logger.error("season load failed: \(error)")
+        }
+    }
+
     /// Re-fetch the selected week. Games keep stable ids, so SwiftUI updates
     /// rows in place and accordion/scroll state survives.
     func refresh() async {
-        await fetchSelectedWeek()
+        if selectedWeek == nil, let year = seasonOverride {
+            // A failed season switch left no week anchor; redo the switch.
+            await loadSeason(year)
+        } else {
+            await fetchSelectedWeek()
+        }
         startPollingIfNeeded()
     }
 
@@ -91,11 +177,13 @@ final class ScoreboardStore {
         do {
             let scoreboard = try await client.scoreboard(
                 weekValue: selectedWeek?.value,
-                seasonType: selectedWeek?.seasonType
+                seasonType: selectedWeek?.seasonType,
+                year: seasonOverride
             )
             if !scoreboard.weeks.isEmpty {
                 weeks = scoreboard.weeks
             }
+            seasonYear = scoreboard.seasonYear ?? seasonYear
             games = scoreboard.games
             lastError = nil
         } catch {
@@ -141,10 +229,12 @@ final class ScoreboardStore {
 
     // MARK: - Sections
 
-    /// Following → Top 25 → conferences, each section complete on its own
-    /// terms. The Live filter collapses sections to in-progress games and
-    /// hides the empties.
-    func sections(followingIds: Set<String>) -> [GameSection] {
+    /// Following pinned first in either grouping, each section complete on
+    /// its own terms. Conference mode adds Top 25 → conferences; date mode
+    /// adds one section per calendar day. The Live filter collapses
+    /// sections to in-progress games and hides the empties.
+    func sections(followingIds: Set<String>,
+                  grouping: ScoresGrouping = .conference) -> [GameSection] {
         let visible = liveOnly ? games.filter(\.isLive) : games
         var result: [GameSection] = []
 
@@ -156,6 +246,19 @@ final class ScoreboardStore {
                                       games: chronological(followed)))
         }
 
+        switch grouping {
+        case .conference:
+            result += rankedAndConferenceSections(from: visible, followingIds: followingIds)
+        case .date:
+            result += daySections(from: visible)
+        }
+        return result
+    }
+
+    /// Top 25 → conferences, the default stack below Following.
+    private func rankedAndConferenceSections(from visible: [Game],
+                                             followingIds: Set<String>) -> [GameSection] {
+        var result: [GameSection] = []
         let ranked = visible.filter(\.involvesRankedTeam)
         if !ranked.isEmpty {
             result.append(GameSection(id: GameSection.top25Id, title: "Top 25",
@@ -189,7 +292,38 @@ final class ScoreboardStore {
             let name = Conference.name(for: id)
             result.append(GameSection(id: "conf-\(name)", title: name,
                                       games: chronological(byConference[id] ?? []),
-                                      logoURL: Conference.logoURL(for: id)))
+                                      logoURL: Conference.logoURL(for: id),
+                                      isConference: true))
+        }
+        return result
+    }
+
+    /// One section per local calendar day, chronological; games with no
+    /// kickoff date land in a trailing "TBD" section. Ids come from local
+    /// date components (not ISO8601, whose UTC default would mis-bucket
+    /// late kicks) so expansion state keys stay stable.
+    private func daySections(from visible: [Game]) -> [GameSection] {
+        let calendar = Calendar.current
+        var byDay: [Date: [Game]] = [:]
+        var undated: [Game] = []
+        for game in visible {
+            if let date = game.date {
+                byDay[calendar.startOfDay(for: date), default: []].append(game)
+            } else {
+                undated.append(game)
+            }
+        }
+        var result: [GameSection] = byDay.keys.sorted().map { day in
+            let parts = calendar.dateComponents([.year, .month, .day], from: day)
+            let id = String(format: "%@%04d-%02d-%02d", GameSection.dayPrefix,
+                            parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+            return GameSection(id: id,
+                               title: day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()),
+                               games: chronological(byDay[day] ?? []))
+        }
+        if !undated.isEmpty {
+            result.append(GameSection(id: GameSection.tbdDayId, title: "TBD",
+                                      games: chronological(undated)))
         }
         return result
     }

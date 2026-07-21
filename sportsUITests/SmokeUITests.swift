@@ -6,6 +6,12 @@ final class SmokeUITests: XCTestCase {
     @MainActor
     func testTabsAndFollowFlow() throws {
         let app = XCUIApplication()
+        // A fresh simulator would otherwise get the pick-your-teams sheet;
+        // the arg lands in UserDefaults' argument domain and marks it seen.
+        // Grouping is pinned to conference the same way — the test asserts
+        // conference headers, and the sim may have "by date" persisted.
+        app.launchArguments += ["-ui.onboardingSeen", "YES",
+                                "-ui.scoresGrouping", "conference"]
         app.launch()
 
         // Scores loads a real slate.
@@ -42,7 +48,7 @@ final class SmokeUITests: XCTestCase {
 
         // Scores now leads with the Following section.
         app.tabBars.buttons["Scores"].tap()
-        XCTAssertTrue(app.staticTexts["FOLLOWING"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Following"].waitForExistence(timeout: 10),
                       "Following section should appear once a team is followed")
         snapshot(app, "scores-following")
 

@@ -3,6 +3,9 @@ import SwiftUI
 /// Browse and search the FBS, grouped by conference (from the standings
 /// API — the one source that knows membership).
 struct TeamsScreen: View {
+    @Environment(FollowingStore.self) private var following
+    @Environment(UIStateStore.self) private var uiState
+
     @State private var conferences: [ConferenceTeams] = []
     @State private var isLoading = false
     @State private var lastError: String?
@@ -16,9 +19,6 @@ struct TeamsScreen: View {
                 .background(Color.bgPrimary)
                 .navigationTitle("Teams")
                 .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $searchText,
-                            placement: .navigationBarDrawer(displayMode: .always),
-                            prompt: "Find a team")
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                 }
@@ -47,28 +47,96 @@ struct TeamsScreen: View {
             }
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: Spacing.sm) {
                     if searchText.isEmpty {
+                        if !followedTeams.isEmpty {
+                            teamSection(title: "Following",
+                                        sectionId: Self.followingSectionId,
+                                        teams: followedTeams)
+                        }
                         ForEach(conferences) { conference in
-                            Text(conference.name.uppercased())
-                                .font(.sectionHeader)
-                                .foregroundStyle(.textPrimary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, Spacing.lg)
-                                .padding(.vertical, Spacing.md)
-                            ForEach(conference.teams) { team in
+                            teamSection(title: conference.name,
+                                        sectionId: sectionId(for: conference),
+                                        teams: conference.teams,
+                                        logoURL: Conference.logoURL(for: conference.id),
+                                        isConference: true)
+                        }
+                    } else if !searchResults.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(searchResults) { team in
                                 TeamBrowseRow(team: team)
                             }
-                            Divider().overlay(Color.divider)
                         }
-                    } else {
-                        ForEach(searchResults) { team in
-                            TeamBrowseRow(team: team)
-                        }
+                        .padding(.vertical, Spacing.xs)
+                        .cardSurface()
                     }
+                }
+                .padding(Spacing.sm)
+            }
+            .background(Color.bgRecessed)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                SearchField(text: $searchText, prompt: "Find a team")
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.top, Spacing.xs)
+                    .padding(.bottom, Spacing.sm)
+                    .background(Color.bgRecessed)
+            }
+        }
+    }
+
+    private func teamSection(title: String, sectionId: String, teams: [Team],
+                             logoURL: URL? = nil, isConference: Bool = false) -> some View {
+        let isExpanded = !uiState.isConferenceCollapsed(sectionId)
+        return VStack(spacing: 0) {
+            Button {
+                withAnimation { uiState.toggleConference(sectionId) }
+            } label: {
+                HStack(spacing: Spacing.sm) {
+                    if isConference {
+                        ConferenceLogo(url: logoURL)
+                    }
+                    Text(title)
+                        .font(.sectionHeader)
+                        .foregroundStyle(.textPrimary)
+                    Text("\(teams.count)")
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.textSecondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.md)
+                .background(Color.bgHeader)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
+            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+            .accessibilityAddTraits(.isHeader)
+
+            if isExpanded {
+                ForEach(teams) { team in
+                    TeamBrowseRow(team: team)
                 }
             }
         }
+        .padding(.bottom, isExpanded ? Spacing.xs : 0)
+        .cardSurface()
+    }
+
+    private static let followingSectionId = "teams.following"
+
+    private func sectionId(for conference: ConferenceTeams) -> String {
+        "teams.conf.\(conference.id.map(String.init) ?? "other")"
+    }
+
+    private var followedTeams: [Team] {
+        conferences.flatMap(\.teams)
+            .filter { following.isFollowing($0.id) }
+            .sorted { $0.location.localizedCaseInsensitiveCompare($1.location) == .orderedAscending }
     }
 
     private var searchResults: [Team] {

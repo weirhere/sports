@@ -6,6 +6,8 @@ struct ScheduleRow: View {
     let game: Game
     let teamId: String
 
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+
     var body: some View {
         HStack(spacing: Spacing.md) {
             Text(game.date?.formatted(.dateTime.month(.abbreviated).day()) ?? "TBD")
@@ -15,12 +17,8 @@ struct ScheduleRow: View {
             Text(isHome ? "vs" : "@")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
-            AsyncImage(url: opponent.team.logoURL) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.bgElevated)
-            }
-            .frame(width: 20, height: 20)
+            LogoImage(url: opponent.team.logoURL)
+                .frame(width: logoSize, height: logoSize)
             Text(opponent.team.location)
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)
@@ -30,6 +28,36 @@ struct ScheduleRow: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    /// One spoken sentence from this team's perspective: "September 27,
+    /// versus Tennessee, won 24 to 17". Internal for unit tests.
+    var accessibilitySummary: String {
+        var parts: [String] = []
+        if let date = game.date {
+            parts.append(date.formatted(.dateTime.month(.wide).day()))
+        }
+        parts.append("\(isHome ? "versus" : "at") \(opponent.team.location)")
+        switch game.status {
+        case .final:
+            let outcome = mine.winner == true ? "won" : (opponent.winner == true ? "lost" : "final")
+            parts.append("\(outcome) \(spokenScore)")
+        case .live:
+            parts.append("live, \(spokenScore)")
+        case .pre:
+            if let date = game.date {
+                parts.append("kickoff \(date.formatted(.dateTime.hour().minute()))")
+            }
+        case .other(let detail):
+            if let detail { parts.append(detail) }
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private var spokenScore: String {
+        "\(mine.score.map(String.init) ?? "no score") to \(opponent.score.map(String.init) ?? "no score")"
     }
 
     private var isHome: Bool { game.home.team.id == teamId }

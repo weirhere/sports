@@ -54,6 +54,7 @@ struct RankingsScreen: View {
                         .background(Capsule().fill(isSelected ? Color.textPrimary : Color.clear))
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
             Spacer()
         }
@@ -95,7 +96,11 @@ struct RankingsScreen: View {
                         }
                     }
                 }
+                .padding(.vertical, Spacing.xs)
+                .cardSurface()
+                .padding(Spacing.sm)
             }
+            .background(Color.bgRecessed)
             .refreshable { await load() }
         } else if isLoading {
             Spacer()

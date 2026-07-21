@@ -46,6 +46,9 @@ struct WeekStrip: View {
                 )
         }
         .buttonStyle(.plain)
+        // Spoken label uses the full "Week 5", not the compact "Wk 5".
+        .accessibilityLabel(week.shortLabel)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .id(week.id)
     }
 

@@ -26,12 +26,8 @@ struct TeamPage: View {
 
     private var header: some View {
         VStack(spacing: Spacing.sm) {
-            AsyncImage(url: team.logoURL) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.bgElevated)
-            }
-            .frame(width: 64, height: 64)
+            LogoImage(url: team.logoURL)
+                .frame(width: 64, height: 64)
             Text(team.displayName ?? team.location)
                 .font(.teamNameEmphasis)
                 .foregroundStyle(.textPrimary)

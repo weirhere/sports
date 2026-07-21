@@ -15,10 +15,22 @@ nonisolated struct GameSummary: Sendable {
     let away: Side?
     let status: GameStatus
     let scoringPlays: [ScoringPlay]
+    let drives: [Drive]
     let teamStats: [StatComparison]
     let leaders: [LeaderCategory]
     let venue: String?
     let attendance: Int?
+}
+
+/// One offensive possession, chronological. `summary` is ESPN's pre-built
+/// "5 plays, 20 yards, 2:39" line — no reassembly needed.
+nonisolated struct Drive: Identifiable, Hashable, Sendable {
+    let id: String
+    let teamId: String?
+    let result: String?      // "Punt", "Field Goal", "Touchdown"
+    let isScore: Bool
+    let summary: String?
+    let period: Int?         // quarter the drive started in
 }
 
 nonisolated struct ScoringPlay: Identifiable, Hashable, Sendable {
