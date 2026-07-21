@@ -89,6 +89,23 @@ private func fixture(_ name: String) throws -> Data {
         #expect(first.awayScore != nil && first.homeScore != nil)
     }
 
+    @Test func decodesDrives() throws {
+        let summary = try loadSummary()
+        #expect(summary.drives.count == 22)
+        #expect(summary.drives.filter(\.isScore).count == 8)
+
+        let first = try #require(summary.drives.first)
+        #expect(first.teamId == "2390")
+        #expect(first.result == "Punt")
+        #expect(first.isScore == false)
+        #expect(first.summary == "5 plays, 20 yards, 2:39")
+        #expect(first.period == 1)
+
+        // Chronological by start period, so the quarter markers make sense.
+        let periods = summary.drives.compactMap(\.period)
+        #expect(periods == periods.sorted())
+    }
+
     @Test func decodesTeamStats() throws {
         let summary = try loadSummary()
         #expect(summary.teamStats.count == 6)

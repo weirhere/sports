@@ -54,6 +54,7 @@ struct RankingsScreen: View {
                         .background(Capsule().fill(isSelected ? Color.textPrimary : Color.clear))
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
             Spacer()
         }
@@ -84,13 +85,22 @@ struct RankingsScreen: View {
                             .padding(.vertical, Spacing.sm)
                     }
                     ForEach(poll.ranks) { ranked in
-                        RankRow(ranked: ranked)
+                        NavigationLink {
+                            TeamPage(team: ranked.team)
+                        } label: {
+                            RankRow(ranked: ranked)
+                        }
+                        .buttonStyle(.plain)
                         if ranked.id != poll.ranks.last?.id {
                             Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
                         }
                     }
                 }
+                .padding(.vertical, Spacing.xs)
+                .cardSurface()
+                .padding(Spacing.sm)
             }
+            .background(Color.bgRecessed)
             .refreshable { await load() }
         } else if isLoading {
             Spacer()

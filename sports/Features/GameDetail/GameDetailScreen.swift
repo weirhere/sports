@@ -1,9 +1,14 @@
 import SwiftUI
+import os
 
 /// Tap a game, land somewhere worth landing: header, linescore, scoring
 /// plays, team stats, leaders.
 struct GameDetailScreen: View {
+    private static let logger = Logger(subsystem: "com.andyryanweir.sports", category: "gamedetail")
+
     let game: Game
+
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var summary: GameSummary?
     @State private var isLoading = false
@@ -33,6 +38,10 @@ struct GameDetailScreen: View {
                         LeadersList(summary: summary)
                         Divider().overlay(Color.divider)
                     }
+                    if !summary.drives.isEmpty {
+                        DriveLogList(summary: summary)
+                        Divider().overlay(Color.divider)
+                    }
                     footer(summary)
                 } else if isLoading {
                     ProgressView().padding(.vertical, Spacing.xl)
@@ -55,7 +64,27 @@ struct GameDetailScreen: View {
         .navigationTitle(game.shortName ?? "Game")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        // 30s auto-refresh mirrors the scoreboard's polling rules: only while
+        // the scene is active and the game is in progress. The id flips when
+        // either condition changes, cancelling or restarting the loop — a
+        // summary that comes back final stops it on its own.
+        .task(id: scenePhase == .active && isLiveNow) {
+            guard scenePhase == .active, isLiveNow else { return }
+            Self.logger.info("detail polling: started for event \(game.id)")
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled else { break }
+                Self.logger.info("detail polling: tick for event \(game.id)")
+                await load(force: true)
+            }
+            Self.logger.info("detail polling: stopped for event \(game.id)")
+        }
         .refreshable { await load(force: true) }
+    }
+
+    private var isLiveNow: Bool {
+        if case .live = summary?.status ?? game.status { return true }
+        return false
     }
 
     /// Renders from the scoreboard's Game immediately; the summary fills in.
@@ -75,6 +104,21 @@ struct GameDetailScreen: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(headerAccessibilityLabel)
+    }
+
+    private var headerAccessibilityLabel: String {
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        func side(_ s: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
+            guard showsScores, let score = s.score else { return s.team.location }
+            return "\(s.team.location) \(score)"
+        }
+        let matchup = showsScores
+            ? "\(side(away)), \(side(home))"
+            : "\(away.team.location) at \(home.team.location)"
+        return "\(matchup), \(statusLine.replacingOccurrences(of: "\n", with: ", "))"
     }
 
     private func competitor(_ fallback: Competitor, _ side: GameSummary.Side?)
@@ -87,12 +131,8 @@ struct GameDetailScreen: View {
 
     private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
         VStack(spacing: Spacing.xs) {
-            AsyncImage(url: side.team.logoURL) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.bgElevated)
-            }
-            .frame(width: 44, height: 44)
+            LogoImage(url: side.team.logoURL)
+                .frame(width: 44, height: 44)
             Text(side.team.location)
                 .font(side.winner == true ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(.textPrimary)

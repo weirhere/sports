@@ -3,8 +3,11 @@ import Foundation
 /// The domain-facing contract. If ESPN's API dies, a CFBD-backed client
 /// conforms to this same protocol and the rest of the app never notices.
 nonisolated protocol ScoresProviding: Sendable {
-    /// Fetch the scoreboard. Pass nil for both to get ESPN's current week.
-    func scoreboard(weekValue: Int?, seasonType: Int?) async throws -> Scoreboard
+    /// Fetch the scoreboard. Pass nil for everything to get ESPN's current
+    /// week. `year` selects a season (ESPN's `dates=` param, verified live
+    /// 2026-07-21); always pair it with an explicit week — a bare year
+    /// request dumps the entire season's events.
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
     func fbsConferences() async throws -> [ConferenceTeams]
     func teamSchedule(teamId: String) async throws -> TeamSchedule
@@ -31,7 +34,7 @@ actor ESPNClient: ScoresProviding {
         self.session = session
     }
 
-    func scoreboard(weekValue: Int?, seasonType: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
         var items = [
             URLQueryItem(name: "groups", value: String(Conference.fbsGroupId)),
             URLQueryItem(name: "limit", value: "300"),
@@ -41,6 +44,9 @@ actor ESPNClient: ScoresProviding {
         }
         if let seasonType {
             items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
+        }
+        if let year {
+            items.append(URLQueryItem(name: "dates", value: String(year)))
         }
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
         return ESPNMapper.scoreboard(from: dto)
@@ -312,6 +318,16 @@ nonisolated enum ESPNMapper {
                     teamId: play.team?.id,
                     awayScore: play.awayScore,
                     homeScore: play.homeScore
+                )
+            },
+            drives: (dto.drives?.previous?.elements ?? []).enumerated().map { index, drive in
+                Drive(
+                    id: drive.id ?? "drive-\(index)",
+                    teamId: drive.team?.id,
+                    result: drive.displayResult?.trimmingCharacters(in: .whitespaces),
+                    isScore: drive.isScore ?? false,
+                    summary: drive.description,
+                    period: drive.start?.period?.number
                 )
             },
             teamStats: teamStats(from: dto.boxscore),

@@ -16,19 +16,42 @@ extension Color {
     }
 
     static let bgPrimary = Color(lightWhite: 1.00, darkWhite: 0.00)
-    /// One step off bgPrimary — the surface accordion cards sit on.
-    static let bgRecessed = Color(lightWhite: 0.96, darkWhite: 0.08)
+    /// The page surface accordion cards sit on. FotMob-strength gray: dark
+    /// enough that white cards pop by contrast alone, no shadow needed.
+    /// Not darker than 0.93 — textSecondary sits directly on it (onboarding
+    /// subtitle) and 0.93 is the floor that keeps 4.5:1 (see textSecondary).
+    static let bgRecessed = Color(lightWhite: 0.93, darkWhite: 0.08)
     static let bgElevated = Color(lightWhite: 0.93, darkWhite: 0.10)
+    /// Accordion header fill: a whisper off the card, FotMob-subtle. The
+    /// card-vs-page contrast comes from bgRecessed, not from this tint.
+    /// Light value is #f8f8f8.
+    static let bgHeader = Color(lightWhite: 248 / 255, darkWhite: 0.05)
     static let textPrimary = Color(lightWhite: 0.00, darkWhite: 1.00)
-    static let textSecondary = Color(lightWhite: 0.44, darkWhite: 0.62)
+    /// 0.42, not 0.44: the darkest surfaces secondary text sits on are
+    /// bgElevated and bgRecessed (0.93), and 0.44 lands at 4.22:1 there —
+    /// under WCAG AA's 4.5:1. At 0.42 every surface clears it (worst case
+    /// 4.55:1); dark mode clears comfortably (6.5:1+).
+    static let textSecondary = Color(lightWhite: 0.42, darkWhite: 0.62)
     static let divider = Color(lightWhite: 0.88, darkWhite: 0.20)
 
-    /// The app's only accent color: the live indicator and live-score emphasis.
+    /// The live indicator and live-score emphasis.
     static let liveAccent = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 1.00, green: 0.27, blue: 0.23, alpha: 1)
             : UIColor(red: 0.84, green: 0.00, blue: 0.08, alpha: 1)
     })
+
+    /// Rankings movement: up. Light-mode green is darkened to clear WCAG AA
+    /// (4.5:1) against bgPrimary; dark mode brightens instead.
+    static let rankUp = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.20, green: 0.82, blue: 0.40, alpha: 1)
+            : UIColor(red: 0.00, green: 0.52, blue: 0.22, alpha: 1)
+    })
+
+    /// Rankings movement: down. Same red as liveAccent so the app still
+    /// carries exactly one red.
+    static let rankDown = liveAccent
 }
 
 // Lets views write .foregroundStyle(.textSecondary) with dot syntax.
@@ -36,6 +59,24 @@ extension ShapeStyle where Self == Color {
     static var textPrimary: Color { .textPrimary }
     static var textSecondary: Color { .textSecondary }
     static var liveAccent: Color { .liveAccent }
+    static var rankUp: Color { .rankUp }
+    static var rankDown: Color { .rankDown }
+}
+
+// MARK: - Card surface
+// The elevated-card treatment shared by Scores, Rankings, and Teams:
+// content on bgPrimary, rounded, with a soft shadow, sitting on bgRecessed.
+extension View {
+    func cardSurface() -> some View {
+        // Clipped so full-bleed child backgrounds (accordion headers) follow
+        // the card's rounded corners instead of poking square corners past them.
+        clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.bgPrimary)
+                    .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+            )
+    }
 }
 
 // MARK: - Spacing tokens
@@ -51,14 +92,24 @@ enum Spacing {
 // MARK: - Type tokens
 // Weight and size create hierarchy, not color. Scores always use monospaced
 // digits so they don't jitter as clocks tick.
+//
+// Sizes are design-exact at the default text size and follow the user's
+// Dynamic Type setting via UIFontMetrics (UIKit stays contained to this
+// file, same deal as the colors). Computed vars, not lets: a text-size
+// change re-renders every view, which re-resolves the token at the new size.
 extension Font {
-    static let score = Font.system(size: 17, weight: .semibold).monospacedDigit()
-    static let scoreLive = Font.system(size: 17, weight: .heavy).monospacedDigit()
-    static let scoreMuted = Font.system(size: 17, weight: .regular).monospacedDigit()
-    static let teamName = Font.system(size: 15)
-    static let teamNameEmphasis = Font.system(size: 15, weight: .semibold)
-    static let meta = Font.system(size: 12)
-    static let metaEmphasis = Font.system(size: 12, weight: .semibold)
-    static let sectionHeader = Font.system(size: 13, weight: .semibold)
-    static let chip = Font.system(size: 14, weight: .medium)
+    static var score: Font { scaled(17, .semibold, relativeTo: .body).monospacedDigit() }
+    static var scoreLive: Font { scaled(17, .heavy, relativeTo: .body).monospacedDigit() }
+    static var scoreMuted: Font { scaled(17, .regular, relativeTo: .body).monospacedDigit() }
+    static var teamName: Font { scaled(15, .regular, relativeTo: .subheadline) }
+    static var teamNameEmphasis: Font { scaled(15, .semibold, relativeTo: .subheadline) }
+    static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
+    static var metaEmphasis: Font { scaled(12, .semibold, relativeTo: .caption1) }
+    static var sectionHeader: Font { scaled(13, .semibold, relativeTo: .footnote) }
+    static var chip: Font { scaled(14, .medium, relativeTo: .callout) }
+
+    private static func scaled(_ size: CGFloat, _ weight: UIFont.Weight,
+                               relativeTo style: UIFont.TextStyle) -> Font {
+        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: .systemFont(ofSize: size, weight: weight)))
+    }
 }

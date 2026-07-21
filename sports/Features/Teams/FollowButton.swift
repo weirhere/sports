@@ -13,7 +13,10 @@ struct FollowButton: View {
             Image(systemName: following.isFollowing(teamId) ? "star.fill" : "star")
                 .font(.system(size: 16))
                 .foregroundStyle(.textPrimary)
-                .frame(width: 34, height: 34)
+                // Trailing-aligned so the star's right edge sits on the same
+                // trailing line as the accordion chevrons; the 34pt frame is
+                // the tap target, extending inward.
+                .frame(width: 34, height: 34, alignment: .trailing)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

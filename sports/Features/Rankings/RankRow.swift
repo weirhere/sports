@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// One ranked team: rank, logo, name, first-place votes, record, movement.
-/// Movement shows through weight, never color.
+/// Movement is the one place besides live state that spends color: green up,
+/// red down. Arrows carry the meaning too, so color is never the only signal.
 struct RankRow: View {
     let ranked: RankedTeam
+
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 22
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
@@ -11,12 +14,8 @@ struct RankRow: View {
                 .font(.score)
                 .foregroundStyle(.textPrimary)
                 .frame(width: 26, alignment: .trailing)
-            AsyncImage(url: ranked.team.logoURL) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.bgElevated)
-            }
-            .frame(width: 22, height: 22)
+            LogoImage(url: ranked.team.logoURL)
+                .frame(width: logoSize, height: logoSize)
             Text(ranked.team.location)
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)
@@ -37,6 +36,27 @@ struct RankRow: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    /// One spoken sentence: "Number 3, Georgia, 5 and 0, up 2".
+    /// Internal, not private, so the label shape is unit-testable.
+    var accessibilitySummary: String {
+        var parts = ["Number \(ranked.current)", ranked.team.location]
+        if let votes = ranked.firstPlaceVotes, votes > 0 {
+            parts.append("\(votes) first-place votes")
+        }
+        if let record = ranked.record {
+            parts.append(record.replacingOccurrences(of: "-", with: " and "))
+        }
+        switch ranked.movement {
+        case .some(let delta) where delta > 0: parts.append("up \(delta)")
+        case .some(let delta) where delta < 0: parts.append("down \(-delta)")
+        case .some: parts.append("no change")
+        case nil: parts.append("newly ranked")
+        }
+        return parts.joined(separator: ", ")
     }
 
     @ViewBuilder
@@ -45,11 +65,11 @@ struct RankRow: View {
         case .some(let delta) where delta > 0:
             Text("▲ \(delta)")
                 .font(.metaEmphasis)
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(.rankUp)
         case .some(let delta) where delta < 0:
             Text("▼ \(-delta)")
                 .font(.metaEmphasis)
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(.rankDown)
         case .some:
             Text("–")
                 .font(.meta)

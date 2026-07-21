@@ -5,16 +5,14 @@ import SwiftUI
 struct TeamBrowseRow: View {
     let team: Team
 
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
+
     var body: some View {
         HStack(spacing: Spacing.md) {
             NavigationLink(value: team) {
                 HStack(spacing: Spacing.md) {
-                    AsyncImage(url: team.logoURL) { image in
-                        image.resizable().scaledToFit()
-                    } placeholder: {
-                        Circle().fill(Color.bgElevated)
-                    }
-                    .frame(width: 26, height: 26)
+                    LogoImage(url: team.logoURL)
+                        .frame(width: logoSize, height: logoSize)
                     Text(team.location)
                         .font(.teamName)
                         .foregroundStyle(.textPrimary)
@@ -28,6 +26,8 @@ struct TeamBrowseRow: View {
                     Spacer()
                 }
                 .contentShape(Rectangle())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(team.displayName ?? team.location)
             }
             .buttonStyle(.plain)
             FollowButton(teamId: team.id)

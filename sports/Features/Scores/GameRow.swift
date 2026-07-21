@@ -6,9 +6,11 @@ import SwiftUI
 struct GameRow: View {
     let game: Game
 
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+
     var body: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 teamLine(game.away)
                 teamLine(game.home)
             }
@@ -16,8 +18,13 @@ struct GameRow: View {
             trailing
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 6)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
+        // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
+        // quarter" — instead of a dozen fragments. Logos and layout stay
+        // visual-only.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
     }
 
     // MARK: - Team line
@@ -49,12 +56,8 @@ struct GameRow: View {
     }
 
     private func logo(_ team: Team) -> some View {
-        AsyncImage(url: team.logoURL) { image in
-            image.resizable().scaledToFit()
-        } placeholder: {
-            Circle().fill(Color.bgElevated)
-        }
-        .frame(width: 20, height: 20)
+        LogoImage(url: team.logoURL)
+            .frame(width: logoSize, height: logoSize)
     }
 
     // MARK: - Trailing column
@@ -102,7 +105,7 @@ struct GameRow: View {
     }
 
     private func scoreColumn(font: Font) -> some View {
-        VStack(alignment: .trailing, spacing: 3) {
+        VStack(alignment: .trailing, spacing: 4) {
             scoreText(game.away, font: font)
             scoreText(game.home, font: font)
         }
@@ -158,6 +161,64 @@ struct GameRow: View {
     private func finalLabel(_ detail: String?) -> String {
         if let detail, detail.localizedCaseInsensitiveContains("OT") { return "FINAL OT" }
         return "FINAL"
+    }
+
+    // MARK: - VoiceOver
+    // Internal, not private, so the label shapes are unit-testable.
+
+    var accessibilitySummary: String {
+        switch game.status {
+        case .pre:
+            func side(_ competitor: Competitor) -> String {
+                [sideName(competitor), spokenRecord(competitor)].compactMap(\.self).joined(separator: " ")
+            }
+            var parts = ["\(side(game.away)) at \(side(game.home))"]
+            if let date = game.date {
+                parts.append(date.formatted(.dateTime.weekday(.wide).hour().minute()))
+            }
+            if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
+            return parts.joined(separator: ", ")
+        case .live(let clock, let period, _, let possessionTeamId):
+            var parts = [scoreSummary]
+            if let period { parts.append(spokenPeriod(period)) }
+            if let clock { parts.append("\(clock) left") }
+            if let possessionTeamId,
+               let holder = [game.away, game.home].first(where: { $0.team.id == possessionTeamId }) {
+                parts.append("\(holder.team.location) has the ball")
+            }
+            return parts.joined(separator: ", ")
+        case .final(let detail):
+            let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
+            return "\(scoreSummary), \(overtime ? "final, overtime" : "final")"
+        case .other(let detail):
+            return "\(sideName(game.away)) at \(sideName(game.home)), \(detail ?? "status unavailable")"
+        }
+    }
+
+    private func sideName(_ competitor: Competitor) -> String {
+        guard let rank = competitor.rank else { return competitor.team.location }
+        return "number \(rank) \(competitor.team.location)"
+    }
+
+    /// "5-0" reads as "5 and 0", the spoken convention, not "5 minus 0".
+    private func spokenRecord(_ competitor: Competitor) -> String? {
+        competitor.record.map { $0.replacingOccurrences(of: "-", with: " and ") }
+    }
+
+    private var scoreSummary: String {
+        "\(sideName(game.away)) \(game.away.score.map(String.init) ?? "no score"), "
+            + "\(sideName(game.home)) \(game.home.score.map(String.init) ?? "no score")"
+    }
+
+    private func spokenPeriod(_ period: Int) -> String {
+        switch period {
+        case 1: "1st quarter"
+        case 2: "2nd quarter"
+        case 3: "3rd quarter"
+        case 4: "4th quarter"
+        case 5: "overtime"
+        default: "overtime \(period - 4)"
+        }
     }
 }
 

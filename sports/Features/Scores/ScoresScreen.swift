@@ -12,14 +12,22 @@ struct ScoresScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                ScoresHeader(
+                    seasonYear: store.seasonYear,
+                    seasons: store.availableSeasons,
+                    byDate: uiState.scoresGrouping == .date,
+                    onSelectSeason: { year in Task { await store.select(season: year) } },
+                    onToggleGrouping: {
+                        withAnimation {
+                            uiState.scoresGrouping = uiState.scoresGrouping == .date ? .conference : .date
+                        }
+                    }
+                )
                 WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
                     Task { await store.select(week: week) }
                 }
                 if store.hasLiveGames || store.liveOnly {
-                    LiveFilterChip(
-                        liveOnly: store.liveOnly,
-                        onToggle: { withAnimation { store.liveOnly.toggle() } }
-                    )
+                    liveChipRow
                 }
                 Divider().overlay(Color.divider)
                 if store.lastError != nil, !sections.isEmpty {
@@ -45,7 +53,19 @@ struct ScoresScreen: View {
     }
 
     private var sections: [GameSection] {
-        store.sections(followingIds: following.teamIds)
+        store.sections(followingIds: following.teamIds, grouping: uiState.scoresGrouping)
+    }
+
+    private var liveChipRow: some View {
+        HStack {
+            LiveFilterChip(
+                liveOnly: store.liveOnly,
+                onToggle: { withAnimation { store.liveOnly.toggle() } }
+            )
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.bottom, Spacing.sm)
     }
 
     @ViewBuilder
@@ -62,11 +82,7 @@ struct ScoresScreen: View {
                             isExpanded: uiState.isExpanded(section.id),
                             onToggle: { withAnimation { uiState.toggle(section.id) } }
                         )
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color.bgPrimary)
-                                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
-                        )
+                        .cardSurface()
                     }
                 }
                 .padding(Spacing.sm)
