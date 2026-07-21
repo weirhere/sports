@@ -61,6 +61,19 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [ ] **P2** Week rollover edge cases: Week 0, Army-Navy solo week, CFP date ranges.
 - [x] **P2** Accessibility pass: Dynamic Type, VoiceOver labels on rows ("Georgia 24, Tennessee 17, 3rd quarter"), contrast check on grays. *(Type tokens scale via UIFontMetrics, row logos via @ScaledMetric; every row speaks one sentence — game/rank/schedule label shapes unit-tested; chips get selected traits, accordion headers speak count + expanded/collapsed, LiveDot hidden from VO + respects Reduce Motion. Contrast: light textSecondary 0.44 → 0.42 to clear WCAG AA 4.5:1 on bgElevated; all other tokens verified. Remaining: an on-device VoiceOver listen-through and large-size layout check — field-notes material.)*
 
+## E6 — App Store release
+
+De-iceboxed 2026-07-21 (Andy's call). Gated on open question #6 (data licensing) before public release; everything below except submission itself can proceed now.
+
+- [ ] **P0** App icon. The appiconset is empty — this alone blocks submission. Monochrome mark consistent with the design system (icon may spend the red live-dot accent; it's the app's one color). Provide light, dark (transparent bg), and tinted (grayscale) 1024pt variants per iOS 18 conventions.
+- [ ] **P0** Platform trimming: `SUPPORTED_PLATFORMS` → iPhone only (`iphoneos iphonesimulator`), `TARGETED_DEVICE_FAMILY` → 1. iPad runs the iPhone app in compatibility mode; no Mac/Vision availability. Matches the "don't build for other idioms" rule.
+- [ ] **P0** Privacy policy page (required App Store Connect field even with zero data collection). Draft lives in repo (`PRIVACY.md`); needs a public URL before submission — GitHub Pages is the zero-cost answer.
+- [ ] **P0** Apple Developer Program enrollment + App Store Connect listing: verify "StatSide" name availability, description, keywords, age rating (4+), export compliance (standard HTTPS exemption), privacy nutrition label ("Data Not Collected").
+- [ ] **P0** Screenshots: 6.9" and 6.5" sets. Real Saturday data reads best — capture during Week 1+ (pairs with the E5 verification pass).
+- [ ] **P0** `CFBDClient`: a CollegeFootballData.com v2 backend conforming to `ScoresProviding` (Andy's call 2026-07-21, resolving open question #6 toward option a). ESPN stays the default; CFBD activates via `data.provider` = "cfbd" + a key in `cfbd.apiKey`/`CFBD_API_KEY`. CFBD's scoreboard rows don't carry records/ranks/logos/network inline, so the client joins `/teams/fbs`, `/records`, `/rankings`, and `/games/media` (all season-cacheable) onto `/games` + live `/scoreboard`. Acceptance: all five protocol methods return domain models with no view-layer changes; a malformed element drops the row, never the response; unit tests cover status mapping (pre/live/final-OT), conference name→id mapping, poll movement, and the live merge. **Needs verification with a real key (Tier 1+):** live-field shapes (`possession`, `clock`), whether CFBD team ids match ESPN's (follows persistence across the switch), and score latency vs ESPN on a live Saturday.
+- [ ] **P1** Version/build hygiene: marketing version 1.0, build numbers increment per upload.
+- [ ] **P2** App Store product page polish: preview video, promotional text. Only after the listing exists.
+
 ## Icebox (deliberately not now)
 
 - Widgets / Live Activities (likely the killer feature; after row design is proven in-app)
@@ -68,7 +81,6 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - College basketball (the offseason answer: same schools, same follows)
 - FCS/lower divisions
 - News content (may be never; scores-first is the identity)
-- App Store release + data licensing (CFBD or paid provider)
 - iPad/Mac/visionOS layouts
 
 ## Open questions
@@ -78,3 +90,5 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 3. ~~**Top 25 section scope.**~~ *Resolved 2026-07-21: any ranked participant, confirmed against 2025 data — any-ranked runs 15–21 games/week (~one thumb-scroll), ranked-vs-ranked only 3–6 and breaks the completeness promise.*
 4. ~~**FCS games in `groups=80`.**~~ *Resolved 2026-07-21: rows render cleanly (ESPN ships logos/records; `curatedRank` 99 maps to no badge). Found + fixed: FCS visitors' unknown conference ids were double-bucketing 48 Week-1 games into "Other" — Other is now strictly the both-sides-unknown backstop.*
 5. **Following a conference** (not just teams) — worth it? Wait for field notes.
+6. **Data licensing for public release.** ESPN's unofficial API is fine for a personal build but is undocumented, unlicensed, and revocable at will — the reason App Store release was iceboxed. Options: (a) CollegeFootballData.com — free key, CFB-only, but live-score latency/coverage needs verification against the time-to-score promise; (b) paid provider (SportsDataIO, Sportradar) — real license, real monthly cost, only sensible if the app ever charges; (c) ship on ESPN and accept the sudden-death risk — the DTO layer contains the swap blast radius to one file if it comes to that. Related: team logos off ESPN's CDN are university trademarks; same decision, same options. Andy decides before submission; E6 technical work proceeds regardless.
+   **CFBD field notes (verified against their v2 OpenAPI spec + published tiers, 2026-07-21):** `/scoreboard` carries everything the game row needs — tv, period, clock, possession, situation, lastPlay, linescores, win probability — plus `/rankings`, `/calendar` (weeks), `/drives`, `/games/teams` for detail; records/ranks/logos aren't inline on scoreboard rows and would join from `/teams/fbs` + `/records` + `/rankings` (all cacheable weekly). Two catches: **(1) live scoreboard requires Tier 1 ($1/mo Patreon), free tier is historical-only and capped at 1,000 calls/month; (2) all tiers are per-key monthly caps** — one Saturday of 30s polling is ~1,400 calls, so a keyless client-side app doesn't work: the key would ship in the binary (extractable) and every install shares one quota (100 users ≈ 1M calls/mo, above the largest $30/500k tier). A public CFBD app therefore needs a thin caching proxy (e.g. Cloudflare Worker free tier: poll CFBD once per 30s while games are live ≈ 8–10k calls/mo → Tier 2 $5/mo, serve all users from cache) — which amends the "no backend" constraint to "no *stateful* backend." Personal-use TestFlight could ship CFBD keyed at Tier 2 without the proxy. Logos: CFBD's `/teams` logo URLs point at ESPN's CDN anyway, so the trademark posture is unchanged by switching.
