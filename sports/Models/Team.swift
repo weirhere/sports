@@ -67,6 +67,28 @@ nonisolated enum Conference {
         return name
     }
 
+    /// CFBD identifies conferences by name, not id. Maps their names onto
+    /// our ESPN group ids so tiers, ordering, and logos keep working when
+    /// the CFBD backend is active. Unknown names degrade to nil ("Other").
+    private static let cfbdNames: [String: Int] = [
+        "ACC": 1,
+        "American Athletic": 151,
+        "Big 12": 4,
+        "Big Ten": 5,
+        "Conference USA": 12,
+        "FBS Independents": 18,
+        "Mid-American": 15,
+        "Mountain West": 17,
+        "Pac-12": 9,
+        "SEC": 8,
+        "Sun Belt": 37,
+    ]
+
+    static func id(forCFBDName name: String?) -> Int? {
+        guard let name else { return nil }
+        return cfbdNames[name]
+    }
+
     static func logoURL(for id: Int?) -> URL? {
         guard let id, let slug = logoSlugs[id] else { return nil }
         return URL(string: "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/\(slug).png")

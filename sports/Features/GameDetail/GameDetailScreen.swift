@@ -14,7 +14,7 @@ struct GameDetailScreen: View {
     @State private var isLoading = false
     @State private var lastError: String?
 
-    private let client: any ScoresProviding = ESPNClient()
+    private let client: any ScoresProviding = DataProvider.makeClient()
 
     var body: some View {
         ScrollView {

@@ -14,7 +14,7 @@ struct OnboardingScreen: View {
 
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
 
-    private let client: any ScoresProviding = ESPNClient()
+    private let client: any ScoresProviding = DataProvider.makeClient()
 
     var body: some View {
         NavigationStack {

@@ -7,7 +7,7 @@ struct ScoresScreen: View {
     @Environment(UIStateStore.self) private var uiState
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var store = ScoreboardStore(client: ESPNClient())
+    @State private var store = ScoreboardStore(client: DataProvider.makeClient())
 
     var body: some View {
         NavigationStack {
