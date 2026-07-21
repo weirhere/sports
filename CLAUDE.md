@@ -83,6 +83,7 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-07-21 | Week rolls over Monday morning; Sunday still shows the completed week | Sunday is for catching up + new poll drops in place |
 | 2026-07-21 | Monochrome + logos-in-color + single red live accent | Distinctive, and live state pops harder |
 | 2026-07-21 | iOS 18.0 deployment target, iOS 26 SDK | Andy's call |
+| 2026-07-20 | Conference jump chips removed (supersedes the jump-scroll decision) | Accordions cover section navigation; the chip row was redundant. The Live toggle stays, now as its own `LiveFilterChip` |
 
 ## Don'ts
 

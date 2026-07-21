@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The product: one screen answering "what's the state of college football
-/// right now" in one thumb, one scroll. Week strip → chips → section stack.
+/// right now" in one thumb, one scroll. Week strip → section stack.
 struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
@@ -15,13 +15,12 @@ struct ScoresScreen: View {
                 WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
                     Task { await store.select(week: week) }
                 }
-                ConferenceChips(
-                    sections: sections,
-                    liveOnly: store.liveOnly,
-                    hasLiveGames: store.hasLiveGames,
-                    onToggleLive: { withAnimation { store.liveOnly.toggle() } },
-                    onJump: { section in jumpTarget = section.id }
-                )
+                if store.hasLiveGames || store.liveOnly {
+                    LiveFilterChip(
+                        liveOnly: store.liveOnly,
+                        onToggle: { withAnimation { store.liveOnly.toggle() } }
+                    )
+                }
                 Divider().overlay(Color.divider)
                 if store.lastError != nil, !sections.isEmpty {
                     refreshErrorBanner
@@ -45,8 +44,6 @@ struct ScoresScreen: View {
         }
     }
 
-    @State private var jumpTarget: String?
-
     private var sections: [GameSection] {
         store.sections(followingIds: following.teamIds)
     }
@@ -57,27 +54,21 @@ struct ScoresScreen: View {
         if sections.isEmpty {
             emptyState
         } else {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(sections) { section in
-                            SectionAccordion(
-                                section: section,
-                                isExpanded: uiState.isExpanded(section.id),
-                                onToggle: { withAnimation { uiState.toggle(section.id) } }
-                            )
-                            .id(section.id)
-                        }
+            ScrollView {
+                LazyVStack(spacing: Spacing.sm) {
+                    ForEach(sections) { section in
+                        SectionAccordion(
+                            section: section,
+                            isExpanded: uiState.isExpanded(section.id),
+                            onToggle: { withAnimation { uiState.toggle(section.id) } }
+                        )
+                        .background(Color.bgPrimary, in: .rect(cornerRadius: 10, style: .continuous))
                     }
                 }
-                .refreshable { await store.refresh() }
-                .onChange(of: jumpTarget) { _, target in
-                    guard let target else { return }
-                    uiState.expand(target)
-                    withAnimation { proxy.scrollTo(target, anchor: .top) }
-                    jumpTarget = nil
-                }
+                .padding(Spacing.sm)
             }
+            .background(Color.bgRecessed)
+            .refreshable { await store.refresh() }
         }
     }
 

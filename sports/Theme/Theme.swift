@@ -18,7 +18,7 @@ extension Color {
     static let bgPrimary = Color(lightWhite: 1.00, darkWhite: 0.00)
     /// One step off bgPrimary — the surface accordion cards sit on.
     static let bgRecessed = Color(lightWhite: 0.96, darkWhite: 0.08)
-    static let bgElevated = Color(lightWhite: 0.96, darkWhite: 0.10)
+    static let bgElevated = Color(lightWhite: 0.93, darkWhite: 0.10)
     static let textPrimary = Color(lightWhite: 0.00, darkWhite: 1.00)
     static let textSecondary = Color(lightWhite: 0.44, darkWhite: 0.62)
     static let divider = Color(lightWhite: 0.88, darkWhite: 0.20)
