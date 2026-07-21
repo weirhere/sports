@@ -18,6 +18,21 @@ final class SmokeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SEC"].waitForExistence(timeout: 15),
                       "Scores should show the SEC section header")
 
+        // Grouping toggle: by date swaps conference sections for day
+        // sections; toggling back restores the conference stack.
+        let groupingChip = app.buttons["Group games by date"]
+        XCTAssertTrue(groupingChip.waitForExistence(timeout: 5),
+                      "The By date chip should be in the header")
+        groupingChip.tap()
+        let dayHeader = app.staticTexts.matching(NSPredicate(
+            format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*")).firstMatch
+        XCTAssertTrue(dayHeader.waitForExistence(timeout: 5),
+                      "Date grouping should show a day section header")
+        snapshot(app, "scores-by-date")
+        groupingChip.tap()
+        XCTAssertTrue(app.staticTexts["SEC"].waitForExistence(timeout: 5),
+                      "Toggling back should restore conference sections")
+
         // Rankings shows a poll with a #1 row.
         app.tabBars.buttons["Rankings"].tap()
         XCTAssertTrue(app.buttons["AP"].waitForExistence(timeout: 15),
