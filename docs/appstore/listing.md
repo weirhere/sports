@@ -68,12 +68,13 @@ Don't repeat words already in the name/subtitle — they're indexed automaticall
 
 ## URLs
 
-- Support URL: `https://weirhere.github.io/sports-ios/` (docs/index.html — see below)
-- Privacy Policy URL: `https://weirhere.github.io/sports-ios/privacy.html`
+- Support URL: `https://weirhere.github.io/statside-site/` (docs/index.html — see below)
+- Privacy Policy URL: `https://weirhere.github.io/statside-site/privacy.html`
 - Marketing URL: optional, leave blank
 
-Both require enabling GitHub Pages on the repo: Settings → Pages → Deploy from
-branch → `main` / `docs/`. Files are in `docs/` in this repo.
+Live via GitHub Pages from the public weirhere/statside-site repo (this repo
+is private, so Pages is hosted separately). Source of truth: docs/ here —
+copy changes over to statside-site when editing.
 
 ## Screenshots
 
