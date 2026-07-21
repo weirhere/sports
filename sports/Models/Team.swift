@@ -45,9 +45,31 @@ nonisolated enum Conference {
 
     private static let power4: Set<Int> = [1, 4, 5, 8]
 
+    /// ESPN CDN slugs, verified live against the /scoreboard/conferences
+    /// endpoint on 2026-07-20. Hardcoded like `names`: an unknown id just
+    /// means no logo, never a broken image.
+    private static let logoSlugs: [Int: String] = [
+        1: "acc",
+        151: "american",
+        4: "big_12",
+        5: "big_ten",
+        12: "conference_usa",
+        18: "fbs_independents",
+        15: "mid_american",
+        17: "mountain_west",
+        9: "pac_12",
+        8: "sec",
+        37: "sun_belt",
+    ]
+
     static func name(for id: Int?) -> String {
         guard let id, let name = names[id] else { return "Other" }
         return name
+    }
+
+    static func logoURL(for id: Int?) -> URL? {
+        guard let id, let slug = logoSlugs[id] else { return nil }
+        return URL(string: "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/\(slug).png")
     }
 
     static func tier(for id: Int?) -> Tier {

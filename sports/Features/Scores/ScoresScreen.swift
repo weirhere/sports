@@ -62,7 +62,11 @@ struct ScoresScreen: View {
                             isExpanded: uiState.isExpanded(section.id),
                             onToggle: { withAnimation { uiState.toggle(section.id) } }
                         )
-                        .background(Color.bgPrimary, in: .rect(cornerRadius: 10, style: .continuous))
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.bgPrimary)
+                                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                        )
                     }
                 }
                 .padding(Spacing.sm)

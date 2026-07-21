@@ -11,6 +11,7 @@ struct GameSection: Identifiable, Hashable {
     let id: String
     let title: String
     let games: [Game]
+    var logoURL: URL? = nil
 }
 
 @Observable
@@ -187,7 +188,8 @@ final class ScoreboardStore {
         for id in orderedIds {
             let name = Conference.name(for: id)
             result.append(GameSection(id: "conf-\(name)", title: name,
-                                      games: chronological(byConference[id] ?? [])))
+                                      games: chronological(byConference[id] ?? []),
+                                      logoURL: Conference.logoURL(for: id)))
         }
         return result
     }

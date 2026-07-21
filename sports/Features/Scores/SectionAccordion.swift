@@ -7,10 +7,15 @@ struct SectionAccordion: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onToggle) {
                 HStack(spacing: Spacing.sm) {
+                    if let logoURL = section.logoURL {
+                        conferenceLogo(logoURL)
+                    }
                     Text(section.title.uppercased())
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -52,6 +57,23 @@ struct SectionAccordion: View {
                 }
             }
         }
+    }
+
+    /// Conference mark, kept inside the monochrome chrome budget: grayscale
+    /// in light mode, inverted in dark so dark marks stay legible on black.
+    /// (ESPN has no dark-variant conference logos.)
+    private func conferenceLogo(_ url: URL) -> some View {
+        AsyncImage(url: url) { image in
+            let mono = image.resizable().scaledToFit().grayscale(1)
+            if colorScheme == .dark {
+                mono.colorInvert()
+            } else {
+                mono
+            }
+        } placeholder: {
+            Color.clear
+        }
+        .frame(width: 18, height: 18)
     }
 
     // MARK: - Day dividers
