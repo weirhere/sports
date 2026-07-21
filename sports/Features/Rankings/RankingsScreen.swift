@@ -84,7 +84,12 @@ struct RankingsScreen: View {
                             .padding(.vertical, Spacing.sm)
                     }
                     ForEach(poll.ranks) { ranked in
-                        RankRow(ranked: ranked)
+                        NavigationLink {
+                            TeamPage(team: ranked.team)
+                        } label: {
+                            RankRow(ranked: ranked)
+                        }
+                        .buttonStyle(.plain)
                         if ranked.id != poll.ranks.last?.id {
                             Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
                         }

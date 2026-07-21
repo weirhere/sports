@@ -34,14 +34,14 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 - [x] **P1** Scoring plays list, chronological with period markers. *(Decode-verified: 8 plays from the championship fixture.)*
 - [x] **P1** Team stats comparison (total yards, pass/rush, 3rd down, TOs, possession) as opposing mono bars. *(Bar magnitudes parse "5-14" and "31:14" shapes; unit-tested.)*
 - [x] **P1** Leaders (pass/rush/receive per team). *(From summary's top-level leaders; decode-verified.)*
-- [ ] **P2** Live auto-refresh on this screen while game is in progress.
+- [x] **P2** Live auto-refresh on this screen while game is in progress. *(30s loop, same rules as the scoreboard: foregrounded + live only; stops itself when the summary comes back final. os.Logger instrumented; live verification folds into the E5 first-game pass.)*
 - [ ] **P2** Drive log (data already in `drives.previous[]`).
 
 ## E3 — Rankings
 
 - [x] **P1** AP Top 25 default; segmented picker for Coaches and CFP (CFP appears only when ESPN returns it). *(Chip picker; FCS/DII/DIII polls filtered out; choice persists via ui.pollChoice.)*
 - [x] **P1** Rank row: rank, logo, team, record, movement arrow (▲/▼/–, derived from `previous` − `current`), first-place votes where present. Monochrome arrows; movement shown by weight not color. *(Verified on-device incl. NEW tag for unranked-previous.)*
-- [ ] **P2** Tap rank row → team page.
+- [x] **P2** Tap rank row → team page. *(NavigationLink straight to TeamPage — RankedTeam already carries a full Team.)*
 
 ## E4 — Teams + following
 
