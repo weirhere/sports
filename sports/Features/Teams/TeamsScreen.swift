@@ -11,7 +11,7 @@ struct TeamsScreen: View {
     @State private var lastError: String?
     @State private var searchText = ""
 
-    private let client: any ScoresProviding = ESPNClient()
+    private let client: any ScoresProviding = DataProvider.makeClient()
 
     var body: some View {
         NavigationStack {
