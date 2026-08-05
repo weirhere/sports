@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import sports
+@testable import StatSide
 
 @MainActor
 @Suite struct UIStateStoreTests {

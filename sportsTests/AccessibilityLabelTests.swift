@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import sports
+@testable import StatSide
 
 // The VoiceOver sentences the rows speak. Dates are omitted from fixtures
 // where possible so assertions don't depend on the test machine's locale.
