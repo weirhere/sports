@@ -6,6 +6,7 @@ import SwiftUI
 struct RankRow: View {
     let ranked: RankedTeam
 
+    @Environment(FollowingStore.self) private var following
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 22
 
     var body: some View {
@@ -36,8 +37,22 @@ struct RankRow: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
+        .contextMenu {
+            Button {
+                following.toggle(ranked.team.id)
+            } label: {
+                Label(followActionTitle, systemImage: following.isFollowing(ranked.team.id) ? "star.slash" : "star")
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
+        .accessibilityAction(named: followActionTitle) {
+            following.toggle(ranked.team.id)
+        }
+    }
+
+    private var followActionTitle: String {
+        following.isFollowing(ranked.team.id) ? "Unfollow \(ranked.team.location)" : "Follow \(ranked.team.location)"
     }
 
     /// One spoken sentence: "Number 3, Georgia, 5 and 0, up 2".

@@ -114,4 +114,13 @@ final class UIStateStore {
         get { defaults.bool(forKey: Self.onboardingSeenKey) }
         set { defaults.set(newValue, forKey: Self.onboardingSeenKey) }
     }
+
+    private static let notificationsPromptedKey = "ui.notificationsPrompted"
+
+    /// Whether the one-time "get kickoff reminders?" offer after the first
+    /// follow has been shown. The bell on TeamPage remains the durable path.
+    var notificationsPrompted: Bool {
+        get { defaults.bool(forKey: Self.notificationsPromptedKey) }
+        set { defaults.set(newValue, forKey: Self.notificationsPromptedKey) }
+    }
 }

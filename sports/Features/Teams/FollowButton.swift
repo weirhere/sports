@@ -21,5 +21,6 @@ struct FollowButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(following.isFollowing(teamId) ? "Unfollow" : "Follow")
+        .sensoryFeedback(.impact(weight: .light), trigger: following.isFollowing(teamId))
     }
 }

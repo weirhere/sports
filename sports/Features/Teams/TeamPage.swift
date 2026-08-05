@@ -21,7 +21,24 @@ struct TeamPage: View {
         .background(Color.bgPrimary)
         .navigationTitle(team.location)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: teamShareText) {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(.textPrimary)
+                }
+                .accessibilityLabel("Share this team")
+            }
+        }
         .task { await load() }
+    }
+
+    private var teamShareText: String {
+        var text = "Following \(team.displayName ?? team.location) on StatSide"
+        if let record = schedule?.record, record != "0-0" {
+            text += " — \(record)"
+        }
+        return text
     }
 
     private var header: some View {
@@ -52,7 +69,10 @@ struct TeamPage: View {
     }
 
     private var followPill: some View {
-        FollowPill(teamId: team.id)
+        HStack(spacing: Spacing.sm) {
+            FollowPill(teamId: team.id)
+            NotificationBell()
+        }
     }
 
     @ViewBuilder

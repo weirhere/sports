@@ -28,5 +28,6 @@ struct FollowPill: View {
             )
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.impact(weight: .light), trigger: isFollowing)
     }
 }
