@@ -23,8 +23,8 @@ Primary: **Sports**. No secondary needed.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Kickoff is coming. Follow your teams now and be ready for Week 1 — live
-> scores, rankings, and every conference at a glance. (125)
+> Kickoff is coming. Follow your teams, get kickoff reminders, and put their
+> games on your Home Screen — ready for Week 1 with live scores and rankings. (151)
 
 ## Description (4000 chars max) ✏️
 
@@ -38,6 +38,12 @@ Primary: **Sports**. No secondary needed.
 > • Every conference in collapsible sections that remember how you left them
 > • Live games get a pulsing dot, a possession marker, and the only red in the app
 > • One tap filters to live games only
+>
+> YOUR TEAMS, EVERYWHERE
+> • A Home Screen and Lock Screen widget with your teams' live score or next kickoff
+> • Kickoff reminders 30 minutes before your teams play
+> • Ask Siri "What's my next game?" — or share a score straight from any game
+> • Long-press any game to follow a team or share the score
 >
 > A WEEK, NOT A DATE
 > College football thinks in weeks — so does StatSide. Flip through Week 0
@@ -81,7 +87,10 @@ copy changes over to statside-site when editing.
 Required: 6.9" (iPhone 17 Pro Max class, 1320×2868). Smaller sizes reuse the
 6.9" set automatically unless you upload separate ones. Captured by
 `sportsUITests/AppStoreScreenshots.swift` — see docs/appstore/screenshots/.
-Order suggestion: scores (hero) → game detail → rankings → teams → team page.
+Order suggestion: scores (hero) → **widget on the Home Screen** → game detail
+→ rankings → teams → team page. The widget frame is captured manually from
+the simulator (springboard is outside the UI test's reach) — it's the
+reviewer's first visual evidence of native functionality, put it second.
 
 ## App Privacy (nutrition label)
 
@@ -102,10 +111,67 @@ Store Connect won't even ask per-build.
 
 ## App Review notes (submission form) ✏️
 
-> StatSide displays publicly available college football scores and rankings.
-> No login is required — the app is fully browsable on launch. In the
-> offseason the current week may show few or no games; use the season picker
-> (top right of the Scores tab) to view the completed season.
+Rewritten 2026-08-04 for the 4.2.2 resubmission. Leads with what the user
+does and the native surface area; never self-describes as displaying
+aggregated content.
+
+> StatSide is a fully native SwiftUI app built around following your college
+> football teams. Follow a team (Teams tab) and the app personalizes around
+> it: a Following section leads the scores page, your team's conference
+> floats up, and you can turn on kickoff reminders — local notifications 30
+> minutes before each of your teams' games, scheduled on-device.
+>
+> Native functionality in this build:
+> • Home Screen and Lock Screen widget (WidgetKit) showing your teams' live
+>   score or next kickoff, with deep links into the app
+> • Local kickoff notifications with deep links to the game
+> • Siri Shortcut / App Intent: "What's my next game?"
+> • Live scores that update in place every 30 seconds while games are on,
+>   with haptic feedback on score changes
+> • Share sheets, context menus on every row, full Dynamic Type and
+>   VoiceOver support, light/dark mode
+> • No web views anywhere; every screen is native SwiftUI
+>
+> To demo in the offseason: follow any team from the Teams tab, then enable
+> the bell on its team page (kickoff reminders), add the StatSide widget to
+> the Home Screen, and use the season picker (top right of Scores) to browse
+> the completed season with full live-style data. No login required. The app
+> collects no data (App Privacy: Data Not Collected).
+
+## 4.2.2 resubmission (build 6) — Resolution Center reply ✏️
+
+Sent in-thread in App Store Connect alongside the build 6 submission.
+Tone: never argue; enumerate what changed.
+
+> Hello, and thank you for the review.
+>
+> We've submitted build 6, which addresses Guideline 4.2.2 with substantial
+> native functionality beyond displaying scores:
+>
+> • A WidgetKit Home Screen / Lock Screen widget showing the user's followed
+>   teams' live score or next kickoff, refreshed on a timeline and deep-
+>   linked into the app
+> • Local kickoff notifications: after following a team, users can enable
+>   reminders 30 minutes before each of their teams' games — scheduled
+>   entirely on-device, tapping one opens the game
+> • A Siri Shortcut ("What's my next game?") built on App Intents
+> • Haptic feedback on follows, refreshes, and live score changes; share
+>   sheets and context menus throughout
+>
+> We'd also like to clarify the app's existing depth, which our original
+> review notes undersold: StatSide is 100% native SwiftUI (no web views),
+> with a team-following system that personalizes the whole app, live
+> in-place score updates while games are on, week-based navigation
+> purpose-built for college football, and full VoiceOver and Dynamic Type
+> support. The app renders structured sports data in a native interface —
+> it does not aggregate or display web content.
+>
+> Nothing changes on the privacy front: no accounts, no tracking, App
+> Privacy remains "Data Not Collected."
+>
+> In the offseason the current week can be quiet; the review notes include
+> steps to see the follow → reminders → widget flow and a completed season's
+> data. Happy to provide anything else that would help.
 
 ## Copyright
 

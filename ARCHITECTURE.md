@@ -17,33 +17,43 @@ ESPN's JSON shapes never leave the networking layer. Views never see a DTO.
 ## Folder layout
 
 ```
+StatSideShared/              — compiled into BOTH the app and the widget extension
+  AppGroup.swift             — shared-suite contract: suite id, keys, follows migration
+  GameSelection.swift        — pure widget selection + refresh-policy rules (unit-tested)
+  Models/                    — Game, Team, Ranking, Week, Scoreboard, TeamSchedule,
+                               GameSummary, Game+ShareText — all nonisolated Sendable
+  Networking/                — ESPNClient (+ ScoresProviding protocol + mapper), DTOs,
+                               CFBD trio, DataProvider, LogoCache
+  Theme/Theme.swift          — semantic colors (mono ramp + liveAccent), spacing, type styles
+StatSideWidgets/             — the widget extension target (appex, embedded in the app)
+  StatSideWidgetsBundle.swift, NextGameWidget.swift, NextGameProvider.swift,
+  NextGameEntry.swift (+ WidgetSnapshot), NextGameViews.swift, WidgetLogoFetcher.swift,
+  Info.plist               — NSExtension only (membership-excepted from resources)
+Config/                      — sports.entitlements, StatSideWidgets.entitlements (App Group)
 sports/
   App/
-    sportsApp.swift          — entry point (exists)
-    RootView.swift           — TabView: Scores | Rankings | Teams
-  Theme/
-    Theme.swift              — semantic colors (mono ramp + liveAccent), spacing, type styles
-  Models/
-    Game.swift               — Game, GameStatus (pre/live/final), Competitor, Broadcast
-    Team.swift               — Team, Conference (id map)
-    Ranking.swift            — Poll, RankedTeam, Trend
-    Week.swift               — WeekSlot (regular(n) | ccg | bowls | cfp), from ESPN calendar
-  Networking/
-    ESPNClient.swift         — endpoints, URLSession, decode → map to domain
-    ESPNDTOs.swift           — Codable structs mirroring ESPN JSON, everything optional
+    sportsApp.swift          — entry point; follows migration + notification delegate wiring
+    RootView.swift           — TabView: Scores | Rankings | Teams; deep-link + reminder wiring
+    DeepLink.swift           — statside://game/{id} | team/{id} | teams (scheme unregistered)
+    Router.swift             — pending navigation intents from widget/notification taps
+    NotificationDelegate.swift — foreground presentation + tap → Router
   Stores/
-    FollowingStore.swift     — Set<Team.ID> in UserDefaults
+    FollowingStore.swift     — Set<Team.ID> in the App Group suite; nudges widget reloads
     UIStateStore.swift       — accordion expansion, last poll choice, in UserDefaults
     ScoreboardStore.swift    — current week, games, polling loop, section grouping
+    NotificationScheduler.swift — kickoff reminders (see Notifications below)
+  Intents/
+    NextGameIntent.swift     — "What's my next game?" App Intent + Siri Shortcut
   Features/
-    Scores/                  — ScoresScreen, WeekStrip, ConferenceChips, SectionAccordion,
+    Scores/                  — ScoresScreen, WeekStrip, SectionAccordion,
                                GameRow (+ Pre/Live/Final variants), LiveDot, DayDivider
     Rankings/                — RankingsScreen, PollPicker, RankRow
     GameDetail/              — GameDetailScreen, LineScoreGrid, ScoringPlaysList, TeamStatsCompare
-    Teams/                   — TeamsScreen (browse/search), TeamPage, FollowButton
+    Teams/                   — TeamsScreen (browse/search), TeamPage, FollowButton, NotificationBell
 ```
 
-Files added here are auto-included in the target (synchronized root group, `objectVersion 77`).
+Files added under a synchronized root group are auto-included in its target(s)
+(`objectVersion 77`); `StatSideShared/` belongs to both the app and widget targets.
 
 ## Key mechanics
 
@@ -69,7 +79,13 @@ Conference id map (hardcode with an "Other" fallback; ids verified against ESPN 
 - Diff by event id and update in place so accordion/scroll state survives refreshes.
 
 ### Persistence
-UserDefaults only. Keys: `following.teamIds: [String]`, `ui.expandedSections: [String]`, `ui.pollChoice: String`. No cache of API responses in v1 beyond in-memory (URLCache gets default behavior for free).
+UserDefaults only, in two suites. **App Group suite** (`group.com.andyryanweir.sports`, via `AppGroup.defaults`): `following.teamIds: [String]` — shared with the widget and the App Intent — plus the widget's `widget.snapshot` blob and the one-shot `migration.followingToGroup.done` flag (follows are copied from standard defaults once; the standard copy stays for rollback safety). **Standard defaults**: all `ui.*` state and `notifications.enabled` — app-only, no reason to share. No cache of API responses in v1 beyond in-memory (URLCache gets default behavior for free) and the widget's logo byte-cache in the group container.
+
+### Widget (StatSideWidgets)
+`NextGameProvider` fetches the current-week scoreboard directly (the widget must be live without the app opening; WidgetKit's ~40–70/day reload budget is the politeness throttle). Selection and reload policy are pure functions in `StatSideShared/GameSelection.swift`: live games poll at 15 min, an imminent kickoff pulls the next reload to kickoff+60s, quiet weeks go hourly. Every successful fetch writes a `WidgetSnapshot` to the group suite; a failed fetch re-serves it marked "as of h:mm" instead of rendering blank. Logos are fetched in the provider (widget views can't load async) and byte-cached in the group container. Widget taps deep-link via `statside://` → `onOpenURL` → `Router`; the scheme is intentionally unregistered (widgetURL delivers to the containing app without `CFBundleURLTypes`).
+
+### Notifications
+`NotificationScheduler` (Stores/) schedules one local reminder per followed game, 30 minutes before kickoff, nearest 24 games (headroom under iOS's 64-pending cap). Request ids encode the kickoff instant (`kickoff.{gameId}.{unixTime}`), so a moved kickoff, a cancellation, or a TBD time becoming real all resolve as a plain pending-vs-desired diff — no special cases. Resync runs on follow/unfollow, scene-active, and enable; data comes from `teamSchedule(teamId:)` per followed team (1–5 requests, resync-only). Permission is requested contextually — bell tap on TeamPage or a one-time post-first-follow alert — never at launch; a denied state routes the bell to the system's notification settings. The `NotificationCentering` protocol wraps `UNUserNotificationCenter` so tests inject a fake. Taps carry `userInfo["gameId"]` → `NotificationDelegate` → `Router`, the same path widget taps use.
 
 ### Theme
 Semantic tokens, never raw colors in views: `.bgPrimary`, `.bgElevated`, `.textPrimary`, `.textSecondary`, `.divider`, `.liveAccent` (the red dot — the app's only accent). Light and dark are the same design inverted. Scores use `.monospacedDigit()`. Logos load via `AsyncImage` from ESPN's logo URLs (full color, the monochrome exception).
