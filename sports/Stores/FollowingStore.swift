@@ -1,16 +1,15 @@
 import Foundation
 import Observation
+import WidgetKit
 
 @Observable
 final class FollowingStore {
-    private static let key = "following.teamIds"
-
     private(set) var teamIds: Set<String>
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppGroup.defaults) {
         self.defaults = defaults
-        teamIds = Set(defaults.stringArray(forKey: Self.key) ?? [])
+        teamIds = Set(defaults.stringArray(forKey: AppGroup.followingKey) ?? [])
     }
 
     var followsAnyone: Bool { !teamIds.isEmpty }
@@ -25,7 +24,10 @@ final class FollowingStore {
         } else {
             teamIds.insert(teamId)
         }
-        defaults.set(Array(teamIds).sorted(), forKey: Self.key)
+        defaults.set(Array(teamIds).sorted(), forKey: AppGroup.followingKey)
+        // A newly followed team should appear on the home screen now, not at
+        // the next scheduled reload.
+        WidgetCenter.shared.reloadTimelines(ofKind: AppGroup.widgetKind)
     }
 
     func follows(_ game: Game) -> Bool {
