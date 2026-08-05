@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "427AB14C300EF55F001EDE50"
-               BuildableName = "sports.app"
+               BuildableName = "StatSide.app"
                BlueprintName = "sports"
                ReferencedContainer = "container:sports.xcodeproj">
             </BuildableReference>
@@ -69,7 +69,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "427AB14C300EF55F001EDE50"
-            BuildableName = "sports.app"
+            BuildableName = "StatSide.app"
             BlueprintName = "sports"
             ReferencedContainer = "container:sports.xcodeproj">
          </BuildableReference>
@@ -86,7 +86,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "427AB14C300EF55F001EDE50"
-            BuildableName = "sports.app"
+            BuildableName = "StatSide.app"
             BlueprintName = "sports"
             ReferencedContainer = "container:sports.xcodeproj">
          </BuildableReference>
