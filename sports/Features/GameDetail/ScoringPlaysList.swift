@@ -4,6 +4,11 @@ import SwiftUI
 struct ScoringPlaysList: View {
     let summary: GameSummary
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var markerWidth: CGFloat = 40
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("SCORING")
@@ -43,31 +48,76 @@ struct ScoringPlaysList: View {
         }
     }
 
+    /// At accessibility sizes the play text takes the full width on its own
+    /// line; the narrow type/clock gutter can't survive beside it.
+    @ViewBuilder
     private func playRow(_ play: ScoringPlay) -> some View {
-        HStack(alignment: .top, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(play.typeAbbreviation ?? "–")
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
-                if let clock = play.clock {
-                    Text(clock)
-                        .font(.meta.monospacedDigit())
-                        .foregroundStyle(.textSecondary)
+        let content = Group {
+            if isStacked {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: Spacing.sm) {
+                        typeText(play)
+                        clockText(play)
+                        Spacer(minLength: Spacing.sm)
+                        scoreText(play)
+                    }
+                    playText(play)
+                }
+            } else {
+                HStack(alignment: .top, spacing: Spacing.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        typeText(play)
+                        clockText(play)
+                    }
+                    .frame(minWidth: markerWidth, alignment: .leading)
+                    playText(play)
+                    Spacer(minLength: Spacing.sm)
+                    scoreText(play)
                 }
             }
-            .frame(width: 40, alignment: .leading)
-            Text(play.text ?? "")
-                .font(.meta)
-                .foregroundStyle(.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Spacing.sm)
-            if let away = play.awayScore, let home = play.homeScore {
-                Text("\(away)–\(home)")
-                    .font(.meta.monospacedDigit())
-                    .foregroundStyle(.textSecondary)
-            }
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 5)
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, 5)
+    }
+
+    private func typeText(_ play: ScoringPlay) -> some View {
+        Text(play.typeAbbreviation ?? "–")
+            .font(.metaEmphasis)
+            .foregroundStyle(.textPrimary)
+            .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private func clockText(_ play: ScoringPlay) -> some View {
+        if let clock = play.clock {
+            Text(clock)
+                .font(.meta.monospacedDigit())
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+                // "7:03" is narrower than the gutter at default sizes and
+                // wider at accessibility ones — pin it so it never breaks
+                // into "7:" over "03".
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private func playText(_ play: ScoringPlay) -> some View {
+        Text(play.text ?? "")
+            .font(.meta)
+            .foregroundStyle(.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func scoreText(_ play: ScoringPlay) -> some View {
+        if let away = play.awayScore, let home = play.homeScore {
+            Text("\(away)–\(home)")
+                .font(.meta.monospacedDigit())
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
     }
 }
