@@ -2,11 +2,17 @@ import SwiftUI
 
 /// One team in the browse list: logo, name, follow star. The row navigates;
 /// the star doesn't.
+///
+/// At accessibility text sizes the nickname drops under the location instead
+/// of the two splitting one line into a pair of ellipses.
 struct TeamBrowseRow: View {
     let team: Team
 
     @Environment(FollowingStore.self) private var following
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
         HStack(spacing: Spacing.md) {
@@ -14,17 +20,16 @@ struct TeamBrowseRow: View {
                 HStack(spacing: Spacing.md) {
                     LogoImage(url: team.logoURL)
                         .frame(width: logoSize, height: logoSize)
-                    Text(team.location)
-                        .font(.teamName)
-                        .foregroundStyle(.textPrimary)
-                        .lineLimit(1)
-                    if let nickname = team.name {
-                        Text(nickname)
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                            .lineLimit(1)
+                    if isStacked {
+                        VStack(alignment: .leading, spacing: 2) {
+                            locationText
+                            nicknameText
+                        }
+                    } else {
+                        locationText
+                        nicknameText
                     }
-                    Spacer()
+                    Spacer(minLength: Spacing.sm)
                 }
                 .contentShape(Rectangle())
                 .accessibilityElement(children: .ignore)
@@ -43,5 +48,22 @@ struct TeamBrowseRow: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 5)
+    }
+
+    private var locationText: some View {
+        Text(team.location)
+            .font(.teamName)
+            .foregroundStyle(.textPrimary)
+            .lineLimit(isStacked ? 2 : 1)
+    }
+
+    @ViewBuilder
+    private var nicknameText: some View {
+        if let nickname = team.name {
+            Text(nickname)
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(isStacked ? 2 : 1)
+        }
     }
 }

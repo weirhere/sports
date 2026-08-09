@@ -4,6 +4,11 @@ import SwiftUI
 struct LeadersList: View {
     let summary: GameSummary
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var abbreviationWidth: CGFloat = 44
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("LEADERS")
@@ -30,23 +35,60 @@ struct LeadersList: View {
         .padding(.bottom, Spacing.md)
     }
 
+    /// Name and stat line share a row until accessibility sizes, where the
+    /// stat line drops underneath — side by side they truncate each other to
+    /// a pair of ellipses.
+    @ViewBuilder
     private func leaderRow(_ leader: LeaderCategory.Leader, team: Team?) -> some View {
-        HStack(spacing: Spacing.sm) {
-            Text(team?.abbreviation ?? "")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .frame(width: 44, alignment: .leading)
-            Text(leader.name)
-                .font(.teamName)
-                .foregroundStyle(.textPrimary)
-                .lineLimit(1)
-            Spacer()
-            Text(leader.statLine)
-                .font(.meta.monospacedDigit())
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
+        let content = Group {
+            if isStacked {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: Spacing.sm) {
+                        abbreviationText(team)
+                        nameText(leader)
+                        Spacer(minLength: 0)
+                    }
+                    statText(leader)
+                }
+            } else {
+                HStack(spacing: Spacing.sm) {
+                    abbreviationText(team)
+                    nameText(leader)
+                    Spacer()
+                    statText(leader)
+                }
+            }
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 3)
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, 3)
+    }
+
+    private func abbreviationText(_ team: Team?) -> some View {
+        Text(team?.abbreviation ?? "")
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            // A gutter so both sides' names start at the same x. Scaled, not
+            // a hard 44pt — at accessibility sizes "MISS" otherwise wraps to
+            // "MI" over "SS". The stacked row drops the gutter entirely; its
+            // stat line below starts flush left.
+            .frame(minWidth: isStacked ? nil : abbreviationWidth, alignment: .leading)
+    }
+
+    private func nameText(_ leader: LeaderCategory.Leader) -> some View {
+        Text(leader.name)
+            .font(.teamName)
+            .foregroundStyle(.textPrimary)
+            .lineLimit(isStacked ? 2 : 1)
+    }
+
+    private func statText(_ leader: LeaderCategory.Leader) -> some View {
+        Text(leader.statLine)
+            .font(.meta.monospacedDigit())
+            .foregroundStyle(.textSecondary)
+            .lineLimit(isStacked ? 2 : 1)
     }
 }

@@ -3,12 +3,37 @@ import SwiftUI
 /// One game, one compact row. Two stacked team lines (away over home, the
 /// CFB convention) with a trailing score/status column. Pre and final rows
 /// stay quiet; live rows spend the visual budget.
+///
+/// At accessibility text sizes the side-by-side split stops paying: the
+/// trailing column keeps its width and the names are left with a character
+/// and an ellipsis. So the row reflows to one column — each team line carries
+/// its own score, and the status drops to a line of its own underneath.
 struct GameRow: View {
     let game: Game
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .caption) private var rankWidth: CGFloat = 14
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
+        Group {
+            if isStacked { stackedBody } else { compactBody }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
+        // quarter" — instead of a dozen fragments. Logos and layout stay
+        // visual-only, and the spoken label is identical in both layouts.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    // MARK: - Compact layout (default text sizes)
+
+    private var compactBody: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
             VStack(alignment: .leading, spacing: 4) {
                 teamLine(game.away)
@@ -20,14 +45,66 @@ struct GameRow: View {
             Spacer(minLength: Spacing.sm)
             trailing
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-        // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
-        // quarter" — instead of a dozen fragments. Logos and layout stay
-        // visual-only.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilitySummary)
+    }
+
+    // MARK: - Stacked layout (accessibility text sizes)
+
+    private var stackedBody: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            stackedTeamLine(game.away)
+            stackedTeamLine(game.home)
+            stackedStatus
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Name and score share a line here, so the matchup still reads down the
+    /// left edge the way it does in the compact row.
+    private func stackedTeamLine(_ competitor: Competitor) -> some View {
+        HStack(spacing: Spacing.sm) {
+            teamLine(competitor)
+            Spacer(minLength: Spacing.sm)
+            if showsScores {
+                scoreText(competitor, font: scoreFont)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var stackedStatus: some View {
+        switch game.status {
+        case .pre:
+            // Kick time and network ride one line while they fit; past that
+            // they stack, rather than the network truncating away.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.sm) {
+                    kickTimeText
+                    if let network {
+                        Text("·").font(.meta).foregroundStyle(.textSecondary)
+                        networkText(network)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    kickTimeText
+                    if let network { networkText(network) }
+                }
+            }
+        case .live(let displayClock, let period, _, _):
+            HStack(spacing: Spacing.sm) {
+                LiveDot()
+                Text(liveDetail(clock: displayClock, period: period))
+                    .font(.metaEmphasis)
+                    .foregroundStyle(.textPrimary)
+            }
+        case .final(let detail):
+            Text(finalLabel(detail))
+                .font(.metaEmphasis)
+                .foregroundStyle(.textSecondary)
+        case .other(let detail):
+            Text(detail ?? "—")
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+        }
     }
 
     // MARK: - Team line
@@ -38,13 +115,15 @@ struct GameRow: View {
                 Text("\(rank)")
                     .font(.metaEmphasis)
                     .foregroundStyle(.textSecondary)
-                    .frame(minWidth: 14, alignment: .trailing)
+                    .frame(minWidth: rankWidth, alignment: .trailing)
             }
             logo(competitor.team)
             Text(competitor.team.location)
                 .font(emphasize(competitor) ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
-                .lineLimit(1)
+                // The stacked row has a full line to spend, so a long name
+                // wraps instead of truncating.
+                .lineLimit(isStacked ? 2 : 1)
             if hasPossession(competitor) {
                 Image(systemName: "football.fill")
                     .font(.system(size: 8))
@@ -54,6 +133,7 @@ struct GameRow: View {
                 Text(record)
                     .font(.meta)
                     .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
             }
         }
     }
@@ -70,17 +150,12 @@ struct GameRow: View {
         switch game.status {
         case .pre:
             VStack(alignment: .trailing, spacing: 2) {
-                Text(kickTime)
-                    .font(.meta)
-                    .foregroundStyle(.textPrimary)
-                if let broadcast = game.broadcast {
-                    // First network only: "ESPN Unlmtd/The CW Network"
-                    // otherwise swallows the row.
-                    Text(broadcast.split(separator: "/").first.map(String.init) ?? broadcast)
-                        .font(.metaEmphasis)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                }
+                kickTimeText
+                    // "Sat 3:00 PM" is wide enough to wrap a character per
+                    // line under the names' layout priority at large text
+                    // sizes. The time holds its natural width instead.
+                    .fixedSize(horizontal: true, vertical: false)
+                if let network { networkText(network) }
             }
         case .live(let displayClock, let period, _, _):
             HStack(spacing: Spacing.md) {
@@ -90,6 +165,7 @@ struct GameRow: View {
                     Text(liveDetail(clock: displayClock, period: period))
                         .font(.metaEmphasis)
                         .foregroundStyle(.textPrimary)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .frame(minWidth: 52, alignment: .leading)
             }
@@ -99,6 +175,7 @@ struct GameRow: View {
                 Text(finalLabel(detail))
                     .font(.metaEmphasis)
                     .foregroundStyle(.textSecondary)
+                    .fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: 52, alignment: .leading)
             }
         case .other(let detail):
@@ -107,6 +184,20 @@ struct GameRow: View {
                 .foregroundStyle(.textSecondary)
                 .frame(minWidth: 52, alignment: .trailing)
         }
+    }
+
+    private var kickTimeText: some View {
+        Text(kickTime)
+            .font(.meta)
+            .foregroundStyle(.textPrimary)
+            .lineLimit(1)
+    }
+
+    private func networkText(_ network: String) -> some View {
+        Text(network)
+            .font(.metaEmphasis)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
     }
 
     private func scoreColumn(font: Font) -> some View {
@@ -123,6 +214,26 @@ struct GameRow: View {
     }
 
     // MARK: - Status helpers
+
+    /// Pre and unscheduled rows have no numbers to show yet.
+    private var showsScores: Bool {
+        switch game.status {
+        case .live, .final: true
+        case .pre, .other: false
+        }
+    }
+
+    private var scoreFont: Font {
+        if case .live = game.status { return .scoreLive }
+        return .score
+    }
+
+    /// First network only: "ESPN Unlmtd/The CW Network" otherwise swallows
+    /// the row.
+    private var network: String? {
+        guard let broadcast = game.broadcast else { return nil }
+        return broadcast.split(separator: "/").first.map(String.init) ?? broadcast
+    }
 
     /// Final rows put the winner in heavier type; live rows emphasize both.
     private func emphasize(_ competitor: Competitor) -> Bool {
@@ -260,4 +371,30 @@ struct GameRow: View {
             broadcast: nil))
     }
     .background(Color.bgPrimary)
+}
+
+#Preview("Accessibility XL") {
+    let ncState = Team(id: "152", location: "North Carolina State", name: "Wolfpack",
+                       abbreviation: "NCST", displayName: "NC State Wolfpack",
+                       shortDisplayName: "NC State", logoURL: nil, conferenceId: 1)
+    let tcu = Team(id: "2628", location: "TCU", name: "Horned Frogs", abbreviation: "TCU",
+                   displayName: "TCU Horned Frogs", shortDisplayName: "TCU",
+                   logoURL: nil, conferenceId: 4)
+    return VStack(spacing: 0) {
+        GameRow(game: Game(
+            id: "1", date: .now.addingTimeInterval(86_400), name: nil, shortName: "TCU @ NCST",
+            weekNumber: 5, status: .pre(detail: nil),
+            home: Competitor(team: ncState, score: nil, record: "4-1", rank: nil, isHome: true, winner: nil),
+            away: Competitor(team: tcu, score: nil, record: "5-0", rank: 9, isHome: false, winner: nil),
+            broadcast: "ESPN"))
+        Divider().overlay(Color.divider)
+        GameRow(game: Game(
+            id: "2", date: .now, name: nil, shortName: "TCU @ NCST", weekNumber: 5,
+            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "2628"),
+            home: Competitor(team: ncState, score: 17, record: "4-1", rank: nil, isHome: true, winner: nil),
+            away: Competitor(team: tcu, score: 24, record: "5-0", rank: 9, isHome: false, winner: nil),
+            broadcast: "ESPN"))
+    }
+    .background(Color.bgPrimary)
+    .environment(\.dynamicTypeSize, .accessibility3)
 }
