@@ -33,10 +33,10 @@ final class SmokeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SEC"].waitForExistence(timeout: 5),
                       "Toggling back should restore conference sections")
 
-        // Rankings shows a poll with a #1 row.
-        app.tabBars.buttons["Rankings"].tap()
-        XCTAssertTrue(app.buttons["AP"].waitForExistence(timeout: 15),
-                      "Rankings should show the AP chip")
+        // Rankings shows a poll with a #1 row. Which poll depends on the
+        // calendar — the AP preseason Top 25 doesn't drop until mid-August.
+        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
+                      "Rankings should show a ranked #1")
         snapshot(app, "rankings")
 
         // Teams browse + search + follow.

@@ -44,14 +44,15 @@ final class ScreenshotTests: XCTestCase {
         snapshot(app, "\(prefix)-game-detail")
         app.navigationBars.buttons.firstMatch.tap()
 
-        // Rankings.
-        app.tabBars.buttons["Rankings"].tap()
-        XCTAssertTrue(app.buttons["AP"].waitForExistence(timeout: 15))
+        // Rankings. The tab tap follows a navigation pop, so it needs the
+        // retry — see openTab.
+        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
+                      "Rankings should show a ranked #1")
         snapshot(app, "\(prefix)-rankings")
 
         // Teams browse, then a team page via search.
-        app.tabBars.buttons["Teams"].tap()
-        XCTAssertTrue(app.staticTexts["ACC"].waitForExistence(timeout: 15))
+        XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
+                      "Teams browse should load")
         snapshot(app, "\(prefix)-teams")
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))

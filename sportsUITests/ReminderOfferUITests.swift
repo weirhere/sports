@@ -10,8 +10,12 @@ final class ReminderOfferUITests: XCTestCase {
         // Argument-domain overrides reach every UserDefaults instance,
         // including the App Group suite, so the app launches as a fresh
         // user: no follows, onboarding seen, reminder offer not yet made.
+        // `notifications.enabled` matters on a simulator that has already run
+        // this test — the offer is suppressed when reminders are already on,
+        // so without the reset the second run never sees the alert.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.notificationsPrompted", "NO",
+                                "-notifications.enabled", "NO",
                                 "-following.teamIds", "()"]
         app.launch()
 

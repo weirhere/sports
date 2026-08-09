@@ -53,11 +53,14 @@ struct SectionAccordion: View {
                             .foregroundStyle(.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Spacing.lg)
-                            .padding(.top, index == 0 ? 0 : Spacing.sm)
+                            .padding(.top, Spacing.md)
                             .padding(.bottom, Spacing.xs)
                     }
                     NavigationLink(value: game) {
-                        GameRow(game: game)
+                        // Dividers only appear when the section spans days, so
+                        // that same flag says whether the row's date is already
+                        // spoken for.
+                        GameRow(game: game, dayIsLabeled: spansMultipleDays)
                     }
                     .buttonStyle(.plain)
                     .contextMenu {

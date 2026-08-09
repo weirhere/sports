@@ -10,6 +10,10 @@ import SwiftUI
 /// its own score, and the status drops to a line of its own underneath.
 struct GameRow: View {
     let game: Game
+    /// True when a day divider directly above the row already names the date,
+    /// in which case the row doesn't repeat it. VoiceOver still hears the full
+    /// date either way — a swipe can land on the row without the divider.
+    var dayIsLabeled: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
@@ -40,7 +44,9 @@ struct GameRow: View {
                 teamLine(game.home)
             }
             // Team names win the width fight with the trailing column —
-            // "New Mexico State" beats a broadcast string's elbow room.
+            // "New Mexico State" beats a broadcast string's elbow room. The
+            // kick time is the one exception: it's short, load-bearing, and
+            // pinned to its natural width (see `trailing`).
             .layoutPriority(1)
             Spacer(minLength: Spacing.sm)
             trailing
@@ -151,8 +157,8 @@ struct GameRow: View {
         case .pre:
             VStack(alignment: .trailing, spacing: 2) {
                 kickTimeText
-                    // "Sat 3:00 PM" is wide enough to wrap a character per
-                    // line under the names' layout priority at large text
+                    // "Sat, 9/5 3:30 PM" is wide enough to wrap a character
+                    // per line under the names' layout priority at large text
                     // sizes. The time holds its natural width instead.
                     .fixedSize(horizontal: true, vertical: false)
                 if let network { networkText(network) }
@@ -266,7 +272,39 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
-        return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+        return Self.relativeKick(date, weekday: .abbreviated, includeDate: !dayIsLabeled)
+    }
+
+    /// How far out the kick is decides how much of the date the row spends:
+    /// "Today 3:30 PM" inside the 48 hours that matter, the bare weekday out
+    /// to a week, and the weekday plus a date past that — because "Sat" only
+    /// ever means *this* Saturday. Shared with the VoiceOver sentence, which
+    /// asks for the wide weekday.
+    ///
+    /// `includeDate` is how a caller says the date is already on screen just
+    /// above; the ladder then tops out at the weekday rather than repeating it.
+    ///
+    /// One day-granularity difference drives every branch, so a noon kick and
+    /// an 11pm kick are equally far away. `now`/`calendar` are injected so the
+    /// thresholds are testable without freezing the clock.
+    static func relativeKick(_ date: Date,
+                             weekday: Date.FormatStyle.Symbol.Weekday,
+                             includeDate: Bool = true,
+                             now: Date = .now,
+                             calendar: Calendar = .current) -> String {
+        let time = date.formatted(.dateTime.hour().minute())
+        let days = calendar.dateComponents([.day],
+                                           from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: date)).day ?? 0
+        switch days {
+        case 0: return "Today \(time)"
+        case 1: return "Tomorrow \(time)"
+        case ..<7: return "\(date.formatted(.dateTime.weekday(weekday))) \(time)"
+        default:
+            let style = Date.FormatStyle.dateTime.weekday(weekday)
+            let day = includeDate ? style.month(.defaultDigits).day() : style
+            return "\(date.formatted(day)) \(time)"
+        }
     }
 
     private func liveDetail(clock: String?, period: Int?) -> String {
@@ -290,7 +328,7 @@ struct GameRow: View {
             }
             var parts = ["\(side(game.away)) at \(side(game.home))"]
             if let date = game.date {
-                parts.append(date.formatted(.dateTime.weekday(.wide).hour().minute()))
+                parts.append(Self.relativeKick(date, weekday: .wide))
             }
             if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")
