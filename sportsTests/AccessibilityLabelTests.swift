@@ -86,6 +86,54 @@ private func game(status: GameStatus,
 }
 
 @MainActor
+@Suite struct KickTimeFormatTests {
+    // One anchor kickoff — Aug 29, 3:00 PM local — rendered from a series of
+    // vantage points. Assertions look for the day-of-month "29", which every
+    // locale's numeric date includes and no rendering of 3:00 PM contains, so
+    // these hold without pinning a locale or timezone.
+
+    private let calendar = Calendar.current
+
+    private func render(daysOut: Int,
+                        weekday: Date.FormatStyle.Symbol.Weekday = .abbreviated,
+                        includeDate: Bool = true) -> String {
+        let kick = calendar.date(from: DateComponents(year: 2026, month: 8, day: 29, hour: 15))!
+        let now = calendar.date(byAdding: .day, value: -daysOut, to: kick)!
+        return GameRow.relativeKick(kick, weekday: weekday, includeDate: includeDate, now: now)
+    }
+
+    @Test func todayAndTomorrowWinOverEverything() {
+        #expect(render(daysOut: 0).hasPrefix("Today "))
+        #expect(render(daysOut: 1).hasPrefix("Tomorrow "))
+        #expect(!render(daysOut: 0).contains("29"))
+    }
+
+    @Test func weekdayStandsAloneOutToAWeek() {
+        for daysOut in 2...6 {
+            #expect(!render(daysOut: daysOut).contains("29"))
+        }
+    }
+
+    @Test func dateJoinsTheWeekdayAtSevenDays() {
+        // Seven days is the point where "Sat" stops meaning the next Saturday.
+        #expect(render(daysOut: 7).contains("29"))
+        #expect(render(daysOut: 30).contains("29"))
+        #expect(render(daysOut: 7).count > render(daysOut: 6).count)
+    }
+
+    @Test func theWideWeekdayCarriesTheDateToo() {
+        #expect(render(daysOut: 20, weekday: .wide).contains("29"))
+    }
+
+    @Test func aLabelledDaySuppressesTheDate() {
+        // Rows under a "SAT, AUG 29" divider shouldn't say 8/29 again — they
+        // fall back to the same weekday-only string a near game gets.
+        #expect(render(daysOut: 20, includeDate: false) == render(daysOut: 3))
+        #expect(render(daysOut: 20, includeDate: true).contains("29"))
+    }
+}
+
+@MainActor
 @Suite struct RankRowAccessibilityTests {
     private func ranked(current: Int, previous: Int?, votes: Int? = nil,
                         record: String? = nil) -> RankedTeam {

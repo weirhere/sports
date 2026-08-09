@@ -5,6 +5,10 @@ import SwiftUI
 /// stay quiet; live rows spend the visual budget.
 struct GameRow: View {
     let game: Game
+    /// True when a day divider directly above the row already names the date,
+    /// in which case the row doesn't repeat it. VoiceOver still hears the full
+    /// date either way — a swipe can land on the row without the divider.
+    var dayIsLabeled: Bool = false
 
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
 
@@ -162,19 +166,39 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
-        return Self.relativeKick(date, weekday: .abbreviated)
+        return Self.relativeKick(date, weekday: .abbreviated, includeDate: !dayIsLabeled)
     }
 
-    /// "Today 3:30 PM" inside the 48 hours that matter, the weekday beyond
-    /// that. `isDateInToday`/`isDateInTomorrow` settle the local day boundary,
-    /// so no manual date math. Shared with the VoiceOver sentence, which asks
-    /// for the wide weekday.
-    static func relativeKick(_ date: Date, weekday: Date.FormatStyle.Symbol.Weekday) -> String {
-        let calendar = Calendar.current
+    /// How far out the kick is decides how much of the date the row spends:
+    /// "Today 3:30 PM" inside the 48 hours that matter, the bare weekday out
+    /// to a week, and the weekday plus a date past that — because "Sat" only
+    /// ever means *this* Saturday. Shared with the VoiceOver sentence, which
+    /// asks for the wide weekday.
+    ///
+    /// `includeDate` is how a caller says the date is already on screen just
+    /// above; the ladder then tops out at the weekday rather than repeating it.
+    ///
+    /// One day-granularity difference drives every branch, so a noon kick and
+    /// an 11pm kick are equally far away. `now`/`calendar` are injected so the
+    /// thresholds are testable without freezing the clock.
+    static func relativeKick(_ date: Date,
+                             weekday: Date.FormatStyle.Symbol.Weekday,
+                             includeDate: Bool = true,
+                             now: Date = .now,
+                             calendar: Calendar = .current) -> String {
         let time = date.formatted(.dateTime.hour().minute())
-        if calendar.isDateInToday(date) { return "Today \(time)" }
-        if calendar.isDateInTomorrow(date) { return "Tomorrow \(time)" }
-        return date.formatted(.dateTime.weekday(weekday).hour().minute())
+        let days = calendar.dateComponents([.day],
+                                           from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: date)).day ?? 0
+        switch days {
+        case 0: return "Today \(time)"
+        case 1: return "Tomorrow \(time)"
+        case ..<7: return "\(date.formatted(.dateTime.weekday(weekday))) \(time)"
+        default:
+            let style = Date.FormatStyle.dateTime.weekday(weekday)
+            let day = includeDate ? style.month(.defaultDigits).day() : style
+            return "\(date.formatted(day)) \(time)"
+        }
     }
 
     private func liveDetail(clock: String?, period: Int?) -> String {
