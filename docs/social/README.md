@@ -28,6 +28,13 @@ Same composition as tweet 1, reshaped for feeds that aren't 16:9.
 |---|---|---|
 | `statside-square-1080.png` | 2160 × 2160 | Instagram feed, LinkedIn |
 | `statside-portrait-1080x1350.png` | 2160 × 2700 | Instagram 4:5, the one that fills the most feed |
+| `statside-story-1080x1920.png` | 2160 × 3840 | Instagram/Facebook Stories, 9:16 |
+
+The story version keeps every word inside the middle band, because Instagram's
+own chrome — profile header up top, reply bar at the bottom — covers roughly
+the top and bottom 250px (500px on the 2x asset). Only the devices run under
+it. Instagram downsamples to 1080 × 1920 on upload; the 2x master is there for
+headroom.
 
 ## Regenerating
 
@@ -48,8 +55,8 @@ for f in 02-follow 03-saturdays 04-week 05-rankings 06-quiet 07-closer; do
 done
 ```
 
-The hero uses `landscape.html` at 1600,900, `square.html` at 1080,1080, and
-`portrait.html` at 1080,1350. The window size must match the `.stage`
+The hero uses `landscape.html` at 1600,900, `square.html` at 1080,1080,
+`portrait.html` at 1080,1350, and `story.html` at 1080,1920. The window size must match the `.stage`
 dimensions in each file's inline `<style>` block, or the render clips.
 
 Shared styling lives in `src/social.css`; each file overrides the background
