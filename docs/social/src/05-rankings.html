@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background:
+      radial-gradient(80% 90% at 78% 78%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+      radial-gradient(80% 70% at 16% 0%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(54% 80% at 76% 66%, #000 0%, rgba(0,0,0,0) 82%);
+    mask-image: radial-gradient(54% 80% at 76% 66%, #000 0%, rgba(0,0,0,0) 82%);
+  }
+
+  .head { position: absolute; left: 96px; top: 50%; transform: translateY(-52%); width: 740px; }
+  .headline { font-size: 60px; margin-top: 20px; }
+  .bullets { margin-top: 34px; max-width: 660px; font-size: 20px; }
+  .bullets li + li { margin-top: 13px; }
+
+  .phone.hero  { font-size: 336px; left: 1024px; top: 232px; z-index: 3;
+                 transform: rotate(-3deg); }
+  .phone.back  { font-size: 296px; left: 1288px; top: 312px; z-index: 2;
+                 transform: rotate(5deg); }
+</style>
+</head>
+<body>
+<div class="stage stage16">
+  <div class="content">
+
+    <div class="brandmini">
+      <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+      <div class="wordmark">StatSide</div>
+    </div>
+
+    <div class="head">
+      <div class="kicker">Rankings and details</div>
+      <div class="headline">Polls, plays,<br>whole seasons.</div>
+      <ul class="bullets">
+        <li><b>AP Top 25 and Coaches Poll</b>, with movement arrows</li>
+        <li><b>Game pages</b> — line score, scoring plays, drive log, stats</li>
+        <li><b>Team pages</b> — full season schedule and results</li>
+        <li><b>Past seasons</b> back to 2014</li>
+      </ul>
+    </div>
+
+    <div class="phone back">
+      <img src="../../appstore/screenshots/02-game-detail.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/03-rankings.png">
+      <div class="glare"></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

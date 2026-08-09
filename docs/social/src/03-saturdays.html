@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background:
+      radial-gradient(80% 90% at 80% 78%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+      radial-gradient(80% 70% at 16% 0%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(52% 80% at 78% 66%, #000 0%, rgba(0,0,0,0) 82%);
+    mask-image: radial-gradient(52% 80% at 78% 66%, #000 0%, rgba(0,0,0,0) 82%);
+  }
+
+  .head { position: absolute; left: 96px; top: 50%; transform: translateY(-52%); width: 760px; }
+  .headline { font-size: 60px; margin-top: 20px; }
+  .bullets { margin-top: 34px; max-width: 660px; font-size: 20px; }
+  .bullets li + li { margin-top: 13px; }
+
+  .phone.hero  { font-size: 344px; left: 1096px; top: 214px; z-index: 3;
+                 transform: rotate(-3deg); }
+  .phone.back  { font-size: 300px; left: 1350px; top: 300px; z-index: 2;
+                 transform: rotate(5deg); }
+</style>
+</head>
+<body>
+<div class="stage stage16">
+  <div class="content">
+
+    <div class="brandmini">
+      <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+      <div class="wordmark">StatSide</div>
+    </div>
+
+    <div class="head">
+      <div class="kicker">Built for Saturdays</div>
+      <div class="headline">One screen,<br>whole slate.</div>
+      <ul class="bullets">
+        <li><b>Your teams first</b> — their games lead the page</li>
+        <li><b>Top 25 games</b> in their own section, always complete</li>
+        <li><b>Every conference</b> in sections that remember how you left them</li>
+        <li><b>Live games</b> get a pulsing dot and the only red in the app</li>
+        <li><b>One tap</b> filters to live games only</li>
+      </ul>
+    </div>
+
+    <div class="phone back">
+      <img src="../../appstore/screenshots/02-game-detail.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/01-scores.png">
+      <div class="glare"></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

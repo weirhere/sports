@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background: radial-gradient(66% 60% at 50% 44%, rgba(255,255,255,0.10) 0%, rgba(0,0,0,0) 70%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(46% 56% at 50% 46%, #000 0%, rgba(0,0,0,0) 84%);
+    mask-image: radial-gradient(46% 56% at 50% 46%, #000 0%, rgba(0,0,0,0) 84%);
+    opacity: 0.6;
+  }
+
+  .head {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .icon {
+    width: 132px; height: 132px;
+    border-radius: 24%;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.16), 0 30px 60px rgba(0,0,0,0.8);
+  }
+  .wordmark { font-size: 66px; margin-top: 34px; letter-spacing: -0.03em; }
+  .headline { font-size: 40px; margin-top: 26px; color: #C9C9CE; font-weight: 700; }
+
+  .fine {
+    margin-top: 82px;
+    font-family: "Inter", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.34);
+  }
+</style>
+</head>
+<body>
+<div class="stage stage16">
+  <div class="content">
+
+    <div class="head">
+      <img class="icon" src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+      <div class="wordmark">StatSide</div>
+      <div class="headline">Free. Fast. One sport, done right.</div>
+      <div class="fine">An independent app. Not affiliated with or endorsed by the NCAA, any conference, or any school.</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
