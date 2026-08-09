@@ -27,7 +27,26 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
         #expect(text.hasPrefix("#3 Georgia at Tennessee"))
         #expect(text.contains("on ESPN Unlmtd"))
         #expect(!text.contains("CW"))
-        #expect(text.hasSuffix("— via StatSide"))
+        #expect(text.contains("— via StatSide"))
+    }
+
+    @Test func everyShapeSignsOffWithTheStoreLink() {
+        // The link is the last line, after the sign-off — a share that lost
+        // it would look fine in the sheet and quietly stop being an invite.
+        let shapes = [
+            game(status: .pre(detail: nil)),
+            game(status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+                 awayScore: 24, homeScore: 17),
+            game(status: .final(detail: "Final"), awayScore: 24, homeScore: 17),
+            game(status: .other(detail: "Postponed"))
+        ]
+        for text in shapes.map(\.shareText) {
+            #expect(text.hasSuffix("— via StatSide\n\(ShareSignOff.appStoreURL)"))
+        }
+        // Game detail builds its own body off the fresher summary score and
+        // signs off through the same seam.
+        #expect(ShareSignOff.appended(to: "Georgia 24, Tennessee 17, Final")
+            .hasSuffix("— via StatSide\n\(ShareSignOff.appStoreURL)"))
     }
 
     @Test func liveGameCarriesScoreAndSituation() {

@@ -71,7 +71,7 @@ De-iceboxed 2026-07-21 (Andy's call). Gated on open question #6 (data licensing)
 - [ ] **P0** Apple Developer Program enrollment + App Store Connect listing: verify "StatSide" name availability, description, keywords, age rating (4+), export compliance (standard HTTPS exemption), privacy nutrition label ("Data Not Collected").
 - [ ] **P0** Screenshots: 6.9" and 6.5" sets. Real Saturday data reads best — capture during Week 1+ (pairs with the E5 verification pass).
 - [ ] **P0** `CFBDClient`: a CollegeFootballData.com v2 backend conforming to `ScoresProviding` (Andy's call 2026-07-21, resolving open question #6 toward option a). ESPN stays the default; CFBD activates via `data.provider` = "cfbd" + a key in `cfbd.apiKey`/`CFBD_API_KEY`. CFBD's scoreboard rows don't carry records/ranks/logos/network inline, so the client joins `/teams/fbs`, `/records`, `/rankings`, and `/games/media` (all season-cacheable) onto `/games` + live `/scoreboard`. Acceptance: all five protocol methods return domain models with no view-layer changes; a malformed element drops the row, never the response; unit tests cover status mapping (pre/live/final-OT), conference name→id mapping, poll movement, and the live merge. **Needs verification with a real key (Tier 1+):** live-field shapes (`possession`, `clock`), whether CFBD team ids match ESPN's (follows persistence across the switch), and score latency vs ESPN on a live Saturday.
-- [ ] **P1** Version/build hygiene: marketing version 1.0, build numbers increment per upload.
+- [ ] **P1** Version/build hygiene: marketing version tracks the release (1.0 shipped, 1.0.1 is build 7), build numbers increment per upload. Both `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` live in 8 places each in `project.pbxproj` — one per target per config — and the app and widget **must** match or the upload is rejected. Chore worth doing: hoist both to the project-level config so a bump is two lines, accepting that Xcode's Target → General fields write back per-target and would undo it.
 - [ ] **P2** App Store product page polish: preview video, promotional text. Only after the listing exists.
 
 ## E7 — App Review 4.2.2 response
@@ -89,7 +89,7 @@ Added 2026-08-04: Apple rejected 1.0 (5) under Guideline 4.2.2 Minimum Functiona
 - [ ] **P0** Review notes rewrite in `docs/appstore/listing.md` (delete the "displays publicly available…" opener; lead with native functionality) + Resolution Center reply draft.
 - [ ] **P0** Build 6: `CURRENT_PROJECT_VERSION` = 6 in app **and** widget configs (must match).
 - [ ] **P1** `NextGameIntent` App Intent / Siri Shortcut ("What's my next game?").
-- [ ] **P2** App Store URL appended to share text once the app is live.
+- [x] **P2** App Store URL appended to share text once the app is live. *(Shipped in 1.0.1 (7). The sign-off moved behind `ShareSignOff.appended(to:)` in `StatSideShared/Models/Game+ShareText.swift` because game detail composes its own body from the fresher summary score — two call sites, one sign-off, so the link can't drift out of one of them. Link sits on its own line after "— via StatSide" so messaging apps render a preview.)*
 - [ ] **P2** One home-screen-widget screenshot frame for the listing (manual simulator capture).
 
 ## Icebox (deliberately not now)

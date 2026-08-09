@@ -21,6 +21,24 @@ Alternate: `Fast college football scores` (28)
 
 Primary: **Sports**. No secondary needed.
 
+## What's New in This Version (4000 chars max) ✏️
+
+Per-version release notes. Newest first — keep the old ones, this is the
+release-notes history now.
+
+### 1.0.1 (build 7)
+
+> • Kick times now read the way you think about them — "Today 3:30 PM,"
+>   "Tomorrow," then the weekday. No date math on the way to the couch.
+> • Every row reflows to a single column at the largest text sizes, so team
+>   names stop truncating to a letter and an ellipsis.
+> • Sharing a score now carries a link to the app.
+
+### 1.0 (build 6)
+
+> Initial release. (App Store Connect doesn't show What's New on a first
+> version — the Description carries it.)
+
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
 > Kickoff is coming. Follow your teams, get kickoff reminders, and put their
@@ -87,6 +105,16 @@ copy changes over to statside-site when editing.
 Required: 6.9" (iPhone 17 Pro Max class, 1320×2868). Smaller sizes reuse the
 6.9" set automatically unless you upload separate ones. Captured by
 `sportsUITests/AppStoreScreenshots.swift` — see docs/appstore/screenshots/.
+
+**Upload the 1284×2778 copies, not the masters.** This account's drop zone
+rejects 1320×2868; `docs/appstore/screenshots-1284x2778/` is the set that
+actually goes up, resized from the masters in `screenshots/`. Learned the
+expensive way during the 1.0 submission.
+
+Screenshots carry forward automatically on a version update — you only
+replace them when the shots themselves change. Note that the nine promo PNGs
+in `docs/social/` crop into these masters at hardcoded pixel offsets, so
+reshooting means re-rendering those too (see docs/social/README.md).
 Order suggestion: scores (hero) → **widget on the Home Screen** → game detail
 → rankings → teams → team page. The widget frame is captured manually from
 the simulator (springboard is outside the UI test's reach) — it's the
