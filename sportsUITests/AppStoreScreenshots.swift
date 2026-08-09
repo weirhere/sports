@@ -19,32 +19,17 @@ final class AppStoreScreenshots: XCTestCase {
         // In the offseason ESPN's "current" season is the upcoming one —
         // all 0-0 records and TBD kickoffs. Switch to the completed 2025
         // season so every shot shows real scores and a Top 25 section.
-        let seasonChip = app.buttons.matching(NSPredicate(
-            format: "label MATCHES %@", "^20[0-9][0-9]$")).firstMatch
-        XCTAssertTrue(seasonChip.waitForExistence(timeout: 15), "Season menu should load")
-        if seasonChip.label != "2025" {
-            seasonChip.tap()
-            let year2025 = app.buttons["2025"]
-            XCTAssertTrue(year2025.waitForExistence(timeout: 5))
-            year2025.tap()
-        }
+        XCTAssertTrue(selectSeason(2025, in: app),
+                      "Season menu should switch to 2025")
 
-        // Then walk the week strip back to a regular-season Saturday.
+        // Then walk the week strip to a regular-season Saturday.
         let weekTen = app.buttons["Week 10"]
         // The strip's HStack isn't lazy, so every week button exists in the
         // hierarchy even when scrolled offscreen — find the strip by content.
         let strip = app.scrollViews.containing(.button, identifier: "Week 10").firstMatch
         XCTAssertTrue(strip.waitForExistence(timeout: 15), "Week strip should load")
-        // isHittable throws on offscreen elements ("activation point
-        // invalid"), so test visibility by frame containment instead.
-        let window = app.windows.firstMatch
-        var swipes = 0
-        while !(weekTen.exists && window.frame.contains(weekTen.frame)) && swipes < 25 {
-            strip.swipeRight()
-            swipes += 1
-        }
-        XCTAssertTrue(weekTen.exists, "Week 10 should be reachable in the strip")
-        weekTen.tap()
+        XCTAssertTrue(scrollToAndTap(weekTen, in: strip, within: app.windows.firstMatch),
+                      "Week 10 should be reachable in the strip")
 
         // Scores: wait for game rows, expand nothing — Following and Top 25
         // are open by default, which is the hero shot. A completed week's
@@ -64,13 +49,13 @@ final class AppStoreScreenshots: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // Rankings.
-        app.tabBars.buttons["Rankings"].tap()
-        XCTAssertTrue(app.buttons["AP"].waitForExistence(timeout: 15))
+        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
+                      "Rankings should show a ranked #1")
         snapshot(app, "03-rankings")
 
         // Teams browse.
-        app.tabBars.buttons["Teams"].tap()
-        XCTAssertTrue(app.staticTexts["ACC"].waitForExistence(timeout: 15))
+        XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
+                      "Teams browse should load")
         snapshot(app, "04-teams")
 
         // A team page, via search.
