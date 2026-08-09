@@ -115,7 +115,8 @@ struct GameDetailScreen: View {
             return game.shareText
         }
         let status = statusLine.replacingOccurrences(of: "\n", with: ", ")
-        return "\(away.team.location) \(awayScore), \(home.team.location) \(homeScore), \(status) — via StatSide"
+        return ShareSignOff.appended(
+            to: "\(away.team.location) \(awayScore), \(home.team.location) \(homeScore), \(status)")
     }
 
     /// Renders from the scoreboard's Game immediately; the summary fills in.

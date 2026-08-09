@@ -1,5 +1,17 @@
 import Foundation
 
+/// How every share ends, wherever it was built from. The link goes on its
+/// own line so the body stays one readable sentence and messaging apps
+/// render a preview. Game detail composes its own body from the fresher
+/// summary score — it signs off through here so the two can't drift.
+nonisolated enum ShareSignOff {
+    static let appStoreURL = "https://apps.apple.com/app/id6793266645"
+
+    static func appended(to body: String) -> String {
+        "\(body) — via StatSide\n\(appStoreURL)"
+    }
+}
+
 nonisolated extension Game {
     /// What the share sheet carries. There's no per-game web page, so the
     /// text is the whole artifact — status-shaped like the row it came from.
@@ -34,6 +46,6 @@ nonisolated extension Game {
         case .other(let detail):
             body = "\(name(away)) at \(name(home)), \(detail ?? "status unavailable")"
         }
-        return "\(body) — via StatSide"
+        return ShareSignOff.appended(to: body)
     }
 }
