@@ -134,3 +134,61 @@ body {
   text-transform: uppercase;
   color: rgba(255,255,255,0.42);
 }
+
+/* ---------- thread cards (1600×900 feature graphics) ---------- */
+
+.stage16 { width: 1600px; height: 900px; }
+
+.brandmini {
+  position: absolute;
+  top: 62px; left: 96px;
+  display: flex; align-items: center; gap: 13px;
+  z-index: 4;
+}
+.brandmini img {
+  width: 34px; height: 34px;
+  border-radius: 24%;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.14);
+}
+.brandmini .wordmark { font-size: 25px; }
+
+.kicker {
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+
+.bullets {
+  list-style: none;
+  font-family: "Inter", sans-serif;
+  font-size: 21px;
+  line-height: 1.62;
+  color: #9A9AA0;
+  letter-spacing: -0.005em;
+}
+.bullets li { padding-left: 26px; position: relative; }
+.bullets li::before {
+  content: "";
+  position: absolute;
+  left: 2px; top: 0.72em;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.32);
+}
+.bullets b { color: #fff; font-weight: 600; }
+
+/* A slice of real UI, floated on the stage. */
+.crop {
+  position: absolute;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 26px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.16),
+    0 36px 72px rgba(0,0,0,0.82),
+    0 10px 24px rgba(0,0,0,0.6);
+}
+.crop img { position: absolute; display: block; max-width: none; }

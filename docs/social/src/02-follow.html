@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background:
+      radial-gradient(85% 85% at 72% 70%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.035) 36%, rgba(0,0,0,0) 70%),
+      radial-gradient(80% 70% at 18% 0%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(58% 78% at 72% 62%, #000 0%, rgba(0,0,0,0) 82%);
+    mask-image: radial-gradient(58% 78% at 72% 62%, #000 0%, rgba(0,0,0,0) 82%);
+  }
+
+  .head { position: absolute; left: 96px; top: 268px; width: 640px; }
+  .headline { font-size: 62px; margin-top: 22px; }
+  .sub { font-size: 22px; margin-top: 22px; max-width: 540px; }
+
+  /* Follow a team → its games lead the page. Two slices of the real UI. */
+  .crop.follow {
+    width: 470px; height: 313px;
+    left: 900px; top: 108px;
+    transform: rotate(-2.5deg);
+    z-index: 2;
+  }
+  .crop.follow img { width: 862px; left: -196px; top: -274px; }
+
+  .crop.section {
+    width: 690px; height: 354px;
+    left: 830px; top: 448px;
+    z-index: 3;
+  }
+  .crop.section img { width: 690px; left: 0; top: -252px; }
+</style>
+</head>
+<body>
+<div class="stage stage16">
+  <div class="content">
+
+    <div class="brandmini">
+      <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+      <div class="wordmark">StatSide</div>
+    </div>
+
+    <div class="head">
+      <div class="kicker">Following</div>
+      <div class="headline">Your teams<br>lead the page.</div>
+      <div class="sub">Follow any FBS team and their games sit at the top, every week — before you scroll anything else.</div>
+    </div>
+
+    <div class="crop follow">
+      <img src="../../appstore/screenshots/05-team-page.png">
+    </div>
+    <div class="crop section">
+      <img src="../../appstore/screenshots/01-scores.png">
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
