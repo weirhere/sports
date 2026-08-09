@@ -5,16 +5,18 @@ import SwiftUI
 struct TeamsScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
+    @Environment(Router.self) private var router
 
     @State private var conferences: [ConferenceTeams] = []
     @State private var isLoading = false
     @State private var lastError: String?
     @State private var searchText = ""
+    @State private var path: [Team] = []
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .background(Color.bgPrimary)
                 .navigationTitle("Teams")
@@ -24,6 +26,17 @@ struct TeamsScreen: View {
                 }
         }
         .task { await load() }
+        .onChange(of: router.pendingTeamId) { _, _ in resolvePendingTeam() }
+        .onChange(of: conferences) { _, _ in resolvePendingTeam() }
+    }
+
+    /// Lands a deep-linked team once the browse data is loaded; an unknown
+    /// id degrades to landing on the Teams tab.
+    private func resolvePendingTeam() {
+        guard let pendingId = router.pendingTeamId,
+              let team = conferences.flatMap(\.teams).first(where: { $0.id == pendingId }) else { return }
+        router.pendingTeamId = nil
+        path = [team]
     }
 
     @ViewBuilder

@@ -63,6 +63,21 @@ struct GameDetailScreen: View {
         .background(Color.bgPrimary)
         .navigationTitle(game.shortName ?? "Game")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: shareText) {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(.textPrimary)
+                }
+                .accessibilityLabel("Share this game")
+            }
+        }
+        // The third of the app's three haptics: a live score changing under
+        // your thumb. Detail-screen only — the scoreboard's 60-game poll
+        // would machine-gun the Taptic engine.
+        .sensoryFeedback(.impact(weight: .medium), trigger: currentScores) { _, _ in
+            isLiveNow
+        }
         .task { await load() }
         // 30s auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
@@ -85,6 +100,22 @@ struct GameDetailScreen: View {
     private var isLiveNow: Bool {
         if case .live = summary?.status ?? game.status { return true }
         return false
+    }
+
+    private var currentScores: [Int?] {
+        [summary?.away?.score ?? game.away.score, summary?.home?.score ?? game.home.score]
+    }
+
+    /// Shares what the header shows — the summary's fresher score when it
+    /// has one, not the pushed row's snapshot.
+    private var shareText: String {
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        guard showsScores, let awayScore = away.score, let homeScore = home.score else {
+            return game.shareText
+        }
+        let status = statusLine.replacingOccurrences(of: "\n", with: ", ")
+        return "\(away.team.location) \(awayScore), \(home.team.location) \(homeScore), \(status) — via StatSide"
     }
 
     /// Renders from the scoreboard's Game immediately; the summary fills in.

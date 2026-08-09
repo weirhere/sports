@@ -1,6 +1,6 @@
 import SwiftUI
 import XCTest
-@testable import sports
+@testable import StatSide
 
 /// Not a test of behavior — a camera for open question #2 (live accent
 /// color). Renders the live GameRow with the red accent and with a

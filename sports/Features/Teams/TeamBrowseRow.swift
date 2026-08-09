@@ -5,6 +5,7 @@ import SwiftUI
 struct TeamBrowseRow: View {
     let team: Team
 
+    @Environment(FollowingStore.self) private var following
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
 
     var body: some View {
@@ -30,6 +31,14 @@ struct TeamBrowseRow: View {
                 .accessibilityLabel(team.displayName ?? team.location)
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                Button {
+                    following.toggle(team.id)
+                } label: {
+                    Label(following.isFollowing(team.id) ? "Unfollow \(team.location)" : "Follow \(team.location)",
+                          systemImage: following.isFollowing(team.id) ? "star.slash" : "star")
+                }
+            }
             FollowButton(teamId: team.id)
         }
         .padding(.horizontal, Spacing.lg)

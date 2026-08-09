@@ -7,6 +7,8 @@ struct SectionAccordion: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
+    @Environment(FollowingStore.self) private var following
+
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onToggle) {
@@ -58,6 +60,21 @@ struct SectionAccordion: View {
                         GameRow(game: game)
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        followMenuButton(for: game.away.team)
+                        followMenuButton(for: game.home.team)
+                        ShareLink(item: game.shareText) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                    // The row collapses to one VO element, which swallows
+                    // the menu — custom actions restore parity.
+                    .accessibilityAction(named: followActionTitle(for: game.away.team)) {
+                        following.toggle(game.away.team.id)
+                    }
+                    .accessibilityAction(named: followActionTitle(for: game.home.team)) {
+                        following.toggle(game.home.team.id)
+                    }
                     if game.id != section.games.last?.id {
                         Divider()
                             .overlay(Color.divider)
@@ -66,6 +83,19 @@ struct SectionAccordion: View {
                 }
             }
         }
+    }
+
+    private func followMenuButton(for team: Team) -> some View {
+        Button {
+            following.toggle(team.id)
+        } label: {
+            Label(followActionTitle(for: team),
+                  systemImage: following.isFollowing(team.id) ? "star.slash" : "star")
+        }
+    }
+
+    private func followActionTitle(for team: Team) -> String {
+        following.isFollowing(team.id) ? "Unfollow \(team.location)" : "Follow \(team.location)"
     }
 
     /// Header glyph for the non-conference sections. star.fill echoes the

@@ -74,10 +74,28 @@ De-iceboxed 2026-07-21 (Andy's call). Gated on open question #6 (data licensing)
 - [ ] **P1** Version/build hygiene: marketing version 1.0, build numbers increment per upload.
 - [ ] **P2** App Store product page polish: preview video, promotional text. Only after the listing exists.
 
+## E7 — App Review 4.2.2 response
+
+Added 2026-08-04: Apple rejected 1.0 (5) under Guideline 4.2.2 Minimum Functionality ("does not sufficiently differ from a web browsing experience"). The fix is a native-functionality bundle — widgets and notifications come out of the Icebox (they were the roadmap's "killer feature" anyway; the rejection just moved the date). Resubmit as 1.0 (6).
+
+- [ ] **P0** Home-screen widget (`StatSideWidgets` extension target): followed teams' live/next game, systemSmall + systemMedium + accessoryRectangular, monochrome design system, sparse budget-aware timeline (15 min live / hourly idle), last-good snapshot on network failure.
+- [ ] **P0** App Group `group.com.andyryanweir.sports`: entitlements for both targets, `FollowingStore` on the shared suite, one-time migration of existing follows.
+- [ ] **P0** Shared code to `StatSideShared/` (second synchronized root group; models + networking + Theme tokens compile into both targets).
+- [ ] **P0** Deep links: `statside://game/{id}`, `statside://team/{id}`, `statside://teams` via `onOpenURL` + a small Router; scheme unregistered (widgetURL/notification taps only in v1).
+- [ ] **P0** Local kickoff notifications for followed teams: one reminder 30 min before kickoff, app-wide bell toggle on TeamPage, contextual permission (never at launch), nearest-24 cap, kickoff-encoded request ids so reschedules are a pure diff.
+- [ ] **P0** Haptics (budget of exactly three): follow toggle, refresh success, live score change in game detail only.
+- [ ] **P0** ShareLink: game share text (status-shaped) in game detail + team page + row context menu.
+- [ ] **P0** Context menus: GameRow (follow either team, share), TeamBrowseRow + RankRow (follow).
+- [ ] **P0** Review notes rewrite in `docs/appstore/listing.md` (delete the "displays publicly available…" opener; lead with native functionality) + Resolution Center reply draft.
+- [ ] **P0** Build 6: `CURRENT_PROJECT_VERSION` = 6 in app **and** widget configs (must match).
+- [ ] **P1** `NextGameIntent` App Intent / Siri Shortcut ("What's my next game?").
+- [ ] **P2** App Store URL appended to share text once the app is live.
+- [ ] **P2** One home-screen-widget screenshot frame for the listing (manual simulator capture).
+
 ## Icebox (deliberately not now)
 
-- Widgets / Live Activities (likely the killer feature; after row design is proven in-app)
-- Notifications
+- ~~Widgets~~ / Live Activities *(widgets de-iceboxed 2026-08-04 → E7; Live Activities stay iced — no push story without a backend)*
+- ~~Notifications~~ *(local kickoff reminders de-iceboxed 2026-08-04 → E7; live-event push still needs a backend, still iced)*
 - College basketball (the offseason answer: same schools, same follows)
 - FCS/lower divisions
 - News content (may be never; scores-first is the identity)

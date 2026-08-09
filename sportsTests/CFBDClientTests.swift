@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import sports
+@testable import StatSide
 
 // Fixture JSON is derived from CFBD's v2 OpenAPI spec (2026-07-21) — the
 // shapes need re-verification against live responses once a key exists

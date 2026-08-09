@@ -64,7 +64,7 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 
 ## Conventions
 
-- File layout under `sports/`: `App/`, `Theme/`, `Models/`, `Networking/`, `Stores/`, `Features/{Scores,Rankings,GameDetail,Teams}/`.
+- File layout under `sports/`: `App/`, `Theme/`, `Stores/`, `Intents/`, `Features/{Scores,Rankings,GameDetail,Teams}/`. Shared code (models, networking, theme tokens) lives in top-level `StatSideShared/`, compiled into both the app and `StatSideWidgets/` (the widget extension). Entitlements live in `Config/`.
 - State: `@Observable` classes (iOS 17+, fine for our 18.0 floor), owned by views via `@State`, passed via `@Environment`.
 - One view per file. Views over ~100 lines get decomposed.
 - Names say what things are: `GameRow`, `WeekStrip`, `ConferenceAccordion`, `LiveDot`. No `Manager`, no `Helper`, no `Utils`.
@@ -93,6 +93,15 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-07-21 | Top 25 = any ranked participant (closes open question #3) | 2025 data: any-ranked is 15–21 games/wk, ranked-vs-ranked 3–6 — too thin for a section named Top 25 |
 | 2026-07-21 | "Other" section = both-sides-unknown only | FCS visitors were double-bucketing ~48 Week-1 games into Other; an FCS visitor now stays in its host's conference section |
 | 2026-07-21 | Dark mode backs conference marks with a light disc (`logoBacking`) | Navy marks (Big Ten, ACC) vanish on black; a backing disc is chrome, not color, so the budget holds |
+| 2026-08-04 | Widgets + local notifications de-iceboxed (epic E7) | Apple rejected 1.0 (5) under 4.2.2 Minimum Functionality; they were the roadmap's "killer feature" anyway. Live Activities stay iced (no push story) |
+| 2026-08-04 | pbxproj-edit rule amended: target/build-phase/build-setting edits allowed when adding targets, verified by lint + build; file references still never touched by hand | The widget extension is a genuinely new target; synchronized groups still handle all file membership |
+| 2026-08-04 | Shared code lives in `StatSideShared/` — a second synchronized root group compiled into both app and widget targets | The alternative (exception-set deny-list on `sports/`) silently adds every future app file to the widget target |
+| 2026-08-04 | App Group `group.com.andyryanweir.sports`; `FollowingStore` reads the shared suite, migrated once from standard defaults (standard copy kept) | Widget needs the follow set; migration flag lives in the suite |
+| 2026-08-04 | Deep links `statside://game/{id}` / `statside://team/{id}` / `statside://teams`, scheme deliberately unregistered (no `CFBundleURLTypes`) | widgetURL and notification taps deliver to `onOpenURL` without registration; registering would force a partial Info.plist for external openers nobody needs yet |
+| 2026-08-04 | Notifications: one local reminder 30 min before kickoff, app-wide bell toggle on TeamPage, permission asked contextually (bell tap or post-first-follow alert), never at launch | One reminder beats two under the 64-pending cap; per-team granularity is icebox material |
+| 2026-08-04 | Haptics budget: exactly three (follow toggle, refresh success, live score change in game detail only) | Mirrors the color budget's discipline; GameRow haptics on a 60-game Saturday would machine-gun the Taptic engine |
+| 2026-08-04 | UIKit import exception: `UIApplication.openNotificationSettingsURLString` for the bell's denied state | No SwiftUI equivalent exists |
+| 2026-08-04 | Widget provider fetches ESPN directly (no app-written snapshot as primary) | The widget must be live at 3:30 Saturday without the app opening; WidgetKit's ~40–70/day reload budget is itself the politeness throttle (~48 requests on a full Saturday). Adds an unattended request surface to the unofficial-API risk — volume negligible |
 
 ## Don'ts
 
@@ -100,6 +109,6 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 - Don't dedupe games across sections.
 - Don't add a date picker or day-based navigation.
 - Don't add third-party packages, analytics, or a backend without an explicit conversation first.
-- Don't edit `project.pbxproj` except for build settings that have no other home (deployment target, display name); synchronized groups make file management automatic — never touch file references.
+- Don't edit `project.pbxproj` file references by hand — synchronized groups make file management automatic. Build settings, and target/build-phase additions when adding a new target, are allowed (amended 2026-08-04 for the widget extension); always verify with `plutil -lint` + a full build.
 - Don't build for iPad/Mac/Vision idioms in v1.
 - Don't start coding a feature that isn't in BACKLOG.md — add it to the backlog and discuss first.

@@ -5,12 +5,15 @@ import SwiftUI
 struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
+    @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var store = ScoreboardStore(client: DataProvider.makeClient())
+    @State private var path: [Game] = []
+    @State private var refreshCount = 0
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 ScoresHeader(
                     seasonYear: store.seasonYear,
@@ -42,6 +45,8 @@ struct ScoresScreen: View {
             }
         }
         .task { await store.loadInitial() }
+        .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
+        .onChange(of: store.games) { _, _ in resolvePendingGame() }
         .onChange(of: scenePhase) { _, phase in
             // Polite guest: poll only while foregrounded.
             if phase == .active {
@@ -54,6 +59,17 @@ struct ScoresScreen: View {
 
     private var sections: [GameSection] {
         store.sections(followingIds: following.teamIds, grouping: uiState.scoresGrouping)
+    }
+
+    /// Lands a widget/notification tap on its game once the current week is
+    /// loaded. The widget only links current-week games, so `store.games`
+    /// is the complete search space; an id that isn't there (week rolled
+    /// over) degrades to landing on Scores.
+    private func resolvePendingGame() {
+        guard let pendingId = router.pendingGameId,
+              let game = store.games.first(where: { $0.id == pendingId }) else { return }
+        router.pendingGameId = nil
+        path = [game]
     }
 
     private var liveChipRow: some View {
@@ -88,7 +104,11 @@ struct ScoresScreen: View {
                 .padding(Spacing.sm)
             }
             .background(Color.bgRecessed)
-            .refreshable { await store.refresh() }
+            .refreshable {
+                await store.refresh()
+                refreshCount += 1
+            }
+            .sensoryFeedback(.success, trigger: refreshCount)
         }
     }
 
