@@ -1,0 +1,136 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --red: #FF453B;
+  --gray: #8E8E93;
+}
+
+body {
+  font-family: "Inter Display", "Inter", sans-serif;
+  background: #000;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+
+/* Soft glow behind the hero device, plus a faint bottom vignette. */
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 78% at 50% 88%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+    radial-gradient(90% 60% at 50% 0%, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0) 60%);
+}
+
+/* Hairline yard-line texture — chrome, not color. */
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.05) 0px,
+    rgba(255,255,255,0.05) 1px,
+    rgba(0,0,0,0) 1px,
+    rgba(0,0,0,0) 76px
+  );
+  -webkit-mask-image: radial-gradient(80% 62% at 50% 78%, #000 0%, rgba(0,0,0,0) 80%);
+  mask-image: radial-gradient(80% 62% at 50% 78%, #000 0%, rgba(0,0,0,0) 80%);
+  opacity: 0.75;
+}
+
+.content { position: relative; z-index: 2; height: 100%; }
+
+/* ---------- brand ---------- */
+
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand img {
+  border-radius: 24%;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.14);
+}
+.wordmark {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.headline {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.sub {
+  color: var(--gray);
+  font-family: "Inter", sans-serif;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+.dot {
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 0.28em rgba(255,69,59,0.22);
+}
+
+/* ---------- device ---------- */
+
+.phone {
+  position: absolute;
+  background: #0a0a0a;
+  border-radius: 15.5%/7.3%;
+  padding: 1.55%;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.20),
+    0 2px 0 0 rgba(255,255,255,0.06) inset,
+    0 44px 90px rgba(0,0,0,0.85),
+    0 12px 28px rgba(0,0,0,0.7);
+}
+.phone img {
+  display: block;
+  width: 100%;
+  border-radius: 14.2%/6.6%;
+}
+/* Glass edge highlight down the left rail. */
+.phone .glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 74%, rgba(255,255,255,0.06) 100%);
+  pointer-events: none;
+}
+.phone .label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -46px;
+  text-align: center;
+  font-family: "Inter", sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.42);
+}

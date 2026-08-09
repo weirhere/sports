@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage { width: 1080px; height: 1350px; }
+
+  .head {
+    position: absolute;
+    top: 110px; left: 0; right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .brand img { width: 48px; height: 48px; }
+  .wordmark { font-size: 36px; }
+
+  .headline { font-size: 82px; margin-top: 46px; }
+  .sub { font-size: 26px; margin-top: 26px; }
+  .pill { font-size: 15px; padding: 12px 22px; margin-top: 36px; }
+
+  .phone.hero  { width: 372px; left: 354px; top: 590px; z-index: 3; }
+  .phone.left  { width: 320px; left: 116px; top: 668px; z-index: 2;
+                 transform: rotate(-7deg); }
+  .phone.right { width: 320px; left: 644px; top: 668px; z-index: 2;
+                 transform: rotate(7deg); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="content">
+
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+
+      <div class="headline">College football,<br>at a glance.</div>
+      <div class="sub">Scores, rankings, and every conference — in one thumb, one scroll.</div>
+      <div class="pill"><span class="dot"></span> Live scores · No ads · No account</div>
+    </div>
+
+    <div class="phone left">
+      <img src="../../appstore/screenshots/03-rankings.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone right">
+      <img src="../../appstore/screenshots/02-game-detail.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/01-scores.png">
+      <div class="glare"></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
