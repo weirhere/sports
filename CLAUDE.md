@@ -69,6 +69,15 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 - One view per file. Views over ~100 lines get decomposed.
 - Names say what things are: `GameRow`, `WeekStrip`, `ConferenceAccordion`, `LiveDot`. No `Manager`, no `Helper`, no `Utils`.
 
+## Running the UI tests
+
+`sportsUITests` drives the real app against the live ESPN API — there are no fixtures. Two environment rules, both learned the hard way:
+
+- **Always pass `-parallel-testing-enabled NO`.** Parallel runs clone the simulator, and the clones fail wholesale with `Invalid device state` / `Mach error -308 — server died` before a single assertion runs. The failure looks nothing like a test failure, so it's easy to misread as a broken build.
+- **Check the simulator's Dynamic Type size before believing a failure.** At `accessibility-*` content sizes the header chips and the Teams search field no longer fit, so queries for them find nothing and previously-passing tests fail in unrelated-looking places. `ScreenshotTests` documents setting appearance and text size for accessibility passes; that state persists on the device afterward. Reset with `xcrun simctl ui <udid> content_size medium`.
+
+Because the data is live, assertions must not encode calendar facts. Don't wait on a specific poll (the AP Top 25 doesn't exist until mid-August, and `RankingsScreen` hides the picker entirely when only one poll came back) or on a specific week's games. Shared helpers for the recurring traps — retrying a tab tap that a navigation transition swallowed, scrolling the week strip without oscillating — live in `sportsUITests/UITestSupport.swift`.
+
 ## Decisions log
 
 | Date | Decision | Why |
