@@ -14,12 +14,13 @@ private let georgia = team("61", "Georgia")
 private let tennessee = team("2633", "Tennessee")
 
 private func game(status: GameStatus,
+                  date: Date? = nil,
                   homeScore: Int? = nil, awayScore: Int? = nil,
                   homeRecord: String? = nil, awayRecord: String? = nil,
                   homeRank: Int? = nil, awayRank: Int? = nil,
                   homeWinner: Bool? = nil, awayWinner: Bool? = nil,
                   broadcast: String? = nil) -> Game {
-    Game(id: "1", date: nil, name: nil, shortName: nil, weekNumber: 5,
+    Game(id: "1", date: date, name: nil, shortName: nil, weekNumber: 5,
          status: status,
          home: Competitor(team: tennessee, score: homeScore, record: homeRecord,
                           rank: homeRank, isHome: true, winner: homeWinner),
@@ -52,6 +53,28 @@ private func game(status: GameStatus,
             homeRecord: "4-1", awayRecord: "5-0", broadcast: "ESPN"))
         #expect(row.accessibilitySummary ==
                 "Georgia 5 and 0 at Tennessee 4 and 1, on ESPN")
+    }
+
+    // Kick times go relative inside 48 hours. Asserting on the day word only —
+    // the time itself is locale- and timezone-dependent.
+
+    @Test func preRowSpeaksTodayForAGameToday() {
+        let row = GameRow(game: game(status: .pre(detail: nil), date: .now))
+        #expect(row.accessibilitySummary.contains("Today"))
+    }
+
+    @Test func preRowSpeaksTomorrowForAGameTomorrow() {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
+        let row = GameRow(game: game(status: .pre(detail: nil), date: tomorrow))
+        #expect(row.accessibilitySummary.contains("Tomorrow"))
+    }
+
+    @Test func preRowFallsBackToTheWeekdayBeyondTomorrow() {
+        let nextWeek = Calendar.current.date(byAdding: .day, value: 8, to: .now)!
+        let summary = GameRow(game: game(status: .pre(detail: nil), date: nextWeek))
+            .accessibilitySummary
+        #expect(!summary.contains("Today"))
+        #expect(!summary.contains("Tomorrow"))
     }
 
     @Test func finalRowSpeaksOvertimeWhenDetailHasOT() {

@@ -102,6 +102,7 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 | 2026-08-04 | Haptics budget: exactly three (follow toggle, refresh success, live score change in game detail only) | Mirrors the color budget's discipline; GameRow haptics on a 60-game Saturday would machine-gun the Taptic engine |
 | 2026-08-04 | UIKit import exception: `UIApplication.openNotificationSettingsURLString` for the bell's denied state | No SwiftUI equivalent exists |
 | 2026-08-04 | Widget provider fetches ESPN directly (no app-written snapshot as primary) | The widget must be live at 3:30 Saturday without the app opening; WidgetKit's ~40–70/day reload budget is itself the politeness throttle (~48 requests on a full Saturday). Adds an unattended request surface to the unofficial-API risk — volume negligible |
+| 2026-08-09 | Scores rows show relative kick times ("Today 3:30 PM" / "Tomorrow 3:30 PM") inside 48 hours, the weekday beyond | On the Saturday itself — the app's whole use case — "Sat" is dead weight. Scores-screen rows only; share text, widget, and schedule strings stay absolute because they outlive the moment they're generated |
 
 ## Don'ts
 

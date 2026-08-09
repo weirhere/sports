@@ -53,7 +53,7 @@ struct SectionAccordion: View {
                             .foregroundStyle(.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Spacing.lg)
-                            .padding(.top, index == 0 ? 0 : Spacing.sm)
+                            .padding(.top, Spacing.md)
                             .padding(.bottom, Spacing.xs)
                     }
                     NavigationLink(value: game) {

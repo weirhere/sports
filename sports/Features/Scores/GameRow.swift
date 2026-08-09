@@ -15,7 +15,9 @@ struct GameRow: View {
                 teamLine(game.home)
             }
             // Team names win the width fight with the trailing column —
-            // "New Mexico State" beats a broadcast string's elbow room.
+            // "New Mexico State" beats a broadcast string's elbow room. The
+            // kick time is the one exception: it's short, load-bearing, and
+            // pinned to its natural width (see `trailing`).
             .layoutPriority(1)
             Spacer(minLength: Spacing.sm)
             trailing
@@ -73,6 +75,11 @@ struct GameRow: View {
                 Text(kickTime)
                     .font(.meta)
                     .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+                    // "Tomorrow 3:30 PM" is wide enough to wrap under the
+                    // names' layout priority at large Dynamic Type. The time
+                    // holds its natural width; the name truncates instead.
+                    .fixedSize(horizontal: true, vertical: false)
                 if let broadcast = game.broadcast {
                     // First network only: "ESPN Unlmtd/The CW Network"
                     // otherwise swallows the row.
@@ -155,7 +162,19 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
-        return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+        return Self.relativeKick(date, weekday: .abbreviated)
+    }
+
+    /// "Today 3:30 PM" inside the 48 hours that matter, the weekday beyond
+    /// that. `isDateInToday`/`isDateInTomorrow` settle the local day boundary,
+    /// so no manual date math. Shared with the VoiceOver sentence, which asks
+    /// for the wide weekday.
+    static func relativeKick(_ date: Date, weekday: Date.FormatStyle.Symbol.Weekday) -> String {
+        let calendar = Calendar.current
+        let time = date.formatted(.dateTime.hour().minute())
+        if calendar.isDateInToday(date) { return "Today \(time)" }
+        if calendar.isDateInTomorrow(date) { return "Tomorrow \(time)" }
+        return date.formatted(.dateTime.weekday(weekday).hour().minute())
     }
 
     private func liveDetail(clock: String?, period: Int?) -> String {
@@ -179,7 +198,7 @@ struct GameRow: View {
             }
             var parts = ["\(side(game.away)) at \(side(game.home))"]
             if let date = game.date {
-                parts.append(date.formatted(.dateTime.weekday(.wide).hour().minute()))
+                parts.append(Self.relativeKick(date, weekday: .wide))
             }
             if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")
