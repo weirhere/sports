@@ -6,14 +6,56 @@ struct ScheduleRow: View {
     let game: Game
     let teamId: String
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .caption) private var dateWidth: CGFloat = 52
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
+        Group {
+            if isStacked { stackedBody } else { compactBody }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var compactBody: some View {
         HStack(spacing: Spacing.md) {
-            Text(game.date?.formatted(.dateTime.month(.abbreviated).day()) ?? "TBD")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .frame(width: 52, alignment: .leading)
+            dateText
+                .frame(minWidth: dateWidth, alignment: .leading)
+            matchup
+            Spacer()
+            trailing
+        }
+    }
+
+    /// The date moves to its own line above the matchup; four columns don't
+    /// survive accessibility sizes on a phone.
+    private var stackedBody: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            dateText
+            HStack(spacing: Spacing.sm) {
+                matchup
+                Spacer(minLength: Spacing.sm)
+                trailing
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var dateText: some View {
+        Text(game.date?.formatted(.dateTime.month(.abbreviated).day()) ?? "TBD")
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var matchup: some View {
+        HStack(spacing: Spacing.sm) {
             Text(isHome ? "vs" : "@")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
@@ -22,14 +64,8 @@ struct ScheduleRow: View {
             Text(opponent.team.location)
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)
-                .lineLimit(1)
-            Spacer()
-            trailing
+                .lineLimit(isStacked ? 2 : 1)
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 7)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilitySummary)
     }
 
     /// One spoken sentence from this team's perspective: "September 27,
@@ -87,10 +123,15 @@ struct ScheduleRow: View {
             Text(game.date?.formatted(.dateTime.hour().minute()) ?? "TBD")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+                // Kick time holds its natural width; the opponent name
+                // wraps or truncates instead of the clock breaking apart.
+                .fixedSize(horizontal: true, vertical: false)
         case .other(let detail):
             Text(detail ?? "—")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
+                .lineLimit(1)
         }
     }
 }
