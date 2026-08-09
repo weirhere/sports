@@ -11,13 +11,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		427AB20B300EF561001EDE50 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 427AB145300EF55F001EDE50 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 427AB204300EF561001EDE50;
-			remoteInfo = StatSideWidgets;
-		};
 		427AB15B300EF561001EDE50 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 427AB145300EF55F001EDE50 /* Project object */;
@@ -31,6 +24,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 427AB14C300EF55F001EDE50;
 			remoteInfo = sports;
+		};
+		427AB20B300EF561001EDE50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 427AB145300EF55F001EDE50 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 427AB204300EF561001EDE50;
+			remoteInfo = StatSideWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -49,10 +49,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		427AB201300EF561001EDE50 /* StatSideWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatSideWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		427AB14D300EF55F001EDE50 /* sports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sports.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		427AB14D300EF55F001EDE50 /* sports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = sports.app; path = StatSide.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		427AB15A300EF561001EDE50 /* sportsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sportsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		427AB164300EF561001EDE50 /* sportsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sportsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		427AB201300EF561001EDE50 /* StatSideWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatSideWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -66,19 +66,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		427AB202300EF561001EDE50 /* StatSideShared */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = StatSideShared;
-			sourceTree = "<group>";
-		};
-		427AB203300EF561001EDE50 /* StatSideWidgets */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				427AB20F300EF561001EDE50 /* Exceptions for "StatSideWidgets" folder in "StatSideWidgets" target */,
-			);
-			path = StatSideWidgets;
-			sourceTree = "<group>";
-		};
 		427AB14F300EF55F001EDE50 /* sports */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = sports;
@@ -92,6 +79,19 @@
 		427AB167300EF561001EDE50 /* sportsUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = sportsUITests;
+			sourceTree = "<group>";
+		};
+		427AB202300EF561001EDE50 /* StatSideShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StatSideShared;
+			sourceTree = "<group>";
+		};
+		427AB203300EF561001EDE50 /* StatSideWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				427AB20F300EF561001EDE50 /* Exceptions for "StatSideWidgets" folder in "StatSideWidgets" target */,
+			);
+			path = StatSideWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -154,29 +154,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		427AB204300EF561001EDE50 /* StatSideWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 427AB208300EF561001EDE50 /* Build configuration list for PBXNativeTarget "StatSideWidgets" */;
-			buildPhases = (
-				427AB205300EF561001EDE50 /* Sources */,
-				427AB206300EF561001EDE50 /* Frameworks */,
-				427AB207300EF561001EDE50 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				427AB203300EF561001EDE50 /* StatSideWidgets */,
-				427AB202300EF561001EDE50 /* StatSideShared */,
-			);
-			name = StatSideWidgets;
-			packageProductDependencies = (
-			);
-			productName = StatSideWidgets;
-			productReference = 427AB201300EF561001EDE50 /* StatSideWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		427AB14C300EF55F001EDE50 /* sports */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 427AB16E300EF561001EDE50 /* Build configuration list for PBXNativeTarget "sports" */;
@@ -247,6 +224,29 @@
 			productName = sportsUITests;
 			productReference = 427AB164300EF561001EDE50 /* sportsUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		427AB204300EF561001EDE50 /* StatSideWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 427AB208300EF561001EDE50 /* Build configuration list for PBXNativeTarget "StatSideWidgets" */;
+			buildPhases = (
+				427AB205300EF561001EDE50 /* Sources */,
+				427AB206300EF561001EDE50 /* Frameworks */,
+				427AB207300EF561001EDE50 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				427AB202300EF561001EDE50 /* StatSideShared */,
+				427AB203300EF561001EDE50 /* StatSideWidgets */,
+			);
+			name = StatSideWidgets;
+			packageProductDependencies = (
+			);
+			productName = StatSideWidgets;
+			productReference = 427AB201300EF561001EDE50 /* StatSideWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -359,11 +359,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		427AB20C300EF561001EDE50 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 427AB204300EF561001EDE50 /* StatSideWidgets */;
-			targetProxy = 427AB20B300EF561001EDE50 /* PBXContainerItemProxy */;
-		};
 		427AB15C300EF561001EDE50 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 427AB14C300EF55F001EDE50 /* sports */;
@@ -373,6 +368,11 @@
 			isa = PBXTargetDependency;
 			target = 427AB14C300EF55F001EDE50 /* sports */;
 			targetProxy = 427AB165300EF561001EDE50 /* PBXContainerItemProxy */;
+		};
+		427AB20C300EF561001EDE50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 427AB204300EF561001EDE50 /* StatSideWidgets */;
+			targetProxy = 427AB20B300EF561001EDE50 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -631,64 +631,6 @@
 			};
 			name = Release;
 		};
-		427AB209300EF561001EDE50 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/StatSideWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = 8XZZYVAD42;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = StatSideWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = StatSide;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andyryanweir.sports.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
-				SDKROOT = auto;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		427AB20A300EF561001EDE50 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/StatSideWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = 8XZZYVAD42;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = StatSideWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = StatSide;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andyryanweir.sports.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
-				SDKROOT = auto;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
 		427AB175300EF561001EDE50 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -735,6 +677,70 @@
 			};
 			name = Release;
 		};
+		427AB209300EF561001EDE50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/StatSideWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 8XZZYVAD42;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StatSideWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = StatSide;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andyryanweir.sports.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		427AB20A300EF561001EDE50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/StatSideWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 8XZZYVAD42;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StatSideWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = StatSide;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andyryanweir.sports.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -765,20 +771,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		427AB208300EF561001EDE50 /* Build configuration list for PBXNativeTarget "StatSideWidgets" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				427AB209300EF561001EDE50 /* Debug */,
-				427AB20A300EF561001EDE50 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		427AB174300EF561001EDE50 /* Build configuration list for PBXNativeTarget "sportsUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				427AB175300EF561001EDE50 /* Debug */,
 				427AB176300EF561001EDE50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		427AB208300EF561001EDE50 /* Build configuration list for PBXNativeTarget "StatSideWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				427AB209300EF561001EDE50 /* Debug */,
+				427AB20A300EF561001EDE50 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
