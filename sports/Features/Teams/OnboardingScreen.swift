@@ -6,6 +6,7 @@ import SwiftUI
 struct OnboardingScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var conferences: [ConferenceTeams] = []
     @State private var isLoading = false
@@ -117,6 +118,8 @@ struct OnboardingScreen: View {
         .cardSurface()
     }
 
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
     /// The whole row is the follow toggle — a bigger target than the star
     /// alone, which is what a first-launch moment wants.
     private func teamRow(_ team: Team) -> some View {
@@ -127,17 +130,29 @@ struct OnboardingScreen: View {
             HStack(spacing: Spacing.md) {
                 LogoImage(url: team.logoURL)
                     .frame(width: logoSize, height: logoSize)
-                Text(team.location)
+                // At accessibility sizes the nickname drops under the
+                // location; side by side, both collapse to ellipses and the
+                // first screen a new user sees is unreadable.
+                let location = Text(team.location)
                     .font(isFollowing ? .teamNameEmphasis : .teamName)
                     .foregroundStyle(.textPrimary)
-                    .lineLimit(1)
-                if let nickname = team.name {
-                    Text(nickname)
+                    .lineLimit(isStacked ? 2 : 1)
+                let nickname = team.name.map {
+                    Text($0)
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(isStacked ? 2 : 1)
                 }
-                Spacer()
+                if isStacked {
+                    VStack(alignment: .leading, spacing: 2) {
+                        location
+                        nickname
+                    }
+                } else {
+                    location
+                    nickname
+                }
+                Spacer(minLength: Spacing.sm)
                 Image(systemName: isFollowing ? "star.fill" : "star")
                     .font(.system(size: 16))
                     .foregroundStyle(.textPrimary)

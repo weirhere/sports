@@ -5,6 +5,11 @@ import SwiftUI
 struct TeamStatsCompare: View {
     let summary: GameSummary
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var valueWidth: CGFloat = 64
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -25,22 +30,29 @@ struct TeamStatsCompare: View {
         .padding(.bottom, Spacing.sm)
     }
 
+    /// Three across the row until accessibility sizes, where the label takes
+    /// its own line above the two values — otherwise "27:28" splits into
+    /// "27:2" over "8".
     private func statRow(_ stat: StatComparison) -> some View {
         VStack(spacing: Spacing.xs) {
-            HStack {
-                Text(stat.away)
-                    .font(.meta.monospacedDigit())
-                    .foregroundStyle(.textPrimary)
-                    .frame(width: 64, alignment: .leading)
-                Spacer()
-                Text(stat.label)
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
-                Spacer()
-                Text(stat.home)
-                    .font(.meta.monospacedDigit())
-                    .foregroundStyle(.textPrimary)
-                    .frame(width: 64, alignment: .trailing)
+            if isStacked {
+                labelText(stat)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    valueText(stat.away, alignment: .leading)
+                    Spacer(minLength: Spacing.md)
+                    valueText(stat.home, alignment: .trailing)
+                }
+            } else {
+                HStack {
+                    valueText(stat.away, alignment: .leading)
+                        .frame(minWidth: valueWidth, alignment: .leading)
+                    Spacer()
+                    labelText(stat)
+                    Spacer()
+                    valueText(stat.home, alignment: .trailing)
+                        .frame(minWidth: valueWidth, alignment: .trailing)
+                }
             }
             if let shares = shares(stat) {
                 GeometryReader { proxy in
@@ -65,6 +77,23 @@ struct TeamStatsCompare: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 5)
+    }
+
+    private func labelText(_ stat: StatComparison) -> some View {
+        Text(stat.label)
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+    }
+
+    private func valueText(_ value: String, alignment: TextAlignment) -> some View {
+        Text(value)
+            .font(.meta.monospacedDigit())
+            .foregroundStyle(.textPrimary)
+            .multilineTextAlignment(alignment)
+            .lineLimit(1)
+            // Values are short and load-bearing — they hold their natural
+            // width and the label gives ground instead.
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private func shares(_ stat: StatComparison) -> (away: CGFloat, home: CGFloat)? {
