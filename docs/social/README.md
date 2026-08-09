@@ -61,6 +61,12 @@ gradients and positions its own devices and crops.
   the card width and offset with negative `top` to land on the region you want.
   Screenshots are 1320 × 2868, so `scale = card_width / 1320` and
   `top = -region_y * scale`. Change the screenshots and every offset moves.
+- Device frames are driven by one number: `font-size` on `.phone` sets its
+  width (`width: 1em`), and the bezel and radii are `em` fractions of it. The
+  outer radius is `screen-radius + bezel`, so the curves stay concentric at any
+  size. Don't switch the bezel back to a percentage — percentage padding
+  resolves against the containing block, not the element, which pins the bezel
+  to a fixed width while the radii scale.
 - Absolute positioning inside `.content` can silently drop content in headless
   renders — keep copy in normal flow and let the flex column stack it.
 - Screens are from Week 10 of the 2025 season with final poll data, so the

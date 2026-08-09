@@ -99,9 +99,16 @@ body {
 
 .phone {
   position: absolute;
+  /* 1em == the phone's width, so a single font-size drives the whole device.
+     Percentage padding would resolve against the stage, not the phone, which
+     leaves the bezel a fixed width while the radii scale — never concentric. */
+  --bezel: 0.022em;
+  --screen-radius: 0.138em;
+  width: 1em;
   background: #0a0a0a;
-  border-radius: 15.5%/7.3%;
-  padding: 1.55%;
+  padding: var(--bezel);
+  /* Concentric: the outer curve is the screen's curve plus the bezel around it. */
+  border-radius: calc(var(--screen-radius) + var(--bezel));
   box-shadow:
     0 0 0 1px rgba(255,255,255,0.20),
     0 2px 0 0 rgba(255,255,255,0.06) inset,
@@ -111,13 +118,13 @@ body {
 .phone img {
   display: block;
   width: 100%;
-  border-radius: 14.2%/6.6%;
+  border-radius: var(--screen-radius);
 }
 /* Glass edge highlight down the left rail. */
 .phone .glare {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
+  border-radius: var(--screen-radius);
   background: linear-gradient(105deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 74%, rgba(255,255,255,0.06) 100%);
   pointer-events: none;
 }
