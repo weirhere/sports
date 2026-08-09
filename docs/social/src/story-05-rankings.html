@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background:
+      radial-gradient(110% 50% at 50% 86%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+      radial-gradient(80% 30% at 50% 8%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(70% 42% at 50% 72%, #000 0%, rgba(0,0,0,0) 80%);
+    mask-image: radial-gradient(70% 42% at 50% 72%, #000 0%, rgba(0,0,0,0) 80%);
+  }
+  .phone.hero { font-size: 520px; left: 280px; top: 946px; z-index: 3; }
+</style>
+</head>
+<body>
+<div class="stage stage9">
+  <div class="content">
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+      <div class="kicker">Rankings and details</div>
+      <div class="headline">Polls, plays,<br>whole seasons.</div>
+      <ul class="bullets">
+        <li><b>AP Top 25 and Coaches Poll</b>, with movement arrows</li>
+        <li><b>Game pages</b> — line score, scoring plays, drive log, stats</li>
+        <li><b>Team pages</b> — full season schedule and results</li>
+        <li><b>Past seasons</b> back to 2014</li>
+      </ul>
+    </div>
+
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/03-rankings.png">
+      <div class="glare"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

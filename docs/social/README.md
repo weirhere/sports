@@ -20,6 +20,26 @@ crops identically in the timeline.
 
 Tweet 6 has no device on purpose. It's about absence.
 
+## Story set (9:16)
+
+The same seven beats at 1080 × 1920 (rendered 2160 × 3840), so the thread can
+run as a Story sequence in the same order.
+
+| Frame | File |
+|---|---|
+| 1 | `statside-story-1080x1920.png` |
+| 2 | `statside-story-02-follow.png` |
+| 3 | `statside-story-03-saturdays.png` |
+| 4 | `statside-story-04-week.png` |
+| 5 | `statside-story-05-rankings.png` |
+| 6 | `statside-story-06-quiet.png` |
+| 7 | `statside-story-07-closer.png` |
+
+Sources are `src/story.html` and `src/story-*.html`, all rendered at 1080,1920.
+Shared story styling is the `.stage9` block in `social.css` — note that
+`.stage9 .head` outranks a bare `.head`, so per-file overrides need the
+`.stage9` prefix or they silently lose.
+
 ## Other crops of the hero
 
 Same composition as tweet 1, reshaped for feeds that aren't 16:9.
