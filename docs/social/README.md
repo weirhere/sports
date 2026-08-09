@@ -99,3 +99,24 @@ gradients and positions its own devices and crops.
 - Screens are from Week 10 of the 2025 season with final poll data, so the
   graphics are dated to that slate. Reshoot the App Store screenshots and
   re-render to move them forward.
+
+## App Store screenshot set (1284 × 2778)
+
+The same seven designs re-rendered at the size App Store Connect accepts for
+the 6.5" slot, in `docs/appstore/screenshots-marketing-1284x2778/`.
+
+This is a reflow, not a resize. A story is 1080 × 1920 (ratio 0.5625); the App
+Store slot is 1284 × 2778 (0.4622) — taller and proportionally narrower. Scaling
+the raster would either squash the artwork or slice the bleeding devices off
+flat with black beneath them.
+
+Sources are `src/as-*.html`: each one is its `story-*.html` counterpart plus a
+trailing `<style>` block that overrides the stage and the vertical positions.
+The trick is the stage becomes 1080 × 2337 with `zoom: 1.18889` — 2337 is
+2778 ÷ 1.18889, so the layout stays in familiar 1080-wide coordinates and zoom
+carries it to the exact pixel size Apple wants. Render at
+`--window-size=1284,2778 --force-device-scale-factor=1`; the output must be
+exactly 1284 × 2778 or App Store Connect rejects it.
+
+The Instagram safe-zone insets are pulled back in these, since the App Store
+draws no chrome over the image.

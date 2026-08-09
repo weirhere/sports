@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background: radial-gradient(62% 34% at 50% 48%, rgba(255,255,255,0.075) 0%, rgba(0,0,0,0) 68%);
+  }
+  .stage::after { display: none; }
+
+  .stage9 .head { top: 50%; transform: translateY(-50%); }
+  .stage9 .headline { font-size: 78px; }
+
+  .row {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 16px; margin-top: 54px; max-width: 820px;
+  }
+  .row .pill { font-size: 15px; padding: 14px 24px; }
+  .stage9 .sub { margin-top: 48px; max-width: 780px; }
+</style>
+<style>
+  /* App Store 1284x2778 reflow. */
+  .stage { height: 2337px; zoom: 1.18889; }
+</style>
+</head>
+<body>
+<div class="stage stage9">
+  <div class="content">
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+      <div class="kicker">Designed quiet</div>
+      <div class="headline">Nothing between you<br>and the scores.</div>
+
+      <div class="row">
+        <span class="pill">No banner ads</span>
+        <span class="pill">No autoplay video</span>
+        <span class="pill">No account</span>
+        <span class="pill">No tracking</span>
+      </div>
+
+      <div class="sub">Black, white, and your team's colors. StatSide collects no data — your followed teams live on your phone and nowhere else.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
