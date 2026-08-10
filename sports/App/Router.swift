@@ -2,13 +2,17 @@ import Foundation
 import Observation
 
 /// Pending navigation intents from outside the view hierarchy — widget
-/// taps and notification taps. Screens consume their pending id once the
-/// matching data is loaded; an id that never resolves quietly expires when
-/// the next intent replaces it.
+/// taps, notification taps, and app-wide search results. Screens consume
+/// their pending id once the matching data is loaded; an id that never
+/// resolves quietly expires when the next intent replaces it.
 @Observable
 final class Router {
     var pendingGameId: String?
     var pendingTeamId: String?
+    /// Search's conference intent. Today the Teams tab consumes it (expand
+    /// + scroll to the section); a dedicated conference destination can take
+    /// it over without search changing.
+    var pendingConferenceId: Int?
 
     func open(_ link: DeepLink) {
         switch link {

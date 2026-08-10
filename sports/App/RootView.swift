@@ -2,14 +2,21 @@ import SwiftUI
 
 struct RootView: View {
     enum Tab {
-        case scores, rankings, teams
+        case scores, rankings, teams, search
     }
 
     @State private var following = FollowingStore()
     @State private var uiState = UIStateStore()
     @State private var notifications = NotificationScheduler()
+    // Scoreboard and team directory live here, not in their tabs, so the
+    // search cover (and any tab) sees the same loaded data, and polling
+    // follows the scene's lifecycle instead of one tab's.
+    @State private var scoreboard = ScoreboardStore(client: DataProvider.makeClient())
+    @State private var directory = TeamDirectoryStore()
     @State private var router: Router
     @State private var selectedTab: Tab = .scores
+    /// Where Cancel on the search tab returns to.
+    @State private var lastContentTab: Tab = .scores
     @State private var showOnboarding = false
     @State private var showReminderOffer = false
     @Environment(\.scenePhase) private var scenePhase
@@ -20,17 +27,25 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ScoresScreen()
-                .tabItem { Label("Scores", systemImage: "football") }
-                .tag(Tab.scores)
-            RankingsScreen()
-                .tabItem { Label("Rankings", systemImage: "list.number") }
-                .tag(Tab.rankings)
-            TeamsScreen()
-                .tabItem { Label("Teams", systemImage: "shield.lefthalf.filled") }
-                .tag(Tab.teams)
+            SwiftUI.Tab("Scores", systemImage: "football", value: Tab.scores) {
+                ScoresScreen()
+            }
+            SwiftUI.Tab("Rankings", systemImage: "list.number", value: Tab.rankings) {
+                RankingsScreen()
+            }
+            SwiftUI.Tab("Teams", systemImage: "shield.lefthalf.filled", value: Tab.teams) {
+                TeamsScreen()
+            }
+            // The search role renders FotMob-style on iOS 26 — a separate
+            // circular magnifier beside the floating tab bar. iOS 18 shows
+            // it as a plain fourth tab.
+            SwiftUI.Tab(value: Tab.search, role: .search) {
+                SearchScreen(onCancel: { selectedTab = lastContentTab })
+            }
         }
         .tint(.primary)
+        .task { await scoreboard.loadInitial() }
+        .task { await directory.load() }
         .onAppear {
             // The pick-your-teams moment: offered once, and only to someone
             // who follows nobody (an upgrader with follows never sees it).
@@ -54,6 +69,12 @@ struct RootView: View {
         .onChange(of: router.pendingTeamId) { _, id in
             if id != nil { selectedTab = .teams }
         }
+        .onChange(of: router.pendingConferenceId) { _, id in
+            if id != nil { selectedTab = .teams }
+        }
+        .onChange(of: selectedTab) { _, tab in
+            if tab != .search { lastContentTab = tab }
+        }
         .onChange(of: following.teamIds) { oldIds, newIds in
             Task { await notifications.resync(followedIds: newIds) }
             // The contextual permission moment: right after the first-ever
@@ -65,10 +86,14 @@ struct RootView: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            Task {
-                await notifications.refreshAuthorization()
-                await notifications.resync(followedIds: following.teamIds)
+            if phase == .active {
+                scoreboard.startPollingIfNeeded()
+                Task {
+                    await notifications.refreshAuthorization()
+                    await notifications.resync(followedIds: following.teamIds)
+                }
+            } else {
+                scoreboard.stopPolling()
             }
         }
         .alert("Get kickoff reminders?", isPresented: $showReminderOffer) {
@@ -88,6 +113,8 @@ struct RootView: View {
         .environment(uiState)
         .environment(router)
         .environment(notifications)
+        .environment(scoreboard)
+        .environment(directory)
     }
 }
 

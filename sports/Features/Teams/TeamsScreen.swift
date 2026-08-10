@@ -6,14 +6,15 @@ struct TeamsScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
+    @Environment(TeamDirectoryStore.self) private var directory
 
-    @State private var conferences: [ConferenceTeams] = []
-    @State private var isLoading = false
-    @State private var lastError: String?
     @State private var searchText = ""
     @State private var path: [Team] = []
+    /// Drives the browse list's scroll — set when a search result lands on
+    /// a conference, tracked (harmlessly) as the user scrolls.
+    @State private var scrolledSection: String?
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    private var conferences: [ConferenceTeams] { directory.conferences }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -25,9 +26,20 @@ struct TeamsScreen: View {
                     TeamPage(team: team)
                 }
         }
-        .task { await load() }
+        .task { await directory.load() }
+        // Tab content is created lazily (iOS 18 Tab builder), so an intent
+        // set before the first visit predates the onChange observers —
+        // onAppear catches it.
+        .onAppear {
+            resolvePendingTeam()
+            resolvePendingConference()
+        }
         .onChange(of: router.pendingTeamId) { _, _ in resolvePendingTeam() }
-        .onChange(of: conferences) { _, _ in resolvePendingTeam() }
+        .onChange(of: router.pendingConferenceId) { _, _ in resolvePendingConference() }
+        .onChange(of: directory.conferences) { _, _ in
+            resolvePendingTeam()
+            resolvePendingConference()
+        }
     }
 
     /// Lands a deep-linked team once the browse data is loaded; an unknown
@@ -39,19 +51,39 @@ struct TeamsScreen: View {
         path = [team]
     }
 
+    /// Lands a search result's conference: browse list, section expanded,
+    /// scrolled to the top of the card. The seam a dedicated conference
+    /// destination would take over — search itself only emits the intent.
+    private func resolvePendingConference() {
+        guard let pendingId = router.pendingConferenceId,
+              let conference = conferences.first(where: { $0.id == pendingId }) else { return }
+        router.pendingConferenceId = nil
+        searchText = ""
+        path = []
+        let sectionId = sectionId(for: conference)
+        uiState.expandConference(sectionId)
+        // The intent arrives while the search cover is still dismissing and
+        // the tab switch is in flight; a scroll set before this ScrollView
+        // has laid out is silently dropped.
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            withAnimation { scrolledSection = sectionId }
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if conferences.isEmpty {
             VStack(spacing: Spacing.md) {
                 Spacer()
-                if isLoading {
+                if directory.isLoading {
                     ProgressView()
                 } else {
-                    Text(lastError ?? "No teams")
+                    Text(directory.lastError ?? "No teams")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                     Button("Retry") {
-                        Task { await load() }
+                        Task { await directory.load() }
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
@@ -66,6 +98,7 @@ struct TeamsScreen: View {
                             teamSection(title: "Following",
                                         sectionId: Self.followingSectionId,
                                         teams: followedTeams)
+                                .id(Self.followingSectionId)
                         }
                         ForEach(conferences) { conference in
                             teamSection(title: conference.name,
@@ -73,6 +106,7 @@ struct TeamsScreen: View {
                                         teams: conference.teams,
                                         logoURL: Conference.logoURL(for: conference.id),
                                         isConference: true)
+                                .id(sectionId(for: conference))
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {
@@ -82,10 +116,18 @@ struct TeamsScreen: View {
                         }
                         .padding(.vertical, Spacing.xs)
                         .cardSurface()
+                    } else {
+                        Text("No teams match “\(searchText.trimmingCharacters(in: .whitespaces))”")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, Spacing.xl)
                     }
                 }
                 .padding(Spacing.sm)
+                .scrollTargetLayout()
             }
+            .scrollPosition(id: $scrolledSection, anchor: .top)
             .background(Color.bgRecessed)
             .safeAreaInset(edge: .top, spacing: 0) {
                 SearchField(text: $searchText, prompt: "Find a team")
@@ -153,24 +195,7 @@ struct TeamsScreen: View {
     }
 
     private var searchResults: [Team] {
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
-        return conferences.flatMap(\.teams).filter { team in
-            [team.location, team.name, team.abbreviation, team.displayName]
-                .compactMap(\.self)
-                .contains { $0.localizedCaseInsensitiveContains(query) }
-        }
-    }
-
-    private func load() async {
-        guard conferences.isEmpty else { return }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            conferences = try await client.fbsConferences()
-            lastError = nil
-        } catch {
-            lastError = "Couldn't load teams."
-        }
+        SearchResults.teams(matching: searchText, in: conferences,
+                            followingIds: following.teamIds)
     }
 }
