@@ -9,7 +9,9 @@ struct ScoresScreen: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var store = ScoreboardStore(client: DataProvider.makeClient())
-    @State private var path: [Game] = []
+    // NavigationPath, not [Game]: the stack pushes Team too (game detail's
+    // header links to the team page), and a typed path can't hold both.
+    @State private var path = NavigationPath()
     @State private var refreshCount = 0
 
     var body: some View {
@@ -43,6 +45,9 @@ struct ScoresScreen: View {
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
             }
+            .navigationDestination(for: Team.self) { team in
+                TeamPage(team: team)
+            }
         }
         .task { await store.loadInitial() }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
@@ -69,7 +74,7 @@ struct ScoresScreen: View {
         guard let pendingId = router.pendingGameId,
               let game = store.games.first(where: { $0.id == pendingId }) else { return }
         router.pendingGameId = nil
-        path = [game]
+        path = NavigationPath([game])
     }
 
     private var liveChipRow: some View {

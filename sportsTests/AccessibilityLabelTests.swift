@@ -134,6 +134,35 @@ private func game(status: GameStatus,
 }
 
 @MainActor
+@Suite struct GameDetailHeaderAccessibilityTests {
+    // The header's team columns are NavigationLinks to the team page; each
+    // speaks its own side. With no summary loaded the screen falls back to
+    // the pushed Game, so labels are deterministic.
+
+    @Test func liveSideSpeaksLocationAndScore() {
+        let screen = GameDetailScreen(game: game(
+            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+            homeScore: 17, awayScore: 24))
+        #expect(screen.sideAccessibilityLabel((georgia, 24, nil, nil)) == "Georgia 24")
+        #expect(screen.sideAccessibilityLabel((tennessee, 17, nil, nil)) == "Tennessee 17")
+    }
+
+    @Test func preGameSideSuppressesTheScore() {
+        let screen = GameDetailScreen(game: game(status: .pre(detail: nil)))
+        #expect(screen.sideAccessibilityLabel((georgia, nil, "5-0", nil)) == "Georgia")
+        // Even a stray score stays quiet before kickoff.
+        #expect(screen.sideAccessibilityLabel((georgia, 0, "5-0", nil)) == "Georgia")
+    }
+
+    @Test func finalSideSpeaksTheScore() {
+        let screen = GameDetailScreen(game: game(
+            status: .final(detail: "Final"),
+            homeScore: 24, awayScore: 27, homeWinner: false, awayWinner: true))
+        #expect(screen.sideAccessibilityLabel((georgia, 27, nil, true)) == "Georgia 27")
+    }
+}
+
+@MainActor
 @Suite struct RankRowAccessibilityTests {
     private func ranked(current: Int, previous: Int?, votes: Int? = nil,
                         record: String? = nil) -> RankedTeam {
