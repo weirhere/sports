@@ -56,6 +56,33 @@ private func fixture(_ name: String) throws -> Data {
         let dates = schedule.games.compactMap(\.date)
         #expect(dates == dates.sorted())
     }
+
+    @Test func mergesPostseasonEventsIntoSchedule() throws {
+        let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: fixture("team-schedule-live"))
+        // ESPN serves postseason as a separate seasontype=3 request; the
+        // client hands its events to the mapper as extras.
+        let bowlJSON = Data("""
+        {
+            "id": "999999", "date": "2026-01-01T17:00Z", "name": "Peach Bowl",
+            "shortName": "UGA vs OSU",
+            "competitions": [{
+                "competitors": [
+                    {"homeAway": "home", "team": {"id": "61"}},
+                    {"homeAway": "away", "team": {"id": "194"}}
+                ]
+            }]
+        }
+        """.utf8)
+        let bowl = try JSONDecoder().decode(ScheduleEventDTO.self, from: bowlJSON)
+        let schedule = ESPNMapper.teamSchedule(from: dto, extraEvents: [bowl])
+
+        #expect(schedule.games.count == 14)
+        // The January bowl sorts after the regular-season finale.
+        #expect(schedule.games.last?.id == "999999")
+        // The regular response still owns team identity and record.
+        #expect(schedule.team?.id == "61")
+        #expect(schedule.standing == "1st in SEC")
+    }
 }
 
 @Suite struct SummaryDecodingTests {
