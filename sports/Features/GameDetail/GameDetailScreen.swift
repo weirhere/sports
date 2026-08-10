@@ -133,25 +133,12 @@ struct GameDetailScreen: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.top, Spacing.md)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(statusLine.replacingOccurrences(of: "\n", with: ", "))
             headerSide(competitor(game.home, summary?.home))
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(headerAccessibilityLabel)
-    }
-
-    private var headerAccessibilityLabel: String {
-        let away = competitor(game.away, summary?.away)
-        let home = competitor(game.home, summary?.home)
-        func side(_ s: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
-            guard showsScores, let score = s.score else { return s.team.location }
-            return "\(s.team.location) \(score)"
-        }
-        let matchup = showsScores
-            ? "\(side(away)), \(side(home))"
-            : "\(away.team.location) at \(home.team.location)"
-        return "\(matchup), \(statusLine.replacingOccurrences(of: "\n", with: ", "))"
     }
 
     // Delegated to GameHeaderState so the share card provably renders the
@@ -162,28 +149,42 @@ struct GameDetailScreen: View {
     }
 
     private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
-        VStack(spacing: Spacing.xs) {
-            LogoImage(url: side.team.logoURL)
-                .frame(width: 44, height: 44)
-            Text(side.team.location)
-                .font(side.winner == true ? .teamNameEmphasis : .teamName)
-                .foregroundStyle(.textPrimary)
-                .multilineTextAlignment(.center)
-                // Reserved so a wrapping name ("Arkansas-Pine Bluff")
-                // doesn't push its record below the other side's.
-                .lineLimit(2, reservesSpace: true)
-            if let record = side.record {
-                Text(record)
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
+        // Value-based so the push lands in the Scores stack's NavigationPath;
+        // ScoresScreen owns the matching Team destination.
+        NavigationLink(value: side.team) {
+            VStack(spacing: Spacing.xs) {
+                LogoImage(url: side.team.logoURL)
+                    .frame(width: 44, height: 44)
+                Text(side.team.location)
+                    .font(side.winner == true ? .teamNameEmphasis : .teamName)
+                    .foregroundStyle(.textPrimary)
+                    .multilineTextAlignment(.center)
+                    // Reserved so a wrapping name ("Arkansas-Pine Bluff")
+                    // doesn't push its record below the other side's.
+                    .lineLimit(2, reservesSpace: true)
+                if let record = side.record {
+                    Text(record)
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                }
+                if showsScores, let score = side.score {
+                    Text("\(score)")
+                        .font(game.isLive ? .scoreLive : .score)
+                        .foregroundStyle(side.winner == false ? .textSecondary : .textPrimary)
+                }
             }
-            if showsScores, let score = side.score {
-                Text("\(score)")
-                    .font(game.isLive ? .scoreLive : .score)
-                    .foregroundStyle(side.winner == false ? .textSecondary : .textPrimary)
-            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(sideAccessibilityLabel(side))
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+    }
+
+    /// Internal for AccessibilityLabelTests.
+    func sideAccessibilityLabel(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
+        guard showsScores, let score = side.score else { return side.team.location }
+        return "\(side.team.location) \(score)"
     }
 
     private var showsScores: Bool { GameHeaderState.showsScores(game, summary) }
