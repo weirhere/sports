@@ -14,29 +14,32 @@ final class SmokeUITests: XCTestCase {
                                 "-ui.scoresGrouping", "conference"]
         app.launch()
 
-        // Scores loads a real slate.
-        XCTAssertTrue(app.staticTexts["SEC"].waitForExistence(timeout: 15),
+        // Scores loads a real slate. A followed conference can push SEC
+        // screens below the fold, so be willing to scroll for it.
+        XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app),
                       "Scores should show the SEC section header")
 
         // Grouping toggle: by date swaps conference sections for day
-        // sections; toggling back restores the conference stack.
+        // sections; toggling back restores the conference stack. The chip
+        // lives in the fixed header, so it stays hittable after scrolling.
         let groupingChip = app.buttons["Group games by date"]
         XCTAssertTrue(groupingChip.waitForExistence(timeout: 5),
                       "The By date chip should be in the header")
         groupingChip.tap()
         let dayHeader = app.staticTexts.matching(NSPredicate(
             format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*")).firstMatch
-        XCTAssertTrue(dayHeader.waitForExistence(timeout: 5),
+        XCTAssertTrue(scrollUntilExists(dayHeader, in: app, timeout: 5),
                       "Date grouping should show a day section header")
         snapshot(app, "scores-by-date")
         groupingChip.tap()
-        XCTAssertTrue(app.staticTexts["SEC"].waitForExistence(timeout: 5),
+        XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app, timeout: 5),
                       "Toggling back should restore conference sections")
 
-        // Rankings shows a poll with a #1 row. Which poll depends on the
-        // calendar — the AP preseason Top 25 doesn't drop until mid-August.
-        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
-                      "Rankings should show a ranked #1")
+        // Rankings leads with the Top 25 row; the poll itself is one tap
+        // down. Which poll depends on the calendar — the AP preseason Top
+        // 25 doesn't drop until mid-August.
+        XCTAssertTrue(openRankingsPoll(in: app),
+                      "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "rankings")
 
         // Teams browse + search + follow.

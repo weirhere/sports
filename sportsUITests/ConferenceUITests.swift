@@ -62,42 +62,38 @@ final class ConferenceUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(openTab("Scores", in: app, until: app.seasonChip),
                       "Scores should render its header")
-        // The section stack is a LazyVStack, and a followed conference can
-        // swell Following to a whole slate — the first conference header
-        // may sit screens below the fold, where its elements don't exist
-        // yet. Scroll until one materializes.
         let scoresStandings = app.buttons.matching(NSPredicate(
             format: "label ENDSWITH %@", " standings")).firstMatch
-        _ = scoresStandings.waitForExistence(timeout: 15)
-        for _ in 0..<12 where !scoresStandings.exists {
-            app.swipeUp(velocity: .fast)
-        }
-        XCTAssertTrue(scoresStandings.exists,
+        XCTAssertTrue(scrollUntilExists(scoresStandings, in: app),
                       "A Scores conference header should carry a standings button")
     }
 
     @MainActor
-    func testRankingsListsConferencesBelowThePoll() throws {
+    func testRankingsListsTop25RowAndConferences() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES"]
         app.launch()
 
-        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
-                      "Rankings should show a ranked #1")
+        // The root is the list: Top 25 row first, conferences right below.
+        XCTAssertTrue(openTab("Rankings", in: app, until: app.top25Row),
+                      "Rankings should lead with the Top 25 row")
 
-        // The CONFERENCES card sits below the 25 poll rows in a LazyVStack,
-        // so its rows don't exist as elements until scrolled near. An ACC
-        // row exists year-round (the list renders offseason, teasers or
-        // not); its label is either bare "ACC" or "ACC, led by …".
+        // An ACC row exists year-round (the list renders offseason, teasers
+        // or not); its label is either bare "ACC" or "ACC, led by …".
         let accRow = app.descendants(matching: .any).matching(NSPredicate(
             format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
-        for _ in 0..<12 where !accRow.exists {
-            app.swipeUp(velocity: .fast)
-        }
-        XCTAssertTrue(accRow.waitForExistence(timeout: 5),
-                      "Rankings should list the ACC below the poll")
+        XCTAssertTrue(scrollUntilExists(accRow, in: app, maxSwipes: 4, timeout: 5),
+                      "Rankings should list the ACC near the root")
         accRow.tap()
         XCTAssertTrue(app.navigationBars["ACC"].waitForExistence(timeout: 10),
                       "Tapping the conference row should push its standings page")
+
+        // And the Top 25 row pushes the poll.
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.top25Row.waitForExistence(timeout: 5),
+                      "Popping back should land on the Rankings list")
+        app.top25Row.tap()
+        XCTAssertTrue(app.topRankedRow.waitForExistence(timeout: 15),
+                      "The Top 25 row should push a poll with a ranked #1")
     }
 }
