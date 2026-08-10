@@ -46,8 +46,8 @@ final class ScreenshotTests: XCTestCase {
 
         // Rankings. The tab tap follows a navigation pop, so it needs the
         // retry — see openTab.
-        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
-                      "Rankings should show a ranked #1")
+        XCTAssertTrue(openRankingsPoll(in: app),
+                      "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "\(prefix)-rankings")
 
         // Teams browse, then a team page via search.

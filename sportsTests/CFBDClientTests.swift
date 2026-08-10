@@ -237,6 +237,33 @@ private func makeJoins() throws -> CFBDJoins {
         #expect(conferences.last?.name == "Mountain West")
         #expect(conferences.first?.teams.map(\.location) == ["Alabama", "Georgia"])
     }
+
+    @Test func standingsSortByConferenceThenOverallWinPct() throws {
+        let teams = try decode([CFBDTeamDTO].self, teamsJSON)
+        let records = try decode([CFBDTeamRecordsDTO].self, """
+        [
+          {"teamId": 61, "team": "Georgia",
+           "total": {"wins": 9, "losses": 1, "ties": 0},
+           "conferenceGames": {"wins": 6, "losses": 1, "ties": 0}},
+          {"teamId": 333, "team": "Alabama",
+           "total": {"wins": 10, "losses": 0, "ties": 0},
+           "conferenceGames": {"wins": 6, "losses": 1, "ties": 0}}
+        ]
+        """)
+        let standings = CFBDMapper.conferenceStandings(from: teams, records: records)
+
+        let sec = try #require(standings.first { $0.id == 8 })
+        // Tied 6-1 in conference; Alabama's better overall breaks the tie.
+        #expect(sec.entries.map(\.team.location) == ["Alabama", "Georgia"])
+        #expect(sec.entries.first?.conferenceRecord == "6-1")
+        #expect(sec.entries.first?.overallRecord == "10-0")
+
+        // Air Force has no record row: the entry stays, records nil,
+        // recordless teams sort last.
+        let mw = try #require(standings.first { $0.id == 17 })
+        #expect(mw.entries.first?.conferenceRecord == nil)
+        #expect(mw.entries.first?.overallRecord == nil)
+    }
 }
 
 @Suite struct CFBDSummaryTests {

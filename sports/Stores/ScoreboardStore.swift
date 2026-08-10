@@ -26,6 +26,9 @@ struct GameSection: Identifiable, Hashable {
     /// Conference sections always show a mark (logo or fallback) so their
     /// titles align; Following shows a star, Top 25 a trophy.
     var isConference = false
+    /// ESPN's group id, set only on conference sections with a known
+    /// conference — it's what the header's standings link navigates with.
+    var conferenceId: Int? = nil
 }
 
 @Observable
@@ -234,12 +237,17 @@ final class ScoreboardStore {
     /// adds one section per calendar day. The Live filter collapses
     /// sections to in-progress games and hides the empties.
     func sections(followingIds: Set<String>,
+                  followedConferenceIds: Set<Int> = [],
                   grouping: ScoresGrouping = .conference) -> [GameSection] {
         let visible = liveOnly ? games.filter(\.isLive) : games
         var result: [GameSection] = []
 
-        let followed = visible.filter {
-            followingIds.contains($0.home.team.id) || followingIds.contains($0.away.team.id)
+        // Team follows or conference follows both claim a game; an FCS
+        // visitor's nil conferenceId is carried in by its FBS host's side.
+        let followed = visible.filter { game in
+            followingIds.contains(game.home.team.id) || followingIds.contains(game.away.team.id)
+                || game.home.team.conferenceId.map(followedConferenceIds.contains) ?? false
+                || game.away.team.conferenceId.map(followedConferenceIds.contains) ?? false
         }
         if !followed.isEmpty {
             result.append(GameSection(id: GameSection.followingId, title: "Following",
@@ -248,7 +256,8 @@ final class ScoreboardStore {
 
         switch grouping {
         case .conference:
-            result += rankedAndConferenceSections(from: visible, followingIds: followingIds)
+            result += rankedAndConferenceSections(from: visible, followingIds: followingIds,
+                                                  followedConferenceIds: followedConferenceIds)
         case .date:
             result += daySections(from: visible)
         }
@@ -257,7 +266,8 @@ final class ScoreboardStore {
 
     /// Top 25 → conferences, the default stack below Following.
     private func rankedAndConferenceSections(from visible: [Game],
-                                             followingIds: Set<String>) -> [GameSection] {
+                                             followingIds: Set<String>,
+                                             followedConferenceIds: Set<Int>) -> [GameSection] {
         var result: [GameSection] = []
         let ranked = visible.filter(\.involvesRankedTeam)
         if !ranked.isEmpty {
@@ -282,14 +292,16 @@ final class ScoreboardStore {
                 }
             }
         }
-        // A followed team's conference floats to the top; then P4 → G5 →
-        // Independents → Other.
-        let followedConferenceIds = Set(visible.flatMap { [$0.home, $0.away] }
+        // A followed team's conference floats to the top — as does an
+        // explicitly followed conference; then P4 → G5 → Independents →
+        // Other.
+        let floatedConferenceIds = Set(visible.flatMap { [$0.home, $0.away] }
             .filter { followingIds.contains($0.team.id) }
             .compactMap(\.team.conferenceId))
+            .union(followedConferenceIds)
         let orderedIds = byConference.keys.sorted { lhs, rhs in
-            let (lf, rf) = (lhs.map(followedConferenceIds.contains) ?? false,
-                            rhs.map(followedConferenceIds.contains) ?? false)
+            let (lf, rf) = (lhs.map(floatedConferenceIds.contains) ?? false,
+                            rhs.map(floatedConferenceIds.contains) ?? false)
             if lf != rf { return lf }
             let (lt, rt) = (Conference.tier(for: lhs), Conference.tier(for: rhs))
             return lt == rt ? Conference.name(for: lhs) < Conference.name(for: rhs) : lt < rt
@@ -299,7 +311,8 @@ final class ScoreboardStore {
             result.append(GameSection(id: "conf-\(name)", title: name,
                                       games: chronological(byConference[id] ?? []),
                                       logoURL: Conference.logoURL(for: id),
-                                      isConference: true))
+                                      isConference: true,
+                                      conferenceId: id))
         }
         return result
     }

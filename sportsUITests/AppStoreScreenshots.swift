@@ -49,8 +49,8 @@ final class AppStoreScreenshots: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // Rankings.
-        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
-                      "Rankings should show a ranked #1")
+        XCTAssertTrue(openRankingsPoll(in: app),
+                      "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "03-rankings")
 
         // Teams browse.

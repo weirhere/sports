@@ -219,3 +219,44 @@ private func game(status: GameStatus,
         #expect(row.accessibilitySummary == "versus Georgia, lost 24 to 27")
     }
 }
+
+@MainActor
+@Suite struct ConferenceStandingRowAccessibilityTests {
+    @Test func speaksRecordsAsOneSentence() {
+        let row = ConferenceStandingRow(standing: ConferenceStanding(
+            team: georgia, conferenceRecord: "7-1", overallRecord: "13-2", streak: "W2"))
+        #expect(row.accessibilitySummary ==
+                "Georgia, 7 and 1 in conference, 13 and 2 overall")
+    }
+
+    @Test func missingRecordsDropTheirClauses() {
+        let row = ConferenceStandingRow(standing: ConferenceStanding(
+            team: georgia, conferenceRecord: nil, overallRecord: "13-2", streak: nil))
+        #expect(row.accessibilitySummary == "Georgia, 13 and 2 overall")
+
+        let bare = ConferenceStandingRow(standing: ConferenceStanding(
+            team: georgia, conferenceRecord: nil, overallRecord: nil, streak: nil))
+        #expect(bare.accessibilitySummary == "Georgia")
+    }
+}
+
+@MainActor
+@Suite struct ConferenceListRowAccessibilityTests {
+    private func conference(entries: [ConferenceStanding]) -> ConferenceStandings {
+        ConferenceStandings(id: 8, name: "SEC", entries: entries)
+    }
+
+    @Test func speaksNameAndLeader() {
+        let row = ConferenceListRow(conference: conference(entries: [
+            ConferenceStanding(team: georgia, conferenceRecord: "7-1",
+                               overallRecord: "12-1", streak: nil)]))
+        #expect(row.accessibilitySummary == "SEC, led by Georgia at 7 and 1")
+    }
+
+    @Test func preseasonSpeaksJustTheName() {
+        let row = ConferenceListRow(conference: conference(entries: [
+            ConferenceStanding(team: georgia, conferenceRecord: "0-0",
+                               overallRecord: "0-0", streak: nil)]))
+        #expect(row.accessibilitySummary == "SEC")
+    }
+}

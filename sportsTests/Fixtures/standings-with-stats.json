@@ -1,0 +1,109 @@
+{
+  "id": "80",
+  "name": "FBS",
+  "shortName": "FBS",
+  "children": [
+    {
+      "id": "8",
+      "name": "Southeastern Conference",
+      "shortName": "SEC",
+      "isConference": true,
+      "standings": {
+        "id": "0",
+        "name": "overall",
+        "displayName": "Standings",
+        "entries": [
+          {
+            "team": {
+              "id": "145",
+              "location": "Ole Miss",
+              "name": "Rebels",
+              "abbreviation": "MISS",
+              "displayName": "Ole Miss Rebels",
+              "shortDisplayName": "Ole Miss",
+              "logos": [{ "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/145.png" }]
+            },
+            "stats": [
+              { "name": "leagueWinPercent", "type": "leaguewinpercent", "displayValue": "0.875" },
+              { "name": "overall", "type": "total", "summary": "13-2", "displayValue": "13-2" },
+              { "name": "Home", "type": "homerecord", "summary": "9-0" },
+              { "name": "vs. Conf.", "type": "vsconf", "summary": "7-1", "displayValue": "7-1" },
+              { "name": "streak", "type": "streak", "displayValue": "L1" }
+            ]
+          },
+          {
+            "team": {
+              "id": "61",
+              "location": "Georgia",
+              "name": "Bulldogs",
+              "abbreviation": "UGA",
+              "displayName": "Georgia Bulldogs",
+              "shortDisplayName": "Georgia",
+              "logos": [{ "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/61.png" }]
+            },
+            "stats": [
+              { "name": "overall", "type": "total", "summary": "12-2" },
+              { "name": "vs. Conf.", "type": "vsconf", "summary": "7-1" },
+              { "name": "streak", "type": "streak", "displayValue": "W2" }
+            ]
+          },
+          {
+            "team": {
+              "id": "333",
+              "location": "Alabama",
+              "name": "Crimson Tide",
+              "abbreviation": "ALA",
+              "displayName": "Alabama Crimson Tide",
+              "shortDisplayName": "Alabama",
+              "logos": [{ "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png" }]
+            }
+          },
+          {
+            "team": null
+          },
+          {
+            "team": {
+              "id": "2633",
+              "location": "Tennessee",
+              "name": "Volunteers"
+            },
+            "stats": "corrupt-not-an-array"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5",
+      "name": "Big Ten Conference",
+      "shortName": "Big Ten",
+      "isConference": true,
+      "standings": {
+        "entries": [
+          {
+            "team": {
+              "id": "194",
+              "location": "Ohio State",
+              "name": "Buckeyes",
+              "abbreviation": "OSU",
+              "displayName": "Ohio State Buckeyes"
+            },
+            "stats": [
+              { "name": "overall", "type": "total", "summary": "14-2" },
+              { "name": "vs. Conf.", "type": "vsconf", "summary": "8-1" },
+              { "name": "streak", "type": "streak", "displayValue": "W6" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "37",
+      "name": "Sun Belt Conference",
+      "shortName": "Sun Belt",
+      "isConference": true,
+      "standings": {
+        "entries": []
+      }
+    }
+  ]
+}

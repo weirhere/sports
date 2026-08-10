@@ -51,6 +51,7 @@ private struct ScheduleStub: ScoresProviding {
     }
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferenceStandings() async throws -> [ConferenceStandings] { [] }
     func gameSummary(eventId: String) async throws -> GameSummary { throw ESPNError.invalidURL }
 }
 

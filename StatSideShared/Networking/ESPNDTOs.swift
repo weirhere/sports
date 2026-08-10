@@ -191,6 +191,17 @@ nonisolated struct StandingsListDTO: Decodable {
 
 nonisolated struct StandingsEntryDTO: Decodable {
     let team: TeamDTO?
+    let stats: [StandingsStatDTO]?
+}
+
+// Each entry carries ~20 stats; `type` is the discriminator ("total",
+// "vsconf", "streak", plus prefixed variants like "homerecord_wins" we
+// deliberately ignore).
+nonisolated struct StandingsStatDTO: Decodable {
+    let name: String?
+    let type: String?
+    let summary: String?
+    let displayValue: String?
 }
 
 // MARK: - Team schedule

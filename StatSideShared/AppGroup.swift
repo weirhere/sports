@@ -7,6 +7,7 @@ nonisolated enum AppGroup {
     static let id = "group.com.andyryanweir.sports"
     static let widgetKind = "StatSideNextGame"
     static let followingKey = "following.teamIds"
+    static let followingConferencesKey = "following.conferenceIds"
     static let snapshotKey = "widget.snapshot"
     private static let migrationKey = "migration.followingToGroup.done"
 

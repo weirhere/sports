@@ -1,0 +1,89 @@
+import SwiftUI
+
+/// One team's line in the standings table: logo, school, then conference
+/// and overall records in aligned trailing columns. At accessibility text
+/// sizes the columns stop fitting, so the records drop to their own labeled
+/// line under the name (GameRow's reflow pattern).
+struct ConferenceStandingRow: View {
+    let standing: ConferenceStanding
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
+    var body: some View {
+        Group {
+            if isStacked { stackedBody } else { compactBody }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var compactBody: some View {
+        HStack(spacing: Spacing.md) {
+            LogoImage(url: standing.team.logoURL)
+                .frame(width: logoSize, height: logoSize)
+            Text(standing.team.location)
+                .font(.teamName)
+                .foregroundStyle(.textPrimary)
+                .lineLimit(1)
+                .layoutPriority(1)
+            Spacer(minLength: Spacing.sm)
+            recordColumn(standing.conferenceRecord)
+            recordColumn(standing.overallRecord)
+        }
+    }
+
+    private var stackedBody: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack(spacing: Spacing.md) {
+                LogoImage(url: standing.team.logoURL)
+                    .frame(width: logoSize, height: logoSize)
+                Text(standing.team.location)
+                    .font(.teamName)
+                    .foregroundStyle(.textPrimary)
+            }
+            Text(stackedRecordLine)
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func recordColumn(_ record: String?) -> some View {
+        Text(record ?? "–")
+            .font(.teamName.monospacedDigit())
+            .foregroundStyle(record == nil ? .textSecondary : .textPrimary)
+            .frame(minWidth: recordWidth, alignment: .trailing)
+    }
+
+    private var stackedRecordLine: String {
+        [standing.conferenceRecord.map { "Conf \($0)" },
+         standing.overallRecord.map { "Overall \($0)" }]
+            .compactMap(\.self)
+            .joined(separator: " · ")
+    }
+
+    /// One sentence: "Georgia, 7 and 1 in conference, 13 and 2 overall".
+    var accessibilitySummary: String {
+        var parts = [standing.team.location]
+        if let conference = standing.conferenceRecord {
+            parts.append("\(spoken(conference)) in conference")
+        }
+        if let overall = standing.overallRecord {
+            parts.append("\(spoken(overall)) overall")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// "7-1" reads as "7 and 1" — a dash alone is swallowed or read as
+    /// "minus" depending on the voice.
+    private func spoken(_ record: String) -> String {
+        record.replacingOccurrences(of: "-", with: " and ")
+    }
+}

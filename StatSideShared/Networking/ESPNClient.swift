@@ -10,6 +10,11 @@ nonisolated protocol ScoresProviding: Sendable {
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
     func fbsConferences() async throws -> [ConferenceTeams]
+    /// All FBS conferences' standings in one call, each in the provider's
+    /// standings order (ESPN's encodes tiebreakers). Empty conferences are
+    /// kept — offseason responses can have zero entries and the page needs
+    /// to say "Standings TBA", not error.
+    func conferenceStandings() async throws -> [ConferenceStandings]
     func teamSchedule(teamId: String) async throws -> TeamSchedule
     func gameSummary(eventId: String) async throws -> GameSummary
 }
@@ -63,6 +68,14 @@ actor ESPNClient: ScoresProviding {
             query: [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
         )
         return ESPNMapper.conferences(from: dto)
+    }
+
+    func conferenceStandings() async throws -> [ConferenceStandings] {
+        let dto: StandingsResponseDTO = try await fetch(
+            base: Self.standingsBase, path: "/standings",
+            query: [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+        )
+        return ESPNMapper.conferenceStandings(from: dto)
     }
 
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
@@ -244,6 +257,41 @@ nonisolated enum ESPNMapper {
             guard !teams.isEmpty else { return nil }
             return ConferenceTeams(id: id, name: name,
                                    teams: teams.sorted { $0.location < $1.location })
+        }
+        .sorted { lhs, rhs in
+            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            return lt == rt ? lhs.name < rhs.name : lt < rt
+        }
+    }
+
+    /// Standings sibling of `conferences(from:)` over the same response.
+    /// Differences are the contract: entry order is preserved (ESPN's
+    /// standings order, tiebreakers included — never re-sort), and empty
+    /// conferences are kept so the page can render "Standings TBA".
+    static func conferenceStandings(from dto: StandingsResponseDTO) -> [ConferenceStandings] {
+        (dto.children ?? []).map { group in
+            let id = group.id?.value
+            let name = Conference.tier(for: id) == .other
+                ? (group.shortName ?? group.name ?? "Conference")
+                : Conference.name(for: id)
+            let entries = (group.standings?.entries?.elements ?? []).compactMap { entry -> ConferenceStanding? in
+                guard let mapped = team(from: entry.team) else { return nil }
+                func stat(_ type: String) -> StandingsStatDTO? {
+                    entry.stats?.first { $0.type == type }
+                }
+                return ConferenceStanding(
+                    team: Team(
+                        id: mapped.id, location: mapped.location, name: mapped.name,
+                        abbreviation: mapped.abbreviation, displayName: mapped.displayName,
+                        shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
+                        conferenceId: id
+                    ),
+                    conferenceRecord: stat("vsconf")?.summary,
+                    overallRecord: stat("total")?.summary,
+                    streak: stat("streak")?.displayValue
+                )
+            }
+            return ConferenceStandings(id: id, name: name, entries: entries)
         }
         .sorted { lhs, rhs in
             let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))

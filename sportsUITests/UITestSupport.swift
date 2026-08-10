@@ -5,12 +5,12 @@ import XCTest
 /// polls exist depends on the calendar, and the season menu is a SwiftUI
 /// `Menu` that a mid-load re-render can dismiss out from under the tap.
 extension XCUIApplication {
-    /// The #1 row of whichever poll Rankings is showing — proof the screen
+    /// The #1 row of whichever poll PollScreen is showing — proof the poll
     /// rendered real data.
     ///
     /// Don't reach for the poll chips instead. They're the wrong landmark
     /// twice over: the picker only renders when more than one poll exists
-    /// (`RankingsScreen.body`), and which polls exist is a calendar fact —
+    /// (`PollScreen.body`), and which polls exist is a calendar fact —
     /// the preseason AP Top 25 doesn't drop until mid-August, so for most of
     /// the year the feed carries only the Coaches poll and no chips appear.
     /// The label shape comes from `RankRow.accessibilitySummary`.
@@ -18,6 +18,14 @@ extension XCUIApplication {
         descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Number 1,"))
             .firstMatch
+    }
+
+    /// The Top 25 row leading the Rankings list. By identifier, not label —
+    /// the Scores tab's "Top 25, N games" accordion header lives in the
+    /// same element tree and label queries cross tab hierarchies.
+    var top25Row: XCUIElement {
+        descendants(matching: .any)
+            .matching(identifier: "rankings-top25-row").firstMatch
     }
 
     /// The season chip in the Scores header, labeled with the selected year.
@@ -28,6 +36,36 @@ extension XCUIApplication {
 }
 
 extension XCTestCase {
+    /// Opens the Rankings tab and drills into the poll: tab → Top 25 row →
+    /// PollScreen's #1 row. The poll moved one level down when Rankings
+    /// became the tables hub, so every "show me the poll" test goes
+    /// through here.
+    @MainActor
+    @discardableResult
+    func openRankingsPoll(in app: XCUIApplication) -> Bool {
+        guard openTab("Rankings", in: app, until: app.top25Row) else { return false }
+        app.top25Row.tap()
+        return app.topRankedRow.waitForExistence(timeout: 15)
+    }
+
+    /// Waits for `element`, swiping down the list if it hasn't materialized.
+    ///
+    /// The Scores stack is a LazyVStack, and a followed conference swells
+    /// Following to a whole slate — sections that used to sit at the top
+    /// (SEC, the first day header) can be screens below the fold, where
+    /// their elements don't exist yet. Persisted follows are real user
+    /// state, so any assertion about a section must be willing to scroll.
+    @MainActor
+    @discardableResult
+    func scrollUntilExists(_ element: XCUIElement, in app: XCUIApplication,
+                           maxSwipes: Int = 12, timeout: TimeInterval = 15) -> Bool {
+        if element.waitForExistence(timeout: timeout) { return true }
+        for _ in 0..<maxSwipes where !element.exists {
+            app.swipeUp(velocity: .fast)
+        }
+        return element.exists
+    }
+
     /// Taps a tab and waits for something on the destination to prove it
     /// landed, retrying the tap if it didn't.
     ///

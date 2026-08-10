@@ -9,10 +9,9 @@ struct TeamsScreen: View {
     @Environment(TeamDirectoryStore.self) private var directory
 
     @State private var searchText = ""
-    @State private var path: [Team] = []
-    /// Drives the browse list's scroll — set when a search result lands on
-    /// a conference, tracked (harmlessly) as the user scrolls.
-    @State private var scrolledSection: String?
+    // Heterogeneous: browse rows push Team, group headers push
+    // ConferenceDestination — a typed path can't hold both.
+    @State private var path = NavigationPath()
 
     private var conferences: [ConferenceTeams] { directory.conferences }
 
@@ -24,6 +23,9 @@ struct TeamsScreen: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
+                }
+                .navigationDestination(for: ConferenceDestination.self) { destination in
+                    ConferencePage(destination: destination)
                 }
         }
         .task { await directory.load() }
@@ -48,27 +50,19 @@ struct TeamsScreen: View {
         guard let pendingId = router.pendingTeamId,
               let team = conferences.flatMap(\.teams).first(where: { $0.id == pendingId }) else { return }
         router.pendingTeamId = nil
-        path = [team]
+        path = NavigationPath([team])
     }
 
-    /// Lands a search result's conference: browse list, section expanded,
-    /// scrolled to the top of the card. The seam a dedicated conference
-    /// destination would take over — search itself only emits the intent.
+    /// Lands a search result's conference on its standings page — the
+    /// dedicated destination the search seam was left open for. No data
+    /// dependency: the page fetches its own standings, so an intent
+    /// resolves immediately even before the browse list has loaded.
     private func resolvePendingConference() {
-        guard let pendingId = router.pendingConferenceId,
-              let conference = conferences.first(where: { $0.id == pendingId }) else { return }
+        guard let pendingId = router.pendingConferenceId else { return }
         router.pendingConferenceId = nil
         searchText = ""
-        path = []
-        let sectionId = sectionId(for: conference)
-        uiState.expandConference(sectionId)
-        // The intent arrives while the search cover is still dismissing and
-        // the tab switch is in flight; a scroll set before this ScrollView
-        // has laid out is silently dropped.
-        Task {
-            try? await Task.sleep(for: .milliseconds(450))
-            withAnimation { scrolledSection = sectionId }
-        }
+        path = NavigationPath([ConferenceDestination(conferenceId: pendingId,
+                                                     name: Conference.name(for: pendingId))])
     }
 
     @ViewBuilder
@@ -105,8 +99,8 @@ struct TeamsScreen: View {
                                         sectionId: sectionId(for: conference),
                                         teams: conference.teams,
                                         logoURL: Conference.logoURL(for: conference.id),
-                                        isConference: true)
-                                .id(sectionId(for: conference))
+                                        isConference: true,
+                                        conferenceId: conference.id)
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {
@@ -125,9 +119,7 @@ struct TeamsScreen: View {
                     }
                 }
                 .padding(Spacing.sm)
-                .scrollTargetLayout()
             }
-            .scrollPosition(id: $scrolledSection, anchor: .top)
             .background(Color.bgRecessed)
             .safeAreaInset(edge: .top, spacing: 0) {
                 SearchField(text: $searchText, prompt: "Find a team")
@@ -140,37 +132,65 @@ struct TeamsScreen: View {
     }
 
     private func teamSection(title: String, sectionId: String, teams: [Team],
-                             logoURL: URL? = nil, isConference: Bool = false) -> some View {
+                             logoURL: URL? = nil, isConference: Bool = false,
+                             conferenceId: Int? = nil) -> some View {
         let isExpanded = !uiState.isConferenceCollapsed(sectionId)
+        // Same two-button header shape as the Scores accordions: the toggle
+        // owns the width, the standings link is its own trailing target.
+        let openStandings: (() -> Void)? = conferenceId.map { id in
+            { path.append(ConferenceDestination(conferenceId: id, name: title)) }
+        }
         return VStack(spacing: 0) {
-            Button {
-                withAnimation { uiState.toggleConference(sectionId) }
-            } label: {
-                HStack(spacing: Spacing.sm) {
-                    if isConference {
-                        ConferenceLogo(url: logoURL)
+            HStack(spacing: 0) {
+                Button {
+                    withAnimation { uiState.toggleConference(sectionId) }
+                } label: {
+                    HStack(spacing: Spacing.sm) {
+                        if isConference {
+                            ConferenceLogo(url: logoURL)
+                        }
+                        Text(title)
+                            .font(.sectionHeader)
+                            .foregroundStyle(.textPrimary)
+                        Text("\(teams.count)")
+                            .font(.meta)
+                            .foregroundStyle(.textSecondary)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.textSecondary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
-                    Text(title)
-                        .font(.sectionHeader)
-                        .foregroundStyle(.textPrimary)
-                    Text("\(teams.count)")
-                        .font(.meta)
-                        .foregroundStyle(.textSecondary)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.textSecondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .padding(.leading, Spacing.lg)
+                    .padding(.trailing, openStandings == nil ? Spacing.lg : Spacing.sm)
+                    .padding(.vertical, Spacing.md)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
-                .background(Color.bgHeader)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
+                .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+                .accessibilityAddTraits(.isHeader)
+                .contextMenu {
+                    if let openStandings {
+                        Button {
+                            openStandings()
+                        } label: {
+                            Label("View \(title) standings", systemImage: "list.number")
+                        }
+                    }
+                }
+                .accessibilityActions {
+                    if let openStandings {
+                        Button("View \(title) standings", action: openStandings)
+                    }
+                }
+
+                if let openStandings {
+                    ConferenceStandingsLink(conferenceName: title, onOpen: openStandings)
+                        .padding(.trailing, Spacing.xs)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
-            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
-            .accessibilityAddTraits(.isHeader)
+            .background(Color.bgHeader)
 
             if isExpanded {
                 ForEach(teams) { team in
