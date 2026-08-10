@@ -6,13 +6,16 @@ struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
-    @Environment(\.scenePhase) private var scenePhase
+    // Owned by RootView so the search cover shares the loaded week and
+    // polling follows the scene, not this tab.
+    @Environment(ScoreboardStore.self) private var store
 
-    @State private var store = ScoreboardStore(client: DataProvider.makeClient())
-    // Heterogeneous: game rows push Game, conference headers push
-    // ConferenceDestination, and standings rows push Team.
+    // NavigationPath, not [Game]: the stack pushes Team (game detail's
+    // header links) and ConferenceDestination (section headers' standings
+    // links) too, and a typed path can't hold them all.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    @State private var pinchHandled = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -52,17 +55,12 @@ struct ScoresScreen: View {
                 TeamPage(team: team)
             }
         }
-        .task { await store.loadInitial() }
+        // onAppear mirrors TeamsScreen: lazy tab content means an intent can
+        // predate the onChange observers. Scores is the launch tab, so this
+        // mostly matters after the tab's view is torn down and recreated.
+        .onAppear { resolvePendingGame() }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: store.games) { _, _ in resolvePendingGame() }
-        .onChange(of: scenePhase) { _, phase in
-            // Polite guest: poll only while foregrounded.
-            if phase == .active {
-                store.startPollingIfNeeded()
-            } else {
-                store.stopPolling()
-            }
-        }
     }
 
     private var sections: [GameSection] {
@@ -123,6 +121,24 @@ struct ScoresScreen: View {
                 refreshCount += 1
             }
             .sensoryFeedback(.success, trigger: refreshCount)
+            // FotMob's gesture: pinch in collapses every section on screen,
+            // pinch out opens them all. Fires once per pinch at the
+            // threshold crossing; simultaneous so scroll, pull-to-refresh,
+            // and header taps are unaffected.
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        guard !pinchHandled else { return }
+                        if value.magnification < 0.8 {
+                            pinchHandled = true
+                            withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                        } else if value.magnification > 1.25 {
+                            pinchHandled = true
+                            withAnimation { uiState.expandAll(sections.map(\.id)) }
+                        }
+                    }
+                    .onEnded { _ in pinchHandled = false }
+            )
         }
     }
 

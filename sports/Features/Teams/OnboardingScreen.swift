@@ -5,17 +5,15 @@ import SwiftUI
 /// either way it never comes back (the Teams tab does the same job later).
 struct OnboardingScreen: View {
     @Environment(FollowingStore.self) private var following
+    @Environment(TeamDirectoryStore.self) private var directory
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    @State private var conferences: [ConferenceTeams] = []
-    @State private var isLoading = false
-    @State private var lastError: String?
     @State private var searchText = ""
 
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    private var conferences: [ConferenceTeams] { directory.conferences }
 
     var body: some View {
         NavigationStack {
@@ -31,7 +29,7 @@ struct OnboardingScreen: View {
                     }
                 }
         }
-        .task { await load() }
+        .task { await directory.load() }
     }
 
     @ViewBuilder
@@ -39,14 +37,14 @@ struct OnboardingScreen: View {
         if conferences.isEmpty {
             VStack(spacing: Spacing.md) {
                 Spacer()
-                if isLoading {
+                if directory.isLoading {
                     ProgressView()
                 } else {
-                    Text(lastError ?? "No teams")
+                    Text(directory.lastError ?? "No teams")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                     Button("Retry") {
-                        Task { await load() }
+                        Task { await directory.load() }
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
@@ -69,6 +67,12 @@ struct OnboardingScreen: View {
                         }
                         .padding(.vertical, Spacing.xs)
                         .cardSurface()
+                    } else {
+                        Text("No teams match “\(searchText.trimmingCharacters(in: .whitespaces))”")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, Spacing.xl)
                     }
                 }
                 .padding(Spacing.sm)
@@ -167,30 +171,15 @@ struct OnboardingScreen: View {
         .accessibilityValue(isFollowing ? "following" : "not following")
     }
 
+    // No follow boost here: rows toggle follows, and a followed-first sort
+    // would reorder the list under the user's finger.
     private var searchResults: [Team] {
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
-        return conferences.flatMap(\.teams).filter { team in
-            [team.location, team.name, team.abbreviation, team.displayName]
-                .compactMap(\.self)
-                .contains { $0.localizedCaseInsensitiveContains(query) }
-        }
-    }
-
-    private func load() async {
-        guard conferences.isEmpty else { return }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            conferences = try await client.fbsConferences()
-            lastError = nil
-        } catch {
-            lastError = "Couldn't load teams."
-        }
+        SearchResults.teams(matching: searchText, in: conferences)
     }
 }
 
 #Preview {
     OnboardingScreen()
         .environment(FollowingStore())
+        .environment(TeamDirectoryStore())
 }

@@ -36,17 +36,10 @@ actor CFBDClient: ScoresProviding {
         self.session = session
     }
 
-    /// CFB season year: January belongs to the previous season (bowls/CFP);
-    /// from February the upcoming season is the one that matters.
-    nonisolated static func currentSeasonYear(now: Date = .now, calendar: Calendar = .current) -> Int {
-        let year = calendar.component(.year, from: now)
-        return calendar.component(.month, from: now) == 1 ? year - 1 : year
-    }
-
     // MARK: - ScoresProviding
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
-        let season = year ?? Self.currentSeasonYear()
+        let season = year ?? CFBSeason.year()
         let slots = try await weekSlots(year: season)
         let currentSlot = CFBDMapper.currentSlot(in: slots)
 
@@ -91,7 +84,7 @@ actor CFBDClient: ScoresProviding {
     }
 
     func rankings() async throws -> [Poll] {
-        let season = Self.currentSeasonYear()
+        let season = CFBSeason.year()
         let weeks: LossyArray<CFBDPollWeekDTO> = try await fetch(
             "/rankings", query: [URLQueryItem(name: "year", value: String(season))]
         )
@@ -100,19 +93,19 @@ actor CFBDClient: ScoresProviding {
     }
 
     func fbsConferences() async throws -> [ConferenceTeams] {
-        let teams = try await teams(year: Self.currentSeasonYear())
+        let teams = try await teams(year: CFBSeason.year())
         return CFBDMapper.conferences(from: teams)
     }
 
     func conferenceStandings() async throws -> [ConferenceStandings] {
-        let season = Self.currentSeasonYear()
+        let season = CFBSeason.year()
         let teams = try await teams(year: season)
         let records = await recordDTOs(year: season)
         return CFBDMapper.conferenceStandings(from: teams, records: records)
     }
 
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
-        let season = Self.currentSeasonYear()
+        let season = CFBSeason.year()
         let teams = try await teams(year: season)
         guard let id = Int(teamId),
               let meta = teams.first(where: { $0.id == id }),
@@ -134,7 +127,7 @@ actor CFBDClient: ScoresProviding {
             "/games", query: [URLQueryItem(name: "id", value: eventId)]
         )
         guard let game = games.elements.first else { throw CFBDError.gameNotFound(eventId) }
-        let season = game.season ?? Self.currentSeasonYear()
+        let season = game.season ?? CFBSeason.year()
 
         let idQuery = [URLQueryItem(name: "id", value: eventId)]
         async let statsFetch: LossyArray<CFBDGameTeamStatsDTO> = fetch("/games/teams", query: idQuery)

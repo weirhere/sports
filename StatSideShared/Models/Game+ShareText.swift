@@ -12,27 +12,46 @@ nonisolated enum ShareSignOff {
     }
 }
 
+nonisolated extension Competitor {
+    /// "#3 Georgia" when ranked, plain "Georgia" when not.
+    var shareName: String {
+        guard let rank else { return team.location }
+        return "#\(rank) \(team.location)"
+    }
+}
+
+nonisolated extension Game {
+    /// The first network of a multi-cast ("ESPN/ESPN2" → "ESPN").
+    var primaryBroadcast: String? {
+        broadcast.map { $0.split(separator: "/").first.map(String.init) ?? $0 }
+    }
+}
+
+nonisolated extension Date {
+    /// Kick times in shares stay absolute — the text outlives the moment
+    /// it was generated, so no "Today"/"Tomorrow" (decisions log 2026-08-09).
+    var shareKickText: String {
+        formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
+    }
+}
+
 nonisolated extension Game {
     /// What the share sheet carries. There's no per-game web page, so the
     /// text is the whole artifact — status-shaped like the row it came from.
     var shareText: String {
-        func name(_ competitor: Competitor) -> String {
-            guard let rank = competitor.rank else { return competitor.team.location }
-            return "#\(rank) \(competitor.team.location)"
-        }
         func scored(_ competitor: Competitor) -> String {
-            "\(name(competitor)) \(competitor.score.map(String.init) ?? "–")"
+            "\(competitor.shareName) \(competitor.score.map(String.init) ?? "–")"
         }
 
         let body: String
         switch status {
         case .pre:
-            var parts = ["\(name(away)) at \(name(home))"]
+            var parts = ["\(away.shareName) at \(home.shareName)"]
             if let date {
-                parts.append(date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()))
+                parts.append(date.shareKickText)
             }
-            if let broadcast {
-                parts.append("on \(broadcast.split(separator: "/").first.map(String.init) ?? broadcast)")
+            if let network = primaryBroadcast {
+                parts.append("on \(network)")
             }
             body = parts.joined(separator: ", ")
         case .live(let clock, let period, let detail, _):
@@ -44,7 +63,7 @@ nonisolated extension Game {
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
             body = "Final\(overtime ? " (OT)" : ""): \(scored(away)), \(scored(home))"
         case .other(let detail):
-            body = "\(name(away)) at \(name(home)), \(detail ?? "status unavailable")"
+            body = "\(away.shareName) at \(home.shareName), \(detail ?? "status unavailable")"
         }
         return ShareSignOff.appended(to: body)
     }

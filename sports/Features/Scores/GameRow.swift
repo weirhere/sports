@@ -14,6 +14,10 @@ struct GameRow: View {
     /// in which case the row doesn't repeat it. VoiceOver still hears the full
     /// date either way — a swipe can land on the row without the divider.
     var dayIsLabeled: Bool = false
+    /// True inside a day-grouped section, whose accordion header names the
+    /// whole day — the row spends nothing on the date, just kick time and
+    /// network. VoiceOver still hears the full date.
+    var timeOnly: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
@@ -26,7 +30,7 @@ struct GameRow: View {
             if isStacked { stackedBody } else { compactBody }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .contentShape(Rectangle())
         // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
         // quarter" — instead of a dozen fragments. Logos and layout stay
@@ -39,7 +43,7 @@ struct GameRow: View {
 
     private var compactBody: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 7) {
                 teamLine(game.away)
                 teamLine(game.home)
             }
@@ -156,11 +160,27 @@ struct GameRow: View {
         switch game.status {
         case .pre:
             VStack(alignment: .trailing, spacing: 2) {
-                kickTimeText
-                    // "Sat, 9/5 3:30 PM" is wide enough to wrap a character
-                    // per line under the names' layout priority at large text
-                    // sizes. The time holds its natural width instead.
-                    .fixedSize(horizontal: true, vertical: false)
+                if let date = game.date {
+                    if timeOnly {
+                        // A day section's header names the day; the row
+                        // spends its lines on time and network only.
+                        kickText(date.formatted(.dateTime.hour().minute()))
+                            .fixedSize(horizontal: true, vertical: false)
+                    } else {
+                        let kick = Self.relativeKickParts(date, weekday: .abbreviated,
+                                                          includeDate: !dayIsLabeled)
+                        // Even split across two lines, "Tomorrow" can wrap a
+                        // character per line under the names' layout priority at
+                        // large text sizes. Each line holds its natural width.
+                        kickText(kick.day)
+                            .fixedSize(horizontal: true, vertical: false)
+                        kickText(kick.time)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                } else {
+                    kickText("TBD")
+                        .fixedSize(horizontal: true, vertical: false)
+                }
                 if let network { networkText(network) }
             }
         case .live(let displayClock, let period, _, _):
@@ -193,7 +213,11 @@ struct GameRow: View {
     }
 
     private var kickTimeText: some View {
-        Text(kickTime)
+        kickText(kickTime)
+    }
+
+    private func kickText(_ string: String) -> some View {
+        Text(string)
             .font(.meta)
             .foregroundStyle(.textPrimary)
             .lineLimit(1)
@@ -272,6 +296,7 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
+        if timeOnly { return date.formatted(.dateTime.hour().minute()) }
         return Self.relativeKick(date, weekday: .abbreviated, includeDate: !dayIsLabeled)
     }
 
@@ -287,24 +312,39 @@ struct GameRow: View {
     /// One day-granularity difference drives every branch, so a noon kick and
     /// an 11pm kick are equally far away. `now`/`calendar` are injected so the
     /// thresholds are testable without freezing the clock.
-    static func relativeKick(_ date: Date,
-                             weekday: Date.FormatStyle.Symbol.Weekday,
-                             includeDate: Bool = true,
-                             now: Date = .now,
-                             calendar: Calendar = .current) -> String {
+    ///
+    /// The day and time come back separately because the trailing column gives
+    /// them a line each; flowing contexts join them with `relativeKick`.
+    static func relativeKickParts(_ date: Date,
+                                  weekday: Date.FormatStyle.Symbol.Weekday,
+                                  includeDate: Bool = true,
+                                  now: Date = .now,
+                                  calendar: Calendar = .current) -> (day: String, time: String) {
         let time = date.formatted(.dateTime.hour().minute())
         let days = calendar.dateComponents([.day],
                                            from: calendar.startOfDay(for: now),
                                            to: calendar.startOfDay(for: date)).day ?? 0
         switch days {
-        case 0: return "Today \(time)"
-        case 1: return "Tomorrow \(time)"
-        case ..<7: return "\(date.formatted(.dateTime.weekday(weekday))) \(time)"
+        case 0: return ("Today", time)
+        case 1: return ("Tomorrow", time)
+        case ..<7: return (date.formatted(.dateTime.weekday(weekday)), time)
         default:
             let style = Date.FormatStyle.dateTime.weekday(weekday)
             let day = includeDate ? style.month(.defaultDigits).day() : style
-            return "\(date.formatted(day)) \(time)"
+            return (date.formatted(day), time)
         }
+    }
+
+    /// The parts as one phrase, for the VoiceOver sentence and the stacked
+    /// layout's flowing status line.
+    static func relativeKick(_ date: Date,
+                             weekday: Date.FormatStyle.Symbol.Weekday,
+                             includeDate: Bool = true,
+                             now: Date = .now,
+                             calendar: Calendar = .current) -> String {
+        let kick = relativeKickParts(date, weekday: weekday, includeDate: includeDate,
+                                     now: now, calendar: calendar)
+        return "\(kick.day) \(kick.time)"
     }
 
     private func liveDetail(clock: String?, period: Int?) -> String {

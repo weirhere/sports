@@ -79,8 +79,33 @@ actor ESPNClient: ScoresProviding {
     }
 
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
-        let dto: ScheduleResponseDTO = try await fetch(path: "/teams/\(teamId)/schedule", query: [])
-        return ESPNMapper.teamSchedule(from: dto)
+        // A bare /schedule request inherits ESPN's "current" season type, which
+        // is the empty preseason from February until kickoff — so ask for the
+        // season explicitly. Regular season and postseason are separate requests.
+        let year = CFBSeason.year()
+        let schedule = try await teamSchedule(teamId: teamId, year: year)
+        guard schedule.games.isEmpty else { return schedule }
+        // Next season's schedule isn't published yet; show last season instead.
+        return try await teamSchedule(teamId: teamId, year: year - 1)
+    }
+
+    private func teamSchedule(teamId: String, year: Int) async throws -> TeamSchedule {
+        let path = "/teams/\(teamId)/schedule"
+        let regularQuery = [
+            URLQueryItem(name: "season", value: String(year)),
+            URLQueryItem(name: "seasontype", value: "2"),
+        ]
+        let postseasonQuery = [
+            URLQueryItem(name: "season", value: String(year)),
+            URLQueryItem(name: "seasontype", value: "3"),
+        ]
+        async let regularFetch: ScheduleResponseDTO = fetch(path: path, query: regularQuery)
+        async let postseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: postseasonQuery)
+        let regular = try await regularFetch
+        let postseason = await postseasonFetch
+        return ESPNMapper.teamSchedule(
+            from: regular, extraEvents: postseason?.events?.elements ?? []
+        )
     }
 
     func gameSummary(eventId: String) async throws -> GameSummary {
@@ -274,7 +299,9 @@ nonisolated enum ESPNMapper {
         }
     }
 
-    static func teamSchedule(from dto: ScheduleResponseDTO) -> TeamSchedule {
+    static func teamSchedule(
+        from dto: ScheduleResponseDTO, extraEvents: [ScheduleEventDTO] = []
+    ) -> TeamSchedule {
         let selfTeam = dto.team.flatMap { scheduleTeam -> Team? in
             guard let id = scheduleTeam.id else { return nil }
             let logo = scheduleTeam.logo ?? scheduleTeam.logos?.first?.href
@@ -289,7 +316,7 @@ nonisolated enum ESPNMapper {
                 conferenceId: nil
             )
         }
-        let games = (dto.events?.elements ?? []).compactMap(game(from:))
+        let games = ((dto.events?.elements ?? []) + extraEvents).compactMap(game(from:))
         return TeamSchedule(
             team: selfTeam,
             record: dto.team?.recordSummary,

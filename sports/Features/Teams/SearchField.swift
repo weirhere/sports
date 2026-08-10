@@ -8,6 +8,14 @@ import SwiftUI
 struct SearchField: View {
     @Binding var text: String
     var prompt: String
+    /// The app-wide search cover grabs the keyboard on open; the pinned
+    /// Teams/Onboarding fields don't (their screens are for browsing first).
+    var focusOnAppear = false
+    /// Distinguishes the cover's field from the Teams tab's pinned one when
+    /// both exist — UI tests can't rely on `searchFields.firstMatch` then.
+    var identifier = ""
+
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
@@ -20,7 +28,20 @@ struct SearchField: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .submitLabel(.search)
+                .focused($isFocused)
                 .accessibilityAddTraits(.isSearchField)
+                .accessibilityIdentifier(identifier)
+                .task {
+                    guard focusOnAppear else { return }
+                    // The presentation transition steals first responder; a
+                    // focus set mid-transition is silently dropped, so keep
+                    // asking until it sticks (or the user moved on).
+                    for _ in 0..<4 {
+                        try? await Task.sleep(for: .milliseconds(300))
+                        if isFocused || !text.isEmpty { return }
+                        isFocused = true
+                    }
+                }
             if !text.isEmpty {
                 Button {
                     text = ""

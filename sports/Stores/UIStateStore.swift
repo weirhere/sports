@@ -80,6 +80,48 @@ final class UIStateStore {
         persist()
     }
 
+    /// Bulk ops for the Scores pinch gesture. Scoped to the ids the caller
+    /// passes (the sections currently on screen) so day state for other
+    /// weeks is never touched. Guards keep a no-op pinch from invalidating
+    /// views or rewriting defaults.
+    func collapseAll(_ sectionIds: [String]) {
+        let (dayIds, otherIds) = partition(sectionIds)
+        if !collapsedDays.isSuperset(of: dayIds) {
+            collapsedDays.formUnion(dayIds)
+            persistCollapsedDays()
+        }
+        if !expandedSections.isDisjoint(with: otherIds) {
+            expandedSections.subtract(otherIds)
+            persist()
+        }
+    }
+
+    func expandAll(_ sectionIds: [String]) {
+        let (dayIds, otherIds) = partition(sectionIds)
+        if !collapsedDays.isDisjoint(with: dayIds) {
+            collapsedDays.subtract(dayIds)
+            persistCollapsedDays()
+        }
+        if !expandedSections.isSuperset(of: otherIds) {
+            expandedSections.formUnion(otherIds)
+            persist()
+        }
+    }
+
+    /// Day sections track collapsed state; everything else tracks expanded.
+    private func partition(_ sectionIds: [String]) -> (dayIds: Set<String>, otherIds: Set<String>) {
+        var dayIds = Set<String>()
+        var otherIds = Set<String>()
+        for id in sectionIds {
+            if id.hasPrefix(GameSection.dayPrefix) {
+                dayIds.insert(id)
+            } else {
+                otherIds.insert(id)
+            }
+        }
+        return (dayIds, otherIds)
+    }
+
     func isConferenceCollapsed(_ conferenceId: String) -> Bool {
         collapsedConferences.contains(conferenceId)
     }
@@ -90,6 +132,14 @@ final class UIStateStore {
         } else {
             collapsedConferences.insert(conferenceId)
         }
+        defaults.set(Array(collapsedConferences).sorted(), forKey: Self.collapsedConferencesKey)
+    }
+
+    /// Force-open a Teams browse card — a search result landing on its
+    /// conference needs the section visible, whatever the saved state.
+    func expandConference(_ conferenceId: String) {
+        guard collapsedConferences.contains(conferenceId) else { return }
+        collapsedConferences.remove(conferenceId)
         defaults.set(Array(collapsedConferences).sorted(), forKey: Self.collapsedConferencesKey)
     }
 

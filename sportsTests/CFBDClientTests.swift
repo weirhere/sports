@@ -308,19 +308,19 @@ private func makeJoins() throws -> CFBDJoins {
     }
 }
 
-@Suite struct CFBDSeasonYearTests {
+@Suite struct CFBSeasonYearTests {
     @Test func januaryBelongsToPreviousSeason() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
         let formatter = ISO8601DateFormatter()
 
         let january = try #require(formatter.date(from: "2027-01-10T18:00:00Z"))
-        #expect(CFBDClient.currentSeasonYear(now: january, calendar: calendar) == 2026)
+        #expect(CFBSeason.year(for: january, calendar: calendar) == 2026)
 
         let july = try #require(formatter.date(from: "2026-07-21T18:00:00Z"))
-        #expect(CFBDClient.currentSeasonYear(now: july, calendar: calendar) == 2026)
+        #expect(CFBSeason.year(for: july, calendar: calendar) == 2026)
 
         let october = try #require(formatter.date(from: "2026-10-03T18:00:00Z"))
-        #expect(CFBDClient.currentSeasonYear(now: october, calendar: calendar) == 2026)
+        #expect(CFBSeason.year(for: october, calendar: calendar) == 2026)
     }
 }
