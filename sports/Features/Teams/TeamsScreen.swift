@@ -12,9 +12,6 @@ struct TeamsScreen: View {
     // Heterogeneous: browse rows push Team, group headers push
     // ConferenceDestination — a typed path can't hold both.
     @State private var path = NavigationPath()
-    /// Drives the browse list's scroll — set when a search result lands on
-    /// a conference, tracked (harmlessly) as the user scrolls.
-    @State private var scrolledSection: String?
 
     private var conferences: [ConferenceTeams] { directory.conferences }
 
@@ -56,24 +53,16 @@ struct TeamsScreen: View {
         path = NavigationPath([team])
     }
 
-    /// Lands a search result's conference: browse list, section expanded,
-    /// scrolled to the top of the card. The seam a dedicated conference
-    /// destination would take over — search itself only emits the intent.
+    /// Lands a search result's conference on its standings page — the
+    /// dedicated destination the search seam was left open for. No data
+    /// dependency: the page fetches its own standings, so an intent
+    /// resolves immediately even before the browse list has loaded.
     private func resolvePendingConference() {
-        guard let pendingId = router.pendingConferenceId,
-              let conference = conferences.first(where: { $0.id == pendingId }) else { return }
+        guard let pendingId = router.pendingConferenceId else { return }
         router.pendingConferenceId = nil
         searchText = ""
-        path = NavigationPath()
-        let sectionId = sectionId(for: conference)
-        uiState.expandConference(sectionId)
-        // The intent arrives while the search cover is still dismissing and
-        // the tab switch is in flight; a scroll set before this ScrollView
-        // has laid out is silently dropped.
-        Task {
-            try? await Task.sleep(for: .milliseconds(450))
-            withAnimation { scrolledSection = sectionId }
-        }
+        path = NavigationPath([ConferenceDestination(conferenceId: pendingId,
+                                                     name: Conference.name(for: pendingId))])
     }
 
     @ViewBuilder
@@ -112,7 +101,6 @@ struct TeamsScreen: View {
                                         logoURL: Conference.logoURL(for: conference.id),
                                         isConference: true,
                                         conferenceId: conference.id)
-                                .id(sectionId(for: conference))
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {
@@ -131,9 +119,7 @@ struct TeamsScreen: View {
                     }
                 }
                 .padding(Spacing.sm)
-                .scrollTargetLayout()
             }
-            .scrollPosition(id: $scrolledSection, anchor: .top)
             .background(Color.bgRecessed)
             .safeAreaInset(edge: .top, spacing: 0) {
                 SearchField(text: $searchText, prompt: "Find a team")

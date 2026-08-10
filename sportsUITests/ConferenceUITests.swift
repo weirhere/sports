@@ -62,6 +62,19 @@ final class ConferenceUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(openTab("Scores", in: app, until: app.seasonChip),
                       "Scores should render its header")
+        // A followed conference pins a whole slate into Following, and Top
+        // 25 stacks another ~20 games under it — the first conference
+        // header can sit beyond any reasonable swipe budget. Collapsing
+        // the two headline sections brings the conferences into reach;
+        // their headers are always at the top and the collapse persists
+        // exactly like a user's tap would.
+        for prefix in ["Following,", "Top 25,"] {
+            let header = app.buttons.matching(NSPredicate(
+                format: "label BEGINSWITH %@ AND value == %@", prefix, "expanded")).firstMatch
+            if header.waitForExistence(timeout: 3) {
+                header.tap()
+            }
+        }
         let scoresStandings = app.buttons.matching(NSPredicate(
             format: "label ENDSWITH %@", " standings")).firstMatch
         XCTAssertTrue(scrollUntilExists(scoresStandings, in: app),
