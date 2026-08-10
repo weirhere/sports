@@ -20,4 +20,28 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     let id: Int?
     let name: String
     let entries: [ConferenceStanding]
+
+    /// The top team, but only once the standings say something: a 0-0
+    /// "leader" is last season's carried-over order, not information.
+    var leader: ConferenceStanding? {
+        guard let first = entries.first,
+              let record = first.conferenceRecord, record != "0-0" else { return nil }
+        return first
+    }
+
+    /// Followed conferences pinned first (in the list's own relative order),
+    /// the rest after. The input keeps its tier-then-name sort from the
+    /// mappers; entries without an id can't be followed or pinned.
+    static func pinned(_ list: [ConferenceStandings],
+                       followedIds: Set<Int>) -> [ConferenceStandings] {
+        let (followed, rest) = list.reduce(into: ([ConferenceStandings](), [ConferenceStandings]())) {
+            partition, conference in
+            if conference.id.map(followedIds.contains) ?? false {
+                partition.0.append(conference)
+            } else {
+                partition.1.append(conference)
+            }
+        }
+        return followed + rest
+    }
 }

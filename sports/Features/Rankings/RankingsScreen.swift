@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// The poll. AP by default; Coaches and CFP as chips (CFP only appears
-/// when ESPN returns it, i.e. from late October).
+/// The tables hub: the poll first (AP by default; Coaches and CFP as
+/// chips — CFP only appears when ESPN returns it, i.e. from late October),
+/// then every conference's standings one tap below, followed ones pinned.
 struct RankingsScreen: View {
     /// The FBS polls we show, in picker order. ESPN's response also carries
     /// FCS and DII/DIII polls — filtered out.
     private static let pollTypes = ["ap", "usa", "cfp"]
 
     @Environment(UIStateStore.self) private var uiState
+    @Environment(FollowingStore.self) private var following
 
     @State private var polls: [Poll] = []
+    @State private var conferences: [ConferenceStandings] = []
     @State private var isLoading = false
     @State private var lastError: String?
 
@@ -80,33 +83,23 @@ struct RankingsScreen: View {
         }
     }
 
+    /// Followed conferences pinned above the mappers' tier-then-name order.
+    private var orderedConferences: [ConferenceStandings] {
+        ConferenceStandings.pinned(conferences, followedIds: following.conferenceIds)
+    }
+
     @ViewBuilder
     private var content: some View {
-        if let poll = selectedPoll {
+        if selectedPoll != nil || !orderedConferences.isEmpty {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    if let headline = poll.headline {
-                        Text(headline)
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, Spacing.lg)
-                            .padding(.vertical, Spacing.sm)
+                LazyVStack(spacing: Spacing.sm) {
+                    if let poll = selectedPoll {
+                        pollCard(poll)
                     }
-                    ForEach(poll.ranks) { ranked in
-                        NavigationLink {
-                            TeamPage(team: ranked.team)
-                        } label: {
-                            RankRow(ranked: ranked)
-                        }
-                        .buttonStyle(.plain)
-                        if ranked.id != poll.ranks.last?.id {
-                            Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
-                        }
+                    if !orderedConferences.isEmpty {
+                        conferencesCard
                     }
                 }
-                .padding(.vertical, Spacing.xs)
-                .cardSurface()
                 .padding(Spacing.sm)
             }
             .background(Color.bgRecessed)
@@ -129,14 +122,66 @@ struct RankingsScreen: View {
         }
     }
 
+    private func pollCard(_ poll: Poll) -> some View {
+        LazyVStack(spacing: 0) {
+            if let headline = poll.headline {
+                Text(headline)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.sm)
+            }
+            ForEach(poll.ranks) { ranked in
+                NavigationLink {
+                    TeamPage(team: ranked.team)
+                } label: {
+                    RankRow(ranked: ranked)
+                }
+                .buttonStyle(.plain)
+                if ranked.id != poll.ranks.last?.id {
+                    Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+        .cardSurface()
+    }
+
+    private var conferencesCard: some View {
+        LazyVStack(spacing: 0) {
+            Text("CONFERENCES")
+                .font(.sectionHeader)
+                .foregroundStyle(.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+                .accessibilityAddTraits(.isHeader)
+            ForEach(orderedConferences) { conference in
+                ConferenceListRow(conference: conference)
+                if conference.id != orderedConferences.last?.id {
+                    Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+        .cardSurface()
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        // The two fetches fail independently: no poll is a screen-level
+        // error only when there are no conferences either; a standings miss
+        // just hides the CONFERENCES card under a healthy poll.
+        async let pollsFetch = client.rankings()
+        async let standingsFetch = client.conferenceStandings()
         do {
-            polls = try await client.rankings()
+            polls = try await pollsFetch
             lastError = nil
         } catch {
             lastError = "Couldn't load rankings."
         }
+        conferences = (try? await standingsFetch) ?? []
     }
 }

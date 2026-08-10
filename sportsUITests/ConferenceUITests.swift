@@ -38,7 +38,12 @@ final class ConferenceUITests: XCTestCase {
                       "The page should show standings rows or the TBA state")
 
         // Follow round-trip: flip on, flip back off so the simulator's
-        // persisted state stays clean for other tests.
+        // persisted state stays clean for other tests. Follows persist on
+        // the simulator, so normalize an already-following leftover first.
+        let leftover = app.buttons["Following conference"].firstMatch
+        if leftover.waitForExistence(timeout: 2) {
+            leftover.tap()
+        }
         let follow = app.buttons["Follow conference"].firstMatch
         XCTAssertTrue(follow.waitForExistence(timeout: 5),
                       "The page should offer a conference follow pill")
@@ -57,9 +62,42 @@ final class ConferenceUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(openTab("Scores", in: app, until: app.seasonChip),
                       "Scores should render its header")
+        // The section stack is a LazyVStack, and a followed conference can
+        // swell Following to a whole slate — the first conference header
+        // may sit screens below the fold, where its elements don't exist
+        // yet. Scroll until one materializes.
         let scoresStandings = app.buttons.matching(NSPredicate(
             format: "label ENDSWITH %@", " standings")).firstMatch
-        XCTAssertTrue(scoresStandings.waitForExistence(timeout: 15),
+        _ = scoresStandings.waitForExistence(timeout: 15)
+        for _ in 0..<12 where !scoresStandings.exists {
+            app.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(scoresStandings.exists,
                       "A Scores conference header should carry a standings button")
+    }
+
+    @MainActor
+    func testRankingsListsConferencesBelowThePoll() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ui.onboardingSeen", "YES"]
+        app.launch()
+
+        XCTAssertTrue(openTab("Rankings", in: app, until: app.topRankedRow),
+                      "Rankings should show a ranked #1")
+
+        // The CONFERENCES card sits below the 25 poll rows in a LazyVStack,
+        // so its rows don't exist as elements until scrolled near. An ACC
+        // row exists year-round (the list renders offseason, teasers or
+        // not); its label is either bare "ACC" or "ACC, led by …".
+        let accRow = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
+        for _ in 0..<12 where !accRow.exists {
+            app.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(accRow.waitForExistence(timeout: 5),
+                      "Rankings should list the ACC below the poll")
+        accRow.tap()
+        XCTAssertTrue(app.navigationBars["ACC"].waitForExistence(timeout: 10),
+                      "Tapping the conference row should push its standings page")
     }
 }

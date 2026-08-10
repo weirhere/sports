@@ -108,6 +108,46 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
+@Suite struct ConferenceListModelTests {
+    private func conference(_ id: Int?, _ name: String,
+                            entries: [ConferenceStanding] = []) -> ConferenceStandings {
+        ConferenceStandings(id: id, name: name, entries: entries)
+    }
+
+    private func standing(_ location: String, conf: String?) -> ConferenceStanding {
+        ConferenceStanding(
+            team: Team(id: location, location: location, name: nil, abbreviation: nil,
+                       displayName: nil, shortDisplayName: nil, logoURL: nil, conferenceId: nil),
+            conferenceRecord: conf, overallRecord: nil, streak: nil)
+    }
+
+    @Test func pinnedFloatsFollowedKeepingRelativeOrder() {
+        let list = [conference(1, "ACC"), conference(5, "Big Ten"),
+                    conference(8, "SEC"), conference(17, "Mountain West")]
+        let pinned = ConferenceStandings.pinned(list, followedIds: [17, 5])
+        // Followed keep their own relative order (Big Ten before Mountain
+        // West), the rest keep theirs.
+        #expect(pinned.map(\.name) == ["Big Ten", "Mountain West", "ACC", "SEC"])
+    }
+
+    @Test func pinnedWithNoFollowsIsIdentity() {
+        let list = [conference(1, "ACC"), conference(nil, "Mystery")]
+        #expect(ConferenceStandings.pinned(list, followedIds: []).map(\.name)
+                == ["ACC", "Mystery"])
+    }
+
+    @Test func leaderRequiresARealRecord() {
+        // Preseason: ESPN carries last season's order with 0-0 records —
+        // that "leader" is not information.
+        #expect(conference(8, "SEC", entries: [standing("Georgia", conf: "0-0")]).leader == nil)
+        #expect(conference(8, "SEC", entries: [standing("Georgia", conf: nil)]).leader == nil)
+        #expect(conference(8, "SEC").leader == nil)
+        let leader = conference(8, "SEC", entries: [standing("Ole Miss", conf: "7-1"),
+                                                    standing("Georgia", conf: "7-1")]).leader
+        #expect(leader?.team.location == "Ole Miss")
+    }
+}
+
 @Suite struct RankingsDecodingTests {
     @Test func decodesRankings() throws {
         let dto = try JSONDecoder().decode(RankingsResponseDTO.self, from: fixture("rankings-live"))

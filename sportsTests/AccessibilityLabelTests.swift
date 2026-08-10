@@ -197,3 +197,24 @@ private func game(status: GameStatus,
         #expect(bare.accessibilitySummary == "Georgia")
     }
 }
+
+@MainActor
+@Suite struct ConferenceListRowAccessibilityTests {
+    private func conference(entries: [ConferenceStanding]) -> ConferenceStandings {
+        ConferenceStandings(id: 8, name: "SEC", entries: entries)
+    }
+
+    @Test func speaksNameAndLeader() {
+        let row = ConferenceListRow(conference: conference(entries: [
+            ConferenceStanding(team: georgia, conferenceRecord: "7-1",
+                               overallRecord: "12-1", streak: nil)]))
+        #expect(row.accessibilitySummary == "SEC, led by Georgia at 7 and 1")
+    }
+
+    @Test func preseasonSpeaksJustTheName() {
+        let row = ConferenceListRow(conference: conference(entries: [
+            ConferenceStanding(team: georgia, conferenceRecord: "0-0",
+                               overallRecord: "0-0", streak: nil)]))
+        #expect(row.accessibilitySummary == "SEC")
+    }
+}
