@@ -91,6 +91,7 @@ Added 2026-08-04: Apple rejected 1.0 (5) under Guideline 4.2.2 Minimum Functiona
 - [ ] **P1** `NextGameIntent` App Intent / Siri Shortcut ("What's my next game?").
 - [x] **P2** App Store URL appended to share text once the app is live. *(Shipped in 1.0.1 (7). The sign-off moved behind `ShareSignOff.appended(to:)` in `StatSideShared/Models/Game+ShareText.swift` because game detail composes its own body from the fresher summary score — two call sites, one sign-off, so the link can't drift out of one of them. Link sits on its own line after "— via StatSide" so messaging apps render a preview.)*
 - [ ] **P2** One home-screen-widget screenshot frame for the listing (manual simulator capture).
+- [x] **P1** Game share carries a rendered matchup card image, not just text. *(A `GameShareCard: Transferable` exports a PNG lazily — logos fetched (1.2 s budget) and `GameShareCardView` rendered by `ImageRenderer` only when a share target is picked, so the 60-row context menu costs nothing. Detail-header layout (logos flanking a status column), always light, type pinned to fixed sizes because the theme's Font tokens bake against the process content size. Share text with the App Store link rides along as `ShareLink(message:)` plus a text-only `ProxyRepresentation` fallback. The iMessage link-preview card itself can't show the game — that's built by the recipient's device from the App Store page's OG tags, and repointing it would need a per-game web page, i.e. a backend.)*
 
 ## Icebox (deliberately not now)
 
