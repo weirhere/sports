@@ -6,9 +6,10 @@ struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
-    @Environment(\.scenePhase) private var scenePhase
+    // Owned by RootView so the search cover shares the loaded week and
+    // polling follows the scene, not this tab.
+    @Environment(ScoreboardStore.self) private var store
 
-    @State private var store = ScoreboardStore(client: DataProvider.makeClient())
     // NavigationPath, not [Game]: the stack pushes Team too (game detail's
     // header links to the team page), and a typed path can't hold both.
     @State private var path = NavigationPath()
@@ -50,17 +51,12 @@ struct ScoresScreen: View {
                 TeamPage(team: team)
             }
         }
-        .task { await store.loadInitial() }
+        // onAppear mirrors TeamsScreen: lazy tab content means an intent can
+        // predate the onChange observers. Scores is the launch tab, so this
+        // mostly matters after the tab's view is torn down and recreated.
+        .onAppear { resolvePendingGame() }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: store.games) { _, _ in resolvePendingGame() }
-        .onChange(of: scenePhase) { _, phase in
-            // Polite guest: poll only while foregrounded.
-            if phase == .active {
-                store.startPollingIfNeeded()
-            } else {
-                store.stopPolling()
-            }
-        }
     }
 
     private var sections: [GameSection] {

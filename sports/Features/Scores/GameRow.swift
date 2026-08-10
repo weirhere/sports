@@ -14,6 +14,10 @@ struct GameRow: View {
     /// in which case the row doesn't repeat it. VoiceOver still hears the full
     /// date either way — a swipe can land on the row without the divider.
     var dayIsLabeled: Bool = false
+    /// True inside a day-grouped section, whose accordion header names the
+    /// whole day — the row spends nothing on the date, just kick time and
+    /// network. VoiceOver still hears the full date.
+    var timeOnly: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
@@ -26,7 +30,7 @@ struct GameRow: View {
             if isStacked { stackedBody } else { compactBody }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .contentShape(Rectangle())
         // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
         // quarter" — instead of a dozen fragments. Logos and layout stay
@@ -39,7 +43,7 @@ struct GameRow: View {
 
     private var compactBody: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 7) {
                 teamLine(game.away)
                 teamLine(game.home)
             }
@@ -157,15 +161,22 @@ struct GameRow: View {
         case .pre:
             VStack(alignment: .trailing, spacing: 2) {
                 if let date = game.date {
-                    let kick = Self.relativeKickParts(date, weekday: .abbreviated,
-                                                     includeDate: !dayIsLabeled)
-                    // Even split across two lines, "Tomorrow" can wrap a
-                    // character per line under the names' layout priority at
-                    // large text sizes. Each line holds its natural width.
-                    kickText(kick.day)
-                        .fixedSize(horizontal: true, vertical: false)
-                    kickText(kick.time)
-                        .fixedSize(horizontal: true, vertical: false)
+                    if timeOnly {
+                        // A day section's header names the day; the row
+                        // spends its lines on time and network only.
+                        kickText(date.formatted(.dateTime.hour().minute()))
+                            .fixedSize(horizontal: true, vertical: false)
+                    } else {
+                        let kick = Self.relativeKickParts(date, weekday: .abbreviated,
+                                                          includeDate: !dayIsLabeled)
+                        // Even split across two lines, "Tomorrow" can wrap a
+                        // character per line under the names' layout priority at
+                        // large text sizes. Each line holds its natural width.
+                        kickText(kick.day)
+                            .fixedSize(horizontal: true, vertical: false)
+                        kickText(kick.time)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 } else {
                     kickText("TBD")
                         .fixedSize(horizontal: true, vertical: false)
@@ -285,6 +296,7 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
+        if timeOnly { return date.formatted(.dateTime.hour().minute()) }
         return Self.relativeKick(date, weekday: .abbreviated, includeDate: !dayIsLabeled)
     }
 

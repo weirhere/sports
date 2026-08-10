@@ -135,6 +135,14 @@ final class UIStateStore {
         defaults.set(Array(collapsedConferences).sorted(), forKey: Self.collapsedConferencesKey)
     }
 
+    /// Force-open a Teams browse card — a search result landing on its
+    /// conference needs the section visible, whatever the saved state.
+    func expandConference(_ conferenceId: String) {
+        guard collapsedConferences.contains(conferenceId) else { return }
+        collapsedConferences.remove(conferenceId)
+        defaults.set(Array(collapsedConferences).sorted(), forKey: Self.collapsedConferencesKey)
+    }
+
     private func persist() {
         defaults.set(Array(expandedSections).sorted(), forKey: Self.expandedKey)
     }

@@ -37,6 +37,22 @@ import Testing
         #expect(!reloaded.expandedSections.contains(dayId))
     }
 
+    @Test func expandConferenceForcesOpenAndPersists() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        let sectionId = "teams.conf.8"
+
+        // Idempotent when already open (Teams cards start expanded).
+        store.expandConference(sectionId)
+        #expect(!store.isConferenceCollapsed(sectionId))
+
+        store.toggleConference(sectionId)
+        #expect(store.isConferenceCollapsed(sectionId))
+        store.expandConference(sectionId)
+        #expect(!store.isConferenceCollapsed(sectionId))
+        #expect(!UIStateStore(defaults: defaults).isConferenceCollapsed(sectionId))
+    }
+
     @Test func collapseAllAndExpandAllHandleMixedSemantics() {
         let store = UIStateStore(defaults: makeDefaults())
         let dayId = "\(GameSection.dayPrefix)2026-08-29"
