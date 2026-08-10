@@ -65,7 +65,11 @@ struct GameDetailScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: shareText) {
+                ShareLink(
+                    item: GameShareCard(game: game, summary: summary, shareText: shareText),
+                    message: Text(shareText),
+                    preview: SharePreview(game.shortName ?? game.name ?? "Game")
+                ) {
                     Image(systemName: "square.and.arrow.up")
                         .foregroundStyle(.textPrimary)
                 }
@@ -97,10 +101,7 @@ struct GameDetailScreen: View {
         .refreshable { await load(force: true) }
     }
 
-    private var isLiveNow: Bool {
-        if case .live = summary?.status ?? game.status { return true }
-        return false
-    }
+    private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
 
     private var currentScores: [Int?] {
         [summary?.away?.score ?? game.away.score, summary?.home?.score ?? game.home.score]
@@ -153,12 +154,11 @@ struct GameDetailScreen: View {
         return "\(matchup), \(statusLine.replacingOccurrences(of: "\n", with: ", "))"
     }
 
+    // Delegated to GameHeaderState so the share card provably renders the
+    // same merge and status strings as this header.
     private func competitor(_ fallback: Competitor, _ side: GameSummary.Side?)
         -> (team: Team, score: Int?, record: String?, winner: Bool?) {
-        guard let side else {
-            return (fallback.team, fallback.score, fallback.record, fallback.winner)
-        }
-        return (side.team, side.score, side.record ?? fallback.record, side.winner)
+        GameHeaderState.competitor(fallback, side)
     }
 
     private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
@@ -186,26 +186,9 @@ struct GameDetailScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var showsScores: Bool {
-        if case .pre = summary?.status ?? game.status { return false }
-        return true
-    }
+    private var showsScores: Bool { GameHeaderState.showsScores(game, summary) }
 
-    private var statusLine: String {
-        switch summary?.status ?? game.status {
-        case .pre:
-            let kick = game.date?.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()) ?? "TBD"
-            return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
-        case .live(let clock, let period, let detail, _):
-            let quarter = period.map { $0 <= 4 ? "Q\($0)" : "OT" }
-            return [quarter, clock].compactMap(\.self).joined(separator: " ")
-                .isEmpty ? (detail ?? "Live") : [quarter, clock].compactMap(\.self).joined(separator: " ")
-        case .final(let detail):
-            return detail ?? "Final"
-        case .other(let detail):
-            return detail ?? "—"
-        }
-    }
+    private var statusLine: String { GameHeaderState.statusLine(game, summary) }
 
     private func footer(_ summary: GameSummary) -> some View {
         VStack(spacing: Spacing.xs) {
