@@ -105,7 +105,8 @@ struct TeamPage: View {
             }
             .padding(.vertical, Spacing.xl)
         } else {
-            // ESPN publishes next season's schedules late; July can be empty.
+            // Only reachable when this season and last season both came back
+            // empty — the client falls back a year before giving up.
             Text("Schedule TBA")
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)
