@@ -58,6 +58,56 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
+@Suite struct ConferenceStandingsDecodingTests {
+    private func standings() throws -> [ConferenceStandings] {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self,
+                                           from: fixture("standings-with-stats"))
+        return ESPNMapper.conferenceStandings(from: dto)
+    }
+
+    @Test func decodesRecordsAndKeepsStandingsOrder() throws {
+        let all = try standings()
+        // Tier then name: Big Ten and SEC (power4) before Sun Belt (group5).
+        #expect(all.map(\.name) == ["Big Ten", "SEC", "Sun Belt"])
+
+        let sec = try #require(all.first { $0.id == 8 })
+        // ESPN's order survives the mapper — alphabetizing would put
+        // Alabama first.
+        #expect(sec.entries.map(\.team.location) == ["Ole Miss", "Georgia", "Alabama"])
+
+        let oleMiss = try #require(sec.entries.first)
+        #expect(oleMiss.conferenceRecord == "7-1")
+        #expect(oleMiss.overallRecord == "13-2")
+        #expect(oleMiss.streak == "L1")
+        #expect(oleMiss.team.conferenceId == 8)
+    }
+
+    @Test func missingStatsDegradeTheRowNotTheTable() throws {
+        let sec = try #require(try standings().first { $0.id == 8 })
+        // Alabama's entry has no stats array at all; the row stays, its
+        // records read as absent.
+        let alabama = try #require(sec.entries.first { $0.team.location == "Alabama" })
+        #expect(alabama.conferenceRecord == nil)
+        #expect(alabama.overallRecord == nil)
+        #expect(alabama.streak == nil)
+    }
+
+    @Test func malformedEntriesDropRowsNotTheResponse() throws {
+        let sec = try #require(try standings().first { $0.id == 8 })
+        // The fixture has 5 SEC entries: a nil team and a corrupt stats
+        // shape each cost one row, the other 3 survive.
+        #expect(sec.entries.count == 3)
+    }
+
+    @Test func emptyConferenceIsKeptForTheStandingsPage() throws {
+        // Offseason quirk (Sun Belt, 2026-07-20): zero entries. The browse
+        // mapper drops it; the standings mapper must keep it so the page
+        // can say "Standings TBA".
+        let sunBelt = try #require(try standings().first { $0.id == 37 })
+        #expect(sunBelt.entries.isEmpty)
+    }
+}
+
 @Suite struct RankingsDecodingTests {
     @Test func decodesRankings() throws {
         let dto = try JSONDecoder().decode(RankingsResponseDTO.self, from: fixture("rankings-live"))

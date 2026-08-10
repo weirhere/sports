@@ -27,6 +27,15 @@ struct RankingsScreen: View {
             .background(Color.bgPrimary)
             .navigationTitle("Rankings")
             .navigationBarTitleDisplayMode(.inline)
+            // TeamPage is pushed view-based here, but its standing line and
+            // a standings row's team both push values — register them so
+            // those links work inside this stack too.
+            .navigationDestination(for: ConferenceDestination.self) { destination in
+                ConferencePage(destination: destination)
+            }
+            .navigationDestination(for: Team.self) { team in
+                TeamPage(team: team)
+            }
         }
         .task { await load() }
     }

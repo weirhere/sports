@@ -6,44 +6,79 @@ struct SectionAccordion: View {
     let section: GameSection
     let isExpanded: Bool
     let onToggle: () -> Void
+    /// Pushes this conference's standings page; nil for non-conference
+    /// sections (and "Other"), which hides the affordance entirely.
+    var onOpenStandings: (() -> Void)? = nil
 
     @Environment(FollowingStore.self) private var following
 
     var body: some View {
         VStack(spacing: 0) {
-            Button(action: onToggle) {
-                HStack(spacing: Spacing.sm) {
-                    if section.isConference {
-                        ConferenceLogo(url: section.logoURL)
-                    } else if let symbol = headerSymbol {
-                        // Same footprint as ConferenceLogo so every section
-                        // title starts at the same x.
-                        Image(systemName: symbol)
-                            .font(.system(size: 13, weight: .medium))
+            // Two side-by-side buttons: the toggle keeps (almost) the whole
+            // header as its surface; the standings link is its own target so
+            // navigation never dilutes the expand/collapse promise.
+            HStack(spacing: 0) {
+                Button(action: onToggle) {
+                    HStack(spacing: Spacing.sm) {
+                        if section.isConference {
+                            ConferenceLogo(url: section.logoURL)
+                        } else if let symbol = headerSymbol {
+                            // Same footprint as ConferenceLogo so every section
+                            // title starts at the same x.
+                            Image(systemName: symbol)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.textSecondary)
+                                .frame(width: 18, height: 18)
+                        }
+                        Text(section.title)
+                            .font(.sectionHeader)
+                            .foregroundStyle(.textPrimary)
+                        Text("\(section.games.count)")
+                            .font(.meta)
                             .foregroundStyle(.textSecondary)
-                            .frame(width: 18, height: 18)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.textSecondary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
-                    Text(section.title)
-                        .font(.sectionHeader)
-                        .foregroundStyle(.textPrimary)
-                    Text("\(section.games.count)")
-                        .font(.meta)
-                        .foregroundStyle(.textSecondary)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.textSecondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .padding(.leading, Spacing.lg)
+                    .padding(.trailing, onOpenStandings == nil ? Spacing.lg : Spacing.sm)
+                    .padding(.vertical, Spacing.md)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
-                .background(Color.bgHeader)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
+                .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+                .accessibilityAddTraits(.isHeader)
+                // The small trailing target gets redundant paths, like
+                // GameRow's context menu + custom actions. Both builders
+                // are empty for non-conference sections, which suppresses
+                // the menu and the action entirely.
+                .contextMenu {
+                    if let onOpenStandings {
+                        Button {
+                            onOpenStandings()
+                        } label: {
+                            Label("View \(section.title) standings",
+                                  systemImage: "list.number")
+                        }
+                    }
+                }
+                .accessibilityActions {
+                    if let onOpenStandings {
+                        Button("View \(section.title) standings",
+                               action: onOpenStandings)
+                    }
+                }
+
+                if let onOpenStandings {
+                    ConferenceStandingsLink(conferenceName: section.title,
+                                            onOpen: onOpenStandings)
+                        .padding(.trailing, Spacing.xs)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
-            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
-            .accessibilityAddTraits(.isHeader)
+            .background(Color.bgHeader)
 
             if isExpanded {
                 ForEach(Array(section.games.enumerated()), id: \.element.id) { index, game in

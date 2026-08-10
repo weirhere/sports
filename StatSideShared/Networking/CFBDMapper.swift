@@ -207,6 +207,60 @@ nonisolated enum CFBDMapper {
         }
     }
 
+    /// CFBD has no authoritative standings order (no tiebreakers), so this
+    /// sorts by conference win pct, then overall win pct, then school — a
+    /// documented deviation from ESPN's order. No streak data either.
+    static func conferenceStandings(from teams: [CFBDTeamDTO],
+                                    records: [CFBDTeamRecordsDTO]) -> [ConferenceStandings] {
+        let recordsById = Dictionary(records.compactMap { dto in
+            dto.teamId.map { ($0, dto) }
+        }, uniquingKeysWith: { first, _ in first })
+
+        func summary(_ record: CFBDRecordDTO?) -> String? {
+            guard let wins = record?.wins, let losses = record?.losses else { return nil }
+            let ties = record?.ties ?? 0
+            return ties > 0 ? "\(wins)-\(losses)-\(ties)" : "\(wins)-\(losses)"
+        }
+        func winPct(_ record: CFBDRecordDTO?) -> Double {
+            guard let wins = record?.wins, let losses = record?.losses else { return -1 }
+            let games = wins + losses + (record?.ties ?? 0)
+            return games > 0 ? Double(wins) / Double(games) : 0
+        }
+
+        let grouped = Dictionary(grouping: teams.filter { $0.conference != nil }) {
+            $0.conference ?? ""
+        }
+        return grouped.compactMap { name, members -> ConferenceStandings? in
+            let id = Conference.id(forCFBDName: name)
+            let entries = members.compactMap { member -> (ConferenceStanding, Double, Double)? in
+                guard member.id != nil else { return nil }
+                let record = member.id.flatMap { recordsById[$0] }
+                let standing = ConferenceStanding(
+                    team: team(from: member),
+                    conferenceRecord: summary(record?.conferenceGames),
+                    overallRecord: summary(record?.total),
+                    streak: nil
+                )
+                return (standing, winPct(record?.conferenceGames), winPct(record?.total))
+            }
+            guard !entries.isEmpty else { return nil }
+            let sorted = entries.sorted { lhs, rhs in
+                if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
+                if lhs.2 != rhs.2 { return lhs.2 > rhs.2 }
+                return lhs.0.team.location < rhs.0.team.location
+            }
+            return ConferenceStandings(
+                id: id,
+                name: id != nil ? Conference.name(for: id) : name,
+                entries: sorted.map(\.0)
+            )
+        }
+        .sorted { lhs, rhs in
+            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            return lt == rt ? lhs.name < rhs.name : lt < rt
+        }
+    }
+
     static func recordsById(from records: [CFBDTeamRecordsDTO]) -> [Int: String] {
         var result: [Int: String] = [:]
         for record in records {

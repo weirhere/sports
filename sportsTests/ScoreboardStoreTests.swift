@@ -11,6 +11,7 @@ private struct StubProvider: ScoresProviding {
 
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferenceStandings() async throws -> [ConferenceStandings] { [] }
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
         TeamSchedule(team: nil, record: nil, standing: nil, games: [])
     }
@@ -84,6 +85,51 @@ private func game(_ id: String, home: Team, away: Team,
                                                  away: team("2", conference: nil))])
         let sections = store.sections(followingIds: [])
         #expect(sections.map(\.id) == ["conf-Other"])
+    }
+
+    @Test func conferenceFollowPutsItsGamesInFollowing() async {
+        let store = await makeStore(games: [
+            game("sec", home: team("1", conference: 8), away: team("2", conference: 8)),
+            game("acc", home: team("3", conference: 1), away: team("4", conference: 1)),
+        ])
+        // Following the SEC with zero team follows still produces a
+        // Following section, containing only SEC games.
+        let sections = store.sections(followingIds: [], followedConferenceIds: [8])
+        let following = sections.first { $0.id == GameSection.followingId }
+        #expect(following?.games.map(\.id) == ["sec"])
+    }
+
+    @Test func fcsVisitorJoinsFollowingViaItsFBSHost() async {
+        // An SEC host with an FCS visitor (unknown conference id on the
+        // away side): following the SEC still claims the game.
+        let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
+                                                 away: team("2", conference: 424242))])
+        let sections = store.sections(followingIds: [], followedConferenceIds: [8])
+        #expect(sections.first?.id == GameSection.followingId)
+        #expect(sections.first?.games.map(\.id) == ["g1"])
+    }
+
+    @Test func followedConferenceFloatsItsSection() async {
+        let store = await makeStore(games: [
+            game("g1", home: team("1", conference: 5), away: team("2", conference: 5)),
+            game("g2", home: team("3", conference: 17), away: team("4", conference: 17)),
+        ])
+        // Big Ten (power4) normally leads; following Mountain West floats
+        // it above, mirroring the followed-team float.
+        let ids = store.sections(followingIds: [], followedConferenceIds: [17]).map(\.id)
+        #expect(ids == [GameSection.followingId, "conf-Mountain West", "conf-Big Ten"])
+    }
+
+    @Test func conferenceIdStampedOnlyOnConferenceSections() async {
+        let sec = team("1", conference: 8)
+        let store = await makeStore(games: [game("g1", home: sec,
+                                                 away: team("2", conference: 5), homeRank: 3)])
+        let sections = store.sections(followingIds: ["1"])
+        let byId = Dictionary(uniqueKeysWithValues: sections.map { ($0.id, $0.conferenceId) })
+        #expect(byId[GameSection.followingId] == .some(nil))
+        #expect(byId[GameSection.top25Id] == .some(nil))
+        #expect(byId["conf-SEC"] == 8)
+        #expect(byId["conf-Big Ten"] == 5)
     }
 
     @Test func liveToggleFiltersAndHidesEmptySections() async {

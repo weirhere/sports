@@ -9,7 +9,9 @@ struct ScoresScreen: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var store = ScoreboardStore(client: DataProvider.makeClient())
-    @State private var path: [Game] = []
+    // Heterogeneous: game rows push Game, conference headers push
+    // ConferenceDestination, and standings rows push Team.
+    @State private var path = NavigationPath()
     @State private var refreshCount = 0
 
     var body: some View {
@@ -43,6 +45,12 @@ struct ScoresScreen: View {
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
             }
+            .navigationDestination(for: ConferenceDestination.self) { destination in
+                ConferencePage(destination: destination)
+            }
+            .navigationDestination(for: Team.self) { team in
+                TeamPage(team: team)
+            }
         }
         .task { await store.loadInitial() }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
@@ -58,7 +66,9 @@ struct ScoresScreen: View {
     }
 
     private var sections: [GameSection] {
-        store.sections(followingIds: following.teamIds, grouping: uiState.scoresGrouping)
+        store.sections(followingIds: following.teamIds,
+                       followedConferenceIds: following.conferenceIds,
+                       grouping: uiState.scoresGrouping)
     }
 
     /// Lands a widget/notification tap on its game once the current week is
@@ -69,7 +79,7 @@ struct ScoresScreen: View {
         guard let pendingId = router.pendingGameId,
               let game = store.games.first(where: { $0.id == pendingId }) else { return }
         router.pendingGameId = nil
-        path = [game]
+        path = NavigationPath([game])
     }
 
     private var liveChipRow: some View {
@@ -96,7 +106,11 @@ struct ScoresScreen: View {
                         SectionAccordion(
                             section: section,
                             isExpanded: uiState.isExpanded(section.id),
-                            onToggle: { withAnimation { uiState.toggle(section.id) } }
+                            onToggle: { withAnimation { uiState.toggle(section.id) } },
+                            onOpenStandings: section.conferenceId.map { id in
+                                { path.append(ConferenceDestination(conferenceId: id,
+                                                                    name: section.title)) }
+                            }
                         )
                         .cardSurface()
                     }

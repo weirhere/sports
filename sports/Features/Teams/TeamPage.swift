@@ -57,9 +57,26 @@ struct TeamPage: View {
                 // "1st in SEC" next to 0-0 is false precision — ESPN
                 // carries last season's standing until games are played.
                 if let standing = schedule?.standing, schedule?.record != "0-0" {
-                    Text(standing)
-                        .font(.meta)
-                        .foregroundStyle(.textSecondary)
+                    if let conferenceId = team.conferenceId {
+                        NavigationLink(value: ConferenceDestination(
+                            conferenceId: conferenceId,
+                            name: Conference.name(for: conferenceId)
+                        )) {
+                            HStack(spacing: 2) {
+                                Text(standing)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .semibold))
+                            }
+                            .font(.meta)
+                            .foregroundStyle(.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("View conference standings")
+                    } else {
+                        Text(standing)
+                            .font(.meta)
+                            .foregroundStyle(.textSecondary)
+                    }
                 }
             }
             followPill

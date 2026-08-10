@@ -27,6 +27,7 @@ actor CFBDClient: ScoresProviding {
     // cached for the process lifetime; a relaunch refreshes them.
     private var teamsByYear: [Int: [CFBDTeamDTO]] = [:]
     private var calendarByYear: [Int: [WeekSlot]] = [:]
+    private var recordDTOsByYear: [Int: [CFBDTeamRecordsDTO]] = [:]
     private var recordsByYear: [Int: [Int: String]] = [:]
     private var ranksByKey: [String: [Int: Int]] = [:]
 
@@ -101,6 +102,13 @@ actor CFBDClient: ScoresProviding {
     func fbsConferences() async throws -> [ConferenceTeams] {
         let teams = try await teams(year: Self.currentSeasonYear())
         return CFBDMapper.conferences(from: teams)
+    }
+
+    func conferenceStandings() async throws -> [ConferenceStandings] {
+        let season = Self.currentSeasonYear()
+        let teams = try await teams(year: season)
+        let records = await recordDTOs(year: season)
+        return CFBDMapper.conferenceStandings(from: teams, records: records)
     }
 
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
@@ -189,12 +197,19 @@ actor CFBDClient: ScoresProviding {
         return teams.elements
     }
 
-    private func records(year: Int) async -> [Int: String] {
-        if let cached = recordsByYear[year] { return cached }
+    private func recordDTOs(year: Int) async -> [CFBDTeamRecordsDTO] {
+        if let cached = recordDTOsByYear[year] { return cached }
         let fetched: LossyArray<CFBDTeamRecordsDTO>? = try? await fetch(
             "/records", query: [URLQueryItem(name: "year", value: String(year))]
         )
-        let records = CFBDMapper.recordsById(from: fetched?.elements ?? [])
+        let records = fetched?.elements ?? []
+        recordDTOsByYear[year] = records
+        return records
+    }
+
+    private func records(year: Int) async -> [Int: String] {
+        if let cached = recordsByYear[year] { return cached }
+        let records = CFBDMapper.recordsById(from: await recordDTOs(year: year))
         recordsByYear[year] = records
         return records
     }

@@ -76,6 +76,9 @@ nonisolated struct CFBDTeamRecordsDTO: Decodable {
     let teamId: Int?
     let team: String?
     let total: CFBDRecordDTO?
+    // Spec-verified only (v2 OpenAPI); needs a real-key check — a shape
+    // miss degrades to nil conference records, never a crash.
+    let conferenceGames: CFBDRecordDTO?
 }
 
 nonisolated struct CFBDRecordDTO: Decodable {
