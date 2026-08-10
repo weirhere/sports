@@ -59,8 +59,10 @@ struct SectionAccordion: View {
                     NavigationLink(value: game) {
                         // Dividers only appear when the section spans days, so
                         // that same flag says whether the row's date is already
-                        // spoken for.
-                        GameRow(game: game, dayIsLabeled: spansMultipleDays)
+                        // spoken for. A day section's header names the whole
+                        // day, so its rows drop the date entirely.
+                        GameRow(game: game, dayIsLabeled: spansMultipleDays,
+                                timeOnly: isDaySection)
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
@@ -117,6 +119,10 @@ struct SectionAccordion: View {
     // Whisper-quiet "SAT, AUG 29" labels, only when the section spans more
     // than one day. Dates included, not just weekdays — ESPN weeks can span
     // two weekends (2026's Week 1 does).
+
+    private var isDaySection: Bool {
+        section.id.hasPrefix(GameSection.dayPrefix)
+    }
 
     private var spansMultipleDays: Bool {
         Set(section.games.compactMap { $0.date.map(Calendar.current.startOfDay(for:)) }).count > 1

@@ -17,10 +17,14 @@ struct GroupingChip: View {
             }
             .foregroundStyle(byDate ? Color.bgPrimary : Color.textPrimary)
             .padding(.horizontal, Spacing.md)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(
                 Capsule().fill(byDate ? Color.textPrimary : Color.bgElevated)
             )
+            // The capsule stays compact; the tappable box meets the 44 pt
+            // HIG minimum.
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Group games by date")

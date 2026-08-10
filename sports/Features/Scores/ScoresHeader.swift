@@ -50,8 +50,11 @@ struct ScoresHeader: View {
             }
             .foregroundStyle(Color.textPrimary)
             .padding(.horizontal, Spacing.md)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(Capsule().fill(Color.bgElevated))
+            // Matches GroupingChip: compact capsule, 44 pt tap target.
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .disabled(seasons.isEmpty)
     }
