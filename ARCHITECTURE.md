@@ -129,7 +129,9 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `record` is an array (type `total` carries the summary), not `records`
 - `status` lives on `competitions[0]`, not the event
 - broadcasts nest as `broadcasts[].media.shortName`
-- 2026 schedules unpublished as of July (`events: []`); pass `?season=2025` for last season
+- a bare request inherits ESPN's "current" season *type*, which is the empty preseason (`type: 1`, `events: []`) from February until kickoff — always pass `?season={year}&seasontype=2` explicitly (verified live 2026-08-09; `?season=` alone is not enough, the type stays preseason)
+- postseason games only appear under `?season={year}&seasontype=3` — a separate request, merged client-side; a team with no bowl returns `events: []`
+- `ESPNClient` falls back to `season - 1` when the requested season maps to zero games (next season unpublished ~Feb–July), so TeamPage shows last season's results instead of "Schedule TBA"
 
 ### `/summary` extras
 `leaders[]` at the top level (per team: `passingYards`/`rushingYards`/`receivingYards` categories with `athlete` + `displayValue`) is the game-detail leaders source — simpler than reassembling from `boxscore.players`. Header competitors carry `linescores[].displayValue` and a `record` array.

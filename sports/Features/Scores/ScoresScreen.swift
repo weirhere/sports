@@ -10,8 +10,11 @@ struct ScoresScreen: View {
     // polling follows the scene, not this tab.
     @Environment(ScoreboardStore.self) private var store
 
-    @State private var path: [Game] = []
+    // NavigationPath, not [Game]: the stack pushes Team too (game detail's
+    // header links to the team page), and a typed path can't hold both.
+    @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    @State private var pinchHandled = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -44,6 +47,9 @@ struct ScoresScreen: View {
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
             }
+            .navigationDestination(for: Team.self) { team in
+                TeamPage(team: team)
+            }
         }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this
@@ -65,7 +71,7 @@ struct ScoresScreen: View {
         guard let pendingId = router.pendingGameId,
               let game = store.games.first(where: { $0.id == pendingId }) else { return }
         router.pendingGameId = nil
-        path = [game]
+        path = NavigationPath([game])
     }
 
     private var liveChipRow: some View {
@@ -105,6 +111,24 @@ struct ScoresScreen: View {
                 refreshCount += 1
             }
             .sensoryFeedback(.success, trigger: refreshCount)
+            // FotMob's gesture: pinch in collapses every section on screen,
+            // pinch out opens them all. Fires once per pinch at the
+            // threshold crossing; simultaneous so scroll, pull-to-refresh,
+            // and header taps are unaffected.
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        guard !pinchHandled else { return }
+                        if value.magnification < 0.8 {
+                            pinchHandled = true
+                            withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                        } else if value.magnification > 1.25 {
+                            pinchHandled = true
+                            withAnimation { uiState.expandAll(sections.map(\.id)) }
+                        }
+                    }
+                    .onEnded { _ in pinchHandled = false }
+            )
         }
     }
 

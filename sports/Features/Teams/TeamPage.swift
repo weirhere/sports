@@ -23,7 +23,7 @@ struct TeamPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: teamShareText) {
+                ShareLink(item: team.shareText(schedule: schedule)) {
                     Image(systemName: "square.and.arrow.up")
                         .foregroundStyle(.textPrimary)
                 }
@@ -31,14 +31,6 @@ struct TeamPage: View {
             }
         }
         .task { await load() }
-    }
-
-    private var teamShareText: String {
-        var text = "Following \(team.displayName ?? team.location) on StatSide"
-        if let record = schedule?.record, record != "0-0" {
-            text += " — \(record)"
-        }
-        return text
     }
 
     private var header: some View {
@@ -105,7 +97,8 @@ struct TeamPage: View {
             }
             .padding(.vertical, Spacing.xl)
         } else {
-            // ESPN publishes next season's schedules late; July can be empty.
+            // Only reachable when this season and last season both came back
+            // empty — the client falls back a year before giving up.
             Text("Schedule TBA")
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)

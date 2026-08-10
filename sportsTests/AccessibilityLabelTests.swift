@@ -131,6 +131,48 @@ private func game(status: GameStatus,
         #expect(render(daysOut: 20, includeDate: false) == render(daysOut: 3))
         #expect(render(daysOut: 20, includeDate: true).contains("29"))
     }
+
+    @Test func thePartsJoinBackIntoThePhrase() {
+        // The trailing column takes the day and time as separate lines; every
+        // vantage point on the ladder must split exactly where the joined
+        // phrase puts its space.
+        let kick = calendar.date(from: DateComponents(year: 2026, month: 8, day: 29, hour: 15))!
+        for daysOut in [0, 1, 3, 7, 20] {
+            let now = calendar.date(byAdding: .day, value: -daysOut, to: kick)!
+            let parts = GameRow.relativeKickParts(kick, weekday: .abbreviated, now: now)
+            #expect("\(parts.day) \(parts.time)" ==
+                    GameRow.relativeKick(kick, weekday: .abbreviated, now: now))
+        }
+    }
+}
+
+@MainActor
+@Suite struct GameDetailHeaderAccessibilityTests {
+    // The header's team columns are NavigationLinks to the team page; each
+    // speaks its own side. With no summary loaded the screen falls back to
+    // the pushed Game, so labels are deterministic.
+
+    @Test func liveSideSpeaksLocationAndScore() {
+        let screen = GameDetailScreen(game: game(
+            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+            homeScore: 17, awayScore: 24))
+        #expect(screen.sideAccessibilityLabel((georgia, 24, nil, nil)) == "Georgia 24")
+        #expect(screen.sideAccessibilityLabel((tennessee, 17, nil, nil)) == "Tennessee 17")
+    }
+
+    @Test func preGameSideSuppressesTheScore() {
+        let screen = GameDetailScreen(game: game(status: .pre(detail: nil)))
+        #expect(screen.sideAccessibilityLabel((georgia, nil, "5-0", nil)) == "Georgia")
+        // Even a stray score stays quiet before kickoff.
+        #expect(screen.sideAccessibilityLabel((georgia, 0, "5-0", nil)) == "Georgia")
+    }
+
+    @Test func finalSideSpeaksTheScore() {
+        let screen = GameDetailScreen(game: game(
+            status: .final(detail: "Final"),
+            homeScore: 24, awayScore: 27, homeWinner: false, awayWinner: true))
+        #expect(screen.sideAccessibilityLabel((georgia, 27, nil, true)) == "Georgia 27")
+    }
 }
 
 @MainActor

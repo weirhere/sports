@@ -68,7 +68,11 @@ struct SectionAccordion: View {
                     .contextMenu {
                         followMenuButton(for: game.away.team)
                         followMenuButton(for: game.home.team)
-                        ShareLink(item: game.shareText) {
+                        ShareLink(
+                            item: GameShareCard(game: game, summary: nil, shareText: game.shareText),
+                            message: Text(game.shareText),
+                            preview: SharePreview(game.shortName ?? game.name ?? "Game")
+                        ) {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
                     }

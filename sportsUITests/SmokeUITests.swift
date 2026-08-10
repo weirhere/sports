@@ -74,6 +74,18 @@ final class SmokeUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10),
                       "Tapping a game row should push the game detail")
         snapshot(app, "game-detail")
+
+        // Header team column pushes the team page. Asserting on the Following
+        // pill (Georgia was followed above), not the schedule — the schedule
+        // section is calendar-dependent.
+        let teamButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Georgia")).firstMatch
+        XCTAssertTrue(teamButton.waitForExistence(timeout: 10),
+                      "Game detail header should have a Georgia team button")
+        teamButton.tap()
+        XCTAssertTrue(app.buttons["Following"].firstMatch.waitForExistence(timeout: 10),
+                      "Team header tap should push the team page")
+        snapshot(app, "team-page-from-game")
     }
 
     @MainActor

@@ -53,6 +53,53 @@ import Testing
         #expect(!UIStateStore(defaults: defaults).isConferenceCollapsed(sectionId))
     }
 
+    @Test func collapseAllAndExpandAllHandleMixedSemantics() {
+        let store = UIStateStore(defaults: makeDefaults())
+        let dayId = "\(GameSection.dayPrefix)2026-08-29"
+        let ids = [GameSection.followingId, "conf-SEC", dayId, GameSection.tbdDayId]
+
+        store.collapseAll(ids)
+        for id in ids {
+            #expect(!store.isExpanded(id))
+        }
+        // Day ids route through collapsedDays, never expandedSections;
+        // Following (open by default) actually left expandedSections.
+        #expect(store.collapsedDays.contains(dayId))
+        #expect(!store.expandedSections.contains(dayId))
+        #expect(!store.expandedSections.contains(GameSection.followingId))
+
+        store.expandAll(ids)
+        for id in ids {
+            #expect(store.isExpanded(id))
+        }
+        #expect(!store.collapsedDays.contains(dayId))
+    }
+
+    @Test func bulkOpsPersistAcrossInstances() {
+        let defaults = makeDefaults()
+        let dayId = "\(GameSection.dayPrefix)2026-08-29"
+        UIStateStore(defaults: defaults).collapseAll(["conf-SEC", dayId, GameSection.top25Id])
+
+        let reloaded = UIStateStore(defaults: defaults)
+        #expect(!reloaded.isExpanded("conf-SEC"))
+        #expect(!reloaded.isExpanded(dayId))
+        #expect(!reloaded.isExpanded(GameSection.top25Id))
+    }
+
+    @Test func bulkOpsAreIdempotentAndScoped() {
+        let store = UIStateStore(defaults: makeDefaults())
+
+        // Only the passed ids move; Top 25 stays open by default.
+        store.collapseAll(["conf-SEC"])
+        store.collapseAll(["conf-SEC"])
+        #expect(!store.isExpanded("conf-SEC"))
+        #expect(store.isExpanded(GameSection.top25Id))
+
+        store.expandAll([])
+        store.collapseAll([])
+        #expect(store.isExpanded(GameSection.top25Id))
+    }
+
     @Test func scoresGroupingRoundTripsAndDefaultsToConference() {
         let defaults = makeDefaults()
         let store = UIStateStore(defaults: defaults)
