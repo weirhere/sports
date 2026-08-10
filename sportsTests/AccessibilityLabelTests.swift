@@ -131,6 +131,19 @@ private func game(status: GameStatus,
         #expect(render(daysOut: 20, includeDate: false) == render(daysOut: 3))
         #expect(render(daysOut: 20, includeDate: true).contains("29"))
     }
+
+    @Test func thePartsJoinBackIntoThePhrase() {
+        // The trailing column takes the day and time as separate lines; every
+        // vantage point on the ladder must split exactly where the joined
+        // phrase puts its space.
+        let kick = calendar.date(from: DateComponents(year: 2026, month: 8, day: 29, hour: 15))!
+        for daysOut in [0, 1, 3, 7, 20] {
+            let now = calendar.date(byAdding: .day, value: -daysOut, to: kick)!
+            let parts = GameRow.relativeKickParts(kick, weekday: .abbreviated, now: now)
+            #expect("\(parts.day) \(parts.time)" ==
+                    GameRow.relativeKick(kick, weekday: .abbreviated, now: now))
+        }
+    }
 }
 
 @MainActor

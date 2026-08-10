@@ -13,6 +13,7 @@ struct ScoresScreen: View {
     // header links to the team page), and a typed path can't hold both.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    @State private var pinchHandled = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -114,6 +115,24 @@ struct ScoresScreen: View {
                 refreshCount += 1
             }
             .sensoryFeedback(.success, trigger: refreshCount)
+            // FotMob's gesture: pinch in collapses every section on screen,
+            // pinch out opens them all. Fires once per pinch at the
+            // threshold crossing; simultaneous so scroll, pull-to-refresh,
+            // and header taps are unaffected.
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        guard !pinchHandled else { return }
+                        if value.magnification < 0.8 {
+                            pinchHandled = true
+                            withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                        } else if value.magnification > 1.25 {
+                            pinchHandled = true
+                            withAnimation { uiState.expandAll(sections.map(\.id)) }
+                        }
+                    }
+                    .onEnded { _ in pinchHandled = false }
+            )
         }
     }
 
