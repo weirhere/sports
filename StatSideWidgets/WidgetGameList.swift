@@ -79,7 +79,7 @@ struct WidgetGameRow: View {
                 WidgetTeamRow(line: game.away, emphasize: game.isLive, showScore: game.showsScores)
                 WidgetTeamRow(line: game.home, emphasize: game.isLive, showScore: game.showsScores)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: Spacing.xs) {
                 if game.isLive {
                     Circle()
