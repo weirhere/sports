@@ -82,7 +82,7 @@ De-iceboxed 2026-07-21 (Andy's call). Gated on open question #6 (data licensing)
 
 Added 2026-08-04: Apple rejected 1.0 (5) under Guideline 4.2.2 Minimum Functionality ("does not sufficiently differ from a web browsing experience"). The fix is a native-functionality bundle — widgets and notifications come out of the Icebox (they were the roadmap's "killer feature" anyway; the rejection just moved the date). Resubmit as 1.0 (6).
 
-- [ ] **P0** Home-screen widget (`StatSideWidgets` extension target): followed teams' live/next game, systemSmall + systemMedium + accessoryRectangular, monochrome design system, sparse budget-aware timeline (15 min live / hourly idle), last-good snapshot on network failure.
+- [ ] **P0** Home-screen widget (`StatSideWidgets` extension target): followed teams' live/next game, systemSmall + systemMedium + accessoryRectangular, monochrome design system, sparse budget-aware timeline (15 min live / hourly idle), last-good snapshot on network failure. *(Family scope superseded 2026-08-16: systemSmall removed, systemLarge added — see the decisions log.)*
 - [ ] **P0** App Group `group.com.andyryanweir.sports`: entitlements for both targets, `FollowingStore` on the shared suite, one-time migration of existing follows.
 - [ ] **P0** Shared code to `StatSideShared/` (second synchronized root group; models + networking + Theme tokens compile into both targets).
 - [ ] **P0** Deep links: `statside://game/{id}`, `statside://team/{id}`, `statside://teams` via `onOpenURL` + a small Router; scheme unregistered (widgetURL/notification taps only in v1).

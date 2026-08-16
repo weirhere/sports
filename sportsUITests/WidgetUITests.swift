@@ -74,7 +74,11 @@ final class WidgetUITests: XCTestCase {
         XCUIDevice.shared.press(.home)
 
         // The provider fetches the scoreboard, then renders team lines.
-        // "UGA" is Georgia's abbreviation in the small-family team row.
+        // The gallery's first page is the medium family now; both system
+        // sizes carry the ★ Following header, and "UGA" is Georgia's
+        // abbreviation in a game row.
+        XCTAssertTrue(springboard.staticTexts["Following"].firstMatch.waitForExistence(timeout: 30),
+                      "Widget should render the Following header")
         let rendered = springboard.staticTexts["UGA"].firstMatch
         XCTAssertTrue(rendered.waitForExistence(timeout: 30),
                       "Widget should render the followed team's game")
