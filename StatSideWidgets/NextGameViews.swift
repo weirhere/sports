@@ -21,102 +21,14 @@ struct NextGameWidgetView: View {
             case .accessoryRectangular:
                 AccessoryGameView(game: games[0])
                     .widgetURL(games[0].deepLink)
-            case .systemMedium:
-                MediumGamesView(games: games, stale: stale, asOf: entry.date)
+            case .systemLarge:
+                WidgetGameList(games: games, stale: stale, asOf: entry.date,
+                               capacity: 5, showsFooter: true)
             default:
-                SmallGameView(game: games[0], stale: stale, asOf: entry.date)
-                    .widgetURL(games[0].deepLink)
+                WidgetGameList(games: games, stale: stale, asOf: entry.date,
+                               capacity: 2, showsFooter: false)
             }
         }
-    }
-}
-
-// MARK: - Small
-
-struct SmallGameView: View {
-    let game: WidgetGame
-    let stale: Bool
-    let asOf: Date
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            WidgetTeamRow(line: game.away, emphasize: game.isLive)
-            WidgetTeamRow(line: game.home, emphasize: game.isLive)
-            Spacer(minLength: 0)
-            HStack(spacing: 5) {
-                if game.isLive {
-                    Circle()
-                        .fill(Color.liveAccent)
-                        .frame(width: 6, height: 6)
-                }
-                Text(game.statusLine)
-                    .font(.metaEmphasis)
-                    .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
-                    .lineLimit(1)
-                if stale {
-                    StaleMarker(asOf: asOf)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-// MARK: - Medium
-
-struct MediumGamesView: View {
-    let games: [WidgetGame]
-    let stale: Bool
-    let asOf: Date
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(games.prefix(3)) { game in
-                Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
-                    MediumGameRow(game: game)
-                }
-                if game.id != games.prefix(3).last?.id {
-                    Divider().overlay(Color.divider)
-                }
-            }
-            if stale {
-                StaleMarker(asOf: asOf)
-                    .padding(.top, 2)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-}
-
-struct MediumGameRow: View {
-    let game: WidgetGame
-
-    var body: some View {
-        HStack(spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 4) {
-                WidgetTeamRow(line: game.away, emphasize: game.isLive, showScore: false)
-                WidgetTeamRow(line: game.home, emphasize: game.isLive, showScore: false)
-            }
-            .layoutPriority(1)
-            Spacer(minLength: Spacing.sm)
-            VStack(alignment: .trailing, spacing: 4) {
-                WidgetScoreText(line: game.away, emphasize: game.isLive)
-                WidgetScoreText(line: game.home, emphasize: game.isLive)
-            }
-            HStack(spacing: 5) {
-                if game.isLive {
-                    Circle()
-                        .fill(Color.liveAccent)
-                        .frame(width: 6, height: 6)
-                }
-                Text(game.statusLine)
-                    .font(.metaEmphasis)
-                    .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
-                    .lineLimit(1)
-            }
-            .frame(minWidth: 56, alignment: .leading)
-        }
-        .padding(.vertical, 6)
     }
 }
 
@@ -127,7 +39,7 @@ struct AccessoryGameView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            if game.away.score != nil || game.home.score != nil {
+            if game.showsScores, game.away.score != nil || game.home.score != nil {
                 Text("\(game.away.abbreviation) \(game.away.score.map(String.init) ?? "–")")
                     .font(.headline.monospacedDigit())
                 Text("\(game.home.abbreviation) \(game.home.score.map(String.init) ?? "–")")
@@ -146,12 +58,13 @@ struct AccessoryGameView: View {
 // MARK: - Shared pieces
 
 struct WidgetTeamRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let line: WidgetTeamLine
     let emphasize: Bool
     var showScore = true
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.sm) {
             logo
             if let rank = line.rank {
                 Text("\(rank)")
@@ -171,7 +84,10 @@ struct WidgetTeamRow: View {
 
     @ViewBuilder
     private var logo: some View {
-        if let image = line.logo {
+        // Dark mode prefers the ESPN 500-dark mark; a team without one
+        // falls back to its light logo, then to the placeholder disc.
+        let image = colorScheme == .dark ? (line.darkLogo ?? line.logo) : line.logo
+        if let image {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()

@@ -47,8 +47,12 @@ nonisolated struct NextGameProvider: TimelineProvider {
         do {
             let scoreboard = try await DataProvider.makeClient()
                 .scoreboard(weekValue: nil, seasonType: nil, year: nil)
+            // 5 fills the large family; medium trims to its own capacity.
+            // One limit for every family: the snapshot below is a single
+            // shared blob, and a per-family limit would let a medium reload
+            // overwrite it with too few games for a placed large.
             let relevant = GameSelection.relevantGames(
-                in: scoreboard.games, followedIds: followedIds, limit: 3, now: now
+                in: scoreboard.games, followedIds: followedIds, limit: 5, now: now
             )
             guard !relevant.isEmpty else {
                 return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(60 * 60))
@@ -56,9 +60,15 @@ nonisolated struct NextGameProvider: TimelineProvider {
             WidgetSnapshot(games: relevant).save(to: defaults)
             var widgetGames: [WidgetGame] = []
             for game in relevant {
+                // Both variants per team: views render pre-fetched images,
+                // so the dark-mode pick has to be in hand before render.
                 async let away = WidgetLogoFetcher.logo(for: game.away.team.logoURL)
+                async let awayDark = WidgetLogoFetcher.logo(for: game.away.team.logoURL?.darkTeamLogoVariant)
                 async let home = WidgetLogoFetcher.logo(for: game.home.team.logoURL)
-                widgetGames.append(WidgetGame(game: game, awayLogo: await away, homeLogo: await home))
+                async let homeDark = WidgetLogoFetcher.logo(for: game.home.team.logoURL?.darkTeamLogoVariant)
+                widgetGames.append(WidgetGame(game: game,
+                                              awayLogo: await away, awayDarkLogo: await awayDark,
+                                              homeLogo: await home, homeDarkLogo: await homeDark))
             }
             let entry = NextGameEntry(date: now, state: .games(widgetGames, stale: false))
             return (entry, GameSelection.nextRefresh(after: now, games: relevant))
@@ -72,15 +82,20 @@ nonisolated struct NextGameProvider: TimelineProvider {
                         id: game.id,
                         away: WidgetTeamLine(abbreviation: game.awayAbbreviation, rank: game.awayRank,
                                              score: game.awayScore, muted: game.awayMuted,
-                                             logo: WidgetLogoFetcher.cachedLogo(for: game.awayLogoURL)),
+                                             logo: WidgetLogoFetcher.cachedLogo(for: game.awayLogoURL),
+                                             darkLogo: WidgetLogoFetcher.cachedLogo(for: game.awayLogoURL?.darkTeamLogoVariant)),
                         home: WidgetTeamLine(abbreviation: game.homeAbbreviation, rank: game.homeRank,
                                              score: game.homeScore, muted: game.homeMuted,
-                                             logo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL)),
+                                             logo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL),
+                                             darkLogo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL?.darkTeamLogoVariant)),
                         statusLine: game.statusLine,
-                        isLive: game.isLive
+                        isLive: game.isLive,
+                        showsScores: game.showsScores ?? true
                     )
                 }
-                return (NextGameEntry(date: now, state: .games(games, stale: true)),
+                // Dated at the snapshot's save, not now: the stale marker's
+                // "as of" should say when the data was true.
+                return (NextGameEntry(date: snapshot.savedAt, state: .games(games, stale: true)),
                         now.addingTimeInterval(15 * 60))
             }
             return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(15 * 60))

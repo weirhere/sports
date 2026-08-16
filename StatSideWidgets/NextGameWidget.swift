@@ -8,22 +8,22 @@ struct NextGameWidget: Widget {
                 .containerBackground(Color.bgPrimary, for: .widget)
         }
         .configurationDisplayName("Your Teams")
-        .description("Live score or next kickoff for the teams you follow.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+        .description("Live scores or next kickoffs for the teams you follow.")
+        .supportedFamilies([.systemMedium, .systemLarge, .accessoryRectangular])
     }
-}
-
-#Preview("Small", as: .systemSmall) {
-    NextGameWidget()
-} timeline: {
-    NextGameEntry.sample
-    NextGameEntry(date: .now, state: .noFollows)
 }
 
 #Preview("Medium", as: .systemMedium) {
     NextGameWidget()
 } timeline: {
-    NextGameEntry.sample
+    NextGameEntry.sampleFull
+    NextGameEntry(date: .now, state: .noFollows)
+}
+
+#Preview("Large", as: .systemLarge) {
+    NextGameWidget()
+} timeline: {
+    NextGameEntry.sampleFull
 }
 
 #Preview("Lock screen", as: .accessoryRectangular) {

@@ -5,11 +5,21 @@ import SwiftUI
 /// fetch — the two things `AsyncImage` can't do. A nil URL or failed load
 /// leaves the quiet placeholder, never a broken image. Callers size it with
 /// `.frame`, matching the old `AsyncImage` call sites.
+///
+/// In dark mode the ESPN `500-dark` variant is requested instead, falling
+/// back to the light mark when a team has none (LogoCache remembers the
+/// 404, so the fallback costs one request per team, ever). Conference
+/// marks derive no variant and render exactly as before.
 struct LogoImage: View {
     let url: URL?
     var placeholder: Color? = Color.bgElevated
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var image: UIImage?
+
+    private var resolvedURL: URL? {
+        colorScheme == .dark ? (url?.darkTeamLogoVariant ?? url) : url
+    }
 
     var body: some View {
         Group {
@@ -21,12 +31,22 @@ struct LogoImage: View {
                 Color.clear
             }
         }
-        // task(id:) restarts on every appearance, so a row that failed
-        // mid-blip retries when it scrolls back into view or its section
-        // re-expands.
-        .task(id: url) {
-            guard image == nil, let url else { return }
-            image = await LogoCache.shared.image(for: url)
+        // task(id:) restarts on every appearance and on appearance-mode
+        // flips (resolvedURL changes with the scheme), so a row that failed
+        // mid-blip retries when it scrolls back into view and a light logo
+        // swaps to its dark twin without relaunching. The previous image
+        // stays up while the swap loads — usually an instant cache hit.
+        .task(id: resolvedURL) {
+            guard let target = resolvedURL else {
+                image = nil
+                return
+            }
+            if let loaded = await LogoCache.shared.image(for: target) {
+                image = loaded
+            } else if target != url, let url,
+                      let light = await LogoCache.shared.image(for: url) {
+                image = light
+            }
         }
     }
 }
