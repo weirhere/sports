@@ -81,10 +81,12 @@ nonisolated struct NextGameProvider: TimelineProvider {
                     WidgetGame(
                         id: game.id,
                         away: WidgetTeamLine(abbreviation: game.awayAbbreviation, rank: game.awayRank,
+                                             record: game.awayRecord,
                                              score: game.awayScore, muted: game.awayMuted,
                                              logo: WidgetLogoFetcher.cachedLogo(for: game.awayLogoURL),
                                              darkLogo: WidgetLogoFetcher.cachedLogo(for: game.awayLogoURL?.darkTeamLogoVariant)),
                         home: WidgetTeamLine(abbreviation: game.homeAbbreviation, rank: game.homeRank,
+                                             record: game.homeRecord,
                                              score: game.homeScore, muted: game.homeMuted,
                                              logo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL),
                                              darkLogo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL?.darkTeamLogoVariant)),

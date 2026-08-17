@@ -16,20 +16,20 @@ nonisolated struct NextGameEntry: TimelineEntry {
         NextGameEntry(date: .now, state: .games([
             .sampleLive,
             WidgetGame(id: "1",
-                       away: WidgetTeamLine(abbreviation: "BALL", rank: nil, score: nil, muted: false, logo: nil, darkLogo: nil),
-                       home: WidgetTeamLine(abbreviation: "OSU", rank: 1, score: nil, muted: false, logo: nil, darkLogo: nil),
+                       away: WidgetTeamLine(abbreviation: "BALL", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
+                       home: WidgetTeamLine(abbreviation: "OSU", rank: 1, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        statusLine: "Sat 12:30 PM", isLive: false, showsScores: false),
             WidgetGame(id: "2",
-                       away: WidgetTeamLine(abbreviation: "KENT", rank: nil, score: nil, muted: false, logo: nil, darkLogo: nil),
-                       home: WidgetTeamLine(abbreviation: "SC", rank: nil, score: nil, muted: false, logo: nil, darkLogo: nil),
+                       away: WidgetTeamLine(abbreviation: "KENT", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
+                       home: WidgetTeamLine(abbreviation: "SC", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        statusLine: "Sat 12:45 PM", isLive: false, showsScores: false),
             WidgetGame(id: "3",
-                       away: WidgetTeamLine(abbreviation: "FIU", rank: nil, score: nil, muted: false, logo: nil, darkLogo: nil),
-                       home: WidgetTeamLine(abbreviation: "USF", rank: nil, score: nil, muted: false, logo: nil, darkLogo: nil),
+                       away: WidgetTeamLine(abbreviation: "FIU", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
+                       home: WidgetTeamLine(abbreviation: "USF", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        statusLine: "Sat 7:00 PM", isLive: false, showsScores: false),
             WidgetGame(id: "4",
-                       away: WidgetTeamLine(abbreviation: "AUB", rank: nil, score: 13, muted: true, logo: nil, darkLogo: nil),
-                       home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, score: 27, muted: false, logo: nil, darkLogo: nil),
+                       away: WidgetTeamLine(abbreviation: "AUB", rank: nil, record: "5-3", score: 13, muted: true, logo: nil, darkLogo: nil),
+                       home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, record: "7-1", score: 27, muted: false, logo: nil, darkLogo: nil),
                        statusLine: "FINAL", isLive: false, showsScores: true),
         ], stale: false))
     }
@@ -56,8 +56,8 @@ nonisolated struct WidgetGame: Identifiable {
     static var sampleLive: WidgetGame {
         WidgetGame(
             id: "0",
-            away: WidgetTeamLine(abbreviation: "UGA", rank: 3, score: 24, muted: false, logo: nil, darkLogo: nil),
-            home: WidgetTeamLine(abbreviation: "TENN", rank: 12, score: 17, muted: false, logo: nil, darkLogo: nil),
+            away: WidgetTeamLine(abbreviation: "UGA", rank: 3, record: "5-0", score: 24, muted: false, logo: nil, darkLogo: nil),
+            home: WidgetTeamLine(abbreviation: "TENN", rank: 12, record: "4-1", score: 17, muted: false, logo: nil, darkLogo: nil),
             statusLine: "Q3 5:24", isLive: true, showsScores: true
         )
     }
@@ -66,6 +66,10 @@ nonisolated struct WidgetGame: Identifiable {
 nonisolated struct WidgetTeamLine {
     let abbreviation: String
     let rank: Int?
+    /// Overall record summary ("4-1"), shown in every game state — the
+    /// record stays put when the game goes live rather than vanishing
+    /// mid-Saturday.
+    let record: String?
     let score: Int?
     let muted: Bool
     let logo: UIImage?
@@ -137,6 +141,7 @@ nonisolated extension WidgetTeamLine {
         self.init(
             abbreviation: competitor.team.abbreviation ?? competitor.team.location,
             rank: competitor.rank,
+            record: competitor.record,
             score: competitor.score,
             muted: muted,
             logo: logo,
@@ -156,11 +161,15 @@ nonisolated struct WidgetSnapshot: Codable {
         let id: String
         let awayAbbreviation: String
         let awayRank: Int?
+        /// Optional so snapshots written before records shipped still
+        /// decode; those rows just omit the record for one stale cycle.
+        let awayRecord: String?
         let awayScore: Int?
         let awayMuted: Bool
         let awayLogoURL: URL?
         let homeAbbreviation: String
         let homeRank: Int?
+        let homeRecord: String?
         let homeScore: Int?
         let homeMuted: Bool
         let homeLogoURL: URL?
@@ -183,11 +192,13 @@ nonisolated struct WidgetSnapshot: Codable {
                 id: game.id,
                 awayAbbreviation: widgetGame.away.abbreviation,
                 awayRank: widgetGame.away.rank,
+                awayRecord: widgetGame.away.record,
                 awayScore: widgetGame.away.score,
                 awayMuted: widgetGame.away.muted,
                 awayLogoURL: game.away.team.logoURL,
                 homeAbbreviation: widgetGame.home.abbreviation,
                 homeRank: widgetGame.home.rank,
+                homeRecord: widgetGame.home.record,
                 homeScore: widgetGame.home.score,
                 homeMuted: widgetGame.home.muted,
                 homeLogoURL: game.home.team.logoURL,

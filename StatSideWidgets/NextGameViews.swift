@@ -75,6 +75,15 @@ struct WidgetTeamRow: View {
                 .font(emphasize ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
                 .lineLimit(1)
+            // Every state, unlike the app's GameRow: a widget glance skips
+            // the team page, so the record stays as season context even
+            // once the score arrives.
+            if let record = line.record {
+                Text(record)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
             if showScore {
                 Spacer(minLength: Spacing.xs)
                 WidgetScoreText(line: line, emphasize: emphasize)
