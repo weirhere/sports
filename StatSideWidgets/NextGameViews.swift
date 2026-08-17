@@ -75,6 +75,14 @@ struct WidgetTeamRow: View {
                 .font(emphasize ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
                 .lineLimit(1)
+            // Pre-game only, like the app's GameRow: the score column is
+            // empty, so the record has the room — and the relevance.
+            if !showScore, let record = line.record {
+                Text(record)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
             if showScore {
                 Spacer(minLength: Spacing.xs)
                 WidgetScoreText(line: line, emphasize: emphasize)
