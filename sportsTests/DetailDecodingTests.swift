@@ -39,8 +39,16 @@ private func fixture(_ name: String) throws -> Data {
 
         #expect(schedule.team?.id == "61")
         #expect(schedule.team?.location == "Georgia")
-        #expect(schedule.standing == "1st in SEC")
         #expect(schedule.games.count == 13)
+
+        // The fixture requested 2025 while ESPN's current season is 2026 —
+        // the year comes from requestedSeason, and the current-season
+        // summaries ("0-0", "1st in SEC") are nil'd by the trust rule.
+        // The honest record for the 2025 games derives from their results.
+        #expect(schedule.year == 2025)
+        #expect(schedule.record == nil)
+        #expect(schedule.standing == nil)
+        #expect(schedule.derivedRecord == "12-1")
 
         // 2025-season fixture: every game is final with scores mapped from
         // ESPN's score-object shape.
@@ -108,8 +116,27 @@ private func fixture(_ name: String) throws -> Data {
         #expect(schedule.games.count == 14)
         // The January bowl sorts after the regular-season finale.
         #expect(schedule.games.last?.id == "999999")
-        // The regular response still owns team identity and record.
+        // The regular response still owns team identity and the season.
         #expect(schedule.team?.id == "61")
+        #expect(schedule.year == 2025)
+    }
+
+    @Test func trustsSummariesOnlyWhenSeasonsMatch() throws {
+        // In-season shape: ESPN's current season IS the requested one, so
+        // recordSummary/standingSummary describe these games and survive.
+        let json = Data("""
+        {
+            "season": {"year": 2025, "type": 2},
+            "requestedSeason": {"year": 2025, "type": 2},
+            "team": {"id": "61", "location": "Georgia",
+                     "recordSummary": "4-0", "standingSummary": "1st in SEC"},
+            "events": []
+        }
+        """.utf8)
+        let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: json)
+        let schedule = ESPNMapper.teamSchedule(from: dto)
+        #expect(schedule.year == 2025)
+        #expect(schedule.record == "4-0")
         #expect(schedule.standing == "1st in SEC")
     }
 }

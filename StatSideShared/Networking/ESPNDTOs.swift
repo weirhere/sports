@@ -211,8 +211,18 @@ nonisolated struct StandingsStatDTO: Decodable {
 // under "record", status lives on the competition, broadcasts nest media.
 
 nonisolated struct ScheduleResponseDTO: Decodable {
+    // `season` is ESPN's current season; `requestedSeason` the one this
+    // response actually contains (they differ during the nil-year
+    // fallback and for any past-season request).
+    let season: ScheduleSeasonDTO?
+    let requestedSeason: ScheduleSeasonDTO?
     let team: ScheduleTeamDTO?
     let events: LossyArray<ScheduleEventDTO>?
+}
+
+nonisolated struct ScheduleSeasonDTO: Decodable {
+    let year: Int?
+    let type: Int?
 }
 
 nonisolated struct ScheduleTeamDTO: Decodable {

@@ -15,7 +15,7 @@ struct ScoresHeader: View {
             Spacer()
             GroupingChip(byDate: byDate, onToggle: onToggleGrouping)
             if let seasonYear {
-                seasonMenu(current: seasonYear)
+                SeasonMenuChip(current: seasonYear, seasons: seasons, onSelect: onSelectSeason)
             }
         }
         .padding(.horizontal, Spacing.lg)
@@ -30,33 +30,6 @@ struct ScoresHeader: View {
                 .font(.system(size: 17, weight: .heavy))
         }
         .foregroundStyle(.textPrimary)
-    }
-
-    private func seasonMenu(current: Int) -> some View {
-        Menu {
-            Picker("Season", selection: Binding(get: { current }, set: onSelectSeason)) {
-                ForEach(seasons, id: \.self) { year in
-                    Text(String(year)).tag(year)
-                }
-            }
-        } label: {
-            // Same capsule as GroupingChip so the header controls read as
-            // one family.
-            HStack(spacing: Spacing.xs) {
-                Text(String(current))
-                    .font(.chip)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-            }
-            .foregroundStyle(Color.textPrimary)
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, 8)
-            .background(Capsule().fill(Color.bgElevated))
-            // Matches GroupingChip: compact capsule, 44 pt tap target.
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .disabled(seasons.isEmpty)
     }
 }
 
