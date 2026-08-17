@@ -66,9 +66,9 @@ nonisolated struct WidgetGame: Identifiable {
 nonisolated struct WidgetTeamLine {
     let abbreviation: String
     let rank: Int?
-    /// Overall record summary ("4-1"). Rendered on pre-game rows only,
-    /// mirroring the app's GameRow — once the game starts, the score is
-    /// the story.
+    /// Overall record summary ("4-1"), shown in every game state — the
+    /// record stays put when the game goes live rather than vanishing
+    /// mid-Saturday.
     let record: String?
     let score: Int?
     let muted: Bool
