@@ -33,6 +33,11 @@ nonisolated extension Date {
     var shareKickText: String {
         formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
     }
+
+    /// The day alone, for kickoffs whose time is still a placeholder.
+    var shareKickDayText: String {
+        formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+    }
 }
 
 nonisolated extension Game {
@@ -48,7 +53,7 @@ nonisolated extension Game {
         case .pre:
             var parts = ["\(away.shareName) at \(home.shareName)"]
             if let date {
-                parts.append(date.shareKickText)
+                parts.append(timeTBD ? "\(date.shareKickDayText), time TBD" : date.shareKickText)
             }
             if let network = primaryBroadcast {
                 parts.append("on \(network)")

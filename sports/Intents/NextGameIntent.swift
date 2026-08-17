@@ -43,7 +43,10 @@ struct NextGameIntent: AppIntent {
     static func nextLine(for game: Game) -> String {
         var line = "\(game.away.team.location) plays \(game.home.team.location)"
         if let date = game.date {
-            line += " \(date.formatted(.dateTime.weekday(.wide))) at \(date.formatted(date: .omitted, time: .shortened))"
+            line += " \(date.formatted(.dateTime.weekday(.wide)))"
+            line += game.timeTBD
+                ? ", time to be announced"
+                : " at \(date.formatted(date: .omitted, time: .shortened))"
         }
         if let broadcast = game.broadcast {
             line += " on \(broadcast.split(separator: "/").first.map(String.init) ?? broadcast)"

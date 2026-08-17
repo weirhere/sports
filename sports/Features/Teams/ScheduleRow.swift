@@ -83,7 +83,9 @@ struct ScheduleRow: View {
         case .live:
             parts.append("live, \(spokenScore)")
         case .pre:
-            if let date = game.date {
+            if game.timeTBD {
+                parts.append("kickoff time to be determined")
+            } else if let date = game.date {
                 parts.append("kickoff \(date.formatted(.dateTime.hour().minute()))")
             }
         case .other(let detail):
@@ -120,7 +122,9 @@ struct ScheduleRow: View {
                     .foregroundStyle(.textPrimary)
             }
         case .pre:
-            Text(game.date?.formatted(.dateTime.hour().minute()) ?? "TBD")
+            // An unannounced kickoff carries a placeholder midnight date —
+            // "TBD" over a lying "12:00 AM".
+            Text(game.timeTBD ? "TBD" : game.date?.formatted(.dateTime.hour().minute()) ?? "TBD")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
                 .lineLimit(1)

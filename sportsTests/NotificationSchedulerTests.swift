@@ -61,8 +61,8 @@ private func team(_ id: String) -> Team {
 }
 
 private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
-                     broadcast: String? = nil) -> Game {
-    Game(id: id, date: kickoff, name: nil, shortName: nil, weekNumber: nil,
+                     timeTBD: Bool = false, broadcast: String? = nil) -> Game {
+    Game(id: id, date: kickoff, timeTBD: timeTBD, name: nil, shortName: nil, weekNumber: nil,
          status: .pre(detail: nil),
          home: Competitor(team: team(home), score: nil, record: nil, rank: nil, isHome: true, winner: nil),
          away: Competitor(team: team(away), score: nil, record: nil, rank: nil, isHome: false, winner: nil),
@@ -150,6 +150,10 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
         let center = FakeCenter()
         let scheduler = makeScheduler(center: center, schedules: ["1": [
             preGame("tbd", home: "1", away: "2", kickoff: nil),
+            // ESPN's other TBD shape: a placeholder midnight date with
+            // timeValid false — a reminder would fire at 11:30 PM for nothing.
+            preGame("tbd-placeholder", home: "1", away: "5",
+                    kickoff: .now.addingTimeInterval(5 * 86_400), timeTBD: true),
             preGame("played", home: "1", away: "3", kickoff: .now.addingTimeInterval(-86_400)),
             // Inside the 30-minute lead window: the reminder moment is gone.
             preGame("imminent", home: "1", away: "4", kickoff: .now.addingTimeInterval(10 * 60)),

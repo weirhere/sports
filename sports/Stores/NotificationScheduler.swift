@@ -122,8 +122,10 @@ final class NotificationScheduler {
             guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
             for game in schedule.games {
                 // Dedupe by game id: both-teams-followed games get one
-                // reminder. TBD kickoffs (nil date) are skipped and picked
-                // up automatically once ESPN publishes a time.
+                // reminder. TBD kickoffs (nil date, or a placeholder date
+                // with `timeTBD`) are skipped and picked up automatically
+                // once ESPN publishes a time — the kickoff-encoding request
+                // id makes that a plain pending-vs-desired diff.
                 gamesById[game.id] = game
             }
         }
@@ -131,7 +133,8 @@ final class NotificationScheduler {
         let now = Date.now
         let upcoming = gamesById.values
             .filter { game in
-                guard case .pre = game.status, let date = game.date else { return false }
+                guard case .pre = game.status, let date = game.date, !game.timeTBD
+                else { return false }
                 return date.addingTimeInterval(-Self.leadTime) > now
             }
             .sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }

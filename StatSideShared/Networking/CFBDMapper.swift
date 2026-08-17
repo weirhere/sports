@@ -73,6 +73,7 @@ nonisolated enum CFBDMapper {
         return Game(
             id: String(id),
             date: CFBDDate.parse(dto.startDate),
+            timeTBD: dto.startTimeTBD == true,
             name: "\(awaySchool) at \(homeSchool)",
             shortName: shortName(away: away, home: home),
             weekNumber: dto.week,

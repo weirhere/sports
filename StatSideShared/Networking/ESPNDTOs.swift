@@ -113,6 +113,8 @@ nonisolated struct StatusTypeDTO: Decodable {
 nonisolated struct CompetitionDTO: Decodable {
     let id: String?
     let date: String?
+    // false = kickoff time unannounced; the date is a midnight placeholder.
+    let timeValid: Bool?
     let neutralSite: Bool?
     let broadcast: String?
     let broadcasts: [BroadcastDTO]?
@@ -230,6 +232,7 @@ nonisolated struct ScheduleTeamDTO: Decodable {
 nonisolated struct ScheduleEventDTO: Decodable {
     let id: String?
     let date: String?
+    let timeValid: Bool?
     let name: String?
     let shortName: String?
     let week: WeekRefDTO?
@@ -238,6 +241,9 @@ nonisolated struct ScheduleEventDTO: Decodable {
 
 nonisolated struct ScheduleCompetitionDTO: Decodable {
     let date: String?
+    // false = kickoff time unannounced; the date is a midnight placeholder.
+    // The schedule endpoint carries it on the event too.
+    let timeValid: Bool?
     let neutralSite: Bool?
     let status: StatusDTO?
     let competitors: [ScheduleCompetitorDTO]?
