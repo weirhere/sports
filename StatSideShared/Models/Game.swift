@@ -3,6 +3,10 @@ import Foundation
 nonisolated struct Game: Identifiable, Hashable, Sendable {
     let id: String
     let date: Date?
+    /// ESPN publishes a placeholder kickoff (midnight ET, `timeValid: false`)
+    /// until a game's time is announced. True means `date`'s day is real but
+    /// its clock time is noise — render "TBD", never "12:00 AM".
+    var timeTBD: Bool = false
     let name: String?
     let shortName: String?
     let weekNumber: Int?

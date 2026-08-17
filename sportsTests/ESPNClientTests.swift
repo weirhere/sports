@@ -35,6 +35,30 @@ private func fixture(_ name: String) throws -> Data {
         #expect(game.date != nil)
     }
 
+    @Test func unannouncedKickoffMapsToTimeTBD() throws {
+        // Scoreboard payloads carry `timeValid` on the competition only.
+        let tbdJSON = Data("""
+        {
+            "id": "888", "date": "2026-10-10T04:00Z",
+            "status": {"type": {"state": "pre"}},
+            "competitions": [{
+                "timeValid": false,
+                "competitors": [
+                    {"homeAway": "home", "team": {"id": "25"}},
+                    {"homeAway": "away", "team": {"id": "259"}}
+                ]
+            }]
+        }
+        """.utf8)
+        let event = try JSONDecoder().decode(EventDTO.self, from: tbdJSON)
+        let game = try #require(ESPNMapper.game(from: event))
+        #expect(game.timeTBD)
+
+        // Every kickoff in the fixture was announced (`timeValid: true`).
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        #expect(ESPNMapper.scoreboard(from: dto).games.allSatisfy { !$0.timeTBD })
+    }
+
     @Test func malformedEventIsDroppedNotFatal() throws {
         let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-malformed"))
         let scoreboard = ESPNMapper.scoreboard(from: dto)

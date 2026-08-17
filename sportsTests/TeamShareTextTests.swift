@@ -18,8 +18,8 @@ private func competitor(_ location: String, id: String, rank: Int? = nil, isHome
 
 private func game(status: GameStatus, homeId: String = buckeyeId, home: String = "Ohio State",
                   awayId: String = "61", away: String = "Georgia", awayRank: Int? = nil,
-                  date: Date? = nil, broadcast: String? = nil) -> Game {
-    Game(id: "g", date: date, name: nil, shortName: nil, weekNumber: 1, status: status,
+                  date: Date? = nil, timeTBD: Bool = false, broadcast: String? = nil) -> Game {
+    Game(id: "g", date: date, timeTBD: timeTBD, name: nil, shortName: nil, weekNumber: 1, status: status,
          home: competitor(home, id: homeId, isHome: true),
          away: competitor(away, id: awayId, rank: awayRank, isHome: false),
          broadcast: broadcast)
@@ -57,6 +57,14 @@ private func schedule(record: String? = nil, games: [Game] = []) -> TeamSchedule
         ]))
         #expect(!text.contains("0-0"))
         #expect(text.contains("Next up: vs Georgia"))
+    }
+
+    @Test func unannouncedKickoffSharesTheDayWithTimeTBD() {
+        let text = buckeyes.shareText(schedule: schedule(record: "12-1", games: [
+            game(status: .pre(detail: nil), date: kick, timeTBD: true)
+        ]))
+        #expect(text.contains("\(kick.shareKickDayText), time TBD"))
+        #expect(!text.contains(kick.shareKickText))
     }
 
     @Test func noUpcomingGameDropsNextUp() {

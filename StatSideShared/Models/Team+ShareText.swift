@@ -25,7 +25,7 @@ nonisolated extension Team {
             let opponent = isHome ? next.away : next.home
             body += ". Next up: \(isHome ? "vs" : "at") \(opponent.shareName)"
             if let date = next.date {
-                body += ", \(date.shareKickText)"
+                body += ", \(next.timeTBD ? "\(date.shareKickDayText), time TBD" : date.shareKickText)"
             }
             if let network = next.primaryBroadcast {
                 body += " on \(network)"

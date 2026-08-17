@@ -104,6 +104,7 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `events[].status`: `clock, displayClock, period, type{id, name, state ("pre"|"in"|"post"), completed, detail, shortDetail}`
 - `competitions[0].competitors[]`: `homeAway, score (string), records[{name, abbreviation, type, summary}], curatedRank, team{id, location, name, abbreviation, displayName, shortDisplayName, color, alternateColor, logo, conferenceId}`
 - Network: `competitions[0].broadcasts[{market, names[]}]` and convenience string `broadcast`
+- `competitions[0].timeValid: false` marks a kickoff whose time is unannounced — `date` is then a placeholder midnight ET. Mapped to `Game.timeTBD`; render "TBD", never the placeholder clock
 
 ### `/rankings`
 - `rankings[]`: `{id, name, shortName, type, occurrence, headline, ranks[]}` — AP, Coaches, CFP when in season
@@ -129,6 +130,7 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `record` is an array (type `total` carries the summary), not `records`
 - `status` lives on `competitions[0]`, not the event
 - broadcasts nest as `broadcasts[].media.shortName`
+- `timeValid` rides on both the event and `competitions[0]` here (scoreboard carries it on the competition only); false = kickoff time unannounced, `date` is a placeholder midnight ET
 - a bare request inherits ESPN's "current" season *type*, which is the empty preseason (`type: 1`, `events: []`) from February until kickoff — always pass `?season={year}&seasontype=2` explicitly (verified live 2026-08-09; `?season=` alone is not enough, the type stays preseason)
 - postseason games only appear under `?season={year}&seasontype=3` — a separate request, merged client-side; a team with no bowl returns `events: []`
 - `ESPNClient` falls back to `season - 1` when the requested season maps to zero games (next season unpublished ~Feb–July), so TeamPage shows last season's results instead of "Schedule TBA"

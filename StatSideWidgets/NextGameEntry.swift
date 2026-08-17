@@ -111,7 +111,7 @@ nonisolated extension WidgetGame {
             // they're generated. The date joins once a bare weekday would
             // lie — a week or more out, "Sat" means *this* Saturday.
             guard let date = game.date else { return "TBD" }
-            let time = date.formatted(.dateTime.hour().minute())
+            let time = game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute())
             let calendar = Calendar.current
             let days = calendar.dateComponents([.day],
                                                from: calendar.startOfDay(for: .now),

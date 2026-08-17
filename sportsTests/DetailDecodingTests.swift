@@ -57,6 +57,35 @@ private func fixture(_ name: String) throws -> Data {
         #expect(dates == dates.sorted())
     }
 
+    @Test func unannouncedKickoffMapsToTimeTBD() throws {
+        // ESPN marks unannounced kickoffs `timeValid: false` and parks the
+        // date at a placeholder midnight ET; the flag must survive mapping
+        // so rows render "TBD" instead of the placeholder's "12:00 AM".
+        // Event-level timeValid is absent here to exercise the
+        // competition-level fallback.
+        let tbdJSON = Data("""
+        {
+            "id": "888", "date": "2026-10-10T04:00Z",
+            "competitions": [{
+                "timeValid": false,
+                "status": {"type": {"state": "pre"}},
+                "competitors": [
+                    {"homeAway": "home", "team": {"id": "25"}},
+                    {"homeAway": "away", "team": {"id": "259"}}
+                ]
+            }]
+        }
+        """.utf8)
+        let event = try JSONDecoder().decode(ScheduleEventDTO.self, from: tbdJSON)
+        let game = try #require(ESPNMapper.game(from: event))
+        #expect(game.timeTBD)
+        #expect(game.date != nil)
+
+        // The fixture's kickoffs were all announced (`timeValid: true`).
+        let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: fixture("team-schedule-live"))
+        #expect(ESPNMapper.teamSchedule(from: dto).games.allSatisfy { !$0.timeTBD })
+    }
+
     @Test func mergesPostseasonEventsIntoSchedule() throws {
         let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: fixture("team-schedule-live"))
         // ESPN serves postseason as a separate seasontype=3 request; the

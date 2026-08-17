@@ -164,10 +164,11 @@ struct GameRow: View {
                     if timeOnly {
                         // A day section's header names the day; the row
                         // spends its lines on time and network only.
-                        kickText(date.formatted(.dateTime.hour().minute()))
+                        kickText(game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()))
                             .fixedSize(horizontal: true, vertical: false)
                     } else {
                         let kick = Self.relativeKickParts(date, weekday: .abbreviated,
+                                                          timeTBD: game.timeTBD,
                                                           includeDate: !dayIsLabeled)
                         // Even split across two lines, "Tomorrow" can wrap a
                         // character per line under the names' layout priority at
@@ -296,8 +297,9 @@ struct GameRow: View {
 
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
-        if timeOnly { return date.formatted(.dateTime.hour().minute()) }
-        return Self.relativeKick(date, weekday: .abbreviated, includeDate: !dayIsLabeled)
+        if timeOnly { return game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()) }
+        return Self.relativeKick(date, weekday: .abbreviated, timeTBD: game.timeTBD,
+                                 includeDate: !dayIsLabeled)
     }
 
     /// How far out the kick is decides how much of the date the row spends:
@@ -315,12 +317,16 @@ struct GameRow: View {
     ///
     /// The day and time come back separately because the trailing column gives
     /// them a line each; flowing contexts join them with `relativeKick`.
+    ///
+    /// `timeTBD` keeps the day ladder (the placeholder date's day is real)
+    /// but swaps the clock time for "TBD".
     static func relativeKickParts(_ date: Date,
                                   weekday: Date.FormatStyle.Symbol.Weekday,
+                                  timeTBD: Bool = false,
                                   includeDate: Bool = true,
                                   now: Date = .now,
                                   calendar: Calendar = .current) -> (day: String, time: String) {
-        let time = date.formatted(.dateTime.hour().minute())
+        let time = timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute())
         let days = calendar.dateComponents([.day],
                                            from: calendar.startOfDay(for: now),
                                            to: calendar.startOfDay(for: date)).day ?? 0
@@ -339,11 +345,12 @@ struct GameRow: View {
     /// layout's flowing status line.
     static func relativeKick(_ date: Date,
                              weekday: Date.FormatStyle.Symbol.Weekday,
+                             timeTBD: Bool = false,
                              includeDate: Bool = true,
                              now: Date = .now,
                              calendar: Calendar = .current) -> String {
-        let kick = relativeKickParts(date, weekday: weekday, includeDate: includeDate,
-                                     now: now, calendar: calendar)
+        let kick = relativeKickParts(date, weekday: weekday, timeTBD: timeTBD,
+                                     includeDate: includeDate, now: now, calendar: calendar)
         return "\(kick.day) \(kick.time)"
     }
 
@@ -368,7 +375,11 @@ struct GameRow: View {
             }
             var parts = ["\(side(game.away)) at \(side(game.home))"]
             if let date = game.date {
-                parts.append(Self.relativeKick(date, weekday: .wide))
+                if game.timeTBD {
+                    parts.append("\(Self.relativeKickParts(date, weekday: .wide).day), kickoff time to be determined")
+                } else {
+                    parts.append(Self.relativeKick(date, weekday: .wide))
+                }
             }
             if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")

@@ -180,6 +180,7 @@ nonisolated enum ESPNMapper {
         return Game(
             id: id,
             date: ESPNDate.parse(event.date),
+            timeTBD: competition.timeValid == false,
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,
@@ -335,6 +336,7 @@ nonisolated enum ESPNMapper {
         return Game(
             id: id,
             date: ESPNDate.parse(event.date ?? competition.date),
+            timeTBD: (event.timeValid ?? competition.timeValid) == false,
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,

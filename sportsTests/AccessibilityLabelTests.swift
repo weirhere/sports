@@ -15,12 +15,13 @@ private let tennessee = team("2633", "Tennessee")
 
 private func game(status: GameStatus,
                   date: Date? = nil,
+                  timeTBD: Bool = false,
                   homeScore: Int? = nil, awayScore: Int? = nil,
                   homeRecord: String? = nil, awayRecord: String? = nil,
                   homeRank: Int? = nil, awayRank: Int? = nil,
                   homeWinner: Bool? = nil, awayWinner: Bool? = nil,
                   broadcast: String? = nil) -> Game {
-    Game(id: "1", date: date, name: nil, shortName: nil, weekNumber: 5,
+    Game(id: "1", date: date, timeTBD: timeTBD, name: nil, shortName: nil, weekNumber: 5,
          status: status,
          home: Competitor(team: tennessee, score: homeScore, record: homeRecord,
                           rank: homeRank, isHome: true, winner: homeWinner),
@@ -77,6 +78,15 @@ private func game(status: GameStatus,
         #expect(!summary.contains("Tomorrow"))
     }
 
+    @Test func preRowWithUnannouncedTimeSpeaksTBDNotTheClock() {
+        // The placeholder date carries a fake midnight; the sentence keeps
+        // the day and swaps the clock for the TBD phrase.
+        let nextWeek = Calendar.current.date(byAdding: .day, value: 8, to: .now)!
+        let summary = GameRow(game: game(status: .pre(detail: nil), date: nextWeek, timeTBD: true))
+            .accessibilitySummary
+        #expect(summary.contains("kickoff time to be determined"))
+    }
+
     @Test func finalRowSpeaksOvertimeWhenDetailHasOT() {
         let row = GameRow(game: game(
             status: .final(detail: "Final/OT"),
@@ -130,6 +140,18 @@ private func game(status: GameStatus,
         // fall back to the same weekday-only string a near game gets.
         #expect(render(daysOut: 20, includeDate: false) == render(daysOut: 3))
         #expect(render(daysOut: 20, includeDate: true).contains("29"))
+    }
+
+    @Test func tbdSwapsTheClockAndKeepsTheDayLadder() {
+        // An unannounced kickoff still knows its day — only the clock time
+        // is a placeholder, so only the time part goes to "TBD".
+        let kick = calendar.date(from: DateComponents(year: 2026, month: 8, day: 29))!
+        let now = calendar.date(byAdding: .day, value: -20, to: kick)!
+        let parts = GameRow.relativeKickParts(kick, weekday: .abbreviated, timeTBD: true, now: now)
+        #expect(parts.time == "TBD")
+        #expect(parts.day.contains("29"))
+        #expect(GameRow.relativeKick(kick, weekday: .abbreviated, timeTBD: true, now: now)
+            .hasSuffix("TBD"))
     }
 
     @Test func thePartsJoinBackIntoThePhrase() {
@@ -217,6 +239,12 @@ private func game(status: GameStatus,
             homeScore: 24, awayScore: 27, homeWinner: false, awayWinner: true),
             teamId: "2633")
         #expect(row.accessibilitySummary == "versus Georgia, lost 24 to 27")
+    }
+
+    @Test func preWithUnannouncedTimeSpeaksTBDNotMidnight() {
+        let row = ScheduleRow(game: game(
+            status: .pre(detail: nil), date: .now, timeTBD: true), teamId: "61")
+        #expect(row.accessibilitySummary.contains("kickoff time to be determined"))
     }
 }
 

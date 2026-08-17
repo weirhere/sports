@@ -12,8 +12,9 @@ private func competitor(_ name: String, score: Int?, rank: Int? = nil,
 }
 
 private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = nil,
-                  awayRank: Int? = nil, date: Date? = nil, broadcast: String? = nil) -> Game {
-    Game(id: "g", date: date, name: nil, shortName: nil, weekNumber: 1, status: status,
+                  awayRank: Int? = nil, date: Date? = nil, timeTBD: Bool = false,
+                  broadcast: String? = nil) -> Game {
+    Game(id: "g", date: date, timeTBD: timeTBD, name: nil, shortName: nil, weekNumber: 1, status: status,
          home: competitor("Tennessee", score: homeScore, isHome: true),
          away: competitor("Georgia", score: awayScore, rank: awayRank, isHome: false),
          broadcast: broadcast)
@@ -28,6 +29,13 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
         #expect(text.contains("on ESPN Unlmtd"))
         #expect(!text.contains("CW"))
         #expect(text.contains("— via StatSide"))
+    }
+
+    @Test func unannouncedKickoffSharesTheDayWithTimeTBD() {
+        let kick = Date(timeIntervalSince1970: 1_787_200_200)
+        let text = game(status: .pre(detail: nil), date: kick, timeTBD: true).shareText
+        #expect(text.contains("\(kick.shareKickDayText), time TBD"))
+        #expect(!text.contains(kick.shareKickText))
     }
 
     @Test func everyShapeSignsOffWithTheStoreLink() {

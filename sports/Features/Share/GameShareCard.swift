@@ -25,7 +25,12 @@ nonisolated enum GameHeaderState {
     static func statusLine(_ game: Game, _ summary: GameSummary?) -> String {
         switch summary?.status ?? game.status {
         case .pre:
-            let kick = game.date?.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()) ?? "TBD"
+            let style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+            let kick: String = if let date = game.date {
+                game.timeTBD ? "\(date.formatted(style)) · TBD" : date.formatted(style.hour().minute())
+            } else {
+                "TBD"
+            }
             return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
         case .live(let clock, let period, let detail, _):
             let quarter = period.map { $0 <= 4 ? "Q\($0)" : "OT" }
