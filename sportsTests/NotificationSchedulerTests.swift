@@ -42,8 +42,8 @@ private actor FakeCenter: NotificationCentering {
 private struct ScheduleStub: ScoresProviding {
     let schedules: [String: [Game]]
 
-    func teamSchedule(teamId: String) async throws -> TeamSchedule {
-        TeamSchedule(team: nil, record: nil, standing: nil, games: schedules[teamId] ?? [])
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
+        TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: schedules[teamId] ?? [])
     }
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {

@@ -132,8 +132,10 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - broadcasts nest as `broadcasts[].media.shortName`
 - `timeValid` rides on both the event and `competitions[0]` here (scoreboard carries it on the competition only); false = kickoff time unannounced, `date` is a placeholder midnight ET
 - a bare request inherits ESPN's "current" season *type*, which is the empty preseason (`type: 1`, `events: []`) from February until kickoff — always pass `?season={year}&seasontype=2` explicitly (verified live 2026-08-09; `?season=` alone is not enough, the type stays preseason)
-- postseason games only appear under `?season={year}&seasontype=3` — a separate request, merged client-side; a team with no bowl returns `events: []`
-- `ESPNClient` falls back to `season - 1` when the requested season maps to zero games (next season unpublished ~Feb–July), so TeamPage shows last season's results instead of "Schedule TBA"
+- postseason games only appear under `?season={year}&seasontype=3` — a separate request, merged client-side; a team with no bowl returns `events: []`. Every season therefore costs two requests; TeamPage caches each fetched season for the visit so re-selecting one refetches nothing
+- top-level `season` is ESPN's *current* season, `requestedSeason` the one actually returned — `TeamSchedule.year` maps from `requestedSeason.year`, which is how the UI labels the season honestly (including the fallback below)
+- `team.recordSummary`/`standingSummary` describe ESPN's **current** season even when a past one was requested (fixture: requested 2025 → `recordSummary: "0-0"`, `seasonSummary: "2026"`) — the mapper keeps them only when `season.year == requestedSeason.year` and nils them otherwise; past-season records derive from the games' `winner` flags instead
+- `ESPNClient.teamSchedule(teamId:year:)` with `year: nil` falls back to `season - 1` when the current season maps to zero games (next season unpublished ~Feb–July), so TeamPage shows last season's results instead of "Schedule TBA". An **explicit** year never falls back — the team page's season selector must show exactly the season it claims
 
 ### `/summary` extras
 `leaders[]` at the top level (per team: `passingYards`/`rushingYards`/`receivingYards` categories with `athlete` + `displayValue`) is the game-detail leaders source — simpler than reassembling from `boxscore.players`. Header competitors carry `linescores[].displayValue` and a `record` array.

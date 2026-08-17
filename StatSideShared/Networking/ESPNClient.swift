@@ -15,8 +15,19 @@ nonisolated protocol ScoresProviding: Sendable {
     /// kept — offseason responses can have zero entries and the page needs
     /// to say "Standings TBA", not error.
     func conferenceStandings() async throws -> [ConferenceStandings]
-    func teamSchedule(teamId: String) async throws -> TeamSchedule
+    /// One team's schedule. `year` selects a season; nil means the current
+    /// one, with the provider free to fall back to last season while the
+    /// next is unpublished. An explicit year returns exactly that season —
+    /// a user who picked 2019 must never silently get 2018.
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule
     func gameSummary(eventId: String) async throws -> GameSummary
+}
+
+nonisolated extension ScoresProviding {
+    /// The current season (with the unpublished-season fallback).
+    func teamSchedule(teamId: String) async throws -> TeamSchedule {
+        try await teamSchedule(teamId: teamId, year: nil)
+    }
 }
 
 nonisolated enum ESPNError: Error {
@@ -78,18 +89,21 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.conferenceStandings(from: dto)
     }
 
-    func teamSchedule(teamId: String) async throws -> TeamSchedule {
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
+        if let year {
+            return try await fetchSchedule(teamId: teamId, year: year)
+        }
+        let current = CFBSeason.year()
+        let schedule = try await fetchSchedule(teamId: teamId, year: current)
+        guard schedule.games.isEmpty else { return schedule }
+        // Next season's schedule isn't published yet; show last season instead.
+        return try await fetchSchedule(teamId: teamId, year: current - 1)
+    }
+
+    private func fetchSchedule(teamId: String, year: Int) async throws -> TeamSchedule {
         // A bare /schedule request inherits ESPN's "current" season type, which
         // is the empty preseason from February until kickoff — so ask for the
         // season explicitly. Regular season and postseason are separate requests.
-        let year = CFBSeason.year()
-        let schedule = try await teamSchedule(teamId: teamId, year: year)
-        guard schedule.games.isEmpty else { return schedule }
-        // Next season's schedule isn't published yet; show last season instead.
-        return try await teamSchedule(teamId: teamId, year: year - 1)
-    }
-
-    private func teamSchedule(teamId: String, year: Int) async throws -> TeamSchedule {
         let path = "/teams/\(teamId)/schedule"
         let regularQuery = [
             URLQueryItem(name: "season", value: String(year)),
@@ -318,10 +332,15 @@ nonisolated enum ESPNMapper {
             )
         }
         let games = ((dto.events?.elements ?? []) + extraEvents).compactMap(game(from:))
+        // recordSummary/standingSummary always describe ESPN's *current*
+        // season — under a past season's games they'd be this year's
+        // numbers, so they only survive when the seasons match.
+        let summariesTrusted = dto.season?.year != nil && dto.season?.year == dto.requestedSeason?.year
         return TeamSchedule(
             team: selfTeam,
-            record: dto.team?.recordSummary,
-            standing: dto.team?.standingSummary,
+            record: summariesTrusted ? dto.team?.recordSummary : nil,
+            standing: summariesTrusted ? dto.team?.standingSummary : nil,
+            year: dto.requestedSeason?.year,
             games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
         )
     }

@@ -26,7 +26,7 @@ private func game(status: GameStatus, homeId: String = buckeyeId, home: String =
 }
 
 private func schedule(record: String? = nil, games: [Game] = []) -> TeamSchedule {
-    TeamSchedule(team: nil, record: record, standing: nil, games: games)
+    TeamSchedule(team: nil, record: record, standing: nil, year: nil, games: games)
 }
 
 @Suite struct TeamShareTextTests {

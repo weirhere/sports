@@ -104,8 +104,11 @@ actor CFBDClient: ScoresProviding {
         return CFBDMapper.conferenceStandings(from: teams, records: records)
     }
 
-    func teamSchedule(teamId: String) async throws -> TeamSchedule {
-        let season = CFBSeason.year()
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
+        // CFBD's /records is year-scoped, so unlike ESPN the record stays
+        // trustworthy for past seasons. No unpublished-season fallback here
+        // — CFBD's nil-year behavior predates the selector and stays as-is.
+        let season = year ?? CFBSeason.year()
         let teams = try await teams(year: season)
         guard let id = Int(teamId),
               let meta = teams.first(where: { $0.id == id }),
@@ -118,7 +121,7 @@ actor CFBDClient: ScoresProviding {
             URLQueryItem(name: "seasonType", value: "both"),
         ])
         let joins = try await joins(year: season, week: nil, seasonType: nil)
-        return CFBDMapper.teamSchedule(team: meta, games: games.elements, joins: joins)
+        return CFBDMapper.teamSchedule(team: meta, games: games.elements, joins: joins, year: season)
     }
 
     func gameSummary(eventId: String) async throws -> GameSummary {

@@ -355,13 +355,17 @@ nonisolated enum CFBDMapper {
     static func teamSchedule(
         team meta: CFBDTeamDTO,
         games: [CFBDGameDTO],
-        joins: CFBDJoins
+        joins: CFBDJoins,
+        year: Int
     ) -> TeamSchedule {
         let mapped = games.compactMap { game(from: $0, live: nil, media: [], joins: joins) }
         return TeamSchedule(
             team: team(from: meta),
+            // The /records join is scoped to the requested year, so it's
+            // honest for past seasons — no ESPN-style trust rule needed.
             record: meta.id.flatMap { joins.records[$0] },
             standing: nil,
+            year: year,
             games: mapped.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
         )
     }
