@@ -188,6 +188,41 @@ private func game(_ id: String, home: Team, away: Team,
         #expect(store.selectedWeek?.id == "3-999")
     }
 
+    @Test func adjacentWeekStepsAlongTheStrip() async {
+        // Three-slot calendar with ESPN's current week in the middle. Slot
+        // dates sit in 1970 so the Sunday rollover rule can never match
+        // "yesterday" and the test stays deterministic on any weekday.
+        let slots = (1...3).map { number in
+            WeekSlot(label: "Week \(number)", shortLabel: "Week \(number)",
+                     seasonType: 2, value: number,
+                     startDate: Date(timeIntervalSince1970: Double(number) * 604_800),
+                     endDate: Date(timeIntervalSince1970: Double(number + 1) * 604_800))
+        }
+        let scoreboard = Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 2,
+                                    weeks: slots, games: [])
+        let store = ScoreboardStore(client: StubProvider(scoreboard: scoreboard))
+        await store.loadInitial()
+        #expect(store.selectedWeek?.id == "2-2")
+
+        // Forward and back from the middle; nil past either end.
+        #expect(store.adjacentWeek(offset: 1)?.id == "2-3")
+        #expect(store.adjacentWeek(offset: -1)?.id == "2-1")
+        #expect(store.adjacentWeek(offset: 2) == nil)
+        #expect(store.adjacentWeek(offset: -2) == nil)
+
+        await store.select(week: slots[2])
+        #expect(store.adjacentWeek(offset: 1) == nil)
+        #expect(store.adjacentWeek(offset: -1)?.id == "2-2")
+    }
+
+    @Test func adjacentWeekIsNilBeforeAnyLoad() {
+        let scoreboard = Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil,
+                                    weeks: [], games: [])
+        let store = ScoreboardStore(client: StubProvider(scoreboard: scoreboard))
+        #expect(store.adjacentWeek(offset: 1) == nil)
+        #expect(store.adjacentWeek(offset: -1) == nil)
+    }
+
     @Test func sectionsAreChronological() async {
         let sec1 = team("1", conference: 8)
         let sec2 = team("2", conference: 8)
