@@ -16,6 +16,12 @@ struct ScoresScreen: View {
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
     @State private var pinchHandled = false
+    // Which edge the incoming week's content pushes from, set before every
+    // week change so the slide matches the strip's spatial order.
+    @State private var weekSlideEdge: Edge = .trailing
+    // Nil until the first user week change: the initial load and season
+    // switches have no meaningful direction, so they must not slide.
+    @State private var weekSlideAnimation: Animation?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -24,7 +30,10 @@ struct ScoresScreen: View {
                     seasonYear: store.seasonYear,
                     seasons: store.availableSeasons,
                     byDate: uiState.scoresGrouping == .date,
-                    onSelectSeason: { year in Task { await store.select(season: year) } },
+                    onSelectSeason: { year in
+                        weekSlideAnimation = nil
+                        Task { await store.select(season: year) }
+                    },
                     onToggleGrouping: {
                         withAnimation {
                             uiState.scoresGrouping = uiState.scoresGrouping == .date ? .conference : .date
@@ -32,7 +41,7 @@ struct ScoresScreen: View {
                     }
                 )
                 WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
-                    Task { await store.select(week: week) }
+                    select(week: week)
                 }
                 if store.hasLiveGames || store.liveOnly {
                     liveChipRow
@@ -41,7 +50,22 @@ struct ScoresScreen: View {
                 if store.lastError != nil, !sections.isEmpty {
                     refreshErrorBanner
                 }
-                content
+                // The ZStack scopes the push transition: the content's
+                // identity is the selected week, so a week change slides the
+                // old slate out and the new one in from `weekSlideEdge`.
+                ZStack {
+                    content
+                        .id(store.selectedWeek?.id)
+                        .transition(.push(from: weekSlideEdge))
+                }
+                .animation(weekSlideAnimation, value: store.selectedWeek?.id)
+                // Horizontal counterpart to the week strip: swipe left for
+                // the next week, right for the previous. Simultaneous so
+                // vertical scrolling and the pinch gesture are unaffected;
+                // attached here (not inside `content`) so the empty week
+                // and error states are swipeable too — the states where
+                // leaving the week matters most.
+                .simultaneousGesture(weekSwipeGesture)
             }
             .background(Color.bgPrimary)
             .toolbar(.hidden, for: .navigationBar)
@@ -67,6 +91,33 @@ struct ScoresScreen: View {
         store.sections(followingIds: following.teamIds,
                        followedConferenceIds: following.conferenceIds,
                        grouping: uiState.scoresGrouping)
+    }
+
+    /// Every user week change funnels through here so chip taps and swipes
+    /// share one direction rule: content slides the way the strip moves.
+    private func select(week: WeekSlot) {
+        guard week.id != store.selectedWeek?.id else { return }
+        if let from = store.weeks.firstIndex(where: { $0.id == store.selectedWeek?.id }),
+           let to = store.weeks.firstIndex(where: { $0.id == week.id }) {
+            weekSlideEdge = to > from ? .trailing : .leading
+        }
+        weekSlideAnimation = .default
+        Task { await store.select(week: week) }
+    }
+
+    /// A gesture-only accelerator, like the pinch: the week strip keeps a
+    /// tappable chip per week, so nothing is swipe-gated for VoiceOver or
+    /// switch users. The dominance check keeps diagonal scroll flicks from
+    /// changing the week; no haptic (the budget of three holds).
+    private var weekSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 25)
+            .onEnded { value in
+                let dx = value.translation.width
+                let dy = value.translation.height
+                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
+                guard let target = store.adjacentWeek(offset: dx < 0 ? 1 : -1) else { return }
+                select(week: target)
+            }
     }
 
     /// Lands a widget/notification tap on its game once the current week is
@@ -197,6 +248,10 @@ struct ScoresScreen: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity)
+            // The stack is mostly empty space, which doesn't hit-test;
+            // without this, the week swipe dies exactly where it's most
+            // needed — on an empty week.
+            .contentShape(Rectangle())
         }
     }
 

@@ -115,6 +115,18 @@ final class ScoreboardStore {
         startPollingIfNeeded()
     }
 
+    /// The strip slot `offset` steps from the selected week — the swipe
+    /// gesture's target. Nil past either end of the season and before the
+    /// first load, so a swipe there is a quiet no-op.
+    func adjacentWeek(offset: Int) -> WeekSlot? {
+        guard let selectedWeek,
+              let index = weeks.firstIndex(where: { $0.id == selectedWeek.id })
+        else { return nil }
+        let target = index + offset
+        guard weeks.indices.contains(target) else { return nil }
+        return weeks[target]
+    }
+
     /// Switch seasons. The current year goes back through the initial-load
     /// path so the Sunday rollover rule reapplies; past years land on the
     /// season's final slot — a finished season's state is its conclusion.
