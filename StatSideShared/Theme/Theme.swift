@@ -26,7 +26,11 @@ extension Color {
     /// card-vs-page contrast comes from bgRecessed, not from this tint.
     /// Light value is #f8f8f8.
     static let bgHeader = Color(lightWhite: 248 / 255, darkWhite: 0.05)
-    static let textPrimary = Color(lightWhite: 0.00, darkWhite: 1.00)
+    /// Soft black, not #000: true black on white causes eye strain at
+    /// reading sizes. Still ~17:1 on bgPrimary. Dark mode keeps pure white —
+    /// the strain problem is black-on-white, and white-on-black text at our
+    /// sizes hasn't shown halation. Matches the Figma `text/primary` variable.
+    static let textPrimary = Color(lightWhite: 0.10, darkWhite: 1.00)
     /// 0.42, not 0.44: the darkest surfaces secondary text sits on are
     /// bgElevated and bgRecessed (0.93), and 0.44 lands at 4.22:1 there —
     /// under WCAG AA's 4.5:1. At 0.42 every surface clears it (worst case
