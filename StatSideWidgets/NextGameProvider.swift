@@ -47,12 +47,12 @@ nonisolated struct NextGameProvider: TimelineProvider {
         do {
             let scoreboard = try await DataProvider.makeClient()
                 .scoreboard(weekValue: nil, seasonType: nil, year: nil)
-            // 5 fills the large family; medium trims to its own capacity.
+            // 4 fills the large family; medium trims to its own capacity.
             // One limit for every family: the snapshot below is a single
             // shared blob, and a per-family limit would let a medium reload
             // overwrite it with too few games for a placed large.
             let relevant = GameSelection.relevantGames(
-                in: scoreboard.games, followedIds: followedIds, limit: 5, now: now
+                in: scoreboard.games, followedIds: followedIds, limit: 4, now: now
             )
             guard !relevant.isEmpty else {
                 return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(60 * 60))

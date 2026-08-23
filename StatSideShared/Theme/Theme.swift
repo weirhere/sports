@@ -120,6 +120,11 @@ extension Font {
     static var metaEmphasis: Font { scaled(12, .semibold, relativeTo: .caption1) }
     static var sectionHeader: Font { scaled(13, .semibold, relativeTo: .footnote) }
     static var chip: Font { scaled(14, .medium, relativeTo: .callout) }
+    /// Live-game counterpart to `chip`: same size, weight carries the emphasis.
+    static var chipEmphasis: Font { scaled(14, .semibold, relativeTo: .callout) }
+    /// Between meta and metaEmphasis: the widget's card rows want records and
+    /// times a step stronger than regular against the bgHeader card fill.
+    static var metaMedium: Font { scaled(12, .medium, relativeTo: .caption1) }
 
     private static func scaled(_ size: CGFloat, _ weight: UIFont.Weight,
                                relativeTo style: UIFont.TextStyle) -> Font {

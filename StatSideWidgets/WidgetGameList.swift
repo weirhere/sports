@@ -2,8 +2,8 @@ import SwiftUI
 import WidgetKit
 
 /// The stacked game list shared by the medium and large families: a
-/// ★ Following header, roomy full-width rows with hairline dividers, and
-/// (large only) an updated/as-of footer. FotMob's breathing room in
+/// ★ Following header, rounded bgHeader card rows 2pt apart (no dividers),
+/// and (large only) an updated/as-of footer. FotMob's breathing room in
 /// StatSide's row language.
 struct WidgetGameList: View {
     let games: [WidgetGame]
@@ -17,18 +17,17 @@ struct WidgetGameList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader()
-                .padding(.bottom, Spacing.xs)
-            ForEach(shown) { game in
-                Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
-                    WidgetGameRow(game: game)
-                }
-                if game.id != shown.last?.id {
-                    Divider().overlay(Color.divider)
+                .padding(.bottom, Spacing.lg)
+            VStack(spacing: 2) {
+                ForEach(shown) { game in
+                    Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
+                        WidgetGameRow(game: game)
+                    }
                 }
             }
             if showsFooter {
-                Spacer(minLength: 0)
                 footer
+                    .padding(.top, Spacing.md)
             } else if stale {
                 StaleMarker(asOf: asOf)
                     .padding(.top, 2)
@@ -87,12 +86,19 @@ struct WidgetGameRow: View {
                         .frame(width: 6, height: 6)
                 }
                 Text(game.statusLine)
-                    .font(game.isLive ? .metaEmphasis : .meta)
+                    .font(game.isLive ? .metaEmphasis : .metaMedium)
                     .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
                     .lineLimit(1)
             }
             .frame(minWidth: 60, alignment: .center)
         }
-        .padding(.vertical, Spacing.sm)
+        .padding(Spacing.sm)
+        // Cards split the leftover height evenly (the mock's stretch-to-fill
+        // rows) instead of leaving a dead gap above the footer.
+        .frame(maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.bgHeader)
+        )
     }
 }

@@ -23,7 +23,7 @@ struct NextGameWidgetView: View {
                     .widgetURL(games[0].deepLink)
             case .systemLarge:
                 WidgetGameList(games: games, stale: stale, asOf: entry.date,
-                               capacity: 5, showsFooter: true)
+                               capacity: 4, showsFooter: true)
             default:
                 WidgetGameList(games: games, stale: stale, asOf: entry.date,
                                capacity: 2, showsFooter: false)
@@ -72,7 +72,7 @@ struct WidgetTeamRow: View {
                     .foregroundStyle(.textSecondary)
             }
             Text(line.abbreviation)
-                .font(emphasize ? .teamNameEmphasis : .teamName)
+                .font(emphasize ? .chipEmphasis : .chip)
                 .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
                 .lineLimit(1)
             // Every state, unlike the app's GameRow: a widget glance skips
@@ -80,7 +80,7 @@ struct WidgetTeamRow: View {
             // once the score arrives.
             if let record = line.record {
                 Text(record)
-                    .font(.meta)
+                    .font(.metaMedium)
                     .foregroundStyle(.textSecondary)
                     .lineLimit(1)
             }
