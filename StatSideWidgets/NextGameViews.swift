@@ -59,9 +59,14 @@ struct AccessoryGameView: View {
 
 struct WidgetTeamRow: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetFamily) private var family
     let line: WidgetTeamLine
     let emphasize: Bool
     var showScore = true
+
+    /// Medium's content box can't fit two 60pt cards; 16pt logos let the
+    /// team line compress to its text height while padding stays at 8.
+    private var logoSize: CGFloat { family == .systemMedium ? 16 : 20 }
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
@@ -100,11 +105,11 @@ struct WidgetTeamRow: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .frame(width: logoSize, height: logoSize)
         } else {
             Circle()
                 .fill(Color.bgElevated)
-                .frame(width: 20, height: 20)
+                .frame(width: logoSize, height: logoSize)
         }
     }
 }

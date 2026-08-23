@@ -122,6 +122,9 @@ extension Font {
     /// The widget's ★ Following masthead: heavy enough to anchor the whole
     /// surface, since the widget has no navigation chrome above it.
     static var sectionHeaderProminent: Font { scaled(16, .heavy, relativeTo: .callout) }
+    /// The masthead scaled for the medium family, whose ~138pt content box
+    /// can't fit the full-size header plus two cards without crushing padding.
+    static var sectionHeaderProminentCompact: Font { scaled(14, .heavy, relativeTo: .footnote) }
     static var chip: Font { scaled(14, .medium, relativeTo: .callout) }
     /// Live-game counterpart to `chip`: same size, weight carries the emphasis.
     static var chipEmphasis: Font { scaled(14, .semibold, relativeTo: .callout) }

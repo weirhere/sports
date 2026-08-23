@@ -6,6 +6,7 @@ import WidgetKit
 /// and (large only) an updated/as-of footer. FotMob's breathing room in
 /// StatSide's row language.
 struct WidgetGameList: View {
+    @Environment(\.widgetFamily) private var family
     let games: [WidgetGame]
     let stale: Bool
     let asOf: Date
@@ -17,7 +18,7 @@ struct WidgetGameList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader()
-                .padding(.bottom, Spacing.md)
+                .padding(.bottom, family == .systemMedium ? Spacing.sm : Spacing.md)
             VStack(spacing: 2) {
                 ForEach(shown) { game in
                     Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
@@ -52,17 +53,25 @@ struct WidgetGameList: View {
     }
 }
 
-/// Monochrome chrome: weight and size say "header", never color.
+/// Monochrome chrome: weight and size say "header", never color. The medium
+/// family scales the masthead down — its content box fits two cards only if
+/// the chrome shrinks with it, and consistent padding beats consistent type.
 struct WidgetHeader: View {
+    @Environment(\.widgetFamily) private var family
+
     var body: some View {
+        let compact = family == .systemMedium
         HStack(spacing: Spacing.xs) {
+            // 20, not the mock's 24 icon box: the SF Symbol fills its frame
+            // edge-to-edge while the mock's star has ~2pt of box padding,
+            // so 20 is the optical match.
             Image(systemName: "star.fill")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
+                .frame(width: compact ? 16 : 20, height: compact ? 16 : 20)
             Text("Following")
-                .font(.sectionHeaderProminent)
-                .tracking(-0.32)  // the mock's -2% of 16pt
+                .font(compact ? .sectionHeaderProminentCompact : .sectionHeaderProminent)
+                .tracking(compact ? -0.28 : -0.32)  // the mock's -2%
         }
         .foregroundStyle(.textPrimary)
     }
