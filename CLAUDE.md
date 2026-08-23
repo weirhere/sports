@@ -71,7 +71,10 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 
 ## Running the UI tests
 
-`sportsUITests` drives the real app against the live ESPN API — there are no fixtures. Two environment rules, both learned the hard way:
+`sportsUITests` drives the real app against the live ESPN API — there are no fixtures. Four environment rules, all learned the hard way:
+
+- **Uninstall the app before `ReminderOfferUITests`** (`xcrun simctl uninstall <udid> com.andyryanweir.sports`). Fresh-user state for `notifications.enabled` must come from a fresh install, not an argument-domain override: overrides beat the app's own writes, and `refreshAuthorization()` re-reads the key on scene-active, so the override flips the bell back off right after the grant. The uninstall also resets the TCC notification permission so the springboard prompt path actually runs.
+- **Never `tap()` an alert-panel button** — the app's SwiftUI alerts and springboard's permission prompts alike. Under Xcode 26.6+/iOS 26.5 the synthesized tap resolves an activation point that lands somewhere else on screen (one stray toggled the reminder bell mid-test). Use `tapUntilDismissed(_:dismissing:via:)` in `UITestSupport.swift`: app-rooted coordinate taps at the button's settled frame, verified by the panel actually going away.
 
 - **Always pass `-parallel-testing-enabled NO`.** Parallel runs clone the simulator, and the clones fail wholesale with `Invalid device state` / `Mach error -308 — server died` before a single assertion runs. The failure looks nothing like a test failure, so it's easy to misread as a broken build.
 - **Check the simulator's Dynamic Type size before believing a failure.** At `accessibility-*` content sizes the header chips and the Teams search field no longer fit, so queries for them find nothing and previously-passing tests fail in unrelated-looking places. `ScreenshotTests` documents setting appearance and text size for accessibility passes; that state persists on the device afterward. Reset with `xcrun simctl ui <udid> content_size large` — `large` is the iOS default, so it's what both the tests and the App Store screenshots assume. Pass the **UDID, not the device name**: `iPhone 17 Pro` exists on several runtimes and xcodebuild's pick between them isn't stable.

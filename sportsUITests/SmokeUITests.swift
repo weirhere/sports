@@ -64,9 +64,13 @@ final class SmokeUITests: XCTestCase {
                       "Follow should flip to Following")
         snapshot(app, "team-page")
 
-        // Scores now leads with the Following section.
+        // Scores now leads with the Following section — but the list kept
+        // its scroll position from the SEC hunt above, and on a full slate
+        // Following sits screens higher, outside the LazyVStack's realized
+        // range. Scroll back up to it.
         app.tabBars.buttons["Scores"].tap()
-        XCTAssertTrue(app.staticTexts["Following"].waitForExistence(timeout: 10),
+        XCTAssertTrue(scrollUntilExists(app.staticTexts["Following"], in: app,
+                                        revealing: .above, timeout: 10),
                       "Following section should appear once a team is followed")
         snapshot(app, "scores-following")
 

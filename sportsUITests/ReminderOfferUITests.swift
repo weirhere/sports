@@ -10,12 +10,18 @@ final class ReminderOfferUITests: XCTestCase {
         // Argument-domain overrides reach every UserDefaults instance,
         // including the App Group suite, so the app launches as a fresh
         // user: no follows, onboarding seen, reminder offer not yet made.
-        // `notifications.enabled` matters on a simulator that has already run
-        // this test — the offer is suppressed when reminders are already on,
-        // so without the reset the second run never sees the alert.
+        //
+        // `notifications.enabled` must NOT be overridden here, though it
+        // once was: argument-domain values beat the app's own writes, and
+        // `refreshAuthorization()` re-reads that key on scene-active — the
+        // grant would flip the bell on, then the prompt's dismissal would
+        // re-activate the scene and the refresh would read the override's
+        // NO and flip it straight back off. Fresh state for that key comes
+        // from a fresh install instead: uninstall the app before this
+        // suite (the release checklist already does), or the offer may
+        // not appear and the first assert fails.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.notificationsPrompted", "NO",
-                                "-notifications.enabled", "NO",
                                 "-following.teamIds", "()"]
         app.launch()
 
@@ -39,13 +45,16 @@ final class ReminderOfferUITests: XCTestCase {
         let offer = app.alerts["Get kickoff reminders?"]
         XCTAssertTrue(offer.waitForExistence(timeout: 5),
                       "First follow should offer kickoff reminders")
-        offer.buttons["Enable"].tap()
+        // Both panels here — the app's SwiftUI alert and springboard's
+        // permission prompt — hit the iOS 26.5 tap-lands-nowhere trap;
+        // tapUntilDismissed carries the coordinate-tap fallback.
+        tapUntilDismissed(offer.buttons["Enable"], dismissing: offer, via: app)
 
         // System permission prompt lives in springboard, not the app.
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"]
         if allow.waitForExistence(timeout: 5) {
-            allow.tap()
+            tapUntilDismissed(allow, dismissing: allow, via: app)
         }
 
         let bellOn = app.buttons["Kickoff reminders on"]

@@ -48,22 +48,85 @@ extension XCTestCase {
         return app.topRankedRow.waitForExistence(timeout: 15)
     }
 
-    /// Waits for `element`, swiping down the list if it hasn't materialized.
+    /// Which way an off-screen element is expected to lie.
+    enum ScrollReveal { case below, above }
+
+    /// Waits for `element`, swiping through the list if it hasn't materialized.
     ///
     /// The Scores stack is a LazyVStack, and a followed conference swells
     /// Following to a whole slate — sections that used to sit at the top
     /// (SEC, the first day header) can be screens below the fold, where
     /// their elements don't exist yet. Persisted follows are real user
     /// state, so any assertion about a section must be willing to scroll.
+    /// A full in-season Saturday slate runs ~99 games, so the swipe budget
+    /// has to cover many screens of rows.
+    ///
+    /// `revealing: .above` swipes the other way: the list keeps its scroll
+    /// position across tab switches, so a section pinned to the top
+    /// (Following) can sit screens above wherever the last hunt ended.
     @MainActor
     @discardableResult
     func scrollUntilExists(_ element: XCUIElement, in app: XCUIApplication,
-                           maxSwipes: Int = 12, timeout: TimeInterval = 15) -> Bool {
+                           revealing: ScrollReveal = .below,
+                           maxSwipes: Int = 20, timeout: TimeInterval = 15) -> Bool {
         if element.waitForExistence(timeout: timeout) { return true }
         for _ in 0..<maxSwipes where !element.exists {
-            app.swipeUp(velocity: .fast)
+            switch revealing {
+            case .below: app.swipeUp(velocity: .fast)
+            case .above: app.swipeDown(velocity: .fast)
+            }
         }
         return element.exists
+    }
+
+    /// Taps `button` and verifies `panel` actually went away, retrying with
+    /// a frame-derived coordinate tap when it didn't.
+    ///
+    /// iOS 26.5 hosts alert panels — the app's SwiftUI alerts and
+    /// springboard's permission prompts alike — outside the accessibility
+    /// window `tap()` resolves its activation point against, so the
+    /// synthesized tap can land nowhere while the element query itself
+    /// matched fine. A coordinate tap synthesizes the touch at the button's
+    /// on-screen frame, which does land. The wait between attempts is the
+    /// dismiss animation's grace period — without it a good tap reads as a
+    /// miss and the retry pokes whatever lies beneath the departed panel.
+    /// `via` chooses whose coordinate space synthesizes the touch. For any
+    /// panel button pass the app under test: a coordinate rooted in the
+    /// (full-screen) app is a true screen-level touch and lands on the
+    /// panel. `button.tap()` is never used in that mode — the broken
+    /// synthesis doesn't just miss, its strays land on unrelated app UI
+    /// (a late one toggled the reminder bell straight back off), so the
+    /// element-tap path can't even be tried first.
+    @MainActor
+    @discardableResult
+    func tapUntilDismissed(_ button: XCUIElement, dismissing panel: XCUIElement,
+                           via eventTarget: XCUIApplication? = nil,
+                           attempts: Int = 3) -> Bool {
+        for _ in 0..<attempts {
+            guard button.exists else { break }
+            if let target = eventTarget {
+                // The panel scales in; a frame read mid-animation aims at
+                // a point the button hasn't reached yet (one such tap
+                // landed on Not Now instead of Enable). Hold fire until
+                // two consecutive reads agree.
+                var frame = button.frame
+                for _ in 0..<8 {
+                    Thread.sleep(forTimeInterval: 0.25)
+                    let settled = button.frame
+                    if settled == frame, !settled.isEmpty { break }
+                    frame = settled
+                }
+                target.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: frame.midX, dy: frame.midY))
+                    .tap()
+            } else {
+                button.tap()
+            }
+            let gone = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"), object: panel)
+            if XCTWaiter.wait(for: [gone], timeout: 3) == .completed { return true }
+        }
+        return !panel.exists
     }
 
     /// Taps a tab and waits for something on the destination to prove it
