@@ -91,6 +91,7 @@ nonisolated struct NextGameProvider: TimelineProvider {
                                              logo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL),
                                              darkLogo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL?.darkTeamLogoVariant)),
                         statusLine: game.statusLine,
+                        network: game.network,
                         isLive: game.isLive,
                         showsScores: game.showsScores ?? true
                     )

@@ -18,19 +18,19 @@ nonisolated struct NextGameEntry: TimelineEntry {
             WidgetGame(id: "1",
                        away: WidgetTeamLine(abbreviation: "BALL", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "OSU", rank: 1, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 12:30 PM", isLive: false, showsScores: false),
+                       statusLine: "Sat 12:30 PM", network: "FOX", isLive: false, showsScores: false),
             WidgetGame(id: "2",
                        away: WidgetTeamLine(abbreviation: "KENT", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "SC", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 12:45 PM", isLive: false, showsScores: false),
+                       statusLine: "Sat 12:45 PM", network: "ESPN2", isLive: false, showsScores: false),
             WidgetGame(id: "3",
                        away: WidgetTeamLine(abbreviation: "FIU", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "USF", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 7:00 PM", isLive: false, showsScores: false),
+                       statusLine: "Sat 7:00 PM", network: "ABC", isLive: false, showsScores: false),
             WidgetGame(id: "4",
                        away: WidgetTeamLine(abbreviation: "AUB", rank: nil, record: "5-3", score: 13, muted: true, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, record: "7-1", score: 27, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "FINAL", isLive: false, showsScores: true),
+                       statusLine: "FINAL", network: nil, isLive: false, showsScores: true),
         ], stale: false))
     }
 }
@@ -46,6 +46,9 @@ nonisolated struct WidgetGame: Identifiable {
     let away: WidgetTeamLine
     let home: WidgetTeamLine
     let statusLine: String
+    /// Second status line: the TV network, pre-game and live only — a
+    /// final row has nothing left to tune into.
+    let network: String?
     let isLive: Bool
     /// Pre-game rows carry no scores at all — no zeros, no dashes; the
     /// kickoff time is the row's whole story until the game starts.
@@ -58,7 +61,7 @@ nonisolated struct WidgetGame: Identifiable {
             id: "0",
             away: WidgetTeamLine(abbreviation: "UGA", rank: 3, record: "5-0", score: 24, muted: false, logo: nil, darkLogo: nil),
             home: WidgetTeamLine(abbreviation: "TENN", rank: 12, record: "4-1", score: 17, muted: false, logo: nil, darkLogo: nil),
-            statusLine: "Q3 5:24", isLive: true, showsScores: true
+            statusLine: "Q3 5:24", network: "CBS", isLive: true, showsScores: true
         )
     }
 }
@@ -102,6 +105,7 @@ nonisolated extension WidgetGame {
             home: WidgetTeamLine(competitor: game.home, muted: homeMuted,
                                  logo: homeLogo, darkLogo: homeDarkLogo),
             statusLine: Self.statusLine(for: game),
+            network: (isPre || game.isLive) ? game.broadcast : nil,
             isLive: game.isLive,
             showsScores: !isPre
         )
@@ -174,6 +178,9 @@ nonisolated struct WidgetSnapshot: Codable {
         let homeMuted: Bool
         let homeLogoURL: URL?
         let statusLine: String
+        /// Optional twice over: finals carry none, and snapshots written
+        /// before the network line shipped still decode.
+        let network: String?
         let isLive: Bool
         /// Optional so snapshots written before the scoreless-pre-game
         /// change still decode; they render scores for one stale cycle.
@@ -203,6 +210,7 @@ nonisolated struct WidgetSnapshot: Codable {
                 homeMuted: widgetGame.home.muted,
                 homeLogoURL: game.home.team.logoURL,
                 statusLine: widgetGame.statusLine,
+                network: widgetGame.network,
                 isLive: widgetGame.isLive,
                 showsScores: widgetGame.showsScores
             )

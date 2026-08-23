@@ -119,6 +119,9 @@ extension Font {
     static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
     static var metaEmphasis: Font { scaled(12, .semibold, relativeTo: .caption1) }
     static var sectionHeader: Font { scaled(13, .semibold, relativeTo: .footnote) }
+    /// The widget's ★ Following masthead: heavy enough to anchor the whole
+    /// surface, since the widget has no navigation chrome above it.
+    static var sectionHeaderProminent: Font { scaled(16, .heavy, relativeTo: .callout) }
     static var chip: Font { scaled(14, .medium, relativeTo: .callout) }
     /// Live-game counterpart to `chip`: same size, weight carries the emphasis.
     static var chipEmphasis: Font { scaled(14, .semibold, relativeTo: .callout) }

@@ -17,7 +17,7 @@ struct WidgetGameList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader()
-                .padding(.bottom, Spacing.lg)
+                .padding(.bottom, Spacing.md)
             VStack(spacing: 2) {
                 ForEach(shown) { game in
                     Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
@@ -57,9 +57,12 @@ struct WidgetHeader: View {
     var body: some View {
         HStack(spacing: Spacing.xs) {
             Image(systemName: "star.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
             Text("Following")
-                .font(.sectionHeader)
+                .font(.sectionHeaderProminent)
+                .tracking(-0.32)  // the mock's -2% of 16pt
         }
         .foregroundStyle(.textPrimary)
     }
@@ -79,16 +82,26 @@ struct WidgetGameRow: View {
                 WidgetTeamRow(line: game.home, emphasize: game.isLive, showScore: game.showsScores)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: Spacing.xs) {
-                if game.isLive {
-                    Circle()
-                        .fill(Color.liveAccent)
-                        .frame(width: 6, height: 6)
+            // Trailing-aligned so the (shorter) network line hangs off the
+            // time's right edge, per the Figma mock.
+            VStack(alignment: .trailing, spacing: 1) {
+                HStack(spacing: Spacing.xs) {
+                    if game.isLive {
+                        Circle()
+                            .fill(Color.liveAccent)
+                            .frame(width: 6, height: 6)
+                    }
+                    Text(game.statusLine)
+                        .font(game.isLive ? .metaEmphasis : .metaMedium)
+                        .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
+                        .lineLimit(1)
                 }
-                Text(game.statusLine)
-                    .font(game.isLive ? .metaEmphasis : .metaMedium)
-                    .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
-                    .lineLimit(1)
+                if let network = game.network {
+                    Text(network)
+                        .font(.metaMedium)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
             }
             .frame(minWidth: 60, alignment: .center)
         }
