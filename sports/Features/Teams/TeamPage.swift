@@ -99,23 +99,21 @@ struct TeamPage: View {
             Text(team.displayName ?? team.location)
                 .font(.teamNameEmphasis)
                 .foregroundStyle(.textPrimary)
-            HStack(spacing: Spacing.sm) {
-                // A past season's record derives from its final results —
-                // the provider's summary only describes the current season
-                // (the mapper nils it otherwise).
-                if let record = schedule?.record ?? schedule?.derivedRecord {
-                    Text(record)
-                        .font(.metaEmphasis)
-                        .foregroundStyle(.textPrimary)
-                }
-                // "1st in SEC" next to 0-0 is false precision — ESPN
-                // carries last season's standing until games are played —
-                // but the conference link itself stays.
-                TeamConferenceLink(
-                    conferenceId: resolvedConferenceId,
-                    standing: schedule?.record == "0-0" ? nil : schedule?.standing
-                )
+            // A past season's record derives from its final results —
+            // the provider's summary only describes the current season
+            // (the mapper nils it otherwise).
+            if let record = schedule?.record ?? schedule?.derivedRecord {
+                Text(record)
+                    .font(.metaEmphasis)
+                    .foregroundStyle(.textPrimary)
             }
+            // A placement next to 0-0 is false precision — ESPN carries
+            // last season's standing until games are played — so the line
+            // shows the bare conference then; the link itself stays.
+            TeamConferenceLink(
+                conferenceId: resolvedConferenceId,
+                standing: schedule?.record == "0-0" ? nil : schedule?.standing
+            )
             followPill
         }
         .frame(maxWidth: .infinity)
