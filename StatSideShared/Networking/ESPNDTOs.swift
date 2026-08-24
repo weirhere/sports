@@ -237,6 +237,22 @@ nonisolated struct ScheduleTeamDTO: Decodable {
     let logos: [LogoDTO]?
     let recordSummary: String?
     let standingSummary: String?
+    let groups: TeamGroupsDTO?
+}
+
+/// The team's most specific group on the schedule endpoint — the conference
+/// itself (`isConference: true`, parent = FBS 80) or, historically, a
+/// division whose parent is the conference. One level of parent is all the
+/// mapper needs, so the parent is its own one-field struct rather than a
+/// recursive type.
+nonisolated struct TeamGroupsDTO: Decodable {
+    let id: FlexibleInt?
+    let parent: TeamGroupsParentDTO?
+    let isConference: Bool?
+}
+
+nonisolated struct TeamGroupsParentDTO: Decodable {
+    let id: FlexibleInt?
 }
 
 nonisolated struct ScheduleEventDTO: Decodable {

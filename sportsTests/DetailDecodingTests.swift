@@ -49,6 +49,10 @@ private func fixture(_ name: String) throws -> Data {
         #expect(schedule.record == nil)
         #expect(schedule.standing == nil)
         #expect(schedule.derivedRecord == "12-1")
+        // groups is season-scoped, so unlike the summaries it survives the
+        // trust rule on this past-season fixture (and its id is a string —
+        // the FlexibleInt path).
+        #expect(schedule.team?.conferenceId == 8)
 
         // 2025-season fixture: every game is final with scores mapped from
         // ESPN's score-object shape.
@@ -138,6 +142,36 @@ private func fixture(_ name: String) throws -> Data {
         #expect(schedule.year == 2025)
         #expect(schedule.record == "4-0")
         #expect(schedule.standing == "1st in SEC")
+    }
+
+    @Test func resolvesConferenceFromGroups() throws {
+        func selfTeam(groups: String) throws -> Team? {
+            let json = Data("""
+            {
+                "team": {"id": "61", "location": "Georgia"\(groups)},
+                "events": []
+            }
+            """.utf8)
+            let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: json)
+            return ESPNMapper.teamSchedule(from: dto).team
+        }
+
+        // Conference-shaped groups: take the group itself, never its
+        // parent (80 is FBS, not a conference).
+        let conference = try selfTeam(groups: """
+        , "groups": {"id": "8", "parent": {"id": "80"}, "isConference": true}
+        """)
+        #expect(conference?.conferenceId == 8)
+
+        // Division-shaped groups: the parent is the conference.
+        let division = try selfTeam(groups: """
+        , "groups": {"id": "123", "parent": {"id": "8"}, "isConference": false}
+        """)
+        #expect(division?.conferenceId == 8)
+
+        // No groups at all degrades to nil, never a guess.
+        let absent = try selfTeam(groups: "")
+        #expect(absent?.conferenceId == nil)
     }
 }
 

@@ -328,13 +328,15 @@ nonisolated enum ESPNMapper {
                 displayName: scheduleTeam.displayName,
                 shortDisplayName: scheduleTeam.shortDisplayName,
                 logoURL: logo.flatMap(URL.init(string:)),
-                conferenceId: nil
+                conferenceId: conferenceId(from: scheduleTeam.groups)
             )
         }
         let games = ((dto.events?.elements ?? []) + extraEvents).compactMap(game(from:))
         // recordSummary/standingSummary always describe ESPN's *current*
         // season — under a past season's games they'd be this year's
-        // numbers, so they only survive when the seasons match.
+        // numbers, so they only survive when the seasons match. groups is
+        // different: it describes the season the response contains, so the
+        // self-team's conferenceId is honest for past-season requests too.
         let summariesTrusted = dto.season?.year != nil && dto.season?.year == dto.requestedSeason?.year
         return TeamSchedule(
             team: selfTeam,
@@ -343,6 +345,16 @@ nonisolated enum ESPNMapper {
             year: dto.requestedSeason?.year,
             games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
         )
+    }
+
+    /// `groups` is the team's most specific group. When it IS the
+    /// conference, its parent is FBS (80) — never walk up. When it's a
+    /// division (isConference false/absent), the parent is the conference.
+    /// A wrong pick degrades safely: an unknown id is "Other" tier, which
+    /// hides the affordance and lets callers fall back.
+    static func conferenceId(from groups: TeamGroupsDTO?) -> Int? {
+        guard let groups else { return nil }
+        return groups.isConference == true ? groups.id?.value : groups.parent?.id?.value
     }
 
     static func game(from event: ScheduleEventDTO) -> Game? {

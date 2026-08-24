@@ -5,6 +5,10 @@ import SwiftUI
 struct TeamPage: View {
     let team: Team
 
+    /// Optional form: previews/tests without RootView's environment degrade
+    /// to the pushed value instead of trapping.
+    @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
+
     /// Seasons fetched this visit, keyed by year — flipping back to a
     /// seen season costs ESPN nothing (each season is two requests).
     @State private var schedules: [Int: TeamSchedule] = [:]
@@ -34,6 +38,16 @@ struct TeamPage: View {
     /// header's selector.
     private var availableSeasons: [Int] {
         Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+    }
+
+    /// The selected season's payload wins (groups is season-scoped, so a
+    /// realignment year reads correctly under the season chip), then the
+    /// pushed value (instant, pre-fetch), then the team directory (covers
+    /// Rankings/game-detail entry paths that push no id).
+    private var resolvedConferenceId: Int? {
+        schedule?.team?.conferenceId
+            ?? team.conferenceId
+            ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
     }
 
     private var isLoadingSelected: Bool {
@@ -85,40 +99,21 @@ struct TeamPage: View {
             Text(team.displayName ?? team.location)
                 .font(.teamNameEmphasis)
                 .foregroundStyle(.textPrimary)
-            HStack(spacing: Spacing.sm) {
-                // A past season's record derives from its final results —
-                // the provider's summary only describes the current season
-                // (the mapper nils it otherwise).
-                if let record = schedule?.record ?? schedule?.derivedRecord {
-                    Text(record)
-                        .font(.metaEmphasis)
-                        .foregroundStyle(.textPrimary)
-                }
-                // "1st in SEC" next to 0-0 is false precision — ESPN
-                // carries last season's standing until games are played.
-                if let standing = schedule?.standing, schedule?.record != "0-0" {
-                    if let conferenceId = team.conferenceId {
-                        NavigationLink(value: ConferenceDestination(
-                            conferenceId: conferenceId,
-                            name: Conference.name(for: conferenceId)
-                        )) {
-                            HStack(spacing: 2) {
-                                Text(standing)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 9, weight: .semibold))
-                            }
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("View conference standings")
-                    } else {
-                        Text(standing)
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                    }
-                }
+            // A past season's record derives from its final results —
+            // the provider's summary only describes the current season
+            // (the mapper nils it otherwise).
+            if let record = schedule?.record ?? schedule?.derivedRecord {
+                Text(record)
+                    .font(.metaEmphasis)
+                    .foregroundStyle(.textPrimary)
             }
+            // A placement next to 0-0 is false precision — ESPN carries
+            // last season's standing until games are played — so the line
+            // shows the bare conference then; the link itself stays.
+            TeamConferenceLink(
+                conferenceId: resolvedConferenceId,
+                standing: schedule?.record == "0-0" ? nil : schedule?.standing
+            )
             followPill
         }
         .frame(maxWidth: .infinity)
