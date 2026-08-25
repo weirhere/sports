@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// The tables hub, FotMob-Leagues-shaped: a list of rows — Top 25 first,
-/// then every conference, followed ones pinned. The poll lives one tap
-/// down so the conferences aren't buried under 25 rank rows.
+/// The tables hub, FotMob-Leagues-shaped: a Following section first (the
+/// Top 25 row, then followed conferences), then the complete All
+/// conferences list — followed rows repeat there, since sections stay
+/// complete. The poll lives one tap down so the conferences aren't
+/// buried under 25 rank rows.
 struct RankingsScreen: View {
     /// The FBS polls we show, in picker order. ESPN's response also carries
     /// FCS and DII/DIII polls — filtered out.
@@ -32,6 +34,10 @@ struct RankingsScreen: View {
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                 }
+                // TeamPage's Next game card pushes game detail.
+                .navigationDestination(for: Game.self) { game in
+                    GameDetailScreen(game: game)
+                }
         }
         .task { await load() }
     }
@@ -40,33 +46,42 @@ struct RankingsScreen: View {
         Self.pollTypes.compactMap { type in polls.first { $0.type == type } }
     }
 
-    /// Followed conferences pinned above the mappers' tier-then-name order.
-    private var orderedConferences: [ConferenceStandings] {
-        ConferenceStandings.pinned(conferences, followedIds: following.conferenceIds)
+    /// The Following section's conference rows. The Top 25 row leads the
+    /// section regardless — it's the hub's #1 answer, not a follow state.
+    private var followedConferences: [ConferenceStandings] {
+        conferences.filter { conference in
+            conference.id.map(following.isFollowingConference) ?? false
+        }
     }
 
     @ViewBuilder
     private var content: some View {
-        if !displayedPolls.isEmpty || !orderedConferences.isEmpty {
+        if !displayedPolls.isEmpty || !conferences.isEmpty {
             ScrollView {
+                // FotMob-Leagues shape per the P1 review: Following leads
+                // (Top 25 row + followed conferences), then the complete
+                // list — followed rows repeat there, sections stay
+                // complete, never deduplicated.
                 LazyVStack(spacing: Spacing.sm) {
+                    if !displayedPolls.isEmpty || !followedConferences.isEmpty {
+                        ListSectionHeading(title: "Following")
+                    }
                     if !displayedPolls.isEmpty {
                         Top25Row(polls: displayedPolls)
                             .padding(.vertical, Spacing.xs)
                             .cardSurface()
                     }
-                    if !orderedConferences.isEmpty {
-                        // One card per conference, FotMob-Leagues style —
-                        // the header floats on the recessed background
-                        // between the Top 25 card and the run of cards.
-                        Text("CONFERENCES")
-                            .font(.sectionHeader)
-                            .foregroundStyle(.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, Spacing.md)
-                            .padding(.top, Spacing.sm)
-                            .accessibilityAddTraits(.isHeader)
-                        ForEach(orderedConferences) { conference in
+                    // Section-prefixed ids: a followed conference appears in
+                    // both sections, and duplicate identities inside one
+                    // LazyVStack corrupt its layout (blank card-sized gaps).
+                    ForEach(followedConferences, id: \.followingRowId) { conference in
+                        ConferenceListRow(conference: conference)
+                            .padding(.vertical, Spacing.xs)
+                            .cardSurface()
+                    }
+                    if !conferences.isEmpty {
+                        ListSectionHeading(title: "All conferences")
+                        ForEach(conferences, id: \.allRowId) { conference in
                             ConferenceListRow(conference: conference)
                                 .padding(.vertical, Spacing.xs)
                                 .cardSurface()
@@ -111,4 +126,12 @@ struct RankingsScreen: View {
         }
         conferences = (try? await standingsFetch) ?? []
     }
+}
+
+private extension ConferenceStandings {
+    /// The hub shows a followed conference in both sections; these give the
+    /// two appearances distinct ForEach identities so the shared LazyVStack
+    /// never sees a duplicate id.
+    var followingRowId: String { "following-\(id.map(String.init) ?? name)" }
+    var allRowId: String { "all-\(id.map(String.init) ?? name)" }
 }

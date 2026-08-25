@@ -1,13 +1,16 @@
 import SwiftUI
 
-/// One team's home: identity, record, follow, and a schedule for any
-/// season back to the CFP era.
+/// One team's home: a hero header in the team's own color (the budget's
+/// fourth exception — Andy's call, 2026-08-25), Games and Standings tabs,
+/// and a schedule for any season back to the CFP era.
 struct TeamPage: View {
     let team: Team
 
     /// Optional form: previews/tests without RootView's environment degrade
     /// to the pushed value instead of trapping.
     @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
+
+    private enum Tab { case games, standings }
 
     /// Seasons fetched this visit, keyed by year — flipping back to a
     /// seen season costs ESPN nothing (each season is two requests).
@@ -23,6 +26,12 @@ struct TeamPage: View {
     @State private var failedYears: Set<Int> = []
     @State private var initialLoading = false
     @State private var initialFailed = false
+
+    @State private var tab: Tab = .games
+    /// The Standings tab's data, fetched lazily on first visit.
+    @State private var conferenceStandings: ConferenceStandings?
+    @State private var standingsLoading = false
+    @State private var standingsFailed = false
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
@@ -60,31 +69,61 @@ struct TeamPage: View {
         return failedYears.contains(selectedYear)
     }
 
+    /// The current season's first unplayed (or in-progress) game. Only the
+    /// current season leads with it — a past season is history, and its
+    /// "next game" would be a lie.
+    private var nextGame: Game? {
+        guard selectedYear == currentSeasonYear else { return nil }
+        return schedule?.games.first { game in
+            switch game.status {
+            case .pre, .live: true
+            case .final, .other: false
+            }
+        }
+    }
+
+    // MARK: - Hero paint
+
+    /// The schedule payload is the only source that serves `color`; the
+    /// hero starts monochrome and takes the team's color when it lands.
+    private var heroColorHex: String? { schedule?.team?.colorHex ?? team.colorHex }
+    private var heroColor: Color? { Color(espnHex: heroColorHex) }
+    /// White ink on the team color, except the handful of colors too light
+    /// to carry it. Monochrome fallback uses the theme tokens.
+    private var heroOnDark: Bool { heroColor != nil && !Color.espnHexIsLight(heroColorHex) }
+    private var heroInk: Color {
+        heroColor == nil ? .textPrimary : (heroOnDark ? .white : .black)
+    }
+    private var heroInkSecondary: Color {
+        heroColor == nil ? .textSecondary : heroInk.opacity(0.6)
+    }
+
+    private var showsStandingsTab: Bool {
+        resolvedConferenceId.map { Conference.tier(for: $0) != .other } ?? false
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                header
-                Divider().overlay(Color.divider)
-                TeamScheduleSection(
-                    teamId: team.id,
-                    games: schedule?.games ?? [],
-                    selectedYear: selectedYear,
-                    seasons: availableSeasons,
-                    isLoading: isLoadingSelected,
-                    showsError: showsErrorForSelected,
-                    onSelectYear: { select(year: $0) },
-                    onRetry: { Task { await retry() } }
-                )
+                hero
+                switch tab {
+                case .games: gamesContent
+                case .standings: standingsContent
+                }
             }
         }
-        .background(Color.bgPrimary)
-        .navigationTitle(team.location)
+        .background(Color.bgRecessed)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(heroColor ?? Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
+                            for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: team.shareText(schedule: currentSchedule)) {
                     Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
                 }
                 .accessibilityLabel("Share this team")
             }
@@ -92,40 +131,187 @@ struct TeamPage: View {
         .task { await loadInitial() }
     }
 
-    private var header: some View {
-        VStack(spacing: Spacing.sm) {
-            LogoImage(url: team.logoURL)
-                .frame(width: 64, height: 64)
-            Text(team.displayName ?? team.location)
-                .font(.teamNameEmphasis)
-                .foregroundStyle(.textPrimary)
-            // A past season's record derives from its final results —
-            // the provider's summary only describes the current season
-            // (the mapper nils it otherwise).
-            if let record = schedule?.record ?? schedule?.derivedRecord {
-                Text(record)
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
+    // MARK: - Hero
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: Spacing.md) {
+                Spacer()
+                NotificationBell(onDark: heroOnDark)
+                if let selectedYear {
+                    SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                                   onSelect: { select(year: $0) }, onDark: heroOnDark)
+                }
+                FollowPill(teamId: team.id, onDark: heroOnDark)
             }
-            // A placement next to 0-0 is false precision — ESPN carries
-            // last season's standing until games are played — so the line
-            // shows the bare conference then; the link itself stays.
-            TeamConferenceLink(
-                conferenceId: resolvedConferenceId,
-                standing: schedule?.record == "0-0" ? nil : schedule?.standing
-            )
-            followPill
+            .padding(.horizontal, Spacing.lg)
+
+            HStack(spacing: Spacing.md) {
+                logoMark
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(team.location)
+                        .font(.heroTitle)
+                        .foregroundStyle(heroInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    conferenceLine
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.md)
+
+            if showsStandingsTab {
+                tabRow
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.top, Spacing.md)
+            } else {
+                Color.clear.frame(height: Spacing.lg)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(heroColor ?? Color.bgPrimary)
     }
 
-    private var followPill: some View {
-        HStack(spacing: Spacing.sm) {
-            FollowPill(teamId: team.id)
-            NotificationBell()
+    /// On a colored hero the mark sits in a white disc so dark artwork
+    /// (Ohio State's lettering) never sinks into the team color — the same
+    /// job `logoBacking` does in dark mode. Monochrome fallback goes bare.
+    @ViewBuilder
+    private var logoMark: some View {
+        if heroColor != nil {
+            ZStack {
+                Circle().fill(.white)
+                LogoImage(url: team.logoURL)
+                    .frame(width: 44, height: 44)
+            }
+            .frame(width: 56, height: 56)
+        } else {
+            LogoImage(url: team.logoURL)
+                .frame(width: 56, height: 56)
         }
     }
+
+    /// Conference plus record on one line ("Big Ten · 10-1"); the placement
+    /// string moved into the Standings tab, where it's a table instead of a
+    /// claim. Links to the full conference page when there is one.
+    @ViewBuilder
+    private var conferenceLine: some View {
+        // A past season's record derives from its final results — the
+        // provider's summary only describes the current season (the mapper
+        // nils it otherwise).
+        let record = schedule?.record ?? schedule?.derivedRecord
+        let name = resolvedConferenceId.map { Conference.name(for: $0) }
+        let label = [name, record].compactMap { $0 }.joined(separator: " · ")
+        if let id = resolvedConferenceId, Conference.tier(for: id) != .other {
+            NavigationLink(value: ConferenceDestination(conferenceId: id,
+                                                        name: Conference.name(for: id))) {
+                HStack(spacing: Spacing.xs) {
+                    Text(label)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                }
+                .font(.chipEmphasis)
+                .foregroundStyle(heroInkSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View conference standings")
+        } else if !label.isEmpty {
+            Text(label)
+                .font(.chipEmphasis)
+                .foregroundStyle(heroInkSecondary)
+        }
+    }
+
+    private var tabRow: some View {
+        HStack(spacing: Spacing.xl) {
+            tabButton("Games", .games)
+            tabButton("Standings", .standings)
+        }
+    }
+
+    private func tabButton(_ title: String, _ value: Tab) -> some View {
+        Button {
+            tab = value
+        } label: {
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(.chipEmphasis)
+                    .foregroundStyle(tab == value ? heroInk : heroInkSecondary)
+                Capsule()
+                    .fill(tab == value ? heroInk : Color.clear)
+                    .frame(height: 3)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(tab == value ? [.isSelected] : [])
+    }
+
+    // MARK: - Tab content
+
+    private var gamesContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let nextGame {
+                NextGameCard(game: nextGame, teamId: team.id)
+                    .cardSurface()
+            }
+            VStack(spacing: 0) {
+                TeamScheduleSection(
+                    teamId: team.id,
+                    games: schedule?.games ?? [],
+                    isLoading: isLoadingSelected,
+                    showsError: showsErrorForSelected,
+                    onRetry: { Task { await retry() } }
+                )
+            }
+            .padding(.bottom, Spacing.xs)
+            .cardSurface()
+        }
+        .padding(Spacing.sm)
+    }
+
+    private var standingsContent: some View {
+        VStack(spacing: 0) {
+            CardHeader(title: "Standings")
+            if let entries = conferenceStandings?.entries, !entries.isEmpty {
+                ForEach(entries) { standing in
+                    NavigationLink(value: standing.team) {
+                        ConferenceStandingRow(standing: standing)
+                    }
+                    .buttonStyle(.plain)
+                    // This team's own row gets the anchor treatment.
+                    .background(standing.team.id == team.id ? Color.bgHeader : Color.clear)
+                    if standing.id != entries.last?.id {
+                        Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
+                    }
+                }
+            } else if standingsLoading {
+                ProgressView().padding(.vertical, Spacing.xl)
+            } else if standingsFailed {
+                VStack(spacing: Spacing.sm) {
+                    Text("Couldn't load standings.")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Button("Retry") { Task { await loadStandings(force: true) } }
+                        .font(.teamNameEmphasis)
+                        .foregroundStyle(.textPrimary)
+                }
+                .padding(.vertical, Spacing.xl)
+            } else {
+                Text("Standings TBA")
+                    .font(.teamName)
+                    .foregroundStyle(.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.bottom, Spacing.xs)
+        .cardSurface()
+        .padding(Spacing.sm)
+        .task { await loadStandings() }
+    }
+
+    // MARK: - Loads
 
     private func loadInitial() async {
         guard selectedYear == nil, !initialLoading else { return }
@@ -168,6 +354,21 @@ struct TeamPage: View {
             await load(year: selectedYear)
         } else {
             await loadInitial()
+        }
+    }
+
+    private func loadStandings(force: Bool = false) async {
+        guard let id = resolvedConferenceId else { return }
+        guard force || conferenceStandings?.id != id else { return }
+        guard !standingsLoading else { return }
+        standingsLoading = true
+        defer { standingsLoading = false }
+        do {
+            let all = try await client.conferenceStandings()
+            conferenceStandings = all.first { $0.id == id }
+            standingsFailed = false
+        } catch {
+            standingsFailed = true
         }
     }
 }

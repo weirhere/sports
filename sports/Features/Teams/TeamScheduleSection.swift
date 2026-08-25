@@ -1,24 +1,17 @@
 import SwiftUI
 
-/// The SCHEDULE block on a team page: season chip, game rows, and the
-/// loading/error/empty states. The chip stays mounted through all of
-/// them so an empty or failed season never strands the user there.
+/// The Schedule card's contents on a team page: header, game rows, and the
+/// loading/error/empty states. The season chip moved to the hero header in
+/// the P1 review, so this section is purely the list.
 struct TeamScheduleSection: View {
     let teamId: String
     let games: [Game]
-    let selectedYear: Int?
-    let seasons: [Int]
     let isLoading: Bool
     let showsError: Bool
-    let onSelectYear: (Int) -> Void
     let onRetry: () -> Void
 
     var body: some View {
-        // The header waits for the first load — the chip needs a year to
-        // show, and a header over the initial spinner would be noise.
-        if selectedYear != nil {
-            header
-        }
+        CardHeader(title: "Schedule")
         if !games.isEmpty {
             ForEach(games) { game in
                 ScheduleRow(game: game, teamId: teamId)
@@ -46,19 +39,5 @@ struct TeamScheduleSection: View {
                 .foregroundStyle(.textSecondary)
                 .padding(.vertical, Spacing.xl)
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: Spacing.sm) {
-            Text("SCHEDULE")
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-            Spacer()
-            if let selectedYear {
-                SeasonMenuChip(current: selectedYear, seasons: seasons, onSelect: onSelectYear)
-            }
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.xs)
     }
 }

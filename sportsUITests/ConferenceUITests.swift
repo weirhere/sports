@@ -1,8 +1,9 @@
 import XCTest
 
 /// Live-network walk of the conference standings flow: the Teams header's
-/// standings button pushes ConferencePage, the follow pill toggles, and the
-/// Scores headers carry the same affordance.
+/// context menu pushes ConferencePage (the trailing standings icon came
+/// off browse headers in the P1 review), the follow pill toggles, and the
+/// Scores headers keep their standings button.
 ///
 /// Live-data rules apply (see CLAUDE.md): standings are a calendar fact —
 /// preseason serves 0-0 rows and an offseason conference can be empty — so
@@ -16,16 +17,22 @@ final class ConferenceUITests: XCTestCase {
                                 "-ui.scoresGrouping", "conference"]
         app.launch()
 
-        // Teams tab: the first conference group's header carries a standings
-        // button. ACC, not SEC — the browse list is a LazyVStack, so a
-        // section below the fold doesn't exist as an element yet, and ACC
-        // sorts first (the existing smoke test leans on it the same way).
+        // Teams tab: the first conference group's header reaches standings
+        // through its context menu. ACC, not SEC — the browse list is a
+        // LazyVStack, so a section below the fold doesn't exist as an
+        // element yet, and ACC sorts first under tier-then-name (the
+        // existing smoke test leans on it the same way).
         XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
                       "Teams should show the ACC conference header")
-        let standingsButton = app.buttons["ACC standings"].firstMatch
-        XCTAssertTrue(standingsButton.waitForExistence(timeout: 5),
-                      "The ACC header should carry a standings button")
-        standingsButton.tap()
+        let accHeader = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "ACC,")).firstMatch
+        XCTAssertTrue(accHeader.waitForExistence(timeout: 5),
+                      "The ACC header toggle should exist")
+        accHeader.press(forDuration: 1.0)
+        let standingsItem = app.buttons["View ACC standings"].firstMatch
+        XCTAssertTrue(standingsItem.waitForExistence(timeout: 5),
+                      "The ACC header's context menu should offer standings")
+        standingsItem.tap()
 
         // ConferencePage: title, follow pill, and standings-or-TBA. Rows
         // collapse to one element (a button, via NavigationLink), so query

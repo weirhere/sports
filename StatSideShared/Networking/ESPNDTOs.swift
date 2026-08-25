@@ -238,6 +238,7 @@ nonisolated struct ScheduleTeamDTO: Decodable {
     let recordSummary: String?
     let standingSummary: String?
     let groups: TeamGroupsDTO?
+    let color: String?
 }
 
 /// The team's most specific group on the schedule endpoint — the conference
