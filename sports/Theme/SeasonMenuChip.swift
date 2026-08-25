@@ -7,6 +7,9 @@ struct SeasonMenuChip: View {
     let current: Int
     let seasons: [Int]
     let onSelect: (Int) -> Void
+    /// Team-color hero styling: white text on a translucent scrim instead
+    /// of the elevated capsule.
+    var onDark = false
 
     var body: some View {
         Menu {
@@ -24,10 +27,10 @@ struct SeasonMenuChip: View {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))
             }
-            .foregroundStyle(Color.textPrimary)
+            .foregroundStyle(onDark ? .white : Color.textPrimary)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 8)
-            .background(Capsule().fill(Color.bgElevated))
+            .background(Capsule().fill(onDark ? Color.black.opacity(0.3) : Color.bgElevated))
             // Matches GroupingChip: compact capsule, 44 pt tap target.
             .frame(minHeight: 44)
             .contentShape(Rectangle())

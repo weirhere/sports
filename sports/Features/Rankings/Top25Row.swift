@@ -28,6 +28,11 @@ struct Top25Row: View {
                 }
                 Spacer(minLength: Spacing.sm)
             }
+            // Conference rows stand 34 tall from their follow star's tap
+            // target; without a star this row would render shorter, so it
+            // matches the height explicitly and the hub's cards read as one
+            // uniform list.
+            .frame(minHeight: 34)
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, 7)
             .contentShape(Rectangle())

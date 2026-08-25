@@ -7,7 +7,7 @@ struct ScheduleRow: View {
     let teamId: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 32
     @ScaledMetric(relativeTo: .caption) private var dateWidth: CGFloat = 52
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
@@ -17,7 +17,7 @@ struct ScheduleRow: View {
             if isStacked { stackedBody } else { compactBody }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 7)
+        .padding(.vertical, Spacing.sm)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
@@ -106,14 +106,22 @@ struct ScheduleRow: View {
     private var trailing: some View {
         switch game.status {
         case .final:
-            HStack(spacing: Spacing.xs) {
-                Text(mine.winner == true ? "W" : (opponent.winner == true ? "L" : "–"))
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
-                Text("\(mine.score.map(String.init) ?? "–")-\(opponent.score.map(String.init) ?? "–")")
-                    .font(.score)
-                    .foregroundStyle(.textPrimary)
-            }
+            // The P1 review's result chip: green for a win, red for a loss
+            // (the budget's existing movement pair), the score itself in
+            // mine-first order so color is never the only signal. bgPrimary
+            // ink inverts with the scheme, keeping contrast on the bright
+            // dark-mode greens/reds.
+            let won = mine.winner == true
+            let lost = opponent.winner == true
+            Text("\(mine.score.map(String.init) ?? "–")-\(opponent.score.map(String.init) ?? "–")")
+                .font(.chipEmphasis.monospacedDigit())
+                .foregroundStyle(won || lost ? Color.bgPrimary : .textPrimary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(won ? Color.rankUp : (lost ? Color.rankDown : Color.bgElevated))
+                )
         case .live:
             HStack(spacing: Spacing.xs) {
                 LiveDot()

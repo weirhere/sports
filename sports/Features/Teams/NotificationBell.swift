@@ -5,8 +5,14 @@ import UIKit
 /// Monochrome and weight-driven like the star; denied state routes to the
 /// system's notification settings (the only path once permission is refused).
 struct NotificationBell: View {
+    /// White ink for the team-color hero.
+    var onDark = false
+
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
+
+    private var ink: Color { onDark ? .white : .textPrimary }
+    private var inverse: Color { onDark ? .black : Color.bgPrimary }
 
     var body: some View {
         Button {
@@ -14,13 +20,13 @@ struct NotificationBell: View {
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: 14))
-                .foregroundStyle(notifications.remindersOn ? Color.bgPrimary : Color.textPrimary)
+                .foregroundStyle(notifications.remindersOn ? inverse : ink)
                 .padding(9)
                 .background(
-                    Circle().fill(notifications.remindersOn ? Color.textPrimary : Color.clear)
+                    Circle().fill(notifications.remindersOn ? ink : Color.clear)
                 )
                 .overlay(
-                    Circle().strokeBorder(Color.textPrimary, lineWidth: notifications.remindersOn ? 0 : 1)
+                    Circle().strokeBorder(ink, lineWidth: notifications.remindersOn ? 0 : 1)
                 )
         }
         .buttonStyle(.plain)

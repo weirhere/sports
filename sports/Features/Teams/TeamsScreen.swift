@@ -13,7 +13,17 @@ struct TeamsScreen: View {
     // ConferenceDestination — a typed path can't hold both.
     @State private var path = NavigationPath()
 
-    private var conferences: [ConferenceTeams] { directory.conferences }
+    /// Browse order per the P1 review: tier → name (the Rankings mapper's
+    /// order), under one "All conferences" heading. The directory keeps its
+    /// alphabetical contract for search and onboarding; the reorder is
+    /// browse-local. ACC still sorts first — the UI tests lean on that.
+    private var conferences: [ConferenceTeams] {
+        directory.conferences.sorted {
+            let lhs = Conference.tier(for: $0.id), rhs = Conference.tier(for: $1.id)
+            if lhs != rhs { return lhs < rhs }
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -26,6 +36,10 @@ struct TeamsScreen: View {
                 }
                 .navigationDestination(for: ConferenceDestination.self) { destination in
                     ConferencePage(destination: destination)
+                }
+                // TeamPage's Next game card pushes game detail.
+                .navigationDestination(for: Game.self) { game in
+                    GameDetailScreen(game: game)
                 }
         }
         .task { await directory.load() }
@@ -94,6 +108,7 @@ struct TeamsScreen: View {
                                         teams: followedTeams)
                                 .id(Self.followingSectionId)
                         }
+                        ListSectionHeading(title: "All conferences")
                         ForEach(conferences) { conference in
                             teamSection(title: conference.name,
                                         sectionId: sectionId(for: conference),
@@ -135,8 +150,9 @@ struct TeamsScreen: View {
                              logoURL: URL? = nil, isConference: Bool = false,
                              conferenceId: Int? = nil) -> some View {
         let isExpanded = !uiState.isConferenceCollapsed(sectionId)
-        // Same two-button header shape as the Scores accordions: the toggle
-        // owns the width, the standings link is its own trailing target.
+        // The header surface is the whole-width toggle; standings live in
+        // its context menu + VoiceOver action (the trailing icon came off
+        // in the P1 review — Scores headers keep theirs).
         let openStandings: (() -> Void)? = conferenceId.map { id in
             { path.append(ConferenceDestination(conferenceId: id, name: title)) }
         }
@@ -161,8 +177,7 @@ struct TeamsScreen: View {
                             .foregroundStyle(.textSecondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
-                    .padding(.leading, Spacing.lg)
-                    .padding(.trailing, openStandings == nil ? Spacing.lg : Spacing.sm)
+                    .padding(.horizontal, Spacing.lg)
                     .padding(.vertical, Spacing.md)
                     .contentShape(Rectangle())
                 }
@@ -183,11 +198,6 @@ struct TeamsScreen: View {
                     if let openStandings {
                         Button("View \(title) standings", action: openStandings)
                     }
-                }
-
-                if let openStandings {
-                    ConferenceStandingsLink(conferenceName: title, onOpen: openStandings)
-                        .padding(.trailing, Spacing.xs)
                 }
             }
             .background(Color.bgHeader)
