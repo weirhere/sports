@@ -30,8 +30,16 @@ struct MatchupStandings: View {
         }
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // The two record columns need their names (Andy, 2026-08-25);
+            // hidden at accessibility sizes, where rows stack their
+            // records onto a labeled line.
+            if !dynamicTypeSize.isAccessibilitySize {
+                StandingsColumnCaptions()
+            }
             let awaySlot = slot(for: away)
             let homeSlot = slot(for: home)
             if let awaySlot, let homeSlot, awaySlot.conference.id == homeSlot.conference.id {

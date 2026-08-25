@@ -25,16 +25,12 @@ struct StandingsList: View {
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    // Mirror ConferenceStandingRow's column metrics so captions align
-    // with the numbers beneath them.
-    @ScaledMetric(relativeTo: .subheadline) private var positionWidth: CGFloat = 16
-    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
 
     var body: some View {
         // At accessibility sizes the rows stack their records onto a
         // labeled line, so the captions would caption nothing.
         if !dynamicTypeSize.isAccessibilitySize {
-            captions
+            StandingsColumnCaptions()
         }
         ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
             NavigationLink(value: standing.team) {
@@ -59,27 +55,5 @@ struct StandingsList: View {
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm)
         }
-    }
-
-    /// Column captions. Visual-only — each row speaks itself as a
-    /// sentence, so VoiceOver skips this line.
-    private var captions: some View {
-        HStack(spacing: Spacing.md) {
-            Text("#")
-                .frame(minWidth: positionWidth, alignment: .trailing)
-            Text("TEAM")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("CONF")
-                .frame(minWidth: recordWidth, alignment: .trailing)
-            Text("OVR")
-                .frame(minWidth: recordWidth, alignment: .trailing)
-        }
-        .font(.meta)
-        .foregroundStyle(.textSecondary)
-        .padding(.horizontal, Spacing.lg)
-        // Breathing room off the card header's hairline above.
-        .padding(.top, Spacing.md)
-        .padding(.bottom, Spacing.sm)
-        .accessibilityHidden(true)
     }
 }
