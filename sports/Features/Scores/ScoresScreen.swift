@@ -22,6 +22,15 @@ struct ScoresScreen: View {
     // Nil until the first user week change: the initial load and season
     // switches have no meaningful direction, so they must not slide.
     @State private var weekSlideAnimation: Animation?
+    // The interactive week swipe (Andy's ask, 2026-08-25: content moves
+    // the moment the thumb does, not after it lifts). The content tracks
+    // the finger; past the commit threshold it settles off-screen and the
+    // adjacent week takes over with no push transition of its own.
+    @State private var dragOffset: CGFloat = 0
+    @State private var dragAxis: DragAxis?
+    @State private var paneWidth: CGFloat = 393
+
+    private enum DragAxis { case horizontal, vertical }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -57,7 +66,24 @@ struct ScoresScreen: View {
                     content
                         .id(store.selectedWeek?.id)
                         .transition(.push(from: weekSlideEdge))
+                        .offset(x: dragOffset)
+                    // The adjacent week rides in with the finger as a
+                    // skeleton — the real week starts in the same loading
+                    // state, so the commit handoff is seamless.
+                    if dragOffset != 0,
+                       store.adjacentWeek(offset: dragOffset < 0 ? 1 : -1) != nil {
+                        ScrollView { SkeletonRows() }
+                            .scrollDisabled(true)
+                            .background(Color.bgRecessed)
+                            .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
+                    }
                 }
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.onAppear { paneWidth = proxy.size.width }
+                            .onChange(of: proxy.size.width) { _, width in paneWidth = width }
+                    }
+                )
                 .animation(weekSlideAnimation, value: store.selectedWeek?.id)
                 // Horizontal counterpart to the week strip: swipe left for
                 // the next week, right for the previous. Simultaneous so
@@ -85,6 +111,9 @@ struct ScoresScreen: View {
         .onAppear { resolvePendingGame() }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: store.games) { _, _ in resolvePendingGame() }
+        // The drag-commit handoff: the new week takes the screen the moment
+        // its id lands, so the settled offset snaps home with it.
+        .onChange(of: store.selectedWeek?.id) { _, _ in dragOffset = 0 }
     }
 
     private var sections: [GameSection] {
@@ -107,16 +136,51 @@ struct ScoresScreen: View {
 
     /// A gesture-only accelerator, like the pinch: the week strip keeps a
     /// tappable chip per week, so nothing is swipe-gated for VoiceOver or
-    /// switch users. The dominance check keeps diagonal scroll flicks from
-    /// changing the week; no haptic (the budget of three holds).
+    /// switch users. The axis locks on first movement so vertical scroll
+    /// flicks never jiggle the week; horizontal drags move the content
+    /// immediately, commit on distance or flick velocity, and season ends
+    /// resist instead of paging. No haptic (the budget of three holds).
     private var weekSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 25)
-            .onEnded { value in
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
-                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
-                guard let target = store.adjacentWeek(offset: dx < 0 ? 1 : -1) else { return }
-                select(week: target)
+                if dragAxis == nil, abs(dx) > 10 || abs(dy) > 10 {
+                    dragAxis = abs(dx) > abs(dy) * 1.5 ? .horizontal : .vertical
+                }
+                guard dragAxis == .horizontal else { return }
+                let hasTarget = store.adjacentWeek(offset: dx < 0 ? 1 : -1) != nil
+                dragOffset = hasTarget ? dx : dx * 0.25
+            }
+            .onEnded { value in
+                defer { dragAxis = nil }
+                guard dragAxis == .horizontal else { return }
+                let dx = value.translation.width
+                let flick = value.predictedEndTranslation.width
+                // Commit on distance, or on a flick that keeps the drag's
+                // direction; a flick back toward the origin cancels.
+                let sameDirection = (dx < 0) == (flick < 0)
+                let commits = abs(dx) > paneWidth * 0.35
+                    || (sameDirection && abs(flick) > paneWidth * 0.6)
+                guard commits,
+                      let target = store.adjacentWeek(offset: dx < 0 ? 1 : -1) else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                        dragOffset = 0
+                    }
+                    return
+                }
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.95),
+                              completionCriteria: .logicallyComplete) {
+                    dragOffset = dx < 0 ? -paneWidth : paneWidth
+                } completion: {
+                    // The push transition is the chip taps' mechanism; the
+                    // drag already animated, so the id swap is instant. The
+                    // offset resets when the week actually changes (see
+                    // onChange below), so the skeleton pane covers the
+                    // handoff frame.
+                    weekSlideAnimation = nil
+                    Task { await store.select(week: target) }
+                }
             }
     }
 
@@ -150,24 +214,44 @@ struct ScoresScreen: View {
             emptyState
         } else {
             ScrollView {
-                LazyVStack(spacing: Spacing.sm) {
+                // pinnedViews only bites in the date grouping, where each
+                // accordion emits a Section whose day header sticks to the
+                // top while its games scroll (Andy, 2026-08-25).
+                // Date mode runs spacing 0 so a pinned header sits flush on
+                // its rows; each section carries its own gap to the next.
+                LazyVStack(spacing: uiState.scoresGrouping == .date ? 0 : Spacing.sm,
+                           pinnedViews: [.sectionHeaders]) {
                     // The Following slot's empty state: following nobody
                     // renders the follow prompt where the section would be.
                     if !following.followsAnyone, !uiState.followPromptDismissed {
                         FollowPromptCard()
                             .cardSurface()
+                            .padding(.bottom, uiState.scoresGrouping == .date ? Spacing.sm : 0)
                     }
                     ForEach(sections) { section in
-                        SectionAccordion(
-                            section: section,
-                            isExpanded: uiState.isExpanded(section.id),
-                            onToggle: { withAnimation { uiState.toggle(section.id) } },
-                            onOpenStandings: section.conferenceId.map { id in
-                                { path.append(ConferenceDestination(conferenceId: id,
-                                                                    name: section.title)) }
-                            }
-                        )
-                        .cardSurface()
+                        if uiState.scoresGrouping == .date {
+                            SectionAccordion(
+                                section: section,
+                                isExpanded: uiState.isExpanded(section.id),
+                                onToggle: { withAnimation { uiState.toggle(section.id) } },
+                                onOpenStandings: section.conferenceId.map { id in
+                                    { path.append(ConferenceDestination(conferenceId: id,
+                                                                        name: section.title)) }
+                                },
+                                pinsHeader: true
+                            )
+                        } else {
+                            SectionAccordion(
+                                section: section,
+                                isExpanded: uiState.isExpanded(section.id),
+                                onToggle: { withAnimation { uiState.toggle(section.id) } },
+                                onOpenStandings: section.conferenceId.map { id in
+                                    { path.append(ConferenceDestination(conferenceId: id,
+                                                                        name: section.title)) }
+                                }
+                            )
+                            .cardSurface()
+                        }
                     }
                 }
                 .padding(Spacing.sm)

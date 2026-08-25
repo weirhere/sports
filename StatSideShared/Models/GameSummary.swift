@@ -20,6 +20,13 @@ nonisolated struct GameSummary: Sendable {
     let leaders: [LeaderCategory]
     let venue: String?
     let attendance: Int?
+    /// The pre-game info card's extras — every field optional, defaulted
+    /// so fixtures and older call sites construct unchanged.
+    var venueCity: String? = nil
+    var venueCapacity: Int? = nil
+    var grassSurface: Bool? = nil
+    var weatherCondition: String? = nil
+    var weatherTemperature: Int? = nil
 }
 
 /// One offensive possession, chronological. `summary` is ESPN's pre-built

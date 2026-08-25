@@ -6,10 +6,14 @@ import SwiftUI
 /// line under the name (GameRow's reflow pattern).
 struct ConferenceStandingRow: View {
     let standing: ConferenceStanding
+    /// 1-based place in the displayed order — the table's first column
+    /// (Andy's ask, 2026-08-25). Nil hides the column.
+    var position: Int? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
     @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var positionWidth: CGFloat = 16
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -26,6 +30,7 @@ struct ConferenceStandingRow: View {
 
     private var compactBody: some View {
         HStack(spacing: Spacing.md) {
+            positionText
             LogoImage(url: standing.team.logoURL)
                 .frame(width: logoSize, height: logoSize)
             Text(standing.team.location)
@@ -42,6 +47,7 @@ struct ConferenceStandingRow: View {
     private var stackedBody: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(spacing: Spacing.md) {
+                positionText
                 LogoImage(url: standing.team.logoURL)
                     .frame(width: logoSize, height: logoSize)
                 Text(standing.team.location)
@@ -62,6 +68,18 @@ struct ConferenceStandingRow: View {
             .frame(minWidth: recordWidth, alignment: .trailing)
     }
 
+    /// The place number, GameRow's rank recipe: weight-emphasized meta,
+    /// right-aligned so 1 and 14 share an edge.
+    @ViewBuilder
+    private var positionText: some View {
+        if let position {
+            Text("\(position)")
+                .font(.metaEmphasis)
+                .foregroundStyle(.textSecondary)
+                .frame(minWidth: positionWidth, alignment: .trailing)
+        }
+    }
+
     private var stackedRecordLine: String {
         [standing.conferenceRecord.map { "Conf \($0)" },
          standing.overallRecord.map { "Overall \($0)" }]
@@ -69,9 +87,14 @@ struct ConferenceStandingRow: View {
             .joined(separator: " · ")
     }
 
-    /// One sentence: "Georgia, 7 and 1 in conference, 13 and 2 overall".
+    /// One sentence: "Number 3, Georgia, 7 and 1 in conference, 13 and 2
+    /// overall".
     var accessibilitySummary: String {
-        var parts = [standing.team.location]
+        var parts = [String]()
+        if let position {
+            parts.append("Number \(position)")
+        }
+        parts.append(standing.team.location)
         if let conference = standing.conferenceRecord {
             parts.append("\(spoken(conference)) in conference")
         }

@@ -293,9 +293,12 @@ nonisolated enum ESPNMapper {
     }
 
     /// Standings sibling of `conferences(from:)` over the same response.
-    /// Differences are the contract: entry order is preserved (ESPN's
-    /// standings order, tiebreakers included — never re-sort), and empty
-    /// conferences are kept so the page can render "Standings TBA".
+    /// Differences are the contract: entry order is ESPN's standings order
+    /// — `playoffSeed` when the conference is fully seeded (past-season
+    /// payloads arrive sorted by overall record, which is not the
+    /// standings), payload order otherwise — and empty conferences are
+    /// kept so the page can render "Standings TBA". Never sorted from
+    /// records here: tiebreakers aren't derivable.
     static func conferenceStandings(from dto: StandingsResponseDTO) -> [ConferenceStandings] {
         (dto.children ?? []).map { group in
             let id = group.id?.value
@@ -316,10 +319,12 @@ nonisolated enum ESPNMapper {
                     ),
                     conferenceRecord: stat("vsconf")?.summary,
                     overallRecord: stat("total")?.summary,
-                    streak: stat("streak")?.displayValue
+                    streak: stat("streak")?.displayValue,
+                    playoffSeed: stat("playoffseed")?.value.map(Int.init)
                 )
             }
-            return ConferenceStandings(id: id, name: name, entries: entries)
+            return ConferenceStandings(id: id, name: name,
+                                       entries: ConferenceStandings.seedOrdered(entries))
         }
         .sorted { lhs, rhs in
             let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
@@ -455,7 +460,17 @@ nonisolated enum ESPNMapper {
             teamStats: teamStats(from: dto.boxscore),
             leaders: leaders(from: dto.leaders?.elements ?? [], competitors: competitors),
             venue: dto.gameInfo?.venue?.fullName,
-            attendance: dto.gameInfo?.attendance
+            attendance: dto.gameInfo?.attendance,
+            venueCity: {
+                let joined = [dto.gameInfo?.venue?.address?.city,
+                              dto.gameInfo?.venue?.address?.state]
+                    .compactMap { $0 }.joined(separator: ", ")
+                return joined.isEmpty ? nil : joined
+            }(),
+            venueCapacity: dto.gameInfo?.venue?.capacity,
+            grassSurface: dto.gameInfo?.venue?.grass,
+            weatherCondition: dto.gameInfo?.weather?.displayValue,
+            weatherTemperature: dto.gameInfo?.weather?.temperature.map(Int.init)
         )
     }
 

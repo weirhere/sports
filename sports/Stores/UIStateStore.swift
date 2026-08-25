@@ -50,6 +50,7 @@ final class UIStateStore {
         scoresGrouping = defaults.string(forKey: Self.groupingKey)
             .flatMap(ScoresGrouping.init(rawValue:)) ?? .conference
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
+        pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
 
     func isExpanded(_ sectionId: String) -> Bool {
@@ -160,9 +161,11 @@ final class UIStateStore {
         defaults.set(Array(collapsedDays).sorted(), forKey: Self.collapsedDaysKey)
     }
 
+    /// Stored (not a UserDefaults passthrough) so @Observable tracks the
+    /// picker: the passthrough version froze the AP/Coaches chips until
+    /// the screen was rebuilt.
     var pollChoice: String? {
-        get { defaults.string(forKey: Self.pollChoiceKey) }
-        set { defaults.set(newValue, forKey: Self.pollChoiceKey) }
+        didSet { defaults.set(pollChoice, forKey: Self.pollChoiceKey) }
     }
 
     private static let onboardingSeenKey = "ui.onboardingSeen"

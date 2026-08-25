@@ -138,11 +138,56 @@ private func fixture(_ name: String) throws -> Data {
         ConferenceStandings(id: id, name: name, entries: entries)
     }
 
-    private func standing(_ location: String, conf: String?) -> ConferenceStanding {
+    private func standing(_ location: String, conf: String?,
+                          seed: Int? = nil) -> ConferenceStanding {
         ConferenceStanding(
             team: Team(id: location, location: location, name: nil, abbreviation: nil,
                        displayName: nil, shortDisplayName: nil, logoURL: nil, conferenceId: nil),
-            conferenceRecord: conf, overallRecord: nil, streak: nil)
+            conferenceRecord: conf, overallRecord: nil, streak: nil, playoffSeed: seed)
+    }
+
+    @Test func seedOrderingBeatsPayloadOrderWhenComplete() {
+        // 2024's payload listed by overall record — Memphis over 7-1 Tulane.
+        let payload = [standing("Memphis", conf: "6-2", seed: 4),
+                       standing("Army", conf: "8-0", seed: 1),
+                       standing("Tulane", conf: "7-1", seed: 2)]
+        #expect(ConferenceStandings.seedOrdered(payload).map(\.team.location)
+                == ["Army", "Tulane", "Memphis"])
+    }
+
+    @Test func seedOrderingKeepsPayloadOrderOnGapsAndDupes() {
+        // 2024 MAC ships zero seeds — payload order is imperfect but not
+        // invented, so it stands.
+        let zeros = [standing("Ohio", conf: "7-1", seed: 0),
+                     standing("Buffalo", conf: "6-2", seed: 2),
+                     standing("Miami (OH)", conf: "7-1", seed: 3)]
+        #expect(ConferenceStandings.seedOrdered(zeros).map(\.team.location)
+                == ["Ohio", "Buffalo", "Miami (OH)"])
+        let dupes = [standing("A", conf: "5-3", seed: 1),
+                     standing("B", conf: "5-3", seed: 1),
+                     standing("C", conf: "4-4", seed: 3)]
+        #expect(ConferenceStandings.seedOrdered(dupes).map(\.team.location)
+                == ["A", "B", "C"])
+        let missing = [standing("A", conf: "5-3", seed: 1),
+                       standing("B", conf: "5-3", seed: nil),
+                       standing("C", conf: "4-4", seed: 3)]
+        #expect(ConferenceStandings.seedOrdered(missing).map(\.team.location)
+                == ["A", "B", "C"])
+    }
+
+    @Test func titleGameCutGatesByFormatEra() {
+        // One-table era: top two meet in the title game.
+        #expect(Conference.titleGameIsTopTwo(id: 8, year: 2024))    // SEC
+        #expect(Conference.titleGameIsTopTwo(id: 5, year: 2026))    // Big Ten
+        // Divisional eras must never carry the top-two claim.
+        #expect(!Conference.titleGameIsTopTwo(id: 8, year: 2023))
+        // The Sun Belt is the divisional holdout — one-table from 2026.
+        #expect(!Conference.titleGameIsTopTwo(id: 37, year: 2024))
+        #expect(Conference.titleGameIsTopTwo(id: 37, year: 2026))
+        // No title game at all: Independents, unknown ids, nil.
+        #expect(!Conference.titleGameIsTopTwo(id: 18, year: 2026))
+        #expect(!Conference.titleGameIsTopTwo(id: 999, year: 2026))
+        #expect(!Conference.titleGameIsTopTwo(id: nil, year: 2026))
     }
 
     @Test func pinnedFloatsFollowedKeepingRelativeOrder() {

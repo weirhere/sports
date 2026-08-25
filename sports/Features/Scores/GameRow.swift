@@ -10,18 +10,15 @@ import SwiftUI
 /// its own score, and the status drops to a line of its own underneath.
 struct GameRow: View {
     let game: Game
-    /// True when a day divider directly above the row already names the date,
-    /// in which case the row doesn't repeat it. VoiceOver still hears the full
-    /// date either way — a swipe can land on the row without the divider.
-    var dayIsLabeled: Bool = false
     /// True inside a day-grouped section, whose accordion header names the
     /// whole day — the row spends nothing on the date, just kick time and
     /// network. VoiceOver still hears the full date.
     var timeOnly: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
-    @ScaledMetric(relativeTo: .caption) private var rankWidth: CGFloat = 14
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .subheadline) private var logoSlot: CGFloat = 32
+    @ScaledMetric(relativeTo: .caption2) private var statusWidth: CGFloat = 80
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -29,8 +26,7 @@ struct GameRow: View {
         Group {
             if isStacked { stackedBody } else { compactBody }
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 12)
+        .padding(Spacing.lg)
         .contentShape(Rectangle())
         // The row reads as one sentence — "Georgia 24, Tennessee 17, 3rd
         // quarter" — instead of a dozen fragments. Logos and layout stay
@@ -40,20 +36,68 @@ struct GameRow: View {
     }
 
     // MARK: - Compact layout (default text sizes)
+    // The 2240-spec matchup shape: two team rows (name, rank after it,
+    // record or score at the trailing edge), a hairline column divider,
+    // then the fixed status column.
 
     private var compactBody: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: 7) {
-                teamLine(game.away)
-                teamLine(game.home)
+            VStack(alignment: .leading, spacing: 2) {
+                teamRow(game.away)
+                teamRow(game.home)
             }
-            // Team names win the width fight with the trailing column —
-            // "New Mexico State" beats a broadcast string's elbow room. The
-            // kick time is the one exception: it's short, load-bearing, and
-            // pinned to its natural width (see `trailing`).
-            .layoutPriority(1)
+            Rectangle()
+                .fill(Color.divider)
+                .frame(width: 1, height: 55)
+            statusColumn
+                .frame(width: statusWidth, alignment: .leading)
+        }
+    }
+
+    private func teamRow(_ competitor: Competitor) -> some View {
+        HStack(spacing: Spacing.sm) {
+            teamIdentity(competitor)
             Spacer(minLength: Spacing.sm)
-            trailing
+            switch game.status {
+            case .pre:
+                // The record is upcoming-only information — a final row's
+                // trailing edge belongs to the score alone.
+                if let record = competitor.record {
+                    Text(record)
+                        .font(.rowMetaMedium)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
+            case .live, .final:
+                scoreText(competitor, font: scoreFont)
+            case .other:
+                EmptyView()
+            }
+        }
+    }
+
+    /// Logo, name, rank after it (the 2240 spec), possession.
+    private func teamIdentity(_ competitor: Competitor) -> some View {
+        HStack(spacing: Spacing.sm) {
+            logo(competitor.team)
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
+                Text(competitor.team.location)
+                    .font(emphasize(competitor) ? .rowNameEmphasis : .rowName)
+                    .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
+                    // The stacked row has a full line to spend, so a long
+                    // name wraps instead of truncating.
+                    .lineLimit(isStacked ? 2 : 1)
+                if let rank = competitor.rank {
+                    Text("\(rank)")
+                        .font(.rowMeta)
+                        .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
+                }
+            }
+            if hasPossession(competitor) {
+                Image(systemName: "football.fill")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.textSecondary)
+            }
         }
     }
 
@@ -72,7 +116,13 @@ struct GameRow: View {
     /// left edge the way it does in the compact row.
     private func stackedTeamLine(_ competitor: Competitor) -> some View {
         HStack(spacing: Spacing.sm) {
-            teamLine(competitor)
+            teamIdentity(competitor)
+            if case .pre = game.status, let record = competitor.record {
+                Text(record)
+                    .font(.rowMetaMedium)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
             Spacer(minLength: Spacing.sm)
             if showsScores {
                 scoreText(competitor, font: scoreFont)
@@ -117,99 +167,79 @@ struct GameRow: View {
         }
     }
 
-    // MARK: - Team line
-
-    private func teamLine(_ competitor: Competitor) -> some View {
-        HStack(spacing: 6) {
-            if let rank = competitor.rank {
-                Text("\(rank)")
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textSecondary)
-                    .frame(minWidth: rankWidth, alignment: .trailing)
-            }
-            logo(competitor.team)
-            Text(competitor.team.location)
-                .font(emphasize(competitor) ? .teamNameEmphasis : .teamName)
-                .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
-                // The stacked row has a full line to spend, so a long name
-                // wraps instead of truncating.
-                .lineLimit(isStacked ? 2 : 1)
-            if hasPossession(competitor) {
-                Image(systemName: "football.fill")
-                    .font(.system(size: 8))
-                    .foregroundStyle(.textSecondary)
-            }
-            if let record = competitor.record, case .pre = game.status {
-                Text(record)
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
-            }
-        }
-    }
-
     private func logo(_ team: Team) -> some View {
         LogoImage(url: team.logoURL)
             .frame(width: logoSize, height: logoSize)
+            .frame(width: logoSlot, height: logoSlot)
     }
 
-    // MARK: - Trailing column
+    // MARK: - Status column
+    // The fixed right column across the hairline: what the game needs from
+    // you now — kick day/time + network, the live line, or Final + date.
 
     @ViewBuilder
-    private var trailing: some View {
+    private var statusColumn: some View {
         switch game.status {
         case .pre:
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
                 if let date = game.date {
                     if timeOnly {
                         // A day section's header names the day; the row
                         // spends its lines on time and network only.
-                        kickText(game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()))
-                            .fixedSize(horizontal: true, vertical: false)
+                        Text(game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()))
+                            .font(.rowMetaMedium)
+                            .foregroundStyle(.textPrimary)
+                            .lineLimit(1)
                     } else {
                         let kick = Self.relativeKickParts(date, weekday: .abbreviated,
-                                                          timeTBD: game.timeTBD,
-                                                          includeDate: !dayIsLabeled)
-                        // Even split across two lines, "Tomorrow" can wrap a
-                        // character per line under the names' layout priority at
-                        // large text sizes. Each line holds its natural width.
-                        kickText(kick.day)
-                            .fixedSize(horizontal: true, vertical: false)
-                        kickText(kick.time)
-                            .fixedSize(horizontal: true, vertical: false)
+                                                          timeTBD: game.timeTBD)
+                        Text(kick.day)
+                            .font(.rowMetaMedium)
+                            .foregroundStyle(.textPrimary)
+                            .lineLimit(1)
+                        Text(kick.time)
+                            .font(.rowMeta)
+                            .foregroundStyle(.textSecondary)
+                            .lineLimit(1)
                     }
                 } else {
-                    kickText("TBD")
-                        .fixedSize(horizontal: true, vertical: false)
+                    Text("TBD")
+                        .font(.rowMetaMedium)
+                        .foregroundStyle(.textPrimary)
                 }
-                if let network { networkText(network) }
+                if let network {
+                    Text(network)
+                        .font(.rowMeta)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
             }
         case .live(let displayClock, let period, _, _):
-            HStack(spacing: Spacing.md) {
-                scoreColumn(font: .scoreLive)
-                VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: Spacing.xs) {
                     LiveDot()
                     Text(liveDetail(clock: displayClock, period: period))
-                        .font(.metaEmphasis)
+                        .font(.rowMetaMedium)
                         .foregroundStyle(.textPrimary)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .lineLimit(1)
                 }
-                .frame(minWidth: 52, alignment: .leading)
             }
         case .final(let detail):
-            HStack(spacing: Spacing.md) {
-                scoreColumn(font: .score)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(finalLabel(detail))
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textSecondary)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .frame(minWidth: 52, alignment: .leading)
+                    .font(.rowMetaMedium)
+                    .foregroundStyle(.textPrimary)
+                if let date = game.date, !timeOnly {
+                    Text(date.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))
+                        .font(.rowMeta)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
             }
         case .other(let detail):
             Text(detail ?? "—")
-                .font(.meta)
+                .font(.rowMeta)
                 .foregroundStyle(.textSecondary)
-                .frame(minWidth: 52, alignment: .trailing)
         }
     }
 
@@ -231,16 +261,9 @@ struct GameRow: View {
             .lineLimit(1)
     }
 
-    private func scoreColumn(font: Font) -> some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            scoreText(game.away, font: font)
-            scoreText(game.home, font: font)
-        }
-    }
-
     private func scoreText(_ competitor: Competitor, font: Font) -> some View {
         Text(competitor.score.map(String.init) ?? "–")
-            .font(mute(competitor) ? .scoreMuted : font)
+            .font(mute(competitor) ? .rowName.monospacedDigit() : font)
             .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
     }
 
@@ -255,8 +278,9 @@ struct GameRow: View {
     }
 
     private var scoreFont: Font {
-        if case .live = game.status { return .scoreLive }
-        return .score
+        // Live spends weight, per the budget — semibold at the row scale.
+        if case .live = game.status { return .rowNameEmphasis.monospacedDigit() }
+        return .rowName.monospacedDigit()
     }
 
     /// First network only: "ESPN Unlmtd/The CW Network" otherwise swallows
@@ -298,8 +322,7 @@ struct GameRow: View {
     private var kickTime: String {
         guard let date = game.date else { return "TBD" }
         if timeOnly { return game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()) }
-        return Self.relativeKick(date, weekday: .abbreviated, timeTBD: game.timeTBD,
-                                 includeDate: !dayIsLabeled)
+        return Self.relativeKick(date, weekday: .abbreviated, timeTBD: game.timeTBD)
     }
 
     /// How far out the kick is decides how much of the date the row spends:
@@ -333,8 +356,11 @@ struct GameRow: View {
         switch days {
         case 0: return ("Today", time)
         case 1: return ("Tomorrow", time)
-        case ..<7: return (date.formatted(.dateTime.weekday(weekday)), time)
         default:
+            // Weekday + date from two days out — with the in-section day
+            // dividers gone (Andy, 2026-08-25), the row's own day line is
+            // the only date on screen, and a bare "Sat" is ambiguous in a
+            // two-weekend week (2026's Week 1).
             let style = Date.FormatStyle.dateTime.weekday(weekday)
             let day = includeDate ? style.month(.defaultDigits).day() : style
             return (date.formatted(day), time)
@@ -360,8 +386,9 @@ struct GameRow: View {
     }
 
     private func finalLabel(_ detail: String?) -> String {
-        if let detail, detail.localizedCaseInsensitiveContains("OT") { return "FINAL OT" }
-        return "FINAL"
+        // Sentence case per the 2240 spec.
+        if let detail, detail.localizedCaseInsensitiveContains("OT") { return "Final OT" }
+        return "Final"
     }
 
     // MARK: - VoiceOver

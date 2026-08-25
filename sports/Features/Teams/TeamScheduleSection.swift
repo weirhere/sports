@@ -14,7 +14,12 @@ struct TeamScheduleSection: View {
         CardHeader(title: "Schedule")
         if !games.isEmpty {
             ForEach(games) { game in
-                ScheduleRow(game: game, teamId: teamId)
+                // Rows push game detail (Andy, 2026-08-25); the Teams and
+                // Rankings stacks both register the Game destination.
+                NavigationLink(value: game) {
+                    ScheduleRow(game: game, teamId: teamId)
+                }
+                .buttonStyle(.plain)
                 if game.id != games.last?.id {
                     Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
                 }

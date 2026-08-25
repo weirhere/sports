@@ -53,8 +53,17 @@ struct TeamPage: View {
     /// realignment year reads correctly under the season chip), then the
     /// pushed value (instant, pre-fetch), then the team directory (covers
     /// Rankings/game-detail entry paths that push no id).
+    ///
+    /// One veto: an FCS opponent's schedule payload reuses group ids that
+    /// collide with our FBS table (NDSU came back "Mountain West"), so a
+    /// loaded directory that doesn't know the team means no conference —
+    /// no line, no Standings tab — rather than a mislabeled one.
     private var resolvedConferenceId: Int? {
-        schedule?.team?.conferenceId
+        if let directory, !directory.allTeams.isEmpty,
+           !directory.allTeams.contains(where: { $0.id == team.id }) {
+            return nil
+        }
+        return schedule?.team?.conferenceId
             ?? team.conferenceId
             ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
     }
@@ -164,7 +173,7 @@ struct TeamPage: View {
             if showsStandingsTab {
                 tabRow
                     .padding(.horizontal, Spacing.lg)
-                    .padding(.top, Spacing.md)
+                    .padding(.top, Spacing.sm)
             } else {
                 Color.clear.frame(height: Spacing.lg)
             }
@@ -223,8 +232,12 @@ struct TeamPage: View {
         }
     }
 
+    // The Figma header component's tab specs, followed exactly (Andy,
+    // 2026-08-25): 40pt gap, 14pt vertical padding per tab, bold 14 labels
+    // at −2% tracking, a 3pt bottom bar spanning the tab, inactive ink at
+    // 50%.
     private var tabRow: some View {
-        HStack(spacing: Spacing.xl) {
+        HStack(spacing: 40) {
             tabButton("Games", .games)
             tabButton("Standings", .standings)
         }
@@ -234,15 +247,17 @@ struct TeamPage: View {
         Button {
             tab = value
         } label: {
-            VStack(spacing: 6) {
-                Text(title)
-                    .font(.chipEmphasis)
-                    .foregroundStyle(tab == value ? heroInk : heroInkSecondary)
-                Capsule()
-                    .fill(tab == value ? heroInk : Color.clear)
-                    .frame(height: 3)
-            }
-            .contentShape(Rectangle())
+            Text(title)
+                .font(.tab)
+                .tracking(-0.28)
+                .foregroundStyle(tab == value ? heroInk : heroInk.opacity(0.5))
+                .padding(.vertical, 14)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(tab == value ? heroInk : Color.clear)
+                        .frame(height: 3)
+                }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(tab == value ? [.isSelected] : [])
@@ -275,17 +290,13 @@ struct TeamPage: View {
         VStack(spacing: 0) {
             CardHeader(title: "Standings")
             if let entries = conferenceStandings?.entries, !entries.isEmpty {
-                ForEach(entries) { standing in
-                    NavigationLink(value: standing.team) {
-                        ConferenceStandingRow(standing: standing)
-                    }
-                    .buttonStyle(.plain)
-                    // This team's own row gets the anchor treatment.
-                    .background(standing.team.id == team.id ? Color.bgHeader : Color.clear)
-                    if standing.id != entries.last?.id {
-                        Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
-                    }
-                }
+                StandingsList(
+                    entries: entries,
+                    highlightTeamId: team.id,
+                    // The tab always shows the current season.
+                    showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
+                                                                    year: CFBSeason.year())
+                )
             } else if standingsLoading {
                 ProgressView().padding(.vertical, Spacing.xl)
             } else if standingsFailed {

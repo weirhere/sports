@@ -160,6 +160,16 @@ extension Font {
     /// than 17: the hero has no nav title above it, so the name carries the
     /// whole identity weight (same reasoning as the widget masthead).
     static var heroTitle: Font { scaled(24, .heavy, relativeTo: .title2) }
+    /// The 2240-spec game-row scale (Andy's Figma, 2026-08-25): names and
+    /// scores at 13 medium, metadata at 10. Semibold carries the live
+    /// emphasis at this scale.
+    static var rowName: Font { scaled(13, .medium, relativeTo: .subheadline) }
+    static var rowNameEmphasis: Font { scaled(13, .semibold, relativeTo: .subheadline) }
+    static var rowMeta: Font { scaled(10, .regular, relativeTo: .caption2) }
+    static var rowMetaMedium: Font { scaled(10, .medium, relativeTo: .caption2) }
+    /// The hero tab labels — bold 14 with −2% tracking, per the Figma
+    /// header component ("follow specs exactly", 2026-08-25).
+    static var tab: Font { scaled(14, .bold, relativeTo: .callout) }
 
     private static func scaled(_ size: CGFloat, _ weight: UIFont.Weight,
                                relativeTo style: UIFont.TextStyle) -> Font {

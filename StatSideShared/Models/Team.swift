@@ -104,4 +104,15 @@ nonisolated enum Conference {
         if id == 18 { return .independent }
         return .group5
     }
+
+    /// Whether this conference's championship game takes the standings'
+    /// top two that season — the gate for the standings cut line, which
+    /// must never claim top-two about a divisional-era pairing. Every FBS
+    /// conference has been one-table since 2024 except the Sun Belt (the
+    /// divisional holdout, one-table from 2026); Independents have no
+    /// title game at all.
+    static func titleGameIsTopTwo(id: Int?, year: Int) -> Bool {
+        guard let id, names[id] != nil, id != 18 else { return false }
+        return year >= (id == 37 ? 2026 : 2024)
+    }
 }

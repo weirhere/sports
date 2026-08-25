@@ -5,15 +5,25 @@ import SwiftUI
 /// review's table-header treatment.
 struct CardHeader: View {
     let title: String
+    /// Trailing context in meta type — e.g. Team stats' "UGA · TENN"
+    /// column legend.
+    var subtitle: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(title)
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Spacing.md)
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: Spacing.sm) {
+                Text(title)
+                    .font(.sectionHeader)
+                    .foregroundStyle(.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                }
+            }
+            .padding(Spacing.md)
             Divider().overlay(Color.divider)
         }
     }

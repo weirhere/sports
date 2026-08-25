@@ -13,36 +13,66 @@ struct GameDetailScreen: View {
     @State private var summary: GameSummary?
     @State private var isLoading = false
     @State private var lastError: String?
+    /// The matchup-standings card's data; a miss just hides the card.
+    @State private var conferenceStandings: [ConferenceStandings] = []
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                // The header keeps its bones on the primary surface; the
+                // content below moves into cards on the recessed one, the
+                // Teams/Conferences template (Andy, 2026-08-25).
                 header
-                Divider().overlay(Color.divider)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.bgPrimary)
                 if let summary {
-                    if summary.away?.linescores.isEmpty == false {
-                        LineScoreGrid(summary: summary)
-                        Divider().overlay(Color.divider)
+                    VStack(spacing: Spacing.sm) {
+                        // Pre-kick, the sections below are all empty — the
+                        // game-info card carries the "what do I need to
+                        // know" load (FotMob's Preview cards, monochrome).
+                        if !showsScores {
+                            card(title: "Game info") { gameInfoRows(summary) }
+                        }
+                        if summary.away?.linescores.isEmpty == false {
+                            card { LineScoreGrid(summary: summary) }
+                        }
+                        if !summary.scoringPlays.isEmpty {
+                            card(title: "Scoring") { ScoringPlaysList(summary: summary) }
+                        }
+                        if !summary.teamStats.isEmpty {
+                            card(title: "Team stats", subtitle: statsLegend(summary)) {
+                                TeamStatsCompare(summary: summary)
+                            }
+                        }
+                        if !summary.leaders.isEmpty {
+                            card(title: "Leaders") { LeadersList(summary: summary) }
+                        }
+                        // The two sides' conference standing "so far" —
+                        // only for current-season games (the fetch is
+                        // always the current tables, and 2019's page must
+                        // not wear 2026's numbers).
+                        if isCurrentSeason,
+                           MatchupStandings.hasContent(away: game.away.team,
+                                                       home: game.home.team,
+                                                       standings: conferenceStandings) {
+                            card(title: "Standings") {
+                                MatchupStandings(away: game.away.team,
+                                                 home: game.home.team,
+                                                 standings: conferenceStandings)
+                            }
+                        }
+                        if !summary.drives.isEmpty {
+                            card(title: "Drives") { DriveLogList(summary: summary) }
+                        }
+                        // Pre-game the info card already places the game;
+                        // the footer is the final's quiet closing line.
+                        if showsScores {
+                            footer(summary)
+                        }
                     }
-                    if !summary.scoringPlays.isEmpty {
-                        ScoringPlaysList(summary: summary)
-                        Divider().overlay(Color.divider)
-                    }
-                    if !summary.teamStats.isEmpty {
-                        TeamStatsCompare(summary: summary)
-                        Divider().overlay(Color.divider)
-                    }
-                    if !summary.leaders.isEmpty {
-                        LeadersList(summary: summary)
-                        Divider().overlay(Color.divider)
-                    }
-                    if !summary.drives.isEmpty {
-                        DriveLogList(summary: summary)
-                        Divider().overlay(Color.divider)
-                    }
-                    footer(summary)
+                    .padding(Spacing.sm)
                 } else if isLoading {
                     ProgressView().padding(.vertical, Spacing.xl)
                 } else if lastError != nil {
@@ -60,9 +90,11 @@ struct GameDetailScreen: View {
                 }
             }
         }
-        .background(Color.bgPrimary)
+        .background(Color.bgRecessed)
         .navigationTitle(game.shortName ?? "Game")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(
@@ -102,6 +134,12 @@ struct GameDetailScreen: View {
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
+
+    /// Past-season games (pushed from a flipped team schedule) must not
+    /// wear the current season's standings.
+    private var isCurrentSeason: Bool {
+        game.date.map { CFBSeason.year(for: $0) == CFBSeason.year() } ?? false
+    }
 
     private var currentScores: [Int?] {
         [summary?.away?.score ?? game.away.score, summary?.home?.score ?? game.home.score]
@@ -191,6 +229,75 @@ struct GameDetailScreen: View {
 
     private var statusLine: String { GameHeaderState.statusLine(game, summary) }
 
+    /// One content card: optional bordered header, then the section's own
+    /// rows — the same recipe as the team-page cards.
+    private func card(title: String? = nil, subtitle: String? = nil,
+                      @ViewBuilder content: () -> some View) -> some View {
+        VStack(spacing: 0) {
+            if let title {
+                CardHeader(title: title, subtitle: subtitle)
+            }
+            content()
+                .padding(.top, Spacing.xs)
+        }
+        .padding(.bottom, Spacing.xs)
+        .cardSurface()
+    }
+
+    /// The pre-game card's rows: kickoff, network, venue, surface,
+    /// weather — whatever the payload actually knows, one line each.
+    @ViewBuilder
+    private func gameInfoRows(_ summary: GameSummary) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let date = game.date {
+                infoRow("calendar",
+                        game.timeTBD
+                            ? "\(GameRow.relativeKickParts(date, weekday: .abbreviated).day) · Kickoff TBD"
+                            : GameRow.relativeKick(date, weekday: .abbreviated))
+            }
+            if let broadcast = game.broadcast {
+                infoRow("tv", broadcast)
+            }
+            if let venue = summary.venue {
+                infoRow("mappin.and.ellipse",
+                        [venue, summary.venueCity].compactMap { $0 }.joined(separator: " · "))
+            }
+            if summary.venueCapacity != nil || summary.grassSurface != nil {
+                let capacity = summary.venueCapacity.map { "Capacity \($0.formatted())" }
+                let surface = summary.grassSurface.map { $0 ? "Grass" : "Turf" }
+                infoRow("sportscourt", [capacity, surface].compactMap { $0 }.joined(separator: " · "))
+            }
+            let weatherLine = [summary.weatherTemperature.map { "\($0)°" },
+                               summary.weatherCondition]
+                .compactMap { $0 }.joined(separator: " · ")
+            if !weatherLine.isEmpty {
+                infoRow("cloud.sun", weatherLine)
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+
+    private func infoRow(_ symbol: String, _ text: String) -> some View {
+        HStack(spacing: Spacing.md) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.textSecondary)
+                .frame(width: 20)
+            Text(text)
+                .font(.teamName)
+                .foregroundStyle(.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 7)
+    }
+
+    /// The Team stats card's column legend, formerly the sub-view's own
+    /// header trailing text.
+    private func statsLegend(_ summary: GameSummary) -> String {
+        "\(summary.away?.team.abbreviation ?? "AWAY") · \(summary.home?.team.abbreviation ?? "HOME")"
+    }
+
     private func footer(_ summary: GameSummary) -> some View {
         VStack(spacing: Spacing.xs) {
             if let venue = summary.venue {
@@ -211,11 +318,20 @@ struct GameDetailScreen: View {
         guard summary == nil || force else { return }
         isLoading = true
         defer { isLoading = false }
+        // Standings ride along for the matchup card — independent fetch,
+        // quiet failure, skipped entirely for past-season games and once
+        // loaded (the poll loop shouldn't refetch tables every 30s).
+        async let standingsFetch: [ConferenceStandings]? =
+            (isCurrentSeason && conferenceStandings.isEmpty)
+                ? try? client.conferenceStandings() : nil
         do {
             summary = try await client.gameSummary(eventId: game.id)
             lastError = nil
         } catch {
             lastError = "Couldn't load this game."
+        }
+        if let loaded = await standingsFetch {
+            conferenceStandings = loaded
         }
     }
 }

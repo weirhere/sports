@@ -204,6 +204,7 @@ nonisolated struct StandingsStatDTO: Decodable {
     let type: String?
     let summary: String?
     let displayValue: String?
+    let value: Double?
 }
 
 // MARK: - Team schedule
@@ -423,10 +424,24 @@ nonisolated struct AthleteDTO: Decodable {
 nonisolated struct GameInfoDTO: Decodable {
     let venue: VenueDTO?
     let attendance: Int?
+    let weather: WeatherDTO?
 }
 
 nonisolated struct VenueDTO: Decodable {
     let fullName: String?
+    let address: VenueAddressDTO?
+    let capacity: Int?
+    let grass: Bool?
+}
+
+nonisolated struct VenueAddressDTO: Decodable {
+    let city: String?
+    let state: String?
+}
+
+nonisolated struct WeatherDTO: Decodable {
+    let displayValue: String?
+    let temperature: Double?
 }
 
 // MARK: - Rankings
