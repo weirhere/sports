@@ -5,9 +5,12 @@ import SwiftUI
 struct ConferencePage: View {
     let destination: ConferenceDestination
 
-    @State private var standings: ConferenceStandings?
-    @State private var isLoading = false
-    @State private var lastError: String?
+    /// Seasons fetched this visit, keyed by year — flipping back to a seen
+    /// season costs nothing (TeamPage's caching pattern).
+    @State private var standingsByYear: [Int: ConferenceStandings] = [:]
+    @State private var selectedYear = CFBSeason.year()
+    @State private var loadingYears: Set<Int> = []
+    @State private var failedYears: Set<Int> = []
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     // Mirrors ConferenceStandingRow's column width so captions align with
@@ -16,18 +19,37 @@ struct ConferencePage: View {
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
+    private var standings: ConferenceStandings? { standingsByYear[selectedYear] }
+    private var isLoading: Bool { loadingYears.contains(selectedYear) }
+    private var showsError: Bool { failedYears.contains(selectedYear) }
+
+    /// Newest first, floored at 2014 — the CFP era, matching the Scores and
+    /// TeamPage selectors.
+    private var availableSeasons: [Int] {
+        Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                header
-                Divider().overlay(Color.divider)
-                standingsSection
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    header
+                    Divider().overlay(Color.divider)
+                    standingsSection
+                }
+            }
+            // The anchor scroll: a push from a TeamPage lands with the
+            // team's own row in view, FotMob's table pattern.
+            .onChange(of: standings) { _, loaded in
+                guard let target = destination.highlightTeamId,
+                      loaded?.entries.contains(where: { $0.team.id == target }) == true else { return }
+                proxy.scrollTo(target, anchor: .center)
             }
         }
         .background(Color.bgPrimary)
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task { await load(year: selectedYear) }
     }
 
     private var header: some View {
@@ -49,13 +71,19 @@ struct ConferencePage: View {
 
     @ViewBuilder
     private var standingsSection: some View {
-        if let entries = standings?.entries, !entries.isEmpty {
+        // The header (and its season chip) stays mounted through every
+        // state, so an empty or failed season never strands the user there.
+        HStack(spacing: Spacing.sm) {
             Text("STANDINGS")
                 .font(.sectionHeader)
                 .foregroundStyle(.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
+            Spacer()
+            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                           onSelect: { select(year: $0) })
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.xs)
+        if let entries = standings?.entries, !entries.isEmpty {
             // At accessibility sizes the rows stack their records onto a
             // labeled line, so the column captions would caption nothing.
             if !dynamicTypeSize.isAccessibilitySize {
@@ -66,26 +94,31 @@ struct ConferencePage: View {
                     ConferenceStandingRow(standing: standing)
                 }
                 .buttonStyle(.plain)
+                // The pushing team's row reads as "you are here".
+                .background(standing.team.id == destination.highlightTeamId
+                            ? Color.bgHeader : Color.clear)
+                .id(standing.id)
                 if standing.id != entries.last?.id {
                     Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
                 }
             }
         } else if isLoading {
             ProgressView().padding(.vertical, Spacing.xl)
-        } else if lastError != nil {
+        } else if showsError {
             VStack(spacing: Spacing.sm) {
                 Text("Couldn't load standings.")
                     .font(.teamName)
                     .foregroundStyle(.textSecondary)
                 Button("Retry") {
-                    Task { await load(force: true) }
+                    Task { await load(year: selectedYear, force: true) }
                 }
                 .font(.teamNameEmphasis)
                 .foregroundStyle(.textPrimary)
             }
             .padding(.vertical, Spacing.xl)
         } else {
-            // ESPN's offseason standings can come back empty (Sun Belt did).
+            // ESPN's offseason standings can come back empty (Sun Belt
+            // did), and an old season can omit a young conference.
             Text("Standings TBA")
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)
@@ -111,18 +144,28 @@ struct ConferencePage: View {
         .accessibilityHidden(true)
     }
 
-    private func load(force: Bool = false) async {
-        guard standings == nil || force else { return }
-        isLoading = true
-        defer { isLoading = false }
+    private func select(year: Int) {
+        guard year != selectedYear else { return }
+        selectedYear = year
+        Task { await load(year: year) }
+    }
+
+    private func load(year: Int, force: Bool = false) async {
+        guard standingsByYear[year] == nil || force else { return }
+        guard !loadingYears.contains(year) else { return }
+        loadingYears.insert(year)
+        defer { loadingYears.remove(year) }
         do {
-            let all = try await client.conferenceStandings()
-            standings = all.first { $0.id == destination.conferenceId }
+            // Nil for the current season keeps the shipped request shape;
+            // an explicit past year is scoped with `season={year}`.
+            let all = try await client.conferenceStandings(
+                year: year == CFBSeason.year() ? nil : year)
+            standingsByYear[year] = all.first { $0.id == destination.conferenceId }
                 ?? ConferenceStandings(id: destination.conferenceId,
                                        name: destination.name, entries: [])
-            lastError = nil
+            failedYears.remove(year)
         } catch {
-            lastError = "Couldn't load standings."
+            failedYears.insert(year)
         }
     }
 }

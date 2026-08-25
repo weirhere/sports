@@ -28,6 +28,14 @@ final class UIStateStore {
         didSet { defaults.set(scoresGrouping.rawValue, forKey: Self.groupingKey) }
     }
 
+    /// Whether the Scores follow-prompt card was dismissed. Stored (not a
+    /// passthrough) so the card leaves the screen the moment it's tapped.
+    var followPromptDismissed: Bool {
+        didSet { defaults.set(followPromptDismissed, forKey: Self.followPromptDismissedKey) }
+    }
+
+    private static let followPromptDismissedKey = "ui.followPromptDismissed"
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -41,6 +49,7 @@ final class UIStateStore {
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         scoresGrouping = defaults.string(forKey: Self.groupingKey)
             .flatMap(ScoresGrouping.init(rawValue:)) ?? .conference
+        followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
     }
 
     func isExpanded(_ sectionId: String) -> Bool {

@@ -204,7 +204,8 @@ struct TeamPage: View {
         let label = [name, record].compactMap { $0 }.joined(separator: " · ")
         if let id = resolvedConferenceId, Conference.tier(for: id) != .other {
             NavigationLink(value: ConferenceDestination(conferenceId: id,
-                                                        name: Conference.name(for: id))) {
+                                                        name: Conference.name(for: id),
+                                                        highlightTeamId: team.id)) {
                 HStack(spacing: Spacing.xs) {
                     Text(label)
                     Image(systemName: "chevron.right")

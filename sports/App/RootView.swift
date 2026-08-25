@@ -72,6 +72,11 @@ struct RootView: View {
         .onChange(of: router.pendingConferenceId) { _, id in
             if id != nil { selectedTab = .teams }
         }
+        .onChange(of: router.pendingTeamsBrowse) { _, pending in
+            guard pending else { return }
+            selectedTab = .teams
+            router.pendingTeamsBrowse = false
+        }
         .onChange(of: selectedTab) { _, tab in
             if tab != .search { lastContentTab = tab }
         }
