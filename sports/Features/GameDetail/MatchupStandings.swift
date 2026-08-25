@@ -22,11 +22,19 @@ struct MatchupStandings: View {
         return nil
     }
 
-    /// Whether either side has a row to show — the card hides otherwise.
+    /// Whether either side has a row worth showing. Preseason hides the
+    /// card entirely — the place numbers are last season's carried-over
+    /// order (the leader-teaser and cut-line rule) — but the gate is the
+    /// OVERALL record: a September team legitimately sits 0-0 in
+    /// conference while its overall line already says something.
     static func hasContent(away: Team, home: Team,
                            standings: [ConferenceStandings]) -> Bool {
         standings.contains { conference in
-            conference.entries.contains { $0.team.id == away.id || $0.team.id == home.id }
+            conference.entries.contains { entry in
+                (entry.team.id == away.id || entry.team.id == home.id)
+                    && entry.overallRecord != nil
+                    && entry.overallRecord != "0-0"
+            }
         }
     }
 
