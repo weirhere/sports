@@ -13,6 +13,9 @@ final class Router {
     /// + scroll to the section); a dedicated conference destination can take
     /// it over without search changing.
     var pendingConferenceId: Int?
+    /// In-app "go browse teams" intent — the Scores follow prompt's CTA.
+    /// RootView switches tabs and resets it; no id to resolve.
+    var pendingTeamsBrowse = false
 
     func open(_ link: DeepLink) {
         switch link {

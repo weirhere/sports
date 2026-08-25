@@ -14,7 +14,10 @@ nonisolated protocol ScoresProviding: Sendable {
     /// standings order (ESPN's encodes tiebreakers). Empty conferences are
     /// kept — offseason responses can have zero entries and the page needs
     /// to say "Standings TBA", not error.
-    func conferenceStandings() async throws -> [ConferenceStandings]
+    /// Conference standings tables. `year` selects a season; nil means the
+    /// current one. An explicit year returns exactly that season's tables —
+    /// membership included (realignment years read correctly).
+    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings]
     /// One team's schedule. `year` selects a season; nil means the current
     /// one, with the provider free to fall back to last season while the
     /// next is unpublished. An explicit year returns exactly that season —
@@ -27,6 +30,11 @@ nonisolated extension ScoresProviding {
     /// The current season (with the unpublished-season fallback).
     func teamSchedule(teamId: String) async throws -> TeamSchedule {
         try await teamSchedule(teamId: teamId, year: nil)
+    }
+
+    /// The current season's standings.
+    func conferenceStandings() async throws -> [ConferenceStandings] {
+        try await conferenceStandings(year: nil)
     }
 }
 
@@ -81,10 +89,15 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.conferences(from: dto)
     }
 
-    func conferenceStandings() async throws -> [ConferenceStandings] {
+    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
+        var query = [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+        // Verified live 2026-08-25: `season` scopes records AND membership,
+        // so realignment years read correctly.
+        if let year {
+            query.append(URLQueryItem(name: "season", value: String(year)))
+        }
         let dto: StandingsResponseDTO = try await fetch(
-            base: Self.standingsBase, path: "/standings",
-            query: [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+            base: Self.standingsBase, path: "/standings", query: query
         )
         return ESPNMapper.conferenceStandings(from: dto)
     }

@@ -151,6 +151,12 @@ struct ScoresScreen: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: Spacing.sm) {
+                    // The Following slot's empty state: following nobody
+                    // renders the follow prompt where the section would be.
+                    if !following.followsAnyone, !uiState.followPromptDismissed {
+                        FollowPromptCard()
+                            .cardSurface()
+                    }
                     ForEach(sections) { section in
                         SectionAccordion(
                             section: section,

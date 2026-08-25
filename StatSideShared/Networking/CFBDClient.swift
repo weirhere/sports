@@ -97,8 +97,10 @@ actor CFBDClient: ScoresProviding {
         return CFBDMapper.conferences(from: teams)
     }
 
-    func conferenceStandings() async throws -> [ConferenceStandings] {
-        let season = CFBSeason.year()
+    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
+        // CFBD's endpoints are year-scoped natively, so a past season is
+        // the same join with a different year.
+        let season = year ?? CFBSeason.year()
         let teams = try await teams(year: season)
         let records = await recordDTOs(year: season)
         return CFBDMapper.conferenceStandings(from: teams, records: records)
