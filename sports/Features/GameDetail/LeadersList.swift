@@ -10,12 +10,9 @@ struct LeadersList: View {
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
+        // The card's CardHeader names the section now; this view is just
+        // the rows.
         VStack(alignment: .leading, spacing: 0) {
-            Text("LEADERS")
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
             ForEach(summary.leaders) { category in
                 Text(category.label.uppercased())
                     .font(.meta)

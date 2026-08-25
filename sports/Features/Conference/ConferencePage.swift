@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// One conference's home: identity, follow, and its standings in the
-/// provider's order (ESPN's encodes tiebreakers — never re-sorted here).
+/// One conference's home, on the TeamPage template (Andy's call,
+/// 2026-08-25): hero header with the cluster top-right, standings as a
+/// card on the recessed surface. Conferences ship no ESPN color, so the
+/// hero is the template's monochrome variant. Standings stay in the
+/// provider's order (seed-backed — never re-sorted here).
 struct ConferencePage: View {
     let destination: ConferenceDestination
 
@@ -11,11 +14,6 @@ struct ConferencePage: View {
     @State private var selectedYear = CFBSeason.year()
     @State private var loadingYears: Set<Int> = []
     @State private var failedYears: Set<Int> = []
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    // Mirrors ConferenceStandingRow's column width so captions align with
-    // the numbers beneath them.
-    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
@@ -33,9 +31,8 @@ struct ConferencePage: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    header
-                    Divider().overlay(Color.divider)
-                    standingsSection
+                    hero
+                    standingsCard
                 }
             }
             // The anchor scroll: a push from a TeamPage lands with the
@@ -46,103 +43,97 @@ struct ConferencePage: View {
                 proxy.scrollTo(target, anchor: .center)
             }
         }
-        .background(Color.bgPrimary)
-        .navigationTitle(destination.name)
+        .background(Color.bgRecessed)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .task { await load(year: selectedYear) }
     }
 
-    private var header: some View {
-        VStack(spacing: Spacing.sm) {
-            LogoImage(url: Conference.logoURL(for: destination.conferenceId))
-                .frame(width: 64, height: 64)
-                // Navy marks (Big Ten, ACC) vanish on black; the backing
-                // disc is chrome, not color, so the budget holds.
-                .background(Circle().fill(Color.logoBacking).padding(-8))
-                .padding(8)
-            Text(destination.name)
-                .font(.teamNameEmphasis)
-                .foregroundStyle(.textPrimary)
-            ConferenceFollowPill(conferenceId: destination.conferenceId)
+    // MARK: - Hero
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: Spacing.md) {
+                Spacer()
+                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                               onSelect: { select(year: $0) })
+                ConferenceFollowPill(conferenceId: destination.conferenceId)
+            }
+            .padding(.horizontal, Spacing.lg)
+
+            HStack(spacing: Spacing.md) {
+                LogoImage(url: Conference.logoURL(for: destination.conferenceId))
+                    .frame(width: 44, height: 44)
+                    // Navy marks (Big Ten, ACC) vanish on black; the backing
+                    // disc is chrome, not color, so the budget holds.
+                    .background(Circle().fill(Color.logoBacking).padding(-6))
+                    .padding(6)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(destination.name)
+                        .font(.heroTitle)
+                        .foregroundStyle(.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let count = standings?.entries.count, count > 0 {
+                        Text("\(count) teams")
+                            .font(.chipEmphasis)
+                            .foregroundStyle(.textSecondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.md)
+            .padding(.bottom, Spacing.lg)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.bgPrimary)
     }
 
-    @ViewBuilder
-    private var standingsSection: some View {
-        // The header (and its season chip) stays mounted through every
-        // state, so an empty or failed season never strands the user there.
-        HStack(spacing: Spacing.sm) {
-            Text("STANDINGS")
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-            Spacer()
-            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
-                           onSelect: { select(year: $0) })
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.xs)
-        if let entries = standings?.entries, !entries.isEmpty {
-            // At accessibility sizes the rows stack their records onto a
-            // labeled line, so the column captions would caption nothing.
-            if !dynamicTypeSize.isAccessibilitySize {
-                columnHeader
-            }
-            ForEach(entries) { standing in
-                NavigationLink(value: standing.team) {
-                    ConferenceStandingRow(standing: standing)
+    // MARK: - Standings
+
+    private var standingsCard: some View {
+        VStack(spacing: 0) {
+            CardHeader(title: "Standings")
+            if let entries = standings?.entries, !entries.isEmpty {
+                StandingsList(
+                    entries: entries,
+                    highlightTeamId: destination.highlightTeamId,
+                    showsTitleGameCut: Conference.titleGameIsTopTwo(id: destination.conferenceId,
+                                                                    year: selectedYear)
+                )
+            } else if isLoading {
+                ProgressView().padding(.vertical, Spacing.xl)
+            } else if showsError {
+                VStack(spacing: Spacing.sm) {
+                    Text("Couldn't load standings.")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Button("Retry") {
+                        Task { await load(year: selectedYear, force: true) }
+                    }
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
                 }
-                .buttonStyle(.plain)
-                // The pushing team's row reads as "you are here".
-                .background(standing.team.id == destination.highlightTeamId
-                            ? Color.bgHeader : Color.clear)
-                .id(standing.id)
-                if standing.id != entries.last?.id {
-                    Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
-                }
-            }
-        } else if isLoading {
-            ProgressView().padding(.vertical, Spacing.xl)
-        } else if showsError {
-            VStack(spacing: Spacing.sm) {
-                Text("Couldn't load standings.")
+                .padding(.vertical, Spacing.xl)
+            } else {
+                // ESPN's offseason standings can come back empty (Sun Belt
+                // did), and an old season can omit a young conference.
+                Text("Standings TBA")
                     .font(.teamName)
                     .foregroundStyle(.textSecondary)
-                Button("Retry") {
-                    Task { await load(year: selectedYear, force: true) }
-                }
-                .font(.teamNameEmphasis)
-                .foregroundStyle(.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
             }
-            .padding(.vertical, Spacing.xl)
-        } else {
-            // ESPN's offseason standings can come back empty (Sun Belt
-            // did), and an old season can omit a young conference.
-            Text("Standings TBA")
-                .font(.teamName)
-                .foregroundStyle(.textSecondary)
-                .padding(.vertical, Spacing.xl)
         }
+        .padding(.bottom, Spacing.xs)
+        .cardSurface()
+        .padding(Spacing.sm)
     }
 
-    /// Column captions for the two record columns. Visual-only — each row
-    /// speaks its records as a sentence, so VO skips this line.
-    private var columnHeader: some View {
-        HStack(spacing: Spacing.md) {
-            Text("TEAM")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("CONF")
-                .frame(minWidth: recordWidth, alignment: .trailing)
-            Text("OVR")
-                .frame(minWidth: recordWidth, alignment: .trailing)
-        }
-        .font(.meta)
-        .foregroundStyle(.textSecondary)
-        .padding(.horizontal, Spacing.lg)
-        .padding(.bottom, Spacing.xs)
-        .accessibilityHidden(true)
-    }
+    // MARK: - Loads
 
     private func select(year: Int) {
         guard year != selectedYear else { return }

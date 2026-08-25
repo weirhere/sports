@@ -118,27 +118,24 @@ private func game(status: GameStatus,
         #expect(!render(daysOut: 0).contains("29"))
     }
 
-    @Test func weekdayStandsAloneOutToAWeek() {
-        for daysOut in 2...6 {
-            #expect(!render(daysOut: daysOut).contains("29"))
+    @Test func dateJoinsTheWeekdayFromTwoDaysOut() {
+        // With the in-section day dividers gone (Andy, 2026-08-25), the
+        // row's day line is the only date on screen — and "Sat" alone is
+        // ambiguous in a two-weekend week (2026's Week 1 spans two).
+        for daysOut in 2...7 {
+            #expect(render(daysOut: daysOut).contains("29"))
         }
-    }
-
-    @Test func dateJoinsTheWeekdayAtSevenDays() {
-        // Seven days is the point where "Sat" stops meaning the next Saturday.
-        #expect(render(daysOut: 7).contains("29"))
         #expect(render(daysOut: 30).contains("29"))
-        #expect(render(daysOut: 7).count > render(daysOut: 6).count)
     }
 
     @Test func theWideWeekdayCarriesTheDateToo() {
         #expect(render(daysOut: 20, weekday: .wide).contains("29"))
     }
 
-    @Test func aLabelledDaySuppressesTheDate() {
-        // Rows under a "SAT, AUG 29" divider shouldn't say 8/29 again — they
-        // fall back to the same weekday-only string a near game gets.
-        #expect(render(daysOut: 20, includeDate: false) == render(daysOut: 3))
+    @Test func includeDateFalseKeepsTheWeekdayBare() {
+        // Callers whose surroundings already name the date can still ask
+        // for the bare weekday.
+        #expect(!render(daysOut: 20, includeDate: false).contains("29"))
         #expect(render(daysOut: 20, includeDate: true).contains("29"))
     }
 

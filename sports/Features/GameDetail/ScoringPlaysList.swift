@@ -10,12 +10,9 @@ struct ScoringPlaysList: View {
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
+        // The card's CardHeader names the section now; this view is just
+        // the rows.
         VStack(alignment: .leading, spacing: 0) {
-            Text("SCORING")
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
             ForEach(Array(summary.scoringPlays.enumerated()), id: \.element.id) { index, play in
                 if periodMarker(at: index) {
                     Text(periodLabel(play.period))

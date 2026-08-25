@@ -66,8 +66,13 @@ final class SearchUITests: XCTestCase {
         result.tap()
 
         // The intent lands on the conference's standings page (rows or the
-        // offseason "Standings TBA" — both valid year-round).
-        XCTAssertTrue(app.navigationBars["Mountain West"].waitForExistence(timeout: 10),
+        // offseason "Standings TBA" — both valid year-round). The page's
+        // name lives in its hero now, not the nav bar, so the follow pill
+        // is the page's unique marker.
+        let conferencePill = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label == %@",
+            "Follow conference", "Following conference")).firstMatch
+        XCTAssertTrue(conferencePill.waitForExistence(timeout: 10),
                       "A conference result should land on its standings page")
         let content = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ OR label == %@", " overall", "Standings TBA")).firstMatch

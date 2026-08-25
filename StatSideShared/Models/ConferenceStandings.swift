@@ -8,6 +8,9 @@ nonisolated struct ConferenceStanding: Identifiable, Hashable, Sendable {
     let conferenceRecord: String?
     let overallRecord: String?
     let streak: String?
+    /// ESPN's `playoffSeed` — the tiebreaker-aware standings position.
+    /// 1-based when ESPN knows it; nil (or ESPN's 0) when it doesn't.
+    var playoffSeed: Int? = nil
 
     var id: String { team.id }
 }
@@ -20,6 +23,20 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     let id: Int?
     let name: String
     let entries: [ConferenceStanding]
+
+    /// ESPN's placement stat beats payload order when it's complete:
+    /// past-season responses come back sorted by overall record (found
+    /// 2026-08-25 — 2024's payload listed Memphis over 7-1 Tulane), but
+    /// every entry carries `playoffSeed`, the tiebreaker-aware standings
+    /// position. A conference with missing or duplicated seeds (2024 MAC
+    /// ships zeros) keeps payload order — imperfect but not invented.
+    static func seedOrdered(_ entries: [ConferenceStanding]) -> [ConferenceStanding] {
+        let seeds = entries.compactMap(\.playoffSeed)
+        guard seeds.count == entries.count,
+              seeds.allSatisfy({ $0 >= 1 }),
+              Set(seeds).count == seeds.count else { return entries }
+        return entries.sorted { ($0.playoffSeed ?? 0) < ($1.playoffSeed ?? 0) }
+    }
 
     /// The top team, but only once the standings say something: a 0-0
     /// "leader" is last season's carried-over order, not information.

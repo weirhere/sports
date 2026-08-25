@@ -34,11 +34,16 @@ final class ConferenceUITests: XCTestCase {
                       "The ACC header's context menu should offer standings")
         standingsItem.tap()
 
-        // ConferencePage: title, follow pill, and standings-or-TBA. Rows
-        // collapse to one element (a button, via NavigationLink), so query
-        // any descendant by label like UITestSupport's topRankedRow does.
-        XCTAssertTrue(app.navigationBars["ACC"].waitForExistence(timeout: 10),
-                      "The standings button should push the ACC page")
+        // ConferencePage: hero, follow pill, and standings-or-TBA. The name
+        // lives in the hero (TeamPage template), so the pill marks the
+        // page. Rows collapse to one element (a button, via
+        // NavigationLink), so query any descendant by label like
+        // UITestSupport's topRankedRow does.
+        let conferencePill = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label == %@",
+            "Follow conference", "Following conference")).firstMatch
+        XCTAssertTrue(conferencePill.waitForExistence(timeout: 10),
+                      "The standings item should push the ACC page")
         let anyRow = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ OR label == %@", " overall", "Standings TBA")).firstMatch
         XCTAssertTrue(anyRow.waitForExistence(timeout: 15),

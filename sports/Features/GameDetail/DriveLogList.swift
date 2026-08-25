@@ -8,12 +8,9 @@ struct DriveLogList: View {
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 16
 
     var body: some View {
+        // The card's CardHeader names the section now; this view is just
+        // the rows.
         VStack(alignment: .leading, spacing: 0) {
-            Text("DRIVES")
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
             ForEach(Array(summary.drives.enumerated()), id: \.element.id) { index, drive in
                 if periodMarker(at: index) {
                     Text(periodLabel(drive.period))

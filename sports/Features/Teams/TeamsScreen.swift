@@ -156,48 +156,80 @@ struct TeamsScreen: View {
         let openStandings: (() -> Void)? = conferenceId.map { id in
             { path.append(ConferenceDestination(conferenceId: id, name: title)) }
         }
+        // A conference header splits into two surfaces (Andy's call,
+        // 2026-08-25): mark + name push the conference page, the rest
+        // toggles. The Following group keeps the whole row as its toggle.
+        let identity = HStack(spacing: Spacing.sm) {
+            if isConference {
+                ConferenceLogo(url: logoURL)
+            }
+            Text(title)
+                .font(.sectionHeader)
+                .foregroundStyle(.textPrimary)
+        }
+        let toggle = { (content: AnyView) in
+            Button {
+                withAnimation { uiState.toggleConference(sectionId) }
+            } label: {
+                content
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
+            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+            .accessibilityAddTraits(.isHeader)
+            .contextMenu {
+                if let openStandings {
+                    Button {
+                        openStandings()
+                    } label: {
+                        Label("View \(title) standings", systemImage: "list.number")
+                    }
+                }
+            }
+            .accessibilityActions {
+                if let openStandings {
+                    Button("View \(title) standings", action: openStandings)
+                }
+            }
+        }
+        let countAndChevron = HStack(spacing: Spacing.sm) {
+            Text("\(teams.count)")
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+            Spacer()
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.textSecondary)
+                .rotationEffect(.degrees(isExpanded ? 180 : 0))
+        }
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
-                Button {
-                    withAnimation { uiState.toggleConference(sectionId) }
-                } label: {
-                    HStack(spacing: Spacing.sm) {
-                        if isConference {
-                            ConferenceLogo(url: logoURL)
+                if let openStandings {
+                    Button(action: openStandings) {
+                        identity
+                            .padding(.leading, Spacing.lg)
+                            .padding(.vertical, Spacing.md)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(title) standings")
+                    toggle(AnyView(
+                        countAndChevron
+                            .padding(.leading, Spacing.sm)
+                            .padding(.trailing, Spacing.lg)
+                            .padding(.vertical, Spacing.md)
+                            .contentShape(Rectangle())
+                    ))
+                } else {
+                    toggle(AnyView(
+                        HStack(spacing: Spacing.sm) {
+                            identity
+                            countAndChevron
                         }
-                        Text(title)
-                            .font(.sectionHeader)
-                            .foregroundStyle(.textPrimary)
-                        Text("\(teams.count)")
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.textSecondary)
-                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.vertical, Spacing.md)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
-                .accessibilityValue(isExpanded ? "expanded" : "collapsed")
-                .accessibilityAddTraits(.isHeader)
-                .contextMenu {
-                    if let openStandings {
-                        Button {
-                            openStandings()
-                        } label: {
-                            Label("View \(title) standings", systemImage: "list.number")
-                        }
-                    }
-                }
-                .accessibilityActions {
-                    if let openStandings {
-                        Button("View \(title) standings", action: openStandings)
-                    }
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.vertical, Spacing.md)
+                        .contentShape(Rectangle())
+                    ))
                 }
             }
             .background(Color.bgHeader)

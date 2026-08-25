@@ -11,18 +11,9 @@ struct TeamStatsCompare: View {
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
+        // The card's CardHeader names the section and carries the column
+        // legend now; this view is just the bars.
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("TEAM STATS")
-                    .font(.sectionHeader)
-                    .foregroundStyle(.textPrimary)
-                Spacer()
-                Text("\(summary.away?.team.abbreviation ?? "AWAY") · \(summary.home?.team.abbreviation ?? "HOME")")
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
-            }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
             ForEach(summary.teamStats) { stat in
                 statRow(stat)
             }
