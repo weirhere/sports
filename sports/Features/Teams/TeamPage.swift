@@ -9,6 +9,9 @@ struct TeamPage: View {
     /// Optional form: previews/tests without RootView's environment degrade
     /// to the pushed value instead of trapping.
     @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
+    /// Optional like the directory: the fresher-game merge degrades to the
+    /// schedule payload wherever the scoreboard isn't in the environment.
+    @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
 
     private enum Tab { case games, standings }
 
@@ -28,6 +31,9 @@ struct TeamPage: View {
     @State private var initialFailed = false
 
     @State private var tab: Tab = .games
+    /// True once the hero title has scrolled under the nav bar — the bar's
+    /// principal slot then carries the team name.
+    @State private var showsInlineTitle = false
     /// The Standings tab's data, fetched lazily on first visit.
     @State private var conferenceStandings: ConferenceStandings?
     @State private var standingsLoading = false
@@ -88,7 +94,16 @@ struct TeamPage: View {
             case .pre, .live: true
             case .final, .other: false
             }
-        }
+        }.map(fresher)
+    }
+
+    /// The scoreboard's copy of a schedule game when it has one: the
+    /// schedule payload carries no live scores or clock mid-game (the
+    /// dashed-score bug, Andy 2026-08-29), while the scoreboard polls
+    /// every 30s. A game outside the scoreboard's selected week falls
+    /// back to the schedule's own snapshot.
+    private func fresher(_ game: Game) -> Game {
+        liveBoard?.games.first { $0.id == game.id } ?? game
     }
 
     // MARK: - Hero paint
@@ -121,6 +136,16 @@ struct TeamPage: View {
                 }
             }
         }
+        // Once the hero's own title scrolls under the bar, the bar takes
+        // over the identity (Andy, 2026-08-29): the team name fades into
+        // the principal slot between back and share.
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > 120
+        } action: { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
+            }
+        }
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -129,6 +154,14 @@ struct TeamPage: View {
         .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
                             for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(team.location)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
+                    .lineLimit(1)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: team.shareText(schedule: currentSchedule)) {
                     Image(systemName: "square.and.arrow.up")
@@ -268,13 +301,13 @@ struct TeamPage: View {
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
             if let nextGame {
-                NextGameCard(game: nextGame, teamId: team.id)
+                NextGameCard(game: nextGame)
                     .cardSurface()
             }
             VStack(spacing: 0) {
                 TeamScheduleSection(
                     teamId: team.id,
-                    games: schedule?.games ?? [],
+                    games: (schedule?.games ?? []).map(fresher),
                     isLoading: isLoadingSelected,
                     showsError: showsErrorForSelected,
                     onRetry: { Task { await retry() } }
@@ -286,9 +319,10 @@ struct TeamPage: View {
         .padding(Spacing.sm)
     }
 
+    // No CardHeader here: the Standings tab already names the card
+    // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
         VStack(spacing: 0) {
-            CardHeader(title: "Standings")
             if let entries = conferenceStandings?.entries, !entries.isEmpty {
                 StandingsList(
                     entries: entries,
