@@ -39,6 +39,8 @@ struct ScoresScreen: View {
                     seasonYear: store.seasonYear,
                     seasons: store.availableSeasons,
                     byDate: uiState.scoresGrouping == .date,
+                    showsLive: store.hasLiveGames || store.liveOnly,
+                    liveOnly: store.liveOnly,
                     onSelectSeason: { year in
                         weekSlideAnimation = nil
                         Task { await store.select(season: year) }
@@ -47,13 +49,11 @@ struct ScoresScreen: View {
                         withAnimation {
                             uiState.scoresGrouping = uiState.scoresGrouping == .date ? .conference : .date
                         }
-                    }
+                    },
+                    onToggleLive: { withAnimation { store.liveOnly.toggle() } }
                 )
                 WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
                     select(week: week)
-                }
-                if store.hasLiveGames || store.liveOnly {
-                    liveChipRow
                 }
                 Divider().overlay(Color.divider)
                 if store.lastError != nil, !sections.isEmpty {
@@ -193,18 +193,6 @@ struct ScoresScreen: View {
               let game = store.games.first(where: { $0.id == pendingId }) else { return }
         router.pendingGameId = nil
         path = NavigationPath([game])
-    }
-
-    private var liveChipRow: some View {
-        HStack {
-            LiveFilterChip(
-                liveOnly: store.liveOnly,
-                onToggle: { withAnimation { store.liveOnly.toggle() } }
-            )
-            Spacer()
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.bottom, Spacing.sm)
     }
 
     @ViewBuilder
