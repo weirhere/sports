@@ -124,20 +124,9 @@ struct ScheduleRow: View {
                         .fill(won ? Color.rankUp : (lost ? Color.rankDown : Color.bgElevated))
                 )
         case .live:
-            HStack(spacing: Spacing.xs) {
-                LiveDot()
-                // A payload that hasn't caught up carries no scores yet —
-                // "Live" beats a dashed non-score.
-                if mine.score != nil || opponent.score != nil {
-                    Text("\(mine.score.map(String.init) ?? "0")-\(opponent.score.map(String.init) ?? "0")")
-                        .font(.scoreLive)
-                        .foregroundStyle(.textPrimary)
-                } else {
-                    Text("Live")
-                        .font(.metaEmphasis)
-                        .foregroundStyle(.textPrimary)
-                }
-            }
+            // The dot alone — the Current game card above carries the
+            // score (Andy, 2026-08-29). VoiceOver still speaks it.
+            LiveDot()
         case .pre:
             // An unannounced kickoff carries a placeholder midnight date —
             // "TBD" over a lying "12:00 AM".
