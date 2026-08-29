@@ -27,7 +27,7 @@ final class LiveAccentRenderTests: XCTestCase {
 
     private var comparison: some View {
         VStack(alignment: .leading, spacing: 0) {
-            caption("RED ACCENT (current)")
+            caption("LIVE ACCENT (current)")
             GameRow(game: Self.liveGame)
             caption("MONOCHROME")
             GameRow(game: Self.liveGame)

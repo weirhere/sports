@@ -38,12 +38,10 @@ extension Color {
     static let textSecondary = Color(lightWhite: 0.42, darkWhite: 0.62)
     static let divider = Color(lightWhite: 0.88, darkWhite: 0.20)
 
-    /// The live indicator and live-score emphasis.
-    static let liveAccent = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 1.00, green: 0.27, blue: 0.23, alpha: 1)
-            : UIColor(red: 0.84, green: 0.00, blue: 0.08, alpha: 1)
-    })
+    /// The live indicator and live-score emphasis — green since
+    /// 2026-08-29 (Andy's call, formerly the app's red). Shares rankUp's
+    /// green so the app carries exactly one green.
+    static let liveAccent = rankUp
 
     /// Rankings movement: up. Light-mode green is darkened to clear WCAG AA
     /// (4.5:1) against bgPrimary; dark mode brightens instead.
@@ -53,9 +51,13 @@ extension Color {
             : UIColor(red: 0.00, green: 0.52, blue: 0.22, alpha: 1)
     })
 
-    /// Rankings movement: down. Same red as liveAccent so the app still
-    /// carries exactly one red.
-    static let rankDown = liveAccent
+    /// Rankings movement: down — the app's one red, no longer shared with
+    /// the live accent.
+    static let rankDown = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 1.00, green: 0.27, blue: 0.23, alpha: 1)
+            : UIColor(red: 0.84, green: 0.00, blue: 0.08, alpha: 1)
+    })
 
     /// Backing disc behind conference marks in section headers: clear in
     /// light mode, a soft light disc in dark so navy marks (Big Ten, ACC)

@@ -10,6 +10,10 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     let name: String?
     let shortName: String?
     let weekNumber: Int?
+    /// ESPN's season type (2 regular, 3 postseason) when the payload says.
+    /// Week numbers restart in the postseason, so grouping a season's
+    /// slate by week needs this to keep a title game out of "Week 1".
+    var seasonType: Int? = nil
     let status: GameStatus
     let home: Competitor
     let away: Competitor
@@ -24,6 +28,31 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     var involvesRankedTeam: Bool {
         home.rank != nil || away.rank != nil
     }
+
+    /// This team's fortunes right now, nil unless the game is live and the
+    /// team is in it. Missing scores count as 0 — a just-kicked game reads
+    /// as tied, never as no answer.
+    func liveResult(for teamId: String) -> LiveResult? {
+        guard isLive else { return nil }
+        let mine: Int?
+        let theirs: Int?
+        if home.team.id == teamId {
+            (mine, theirs) = (home.score, away.score)
+        } else if away.team.id == teamId {
+            (mine, theirs) = (away.score, home.score)
+        } else {
+            return nil
+        }
+        if (mine ?? 0) > (theirs ?? 0) { return .winning }
+        if (mine ?? 0) < (theirs ?? 0) { return .losing }
+        return .tied
+    }
+}
+
+/// A live game's answer to "how's my team doing" — the standings dot's
+/// three states.
+nonisolated enum LiveResult: Sendable {
+    case winning, losing, tied
 }
 
 nonisolated enum GameStatus: Hashable, Sendable {

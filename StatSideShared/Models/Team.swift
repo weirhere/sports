@@ -105,6 +105,13 @@ nonisolated enum Conference {
         return .group5
     }
 
+    /// Every known FBS conference in the app's browsing order: P4 → G5 →
+    /// Independents, alphabetical within each tier.
+    static let orderedIds: [Int] = names.keys.sorted { lhs, rhs in
+        let (lt, rt) = (tier(for: lhs), tier(for: rhs))
+        return lt == rt ? name(for: lhs) < name(for: rhs) : lt < rt
+    }
+
     /// Whether this conference's championship game takes the standings'
     /// top two that season — the gate for the standings cut line, which
     /// must never claim top-two about a divisional-era pairing. Every FBS

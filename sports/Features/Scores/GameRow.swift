@@ -150,11 +150,20 @@ struct GameRow: View {
                 }
             }
         case .live(let displayClock, let period, _, _):
-            HStack(spacing: Spacing.sm) {
-                LiveDot()
-                Text(liveDetail(clock: displayClock, period: period))
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
+            // Clock and network ride one line while they fit, then stack —
+            // the same treatment as the pre-game kick line above.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.sm) {
+                    liveClockLine(clock: displayClock, period: period)
+                    if let network {
+                        Text("·").font(.meta).foregroundStyle(.textSecondary)
+                        networkText(network)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    liveClockLine(clock: displayClock, period: period)
+                    if let network { networkText(network) }
+                }
             }
         case .final(let detail):
             Text(finalLabel(detail))
@@ -223,6 +232,14 @@ struct GameRow: View {
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
                 }
+                // "Where do I watch" is the live row's second question —
+                // the widget's pre+live rule, adopted app-side (2026-08-29).
+                if let network {
+                    Text(network)
+                        .font(.rowMeta)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
             }
         case .final(let detail):
             VStack(alignment: .leading, spacing: 2) {
@@ -261,6 +278,15 @@ struct GameRow: View {
             .lineLimit(1)
     }
 
+    private func liveClockLine(clock: String?, period: Int?) -> some View {
+        HStack(spacing: Spacing.sm) {
+            LiveDot()
+            Text(liveDetail(clock: clock, period: period))
+                .font(.metaEmphasis)
+                .foregroundStyle(.textPrimary)
+        }
+    }
+
     private func scoreText(_ competitor: Competitor, font: Font) -> some View {
         Text(competitor.score.map(String.init) ?? "–")
             .font(mute(competitor) ? .rowName.monospacedDigit() : font)
@@ -285,10 +311,7 @@ struct GameRow: View {
 
     /// First network only: "ESPN Unlmtd/The CW Network" otherwise swallows
     /// the row.
-    private var network: String? {
-        guard let broadcast = game.broadcast else { return nil }
-        return broadcast.split(separator: "/").first.map(String.init) ?? broadcast
-    }
+    private var network: String? { game.primaryBroadcast }
 
     /// Final rows put the winner in heavier type; live rows emphasize both.
     private func emphasize(_ competitor: Competitor) -> Bool {
@@ -418,6 +441,7 @@ struct GameRow: View {
                let holder = [game.away, game.home].first(where: { $0.team.id == possessionTeamId }) {
                 parts.append("\(holder.team.location) has the ball")
             }
+            if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")
         case .final(let detail):
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true

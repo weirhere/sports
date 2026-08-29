@@ -1,29 +1,34 @@
 import SwiftUI
 
-/// The chrome row above the week strip: StatSide wordmark left; live filter,
-/// grouping toggle, and season picker right, all capsule chips. The live chip
-/// joins only while games are live (or the filter is already on).
+/// The chrome row above the week strip: StatSide wordmark left; the live
+/// filter and view-options funnel right. Grouping and season moved into
+/// `ScoreFilterSheet` (2026-08-29) when four chips outgrew the row — the
+/// funnel chip carries any non-default state. The live chip is permanent
+/// (Andy, same day): a stable home beats appearing mid-Saturday, and an
+/// empty live week explains itself instead of hiding the toggle.
 struct ScoresHeader: View {
-    let seasonYear: Int?
-    let seasons: [Int]
-    let byDate: Bool
-    let showsLive: Bool
     let liveOnly: Bool
-    let onSelectSeason: (Int) -> Void
-    let onToggleGrouping: () -> Void
+    let scoreFilter: ScoreFilter?
+    /// The selected season when browsing the past, nil on the current one.
+    let pastSeasonYear: Int?
     let onToggleLive: () -> Void
+    let onTapFilter: () -> Void
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
             wordmark
-            Spacer()
-            if showsLive {
+            Spacer(minLength: 0)
+            // One grouped capsule for both controls — FotMob's tap-target
+            // language (Andy, 2026-08-29): the Live pill leads, the funnel
+            // rides where FotMob keeps its calendar. Segments paint their
+            // own fill only when active; the group carries the chrome.
+            HStack(spacing: 2) {
                 LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
+                ScoreFilterChip(filter: scoreFilter, pastSeasonYear: pastSeasonYear,
+                                onTap: onTapFilter)
             }
-            GroupingChip(byDate: byDate, onToggle: onToggleGrouping)
-            if let seasonYear {
-                SeasonMenuChip(current: seasonYear, seasons: seasons, onSelect: onSelectSeason)
-            }
+            .padding(4)
+            .glassCapsule(fallback: Color.bgElevated)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.sm)
@@ -35,6 +40,7 @@ struct ScoresHeader: View {
                 .font(.system(size: 15, weight: .semibold))
             Text("StatSide")
                 .font(.system(size: 17, weight: .heavy))
+                .lineLimit(1)
         }
         .foregroundStyle(.textPrimary)
     }
@@ -42,15 +48,12 @@ struct ScoresHeader: View {
 
 #Preview {
     VStack(spacing: Spacing.lg) {
-        ScoresHeader(seasonYear: 2026, seasons: Array(stride(from: 2026, through: 2014, by: -1)),
-                     byDate: false, showsLive: false, liveOnly: false,
-                     onSelectSeason: { _ in }, onToggleGrouping: {}, onToggleLive: {})
-        ScoresHeader(seasonYear: 2026, seasons: Array(stride(from: 2026, through: 2014, by: -1)),
-                     byDate: false, showsLive: true, liveOnly: true,
-                     onSelectSeason: { _ in }, onToggleGrouping: {}, onToggleLive: {})
-        ScoresHeader(seasonYear: nil, seasons: [],
-                     byDate: true, showsLive: true, liveOnly: false,
-                     onSelectSeason: { _ in }, onToggleGrouping: {}, onToggleLive: {})
+        ScoresHeader(liveOnly: false, scoreFilter: nil,
+                     pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
+        ScoresHeader(liveOnly: true, scoreFilter: .conference(8),
+                     pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
+        ScoresHeader(liveOnly: false, scoreFilter: .conference(12),
+                     pastSeasonYear: 2019, onToggleLive: {}, onTapFilter: {})
     }
     .background(Color.bgPrimary)
 }

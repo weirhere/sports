@@ -135,6 +135,10 @@ struct GameDetailScreen: View {
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
 
+    /// The header's "where do I watch" line, live only — gated on the
+    /// summary-fresher status so it retires the moment the game goes final.
+    private var liveBroadcast: String? { isLiveNow ? game.broadcast : nil }
+
     /// Past-season games (pushed from a flipped team schedule) must not
     /// wear the current season's standings.
     private var isCurrentSeason: Bool {
@@ -168,11 +172,24 @@ struct GameDetailScreen: View {
                     .font(.metaEmphasis)
                     .foregroundStyle(.textPrimary)
                     .multilineTextAlignment(.center)
+                // Live is the one state with no other network surface —
+                // pre-game has the info card (and statusLine's own second
+                // line), finals have nothing left to tune into. Detail
+                // screen only: the share card's status stays score-shaped.
+                if let broadcast = liveBroadcast {
+                    Text(broadcast)
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.top, Spacing.md)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(statusLine.replacingOccurrences(of: "\n", with: ", "))
+            .accessibilityLabel(
+                ([statusLine.replacingOccurrences(of: "\n", with: ", ")]
+                    + (liveBroadcast.map { ["on \($0)"] } ?? []))
+                    .joined(separator: ", "))
             headerSide(competitor(game.home, summary?.home))
         }
         .padding(.horizontal, Spacing.lg)

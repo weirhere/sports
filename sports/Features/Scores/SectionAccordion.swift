@@ -52,6 +52,10 @@ struct SectionAccordion: View {
                     expandedRows
                 }
             }
+            // Collapsing rows animate out INSIDE the shrinking card —
+            // unclipped they paint over the next section's header until
+            // the animation settles (Andy, 2026-08-29).
+            .clipped()
         }
     }
 

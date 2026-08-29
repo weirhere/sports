@@ -22,8 +22,10 @@ final class UIStateStore {
     /// semantics like `collapsedConferences` — days start expanded.
     private(set) var collapsedDays: Set<String>
 
-    /// Which grouping the Scores screen uses. A stored property (not a
-    /// UserDefaults passthrough) so @Observable tracks the toggle.
+    /// Which grouping the Scores screen uses. Defaults to `.date` — "what's
+    /// now first" (Josh Vertucci feedback, 2026-08-29); conference grouping
+    /// stays one chip tap away. A stored property (not a UserDefaults
+    /// passthrough) so @Observable tracks the toggle.
     var scoresGrouping: ScoresGrouping {
         didSet { defaults.set(scoresGrouping.rawValue, forKey: Self.groupingKey) }
     }
@@ -34,7 +36,30 @@ final class UIStateStore {
         didSet { defaults.set(followPromptDismissed, forKey: Self.followPromptDismissedKey) }
     }
 
+    /// The Scores Live toggle. Persisted (Andy, 2026-08-29): "you should
+    /// be able to customize it to the way you want it and keep it" — the
+    /// permanent chip and the explanatory empty state make a saved filter
+    /// legible on a quiet Tuesday.
+    var liveOnly: Bool {
+        didSet { defaults.set(liveOnly, forKey: Self.liveOnlyKey) }
+    }
+
+    /// The Scores slate filter. Persisted like `liveOnly` (same call,
+    /// superseding the session-only first cut); the funnel chip's label
+    /// keeps a saved filter visible.
+    var scoreFilter: ScoreFilter? {
+        didSet {
+            if let scoreFilter {
+                defaults.set(scoreFilter.token, forKey: Self.scoreFilterKey)
+            } else {
+                defaults.removeObject(forKey: Self.scoreFilterKey)
+            }
+        }
+    }
+
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
+    private static let liveOnlyKey = "ui.liveOnly"
+    private static let scoreFilterKey = "ui.scoreFilter"
 
     private let defaults: UserDefaults
 
@@ -48,8 +73,11 @@ final class UIStateStore {
         collapsedConferences = Set(defaults.stringArray(forKey: Self.collapsedConferencesKey) ?? [])
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         scoresGrouping = defaults.string(forKey: Self.groupingKey)
-            .flatMap(ScoresGrouping.init(rawValue:)) ?? .conference
+            .flatMap(ScoresGrouping.init(rawValue:)) ?? .date
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
+        liveOnly = defaults.bool(forKey: Self.liveOnlyKey)
+        scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
+            .flatMap(ScoreFilter.init(token:))
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
 

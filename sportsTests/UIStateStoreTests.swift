@@ -100,12 +100,30 @@ import Testing
         #expect(store.isExpanded(GameSection.top25Id))
     }
 
-    @Test func scoresGroupingRoundTripsAndDefaultsToConference() {
+    @Test func filtersPersistAndDefaultToOff() {
         let defaults = makeDefaults()
         let store = UIStateStore(defaults: defaults)
-        #expect(store.scoresGrouping == .conference)
+        #expect(store.liveOnly == false)
+        #expect(store.scoreFilter == nil)
 
-        store.scoresGrouping = .date
-        #expect(UIStateStore(defaults: defaults).scoresGrouping == .date)
+        store.liveOnly = true
+        store.scoreFilter = .conference(8)
+        let reloaded = UIStateStore(defaults: defaults)
+        #expect(reloaded.liveOnly == true)
+        #expect(reloaded.scoreFilter == .conference(8))
+
+        reloaded.scoreFilter = .top25
+        #expect(UIStateStore(defaults: defaults).scoreFilter == .top25)
+        reloaded.scoreFilter = nil
+        #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
+    }
+
+    @Test func scoresGroupingRoundTripsAndDefaultsToDate() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.scoresGrouping == .date)
+
+        store.scoresGrouping = .conference
+        #expect(UIStateStore(defaults: defaults).scoresGrouping == .conference)
     }
 }

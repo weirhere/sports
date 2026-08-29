@@ -29,6 +29,7 @@ struct ScoresScreen: View {
     @State private var dragOffset: CGFloat = 0
     @State private var dragAxis: DragAxis?
     @State private var paneWidth: CGFloat = 393
+    @State private var showsFilterSheet = false
 
     private enum DragAxis { case horizontal, vertical }
 
@@ -36,21 +37,11 @@ struct ScoresScreen: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 ScoresHeader(
-                    seasonYear: store.seasonYear,
-                    seasons: store.availableSeasons,
-                    byDate: uiState.scoresGrouping == .date,
-                    showsLive: store.hasLiveGames || store.liveOnly,
-                    liveOnly: store.liveOnly,
-                    onSelectSeason: { year in
-                        weekSlideAnimation = nil
-                        Task { await store.select(season: year) }
-                    },
-                    onToggleGrouping: {
-                        withAnimation {
-                            uiState.scoresGrouping = uiState.scoresGrouping == .date ? .conference : .date
-                        }
-                    },
-                    onToggleLive: { withAnimation { store.liveOnly.toggle() } }
+                    liveOnly: uiState.liveOnly,
+                    scoreFilter: uiState.scoreFilter,
+                    pastSeasonYear: pastSeasonYear,
+                    onToggleLive: { toggleLive() },
+                    onTapFilter: { showsFilterSheet = true }
                 )
                 WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
                     select(week: week)
@@ -105,6 +96,24 @@ struct ScoresScreen: View {
                 TeamPage(team: team)
             }
         }
+        .sheet(isPresented: $showsFilterSheet) {
+            ScoreFilterSheet(
+                current: uiState.scoreFilter,
+                grouping: uiState.scoresGrouping,
+                seasonYear: store.seasonYear,
+                seasons: store.availableSeasons,
+                onSelect: { selection in
+                    withAnimation { uiState.scoreFilter = selection }
+                },
+                onSetGrouping: { grouping in
+                    withAnimation { uiState.scoresGrouping = grouping }
+                },
+                onSelectSeason: { year in
+                    weekSlideAnimation = nil
+                    Task { await store.select(season: year) }
+                }
+            )
+        }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this
         // mostly matters after the tab's view is torn down and recreated.
@@ -119,7 +128,32 @@ struct ScoresScreen: View {
     private var sections: [GameSection] {
         store.sections(followingIds: following.teamIds,
                        followedConferenceIds: following.conferenceIds,
-                       grouping: uiState.scoresGrouping)
+                       grouping: uiState.scoresGrouping,
+                       liveOnly: uiState.liveOnly,
+                       filter: uiState.scoreFilter)
+    }
+
+    /// The selected season when browsing the past — what the funnel chip
+    /// surfaces so a 2019 slate is never mistaken for this week.
+    private var pastSeasonYear: Int? {
+        guard let year = store.seasonYear, year != store.currentSeasonYear else { return nil }
+        return year
+    }
+
+    /// Turning the Live filter on goes to where live games are — the
+    /// current week (Andy, 2026-08-29): filtering a future week to
+    /// nothing answers the wrong question. Within the season the jump
+    /// slides like a chip tap; a past season resets with no direction
+    /// (season switches never slide). Turning it off stays put.
+    private func toggleLive() {
+        withAnimation { uiState.liveOnly.toggle() }
+        guard uiState.liveOnly else { return }
+        if store.seasonYear != store.currentSeasonYear {
+            weekSlideAnimation = nil
+            Task { await store.selectCurrentWeek() }
+        } else if let home = store.currentWeekSlot, home.id != store.selectedWeek?.id {
+            select(week: home)
+        }
     }
 
     /// Every user week change funnels through here so chip taps and swipes
@@ -306,10 +340,22 @@ struct ScoresScreen: View {
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
-                } else if store.liveOnly {
-                    Text("No live games right now")
+                } else if uiState.liveOnly || uiState.scoreFilter != nil {
+                    // The narrowed-slate empty state: name what's hiding
+                    // the games, and offer the whole slate back. One
+                    // button clears both filters — that's what its label
+                    // promises.
+                    Text(narrowedEmptyMessage)
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
+                    Button("Show all games") {
+                        withAnimation {
+                            uiState.scoreFilter = nil
+                            uiState.liveOnly = false
+                        }
+                    }
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
                 } else {
                     Text("No games this week")
                         .font(.teamName)
@@ -330,6 +376,17 @@ struct ScoresScreen: View {
             // without this, the week swipe dies exactly where it's most
             // needed — on an empty week.
             .contentShape(Rectangle())
+        }
+    }
+
+    /// What the narrowed-slate empty state says: live and the conference
+    /// filter compose into one sentence.
+    private var narrowedEmptyMessage: String {
+        switch (uiState.liveOnly, uiState.scoreFilter) {
+        case (true, let filter?): "No live \(filter.label) games right now"
+        case (true, nil): "No live games right now"
+        case (false, let filter?): "No \(filter.label) games this week"
+        case (false, nil): ""
         }
     }
 

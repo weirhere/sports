@@ -81,7 +81,8 @@ struct ScheduleRow: View {
             let outcome = mine.winner == true ? "won" : (opponent.winner == true ? "lost" : "final")
             parts.append("\(outcome) \(spokenScore)")
         case .live:
-            parts.append("live, \(spokenScore)")
+            parts.append(mine.score != nil || opponent.score != nil
+                         ? "live, \(spokenScore)" : "live now")
         case .pre:
             if game.timeTBD {
                 parts.append("kickoff time to be determined")
@@ -123,12 +124,9 @@ struct ScheduleRow: View {
                         .fill(won ? Color.rankUp : (lost ? Color.rankDown : Color.bgElevated))
                 )
         case .live:
-            HStack(spacing: Spacing.xs) {
-                LiveDot()
-                Text("\(mine.score.map(String.init) ?? "–")-\(opponent.score.map(String.init) ?? "–")")
-                    .font(.scoreLive)
-                    .foregroundStyle(.textPrimary)
-            }
+            // The dot alone — the Current game card above carries the
+            // score (Andy, 2026-08-29). VoiceOver still speaks it.
+            LiveDot()
         case .pre:
             // An unannounced kickoff carries a placeholder midnight date —
             // "TBD" over a lying "12:00 AM".

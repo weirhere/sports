@@ -9,6 +9,10 @@ struct TeamPage: View {
     /// Optional form: previews/tests without RootView's environment degrade
     /// to the pushed value instead of trapping.
     @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
+    /// Optional like the directory: the fresher-game merge degrades to the
+    /// schedule payload wherever the scoreboard isn't in the environment.
+    @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
+    @Environment(\.dismiss) private var dismiss
 
     private enum Tab { case games, standings }
 
@@ -28,6 +32,12 @@ struct TeamPage: View {
     @State private var initialFailed = false
 
     @State private var tab: Tab = .games
+    /// True once the hero title has scrolled under the nav bar — the bar's
+    /// principal slot then carries the team name.
+    @State private var showsInlineTitle = false
+    /// Which edge incoming tab content pushes from — right when walking
+    /// Games → Standings, left coming back, matching the tab order.
+    @State private var tabSlideEdge: Edge = .trailing
     /// The Standings tab's data, fetched lazily on first visit.
     @State private var conferenceStandings: ConferenceStandings?
     @State private var standingsLoading = false
@@ -54,18 +64,27 @@ struct TeamPage: View {
     /// pushed value (instant, pre-fetch), then the team directory (covers
     /// Rankings/game-detail entry paths that push no id).
     ///
-    /// One veto: an FCS opponent's schedule payload reuses group ids that
-    /// collide with our FBS table (NDSU came back "Mountain West"), so a
-    /// loaded directory that doesn't know the team means no conference —
-    /// no line, no Standings tab — rather than a mislabeled one.
+    /// One veto, disproof-shaped (refined 2026-08-29): an FCS opponent's
+    /// payload can reuse a group id that collides with our FBS table, so
+    /// an unknown team's claim stands only when the directory can't
+    /// disprove it — the claimed conference has a roster and this team
+    /// isn't on it. An EMPTY roster proves nothing: ESPN ships the Sun
+    /// Belt with zero standings entries (still true 2026-08-29), and the
+    /// old know-the-team-or-nothing veto was silently stripping every
+    /// Sun Belt page of its conference line and Standings tab. (The
+    /// veto's original NDSU example aged out — their Mountain West line
+    /// is real 2026 realignment, confirmed against the standings.)
     private var resolvedConferenceId: Int? {
-        if let directory, !directory.allTeams.isEmpty,
-           !directory.allTeams.contains(where: { $0.id == team.id }) {
-            return nil
-        }
-        return schedule?.team?.conferenceId
+        let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
             ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
+        if let directory, !directory.allTeams.isEmpty,
+           !directory.allTeams.contains(where: { $0.id == team.id }),
+           let claimed,
+           directory.allTeams.contains(where: { $0.conferenceId == claimed }) {
+            return nil
+        }
+        return claimed
     }
 
     private var isLoadingSelected: Bool {
@@ -88,7 +107,16 @@ struct TeamPage: View {
             case .pre, .live: true
             case .final, .other: false
             }
-        }
+        }.map(fresher)
+    }
+
+    /// The scoreboard's copy of a schedule game when it has one: the
+    /// schedule payload carries no live scores or clock mid-game (the
+    /// dashed-score bug, Andy 2026-08-29), while the scoreboard polls
+    /// every 30s. A game outside the scoreboard's selected week falls
+    /// back to the schedule's own snapshot.
+    private func fresher(_ game: Game) -> Game {
+        liveBoard?.games.first { $0.id == game.id } ?? game
     }
 
     // MARK: - Hero paint
@@ -115,29 +143,112 @@ struct TeamPage: View {
         ScrollView {
             VStack(spacing: 0) {
                 hero
-                switch tab {
-                case .games: gamesContent
-                case .standings: standingsContent
+                Group {
+                    switch tab {
+                    case .games: gamesContent
+                    case .standings: standingsContent
+                    }
                 }
+                .id(tab)
+                .transition(.push(from: tabSlideEdge))
+                // The week swipe's sibling (Andy, 2026-08-29): a horizontal
+                // swipe on the content walks the tab pair; the tab buttons
+                // stay, so nothing is swipe-gated. Simultaneous with a
+                // dominance check so vertical scrolling never tab-flips.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 20)
+                        .onEnded { value in
+                            let dx = value.translation.width
+                            guard abs(dx) > 50,
+                                  abs(dx) > abs(value.translation.height) * 1.5 else { return }
+                            select(tab: dx < 0 ? .standings : .games)
+                        }
+                )
+            }
+            .animation(.default, value: tab)
+        }
+        // Once the hero's own title scrolls under the bar, the bar takes
+        // over the identity (Andy, 2026-08-29): the team name fades into
+        // the principal slot between back and share.
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > 120
+        } action: { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
             }
         }
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(heroColor ?? Color.bgPrimary, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // Transparent while the hero is at the top — the glass buttons
+        // sit directly on team color; solid once the hero scrolls under,
+        // exactly when the inline title arrives.
+        .toolbarBackground(showsInlineTitle ? .visible : .hidden, for: .navigationBar)
         .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
                             for: .navigationBar)
+        // Custom back and share: dark-tinted glass circles with white ink,
+        // legible on team color where the system's untinted glass washed
+        // out (Andy, 2026-08-29). The system's own glass wrapper hides on
+        // iOS 26 so the tinted circle isn't glass-on-glass; swipe-back
+        // survives the hidden system button under NavigationStack.
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: team.shareText(schedule: currentSchedule)) {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
-                }
-                .accessibilityLabel("Share this team")
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarLeading) { backButton }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarLeading) { backButton }
+            }
+            ToolbarItem(placement: .principal) {
+                Text(team.location)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
+                    .lineLimit(1)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
+            }
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) { shareButton }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) { shareButton }
             }
         }
         .task { await loadInitial() }
+    }
+
+    private var barInk: Color { heroOnDark ? .white : Color.textPrimary }
+    private var barGlassTint: Color {
+        heroOnDark ? Color.black.opacity(0.35) : Color.white.opacity(0.4)
+    }
+
+    private var backButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(barInk)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(tint: barGlassTint,
+                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
+        .accessibilityLabel("Back")
+    }
+
+    private var shareButton: some View {
+        ShareLink(item: team.shareText(schedule: currentSchedule)) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(barInk)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(tint: barGlassTint,
+                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
+        .accessibilityLabel("Share this team")
     }
 
     // MARK: - Hero
@@ -179,7 +290,12 @@ struct TeamPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroColor ?? Color.bgPrimary)
+        // The color extends far above the hero's own bounds — through the
+        // transparent bar and the top bounce — so the system's Liquid
+        // Glass nav buttons refract team color instead of floating as
+        // flat discs (Andy, 2026-08-29, from the FotMob reference). It
+        // scrolls away with the hero; the solid bar takes over then.
+        .background((heroColor ?? Color.bgPrimary).padding(.top, -1000))
     }
 
     /// On a colored hero the mark sits in a white disc so dark artwork
@@ -243,9 +359,17 @@ struct TeamPage: View {
         }
     }
 
+    /// Chip taps and content swipes share the one direction rule, the
+    /// week-select pattern.
+    private func select(tab value: Tab) {
+        guard value != tab else { return }
+        tabSlideEdge = value == .standings ? .trailing : .leading
+        tab = value
+    }
+
     private func tabButton(_ title: String, _ value: Tab) -> some View {
         Button {
-            tab = value
+            select(tab: value)
         } label: {
             Text(title)
                 .font(.tab)
@@ -268,13 +392,13 @@ struct TeamPage: View {
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
             if let nextGame {
-                NextGameCard(game: nextGame, teamId: team.id)
+                NextGameCard(game: nextGame)
                     .cardSurface()
             }
             VStack(spacing: 0) {
                 TeamScheduleSection(
                     teamId: team.id,
-                    games: schedule?.games ?? [],
+                    games: (schedule?.games ?? []).map(fresher),
                     isLoading: isLoadingSelected,
                     showsError: showsErrorForSelected,
                     onRetry: { Task { await retry() } }
@@ -286,16 +410,18 @@ struct TeamPage: View {
         .padding(Spacing.sm)
     }
 
+    // No CardHeader here: the Standings tab already names the card
+    // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
         VStack(spacing: 0) {
-            CardHeader(title: "Standings")
             if let entries = conferenceStandings?.entries, !entries.isEmpty {
                 StandingsList(
                     entries: entries,
                     highlightTeamId: team.id,
                     // The tab always shows the current season.
                     showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                    year: CFBSeason.year())
+                                                                    year: CFBSeason.year()),
+                    liveGames: liveBoard?.games.filter(\.isLive) ?? []
                 )
             } else if standingsLoading {
                 ProgressView().padding(.vertical, Spacing.xl)

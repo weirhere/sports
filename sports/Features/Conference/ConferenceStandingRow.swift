@@ -9,6 +9,11 @@ struct ConferenceStandingRow: View {
     /// 1-based place in the displayed order — the table's first column
     /// (Andy's ask, 2026-08-25). Nil hides the column.
     var position: Int? = nil
+    /// How the team's in-progress game is going, when one is on (Andy,
+    /// 2026-08-29): green winning, red losing, gray tied — the movement
+    /// pair's colors put to live fortunes. Nil (the usual state) shows
+    /// nothing.
+    var liveResult: LiveResult? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
@@ -38,6 +43,7 @@ struct ConferenceStandingRow: View {
                 .foregroundStyle(.textPrimary)
                 .lineLimit(1)
                 .layoutPriority(1)
+            liveDot
             Spacer(minLength: Spacing.sm)
             recordColumn(standing.conferenceRecord)
             recordColumn(standing.overallRecord)
@@ -53,12 +59,30 @@ struct ConferenceStandingRow: View {
                 Text(standing.team.location)
                     .font(.teamName)
                     .foregroundStyle(.textPrimary)
+                liveDot
             }
             Text(stackedRecordLine)
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var liveDot: some View {
+        if let liveResult {
+            Circle()
+                .fill(dotColor(liveResult))
+                .frame(width: 7, height: 7)
+        }
+    }
+
+    private func dotColor(_ result: LiveResult) -> Color {
+        switch result {
+        case .winning: .rankUp
+        case .losing: .rankDown
+        case .tied: .textSecondary
+        }
     }
 
     private func recordColumn(_ record: String?) -> some View {
@@ -95,6 +119,12 @@ struct ConferenceStandingRow: View {
             parts.append("Number \(position)")
         }
         parts.append(standing.team.location)
+        switch liveResult {
+        case .winning: parts.append("playing now, winning")
+        case .losing: parts.append("playing now, losing")
+        case .tied: parts.append("playing now, tied")
+        case nil: break
+        }
         if let conference = standing.conferenceRecord {
             parts.append("\(spoken(conference)) in conference")
         }

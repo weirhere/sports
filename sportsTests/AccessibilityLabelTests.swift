@@ -40,6 +40,14 @@ private func game(status: GameStatus,
                 "Georgia 24, Tennessee 17, 3rd quarter, 5:24 left, Georgia has the ball")
     }
 
+    @Test func liveRowSpeaksNetworkAfterPossession() {
+        let row = GameRow(game: game(
+            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "61"),
+            homeScore: 17, awayScore: 24, broadcast: "ESPN"))
+        #expect(row.accessibilitySummary ==
+                "Georgia 24, Tennessee 17, 3rd quarter, 5:24 left, Georgia has the ball, on ESPN")
+    }
+
     @Test func liveRowSpeaksRanksAndOvertime() {
         let row = GameRow(game: game(
             status: .live(displayClock: "0:48", period: 5, detail: nil, possessionTeamId: nil),

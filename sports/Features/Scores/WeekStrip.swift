@@ -31,19 +31,26 @@ struct WeekStrip: View {
         }
     }
 
+    @ViewBuilder
     private func chip(for week: WeekSlot) -> some View {
         let isSelected = week.id == selectedId
-        return Button {
+        Button {
             onSelect(week)
         } label: {
-            Text(compactLabel(week))
+            let label = Text(compactLabel(week))
                 .font(.chip)
                 .foregroundStyle(isSelected ? Color.bgPrimary : Color.textSecondary)
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(isSelected ? Color.textPrimary : Color.clear)
-                )
+            // The selected chip is the strip's one piece of floating
+            // chrome — ink-tinted glass on iOS 26, the solid capsule on
+            // the 18.0 floor. Unselected chips stay bare text.
+            if isSelected {
+                label.glassCapsuleInteractive(tint: Color.textPrimary,
+                                              fallback: Color.textPrimary)
+            } else {
+                label
+            }
         }
         .buttonStyle(.plain)
         // Spoken label uses the full "Week 5", not the compact "Wk 5".
