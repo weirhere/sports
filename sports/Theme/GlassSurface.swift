@@ -17,7 +17,10 @@ extension View {
         }
     }
 
-    /// A tappable glass capsule; `tint` carries a selected state's ink.
+    /// A tappable glass capsule; `tint` carries a selected state's ink —
+    /// or, at low opacity, the contrast scrim that keeps white ink legible
+    /// on a hero color (Andy, 2026-08-29: untinted glass over team color
+    /// washed out).
     @ViewBuilder
     func glassCapsuleInteractive(tint: Color? = nil, fallback: Color) -> some View {
         if #available(iOS 26.0, *) {
@@ -28,6 +31,20 @@ extension View {
             }
         } else {
             background(Capsule().fill(fallback))
+        }
+    }
+
+    /// A tappable glass circle — the hero nav buttons' shape.
+    @ViewBuilder
+    func glassCircleInteractive(tint: Color? = nil, fallback: Color) -> some View {
+        if #available(iOS 26.0, *) {
+            if let tint {
+                glassEffect(.regular.tint(tint).interactive(), in: Circle())
+            } else {
+                glassEffect(.regular.interactive(), in: Circle())
+            }
+        } else {
+            background(Circle().fill(fallback))
         }
     }
 }

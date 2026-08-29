@@ -12,6 +12,7 @@ struct TeamPage: View {
     /// Optional like the directory: the fresher-game merge degrades to the
     /// schedule payload wherever the scoreboard isn't in the environment.
     @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
+    @Environment(\.dismiss) private var dismiss
 
     private enum Tab { case games, standings }
 
@@ -63,18 +64,27 @@ struct TeamPage: View {
     /// pushed value (instant, pre-fetch), then the team directory (covers
     /// Rankings/game-detail entry paths that push no id).
     ///
-    /// One veto: an FCS opponent's schedule payload reuses group ids that
-    /// collide with our FBS table (NDSU came back "Mountain West"), so a
-    /// loaded directory that doesn't know the team means no conference —
-    /// no line, no Standings tab — rather than a mislabeled one.
+    /// One veto, disproof-shaped (refined 2026-08-29): an FCS opponent's
+    /// payload can reuse a group id that collides with our FBS table, so
+    /// an unknown team's claim stands only when the directory can't
+    /// disprove it — the claimed conference has a roster and this team
+    /// isn't on it. An EMPTY roster proves nothing: ESPN ships the Sun
+    /// Belt with zero standings entries (still true 2026-08-29), and the
+    /// old know-the-team-or-nothing veto was silently stripping every
+    /// Sun Belt page of its conference line and Standings tab. (The
+    /// veto's original NDSU example aged out — their Mountain West line
+    /// is real 2026 realignment, confirmed against the standings.)
     private var resolvedConferenceId: Int? {
-        if let directory, !directory.allTeams.isEmpty,
-           !directory.allTeams.contains(where: { $0.id == team.id }) {
-            return nil
-        }
-        return schedule?.team?.conferenceId
+        let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
             ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
+        if let directory, !directory.allTeams.isEmpty,
+           !directory.allTeams.contains(where: { $0.id == team.id }),
+           let claimed,
+           directory.allTeams.contains(where: { $0.conferenceId == claimed }) {
+            return nil
+        }
+        return claimed
     }
 
     private var isLoadingSelected: Bool {
@@ -177,7 +187,19 @@ struct TeamPage: View {
         .toolbarBackground(showsInlineTitle ? .visible : .hidden, for: .navigationBar)
         .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
                             for: .navigationBar)
+        // Custom back and share: dark-tinted glass circles with white ink,
+        // legible on team color where the system's untinted glass washed
+        // out (Andy, 2026-08-29). The system's own glass wrapper hides on
+        // iOS 26 so the tinted circle isn't glass-on-glass; swipe-back
+        // survives the hidden system button under NavigationStack.
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarLeading) { backButton }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarLeading) { backButton }
+            }
             ToolbarItem(placement: .principal) {
                 Text(team.location)
                     .font(.system(size: 17, weight: .semibold))
@@ -186,15 +208,47 @@ struct TeamPage: View {
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: team.shareText(schedule: currentSchedule)) {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
-                }
-                .accessibilityLabel("Share this team")
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) { shareButton }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) { shareButton }
             }
         }
         .task { await loadInitial() }
+    }
+
+    private var barInk: Color { heroOnDark ? .white : Color.textPrimary }
+    private var barGlassTint: Color {
+        heroOnDark ? Color.black.opacity(0.35) : Color.white.opacity(0.4)
+    }
+
+    private var backButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(barInk)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(tint: barGlassTint,
+                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
+        .accessibilityLabel("Back")
+    }
+
+    private var shareButton: some View {
+        ShareLink(item: team.shareText(schedule: currentSchedule)) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(barInk)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(tint: barGlassTint,
+                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
+        .accessibilityLabel("Share this team")
     }
 
     // MARK: - Hero

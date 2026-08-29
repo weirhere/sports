@@ -32,7 +32,10 @@ struct SeasonMenuChip: View {
             .foregroundStyle(onDark ? .white : Color.textPrimary)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 8)
-            .glassCapsuleInteractive(fallback: onDark ? Color.black.opacity(0.3) : Color.bgElevated)
+            // A dark tint on hero color keeps the white label legible —
+            // untinted glass washed out against the team paint.
+            .glassCapsuleInteractive(tint: onDark ? Color.black.opacity(0.35) : nil,
+                                     fallback: onDark ? Color.black.opacity(0.3) : Color.bgElevated)
             // Compact capsule, 44 pt tap target.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
