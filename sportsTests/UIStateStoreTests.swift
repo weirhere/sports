@@ -100,12 +100,12 @@ import Testing
         #expect(store.isExpanded(GameSection.top25Id))
     }
 
-    @Test func scoresGroupingRoundTripsAndDefaultsToConference() {
+    @Test func scoresGroupingRoundTripsAndDefaultsToDate() {
         let defaults = makeDefaults()
         let store = UIStateStore(defaults: defaults)
-        #expect(store.scoresGrouping == .conference)
+        #expect(store.scoresGrouping == .date)
 
-        store.scoresGrouping = .date
-        #expect(UIStateStore(defaults: defaults).scoresGrouping == .date)
+        store.scoresGrouping = .conference
+        #expect(UIStateStore(defaults: defaults).scoresGrouping == .conference)
     }
 }

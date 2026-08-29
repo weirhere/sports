@@ -22,8 +22,10 @@ final class UIStateStore {
     /// semantics like `collapsedConferences` — days start expanded.
     private(set) var collapsedDays: Set<String>
 
-    /// Which grouping the Scores screen uses. A stored property (not a
-    /// UserDefaults passthrough) so @Observable tracks the toggle.
+    /// Which grouping the Scores screen uses. Defaults to `.date` — "what's
+    /// now first" (Josh Vertucci feedback, 2026-08-29); conference grouping
+    /// stays one chip tap away. A stored property (not a UserDefaults
+    /// passthrough) so @Observable tracks the toggle.
     var scoresGrouping: ScoresGrouping {
         didSet { defaults.set(scoresGrouping.rawValue, forKey: Self.groupingKey) }
     }
@@ -48,7 +50,7 @@ final class UIStateStore {
         collapsedConferences = Set(defaults.stringArray(forKey: Self.collapsedConferencesKey) ?? [])
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         scoresGrouping = defaults.string(forKey: Self.groupingKey)
-            .flatMap(ScoresGrouping.init(rawValue:)) ?? .conference
+            .flatMap(ScoresGrouping.init(rawValue:)) ?? .date
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
