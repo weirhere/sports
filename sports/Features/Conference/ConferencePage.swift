@@ -193,9 +193,10 @@ struct ConferencePage: View {
 
     // MARK: - Standings
 
+    // No CardHeader here: the Standings tab already names the card
+    // (Andy, 2026-08-29).
     private var standingsCard: some View {
         VStack(spacing: 0) {
-            CardHeader(title: "Standings")
             if let entries = standings?.entries, !entries.isEmpty {
                 StandingsList(
                     entries: entries,
