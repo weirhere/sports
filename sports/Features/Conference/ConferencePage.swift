@@ -22,8 +22,22 @@ struct ConferencePage: View {
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
     @State private var tab: Tab
+    /// Which edge incoming tab content pushes from — right walking Games →
+    /// Standings, left coming back (TeamPage's rule).
+    @State private var tabSlideEdge: Edge = .trailing
 
     private let client: any ScoresProviding = DataProvider.makeClient()
+
+    /// Optional like TeamPage's: the live standings dots degrade to none
+    /// wherever the scoreboard isn't in the environment.
+    @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
+
+    /// In-progress games for the standings dots — current season only; a
+    /// past season's table gets no live claims.
+    private var liveGames: [Game] {
+        guard selectedYear == CFBSeason.year() else { return [] }
+        return liveBoard?.games.filter(\.isLive) ?? []
+    }
 
     init(destination: ConferenceDestination) {
         self.destination = destination
@@ -50,11 +64,27 @@ struct ConferencePage: View {
             ScrollView {
                 VStack(spacing: 0) {
                     hero
-                    switch tab {
-                    case .games: gamesSection
-                    case .standings: standingsCard
+                    Group {
+                        switch tab {
+                        case .games: gamesSection
+                        case .standings: standingsCard
+                        }
                     }
+                    .id(tab)
+                    .transition(.push(from: tabSlideEdge))
+                    // The week swipe's sibling (Andy, 2026-08-29): swipe
+                    // the content to walk the tab pair; the buttons stay.
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                let dx = value.translation.width
+                                guard abs(dx) > 50,
+                                      abs(dx) > abs(value.translation.height) * 1.5 else { return }
+                                select(tab: dx < 0 ? .standings : .games)
+                            }
+                    )
                 }
+                .animation(.default, value: tab)
             }
             // The anchor scroll: a push from a TeamPage lands with the
             // team's own row in view, FotMob's table pattern. The Games
@@ -130,9 +160,16 @@ struct ConferencePage: View {
         }
     }
 
+    /// Chip taps and content swipes share the one direction rule.
+    private func select(tab value: Tab) {
+        guard value != tab else { return }
+        tabSlideEdge = value == .standings ? .trailing : .leading
+        tab = value
+    }
+
     private func tabButton(_ title: String, _ value: Tab) -> some View {
         Button {
-            tab = value
+            select(tab: value)
         } label: {
             Text(title)
                 .font(.tab)
@@ -202,7 +239,8 @@ struct ConferencePage: View {
                     entries: entries,
                     highlightTeamId: destination.highlightTeamId,
                     showsTitleGameCut: Conference.titleGameIsTopTwo(id: destination.conferenceId,
-                                                                    year: selectedYear)
+                                                                    year: selectedYear),
+                    liveGames: liveGames
                 )
             } else if isLoading {
                 ProgressView().padding(.vertical, Spacing.xl)

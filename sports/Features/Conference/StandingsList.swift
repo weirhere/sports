@@ -12,6 +12,10 @@ struct StandingsList: View {
     /// Whether this table's top two reach a title game — the caller's
     /// knowledge (`Conference.titleGameIsTopTwo` plus its season).
     let showsTitleGameCut: Bool
+    /// In-progress games to badge rows with live fortunes (Andy,
+    /// 2026-08-29). Callers pass the scoreboard's live slate for the
+    /// current season and nothing for past ones.
+    var liveGames: [Game] = []
 
     /// The cut renders only when the top two are knowably the top two:
     /// seed-backed placement (ESPN's `playoffSeed` — payload order alone
@@ -26,6 +30,10 @@ struct StandingsList: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    private func liveResult(for teamId: String) -> LiveResult? {
+        liveGames.lazy.compactMap { $0.liveResult(for: teamId) }.first
+    }
+
     var body: some View {
         // At accessibility sizes the rows stack their records onto a
         // labeled line, so the captions would caption nothing.
@@ -34,7 +42,8 @@ struct StandingsList: View {
         }
         ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
             NavigationLink(value: standing.team) {
-                ConferenceStandingRow(standing: standing, position: index + 1)
+                ConferenceStandingRow(standing: standing, position: index + 1,
+                                      liveResult: liveResult(for: standing.team.id))
             }
             .buttonStyle(.plain)
             .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)

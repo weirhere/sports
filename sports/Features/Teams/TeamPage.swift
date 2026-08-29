@@ -34,6 +34,9 @@ struct TeamPage: View {
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the team name.
     @State private var showsInlineTitle = false
+    /// Which edge incoming tab content pushes from — right when walking
+    /// Games → Standings, left coming back, matching the tab order.
+    @State private var tabSlideEdge: Edge = .trailing
     /// The Standings tab's data, fetched lazily on first visit.
     @State private var conferenceStandings: ConferenceStandings?
     @State private var standingsLoading = false
@@ -130,11 +133,29 @@ struct TeamPage: View {
         ScrollView {
             VStack(spacing: 0) {
                 hero
-                switch tab {
-                case .games: gamesContent
-                case .standings: standingsContent
+                Group {
+                    switch tab {
+                    case .games: gamesContent
+                    case .standings: standingsContent
+                    }
                 }
+                .id(tab)
+                .transition(.push(from: tabSlideEdge))
+                // The week swipe's sibling (Andy, 2026-08-29): a horizontal
+                // swipe on the content walks the tab pair; the tab buttons
+                // stay, so nothing is swipe-gated. Simultaneous with a
+                // dominance check so vertical scrolling never tab-flips.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 20)
+                        .onEnded { value in
+                            let dx = value.translation.width
+                            guard abs(dx) > 50,
+                                  abs(dx) > abs(value.translation.height) * 1.5 else { return }
+                            select(tab: dx < 0 ? .standings : .games)
+                        }
+                )
             }
+            .animation(.default, value: tab)
         }
         // Once the hero's own title scrolls under the bar, the bar takes
         // over the identity (Andy, 2026-08-29): the team name fades into
@@ -150,7 +171,10 @@ struct TeamPage: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(heroColor ?? Color.bgPrimary, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // Transparent while the hero is at the top — the glass buttons
+        // sit directly on team color; solid once the hero scrolls under,
+        // exactly when the inline title arrives.
+        .toolbarBackground(showsInlineTitle ? .visible : .hidden, for: .navigationBar)
         .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
                             for: .navigationBar)
         .toolbar {
@@ -212,7 +236,12 @@ struct TeamPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroColor ?? Color.bgPrimary)
+        // The color extends far above the hero's own bounds — through the
+        // transparent bar and the top bounce — so the system's Liquid
+        // Glass nav buttons refract team color instead of floating as
+        // flat discs (Andy, 2026-08-29, from the FotMob reference). It
+        // scrolls away with the hero; the solid bar takes over then.
+        .background((heroColor ?? Color.bgPrimary).padding(.top, -1000))
     }
 
     /// On a colored hero the mark sits in a white disc so dark artwork
@@ -276,9 +305,17 @@ struct TeamPage: View {
         }
     }
 
+    /// Chip taps and content swipes share the one direction rule, the
+    /// week-select pattern.
+    private func select(tab value: Tab) {
+        guard value != tab else { return }
+        tabSlideEdge = value == .standings ? .trailing : .leading
+        tab = value
+    }
+
     private func tabButton(_ title: String, _ value: Tab) -> some View {
         Button {
-            tab = value
+            select(tab: value)
         } label: {
             Text(title)
                 .font(.tab)
@@ -329,7 +366,8 @@ struct TeamPage: View {
                     highlightTeamId: team.id,
                     // The tab always shows the current season.
                     showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                    year: CFBSeason.year())
+                                                                    year: CFBSeason.year()),
+                    liveGames: liveBoard?.games.filter(\.isLive) ?? []
                 )
             } else if standingsLoading {
                 ProgressView().padding(.vertical, Spacing.xl)
