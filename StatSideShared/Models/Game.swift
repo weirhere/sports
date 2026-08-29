@@ -10,6 +10,10 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     let name: String?
     let shortName: String?
     let weekNumber: Int?
+    /// ESPN's season type (2 regular, 3 postseason) when the payload says.
+    /// Week numbers restart in the postseason, so grouping a season's
+    /// slate by week needs this to keep a title game out of "Week 1".
+    var seasonType: Int? = nil
     let status: GameStatus
     let home: Competitor
     let away: Competitor

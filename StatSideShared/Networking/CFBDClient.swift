@@ -83,6 +83,36 @@ actor CFBDClient: ScoresProviding {
         )
     }
 
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] {
+        let season = year ?? CFBSeason.year()
+        // CFBD scopes /games per season type; postseason rides along
+        // tolerantly (an early-season fetch has none to return). The
+        // conference filter is ours — the joins map CFBD's conference
+        // names onto our group ids, so filtering by mapped id matches the
+        // ESPN backend's either-side rule exactly.
+        func fetchGames(type: String) async throws -> [Game] {
+            let query = [
+                URLQueryItem(name: "year", value: String(season)),
+                URLQueryItem(name: "seasonType", value: type),
+                URLQueryItem(name: "classification", value: "fbs"),
+            ]
+            async let gamesFetch: LossyArray<CFBDGameDTO> = fetch("/games", query: query)
+            async let mediaFetch: LossyArray<CFBDGameMediaDTO> = fetch("/games/media", query: query)
+            let joins = try await joins(year: season, week: nil, seasonType: nil)
+            let games = try await gamesFetch.elements
+            let media = ((try? await mediaFetch.elements) ?? [])
+            return games.compactMap {
+                CFBDMapper.game(from: $0, live: nil, media: media, joins: joins)
+            }
+        }
+        async let regular = fetchGames(type: "regular")
+        async let postseason = try? fetchGames(type: "postseason")
+        let all = try await regular + (await postseason ?? [])
+        return all.filter {
+            $0.home.team.conferenceId == conferenceId || $0.away.team.conferenceId == conferenceId
+        }
+    }
+
     func rankings() async throws -> [Poll] {
         let season = CFBSeason.year()
         let weeks: LossyArray<CFBDPollWeekDTO> = try await fetch(

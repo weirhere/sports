@@ -19,19 +19,21 @@ struct SeasonMenuChip: View {
                 }
             }
         } label: {
-            // Same capsule as GroupingChip so the chrome chips read as
-            // one family.
+            // Same capsule as the Scores header chips so the chrome chips
+            // read as one family.
             HStack(spacing: Spacing.xs) {
                 Text(String(current))
                     .font(.chip)
+                    .lineLimit(1)
+                    .fixedSize()
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))
             }
             .foregroundStyle(onDark ? .white : Color.textPrimary)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 8)
-            .background(Capsule().fill(onDark ? Color.black.opacity(0.3) : Color.bgElevated))
-            // Matches GroupingChip: compact capsule, 44 pt tap target.
+            .glassCapsuleInteractive(fallback: onDark ? Color.black.opacity(0.3) : Color.bgElevated)
+            // Compact capsule, 44 pt tap target.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }

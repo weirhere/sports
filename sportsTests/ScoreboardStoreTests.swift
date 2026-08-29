@@ -12,6 +12,7 @@ private struct StubProvider: ScoresProviding {
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: [])
     }
@@ -142,12 +143,10 @@ private func game(_ id: String, home: Team, away: Team,
             game("live", home: acc1, away: acc2, live: true),
         ])
 
-        store.liveOnly = true
-        let liveSections = store.sections(followingIds: [])
+        let liveSections = store.sections(followingIds: [], liveOnly: true)
         #expect(liveSections.map(\.id) == ["conf-ACC"])
         #expect(liveSections[0].games.map(\.id) == ["live"])
 
-        store.liveOnly = false
         #expect(store.sections(followingIds: []).count == 2)
         #expect(store.hasLiveGames)
     }
@@ -299,9 +298,74 @@ private func game(_ id: String, home: Team, away: Team,
             game("live", home: team("3", conference: 1), away: team("4", conference: 1),
                  live: true, date: dayTwo),
         ])
-        store.liveOnly = true
-        let sections = store.sections(followingIds: [], grouping: .date)
+        let sections = store.sections(followingIds: [], grouping: .date, liveOnly: true)
         #expect(sections.map(\.id) == [dayId(for: dayTwo)])
         #expect(sections[0].games.map(\.id) == ["live"])
+    }
+
+    @Test func conferenceFilterKeepsEitherSidesGamesAndHidesTheRest() async {
+        // The SEC filter claims the conference game, the cross-conference
+        // game, and the FCS visitor's game at an SEC host — the same rules
+        // as the SEC section itself.
+        let store = await makeStore(games: [
+            game("sec", home: team("1", conference: 8), away: team("2", conference: 8)),
+            game("cross", home: team("3", conference: 8), away: team("4", conference: 5)),
+            game("fcs", home: team("5", conference: 8), away: team("6", conference: nil)),
+            game("acc", home: team("7", conference: 1), away: team("8", conference: 1)),
+        ])
+        let sections = store.sections(followingIds: [], filter: .conference(8))
+        #expect(sections.map(\.id) == ["conf-Big Ten", "conf-SEC"])
+        #expect(sections[0].games.map(\.id) == ["cross"])
+        #expect(Set(sections[1].games.map(\.id)) == ["sec", "cross", "fcs"])
+    }
+
+    @Test func top25FilterKeepsRankedMatchupsOnly() async {
+        let store = await makeStore(games: [
+            game("ranked", home: team("1", conference: 8), away: team("2", conference: 5), homeRank: 3),
+            game("unranked", home: team("3", conference: 8), away: team("4", conference: 8)),
+        ])
+        let sections = store.sections(followingIds: [], grouping: .date, filter: .top25)
+        #expect(sections.count == 1)
+        #expect(sections[0].games.map(\.id) == ["ranked"])
+    }
+
+    @Test func scoreFilterFiltersFollowingAndComposesWithLive() async {
+        // Following a Big Ten team while filtered to the SEC: the Following
+        // section vanishes with the game — sections are complete within the
+        // active filters, the Live chip's precedent.
+        let store = await makeStore(games: [
+            game("bigten", home: team("1", conference: 5), away: team("2", conference: 5), live: true),
+            game("secLive", home: team("3", conference: 8), away: team("4", conference: 8), live: true),
+            game("secPre", home: team("5", conference: 8), away: team("6", conference: 8)),
+        ])
+        let sections = store.sections(followingIds: ["1"], grouping: .date,
+                                      liveOnly: true, filter: .conference(8))
+        #expect(sections.count == 1)
+        #expect(sections[0].games.map(\.id) == ["secLive"])
+
+        let restored = store.sections(followingIds: ["1"], grouping: .date, liveOnly: true)
+        #expect(restored.first?.id == GameSection.followingId)
+    }
+
+    @Test func selectCurrentWeekReturnsToTheRolloverSlot() async {
+        // The Live toggle's jump home: browsing another week, then
+        // selecting the current one, lands back on the rollover slot.
+        func slot(_ value: Int) -> WeekSlot {
+            WeekSlot(label: "Week \(value)", shortLabel: "Week \(value)",
+                     seasonType: 2, value: value, startDate: nil, endDate: nil)
+        }
+        let scoreboard = Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 1,
+                                    weeks: [slot(1), slot(2), slot(3)], games: [])
+        let store = ScoreboardStore(client: StubProvider(scoreboard: scoreboard))
+        await store.loadInitial()
+        let home = store.currentWeekSlot
+        #expect(home != nil)
+        #expect(store.selectedWeek?.id == home?.id)
+
+        await store.select(week: slot(3))
+        #expect(store.selectedWeek?.id == "2-3")
+
+        await store.selectCurrentWeek()
+        #expect(store.selectedWeek?.id == home?.id)
     }
 }

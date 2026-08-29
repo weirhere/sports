@@ -28,10 +28,18 @@ extension XCUIApplication {
             .matching(identifier: "rankings-top25-row").firstMatch
     }
 
-    /// The season chip in the Scores header, labeled with the selected year.
+    /// The season picker's menu button in the filter sheet, labeled with
+    /// the selected year.
     var seasonChip: XCUIElement {
         buttons.matching(NSPredicate(format: "label MATCHES %@", "^20[0-9][0-9]$"))
             .firstMatch
+    }
+
+    /// The Scores header's funnel chip — the door to the view-options
+    /// sheet (grouping, season, conference filter).
+    var scoresFilterChip: XCUIElement {
+        descendants(matching: .any)
+            .matching(identifier: "scores-filter-chip").firstMatch
     }
 }
 
@@ -192,20 +200,31 @@ extension XCTestCase {
         return false
     }
 
-    /// Switches the Scores header to `year`, returning false if it never took.
+    /// Switches the Scores season to `year` through the filter sheet,
+    /// returning false if it never took. Leaves the sheet closed.
     ///
-    /// The menu is retried: tapping the chip while the first scoreboard load is
-    /// still settling re-renders the header and drops the menu before its items
-    /// register, which reads as "no 2025 button" and fails an unguarded wait.
+    /// The menu is retried: tapping the picker while the first scoreboard
+    /// load is still settling re-renders the sheet and drops the menu
+    /// before its items register, which reads as "no 2025 button" and
+    /// fails an unguarded wait.
     @MainActor
     @discardableResult
     func selectSeason(_ year: Int, in app: XCUIApplication,
                       attempts: Int = 3) -> Bool {
         let label = String(year)
         for _ in 0..<attempts {
+            // The season picker lives in the filter sheet (2026-08-29).
+            if !app.seasonChip.exists {
+                let funnel = app.scoresFilterChip
+                guard funnel.waitForExistence(timeout: 15) else { continue }
+                funnel.tap()
+            }
             let chip = app.seasonChip
-            guard chip.waitForExistence(timeout: 15) else { continue }
-            if chip.label == label { return true }
+            guard chip.waitForExistence(timeout: 10) else { continue }
+            if chip.label == label {
+                dismissFilterSheet(in: app)
+                return true
+            }
             chip.tap()
 
             // Picker rows inside a Menu surface as plain buttons on iOS.
@@ -215,9 +234,36 @@ extension XCTestCase {
 
             let updated = app.seasonChip
             if updated.waitForExistence(timeout: 10), updated.label == label {
+                dismissFilterSheet(in: app)
                 return true
             }
         }
         return false
+    }
+
+    /// Switches the Scores grouping through the filter sheet's segmented
+    /// picker, returning false if the sheet or segment never appeared.
+    /// Leaves the sheet closed.
+    @MainActor
+    @discardableResult
+    func setScoresGrouping(byDate: Bool, in app: XCUIApplication) -> Bool {
+        let funnel = app.scoresFilterChip
+        guard funnel.waitForExistence(timeout: 10) else { return false }
+        funnel.tap()
+        let segment = app.buttons[byDate ? "By date" : "By conference"]
+        guard segment.waitForExistence(timeout: 5) else {
+            dismissFilterSheet(in: app)
+            return false
+        }
+        segment.tap()
+        dismissFilterSheet(in: app)
+        return true
+    }
+
+    /// Closes the filter sheet if it's up; a no-op otherwise.
+    @MainActor
+    private func dismissFilterSheet(in app: XCUIApplication) {
+        let cancel = app.buttons["Cancel"]
+        if cancel.waitForExistence(timeout: 3) { cancel.tap() }
     }
 }

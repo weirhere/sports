@@ -11,7 +11,9 @@ final class SmokeUITests: XCTestCase {
         // Grouping is pinned to conference the same way — the test asserts
         // conference headers, and the sim may have "by date" persisted.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference"]
+                                "-ui.scoresGrouping", "conference",
+                                "-ui.liveOnly", "NO",
+                                "-ui.scoreFilter", ""]
         app.launch()
 
         // Scores loads a real slate. A followed conference can push SEC
@@ -19,19 +21,19 @@ final class SmokeUITests: XCTestCase {
         XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app),
                       "Scores should show the SEC section header")
 
-        // Grouping toggle: by date swaps conference sections for day
-        // sections; toggling back restores the conference stack. The chip
-        // lives in the fixed header, so it stays hittable after scrolling.
-        let groupingChip = app.buttons["Group games by date"]
-        XCTAssertTrue(groupingChip.waitForExistence(timeout: 5),
-                      "The By date chip should be in the header")
-        groupingChip.tap()
+        // Grouping toggle, now inside the filter sheet: by date swaps
+        // conference sections for day sections; toggling back restores the
+        // conference stack. The funnel chip lives in the fixed header, so
+        // it stays hittable after scrolling.
+        XCTAssertTrue(setScoresGrouping(byDate: true, in: app),
+                      "The filter sheet should offer the By date segment")
         let dayHeader = app.staticTexts.matching(NSPredicate(
             format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*")).firstMatch
         XCTAssertTrue(scrollUntilExists(dayHeader, in: app, timeout: 5),
                       "Date grouping should show a day section header")
         snapshot(app, "scores-by-date")
-        groupingChip.tap()
+        XCTAssertTrue(setScoresGrouping(byDate: false, in: app),
+                      "The filter sheet should offer the By conference segment")
         XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app, timeout: 5),
                       "Toggling back should restore conference sections")
 

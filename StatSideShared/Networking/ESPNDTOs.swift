@@ -90,8 +90,14 @@ nonisolated struct EventDTO: Decodable {
     let name: String?
     let shortName: String?
     let week: WeekRefDTO?
+    let season: EventSeasonDTO?
     let status: StatusDTO?
     let competitions: [CompetitionDTO]?
+}
+
+nonisolated struct EventSeasonDTO: Decodable {
+    /// 2 = regular season, 3 = postseason.
+    let type: Int?
 }
 
 nonisolated struct StatusDTO: Decodable {

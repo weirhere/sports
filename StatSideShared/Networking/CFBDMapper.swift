@@ -77,6 +77,7 @@ nonisolated enum CFBDMapper {
             name: "\(awaySchool) at \(homeSchool)",
             shortName: shortName(away: away, home: home),
             weekNumber: dto.week,
+            seasonType: seasonTypeValue(dto.seasonType),
             status: status(from: dto, live: live, homeId: homeId, awayId: awayId),
             home: competitor(dto: dto, live: live, team: home, id: homeId, isHome: true, joins: joins),
             away: competitor(dto: dto, live: live, team: away, id: awayId, isHome: false, joins: joins),

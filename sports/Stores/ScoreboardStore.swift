@@ -9,6 +9,66 @@ enum ScoresGrouping: String {
     case date
 }
 
+/// The ESPN-style slate filter (Josh Vertucci's feedback, 2026-08-29):
+/// narrow the whole screen to one conference — or to ranked matchups —
+/// in either grouping. Persisted like the grouping (Andy, same day,
+/// superseding the session-only first cut): the labeled chip and the
+/// explanatory empty states mean a saved filter is never a mystery.
+enum ScoreFilter: Equatable {
+    case top25
+    case conference(Int)
+
+    /// UserDefaults spelling — "top25" or "conference-8".
+    var token: String {
+        switch self {
+        case .top25: "top25"
+        case .conference(let id): "conference-\(id)"
+        }
+    }
+
+    init?(token: String) {
+        if token == "top25" {
+            self = .top25
+        } else if token.hasPrefix("conference-"),
+                  let id = Int(token.dropFirst("conference-".count)) {
+            self = .conference(id)
+        } else {
+            return nil
+        }
+    }
+
+    /// What the sheet and empty state call the selection.
+    var label: String {
+        switch self {
+        case .top25: "Top 25"
+        case .conference(let id): Conference.name(for: id)
+        }
+    }
+
+    /// The header chip's label — the long conference names get their
+    /// common short forms so a full chip row still fits the screen.
+    var chipLabel: String {
+        switch self {
+        case .conference(12): "C-USA"
+        case .conference(17): "MWC"
+        case .conference(18): "Indep."
+        default: label
+        }
+    }
+
+    /// The same claim rules the sections use: any ranked participant for
+    /// Top 25, either side's conference for a conference — so an FCS
+    /// visitor's game stays visible under its FBS host's conference.
+    func matches(_ game: Game) -> Bool {
+        switch self {
+        case .top25:
+            game.involvesRankedTeam
+        case .conference(let id):
+            game.home.team.conferenceId == id || game.away.team.conferenceId == id
+        }
+    }
+}
+
 /// One ordered section of the scores screen. A game appears in every section
 /// whose promise it satisfies — sections are complete, never deduplicated.
 struct GameSection: Identifiable, Hashable {
@@ -39,6 +99,10 @@ final class ScoreboardStore {
 
     private(set) var weeks: [WeekSlot] = []
     private(set) var selectedWeek: WeekSlot?
+    /// The current season's rollover-default slot — where live games
+    /// happen, and the Live toggle's jump-home target. Stays anchored to
+    /// the current season while browsing past ones.
+    private(set) var currentWeekSlot: WeekSlot?
     private(set) var games: [Game] = []
     private(set) var isLoading = false
     private(set) var lastError: String?
@@ -49,7 +113,6 @@ final class ScoreboardStore {
     /// and marks which year needs no `dates=` override.
     private(set) var currentSeasonYear: Int?
 
-    var liveOnly = false
 
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     /// Non-nil while browsing a past season; forwarded on every fetch.
@@ -91,6 +154,7 @@ final class ScoreboardStore {
                 seasonType: scoreboard.seasonType
             )
             selectedWeek = defaultSlot
+            currentWeekSlot = defaultSlot
             // ESPN's current-week response only matches the default slot when
             // the rollover rule didn't shift it; re-fetch if it did.
             if let slot = defaultSlot,
@@ -113,6 +177,19 @@ final class ScoreboardStore {
         games = []
         await fetchSelectedWeek()
         startPollingIfNeeded()
+    }
+
+    /// Jump home to where live games happen: the current season's
+    /// rollover-default week (the Live toggle's landing, Andy 2026-08-29).
+    /// A past season goes back through the season switch so the rollover
+    /// rule reapplies; the current season just selects the slot. No-op
+    /// when already there or before the first load.
+    func selectCurrentWeek() async {
+        if let currentSeasonYear, seasonYear != currentSeasonYear {
+            await select(season: currentSeasonYear)
+        } else if let currentWeekSlot {
+            await select(week: currentWeekSlot)
+        }
     }
 
     /// The strip slot `offset` steps from the selected week — the swipe
@@ -246,12 +323,18 @@ final class ScoreboardStore {
 
     /// Following pinned first in either grouping, each section complete on
     /// its own terms. Conference mode adds Top 25 → conferences; date mode
-    /// adds one section per calendar day. The Live filter collapses
-    /// sections to in-progress games and hides the empties.
+    /// adds one section per calendar day. The Live and slate filters
+    /// collapse sections to matching games and hide the empties —
+    /// "complete" means complete within the active filters.
     func sections(followingIds: Set<String>,
                   followedConferenceIds: Set<Int> = [],
-                  grouping: ScoresGrouping = .conference) -> [GameSection] {
-        let visible = liveOnly ? games.filter(\.isLive) : games
+                  grouping: ScoresGrouping = .conference,
+                  liveOnly: Bool = false,
+                  filter: ScoreFilter? = nil) -> [GameSection] {
+        var visible = liveOnly ? games.filter(\.isLive) : games
+        if let filter {
+            visible = visible.filter(filter.matches)
+        }
         var result: [GameSection] = []
 
         // Team follows or conference follows both claim a game; an FCS

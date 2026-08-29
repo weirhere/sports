@@ -23,6 +23,11 @@ nonisolated protocol ScoresProviding: Sendable {
     /// next is unpublished. An explicit year returns exactly that season —
     /// a user who picked 2019 must never silently get 2018.
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule
+    /// One conference's full-season slate — every game with a side in the
+    /// conference, postseason included where the provider carries it.
+    /// `year` selects a season; nil means the current one. An explicit
+    /// year returns exactly that season.
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game]
     func gameSummary(eventId: String) async throws -> GameSummary
 }
 
@@ -74,6 +79,20 @@ actor ESPNClient: ScoresProviding {
         }
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
         return ESPNMapper.scoreboard(from: dto)
+    }
+
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] {
+        // `dates={year}` widens the scoreboard to the whole season
+        // (verified live 2026-08-29: ACC 2026 returns 134 events, types 2
+        // and 3, each stamped with its own week). A conference's season
+        // runs ~100–200 events, so one 400-cap request covers it.
+        let items = [
+            URLQueryItem(name: "groups", value: String(conferenceId)),
+            URLQueryItem(name: "limit", value: "400"),
+            URLQueryItem(name: "dates", value: String(year ?? CFBSeason.year())),
+        ]
+        let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
+        return ESPNMapper.scoreboard(from: dto).games
     }
 
     func rankings() async throws -> [Poll] {
@@ -211,11 +230,21 @@ nonisolated enum ESPNMapper {
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,
+            seasonType: event.season?.type,
             status: status(from: event.status, situation: competition.situation),
             home: home,
             away: away,
-            broadcast: competition.broadcast ?? competition.broadcasts?.first?.names?.first
+            // ESPN sends "" (not nil) before a broadcast is announced —
+            // normalized here so every `if let broadcast` surface stays
+            // honest instead of rendering an empty TV line.
+            broadcast: nonEmpty(competition.broadcast)
+                ?? nonEmpty(competition.broadcasts?.first?.names?.first)
         )
+    }
+
+    private static func nonEmpty(_ string: String?) -> String? {
+        guard let string, !string.isEmpty else { return nil }
+        return string
     }
 
     static func status(from dto: StatusDTO?, situation: SituationDTO?) -> GameStatus {

@@ -14,7 +14,9 @@ final class ConferenceUITests: XCTestCase {
     func testStandingsPageAndConferenceFollow() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference"]
+                                "-ui.scoresGrouping", "conference",
+                                "-ui.liveOnly", "NO",
+                                "-ui.scoreFilter", ""]
         app.launch()
 
         // Teams tab: the first conference group's header reaches standings

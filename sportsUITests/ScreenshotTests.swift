@@ -12,7 +12,9 @@ final class ScreenshotTests: XCTestCase {
         let prefix = ProcessInfo.processInfo.environment["SNAPSHOT_PREFIX"] ?? "shot"
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference"]
+                                "-ui.scoresGrouping", "conference",
+                                "-ui.liveOnly", "NO",
+                                "-ui.scoreFilter", ""]
         app.launch()
 
         // Scores, conference grouping — expand SEC so rows are visible.
@@ -27,15 +29,13 @@ final class ScreenshotTests: XCTestCase {
                       "Expanding SEC should reveal game rows")
         snapshot(app, "\(prefix)-scores-conference")
 
-        // Scores, date grouping.
-        let groupingChip = app.buttons["Group games by date"]
-        XCTAssertTrue(groupingChip.waitForExistence(timeout: 5))
-        groupingChip.tap()
+        // Scores, date grouping — the toggle lives in the filter sheet.
+        XCTAssertTrue(setScoresGrouping(byDate: true, in: app))
         _ = app.staticTexts.matching(NSPredicate(
             format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*"))
             .firstMatch.waitForExistence(timeout: 5)
         snapshot(app, "\(prefix)-scores-by-date")
-        groupingChip.tap()
+        XCTAssertTrue(setScoresGrouping(byDate: false, in: app))
 
         // Game detail off the expanded SEC section.
         XCTAssertTrue(gameLink.waitForExistence(timeout: 5))

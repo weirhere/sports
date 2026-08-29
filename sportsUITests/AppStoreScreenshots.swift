@@ -11,6 +11,8 @@ final class AppStoreScreenshots: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.scoresGrouping", "conference",
+                                "-ui.liveOnly", "NO",
+                                "-ui.scoreFilter", "",
                                 // Seed follows so the Following section leads
                                 // with content (argument-domain array syntax).
                                 "-following.teamIds", "(61, 130, 251)"]
