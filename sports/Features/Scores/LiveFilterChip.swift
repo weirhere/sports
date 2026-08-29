@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The one filter in the app: tap to show only live games. A bare chip —
-/// the chips row in ScoresScreen owns layout and decides when it appears
-/// (only while games are live, or while the filter is already on).
+/// ScoresHeader owns layout and decides when it appears (only while games
+/// are live, or while the filter is already on).
 struct LiveFilterChip: View {
     let liveOnly: Bool
     let onToggle: () -> Void
@@ -18,10 +18,12 @@ struct LiveFilterChip: View {
             }
             .foregroundStyle(liveOnly ? Color.bgPrimary : Color.textPrimary)
             .padding(.horizontal, Spacing.md)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(
                 Capsule().fill(liveOnly ? Color.textPrimary : Color.bgElevated)
             )
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Live games only")
