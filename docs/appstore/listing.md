@@ -26,6 +26,23 @@ Primary: **Sports**. No secondary needed.
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
 
+### 1.3.0 (build 10)
+
+> • Scores opens by date now, so today's games lead the page. The by-conference
+>   view is one tap away in the new view sheet.
+> • Filter the slate: all games, Top 25, or any single conference. Your filter
+>   and grouping choices stick between launches.
+> • Conference pages picked up a Games tab: the whole season's slate, week by
+>   week, with past seasons in the season picker.
+> • Team pages wear their team's colors, and a game in progress jumps to the
+>   top as a Current game card with live scores and the clock.
+> • Standings show who's playing right now: a green dot for winning, red for
+>   losing.
+> • Live rows list the TV network under the clock, so "where do I watch" gets
+>   answered without leaving Scores.
+> • The live accent turned green, and on iOS 26 the header controls picked up
+>   a Liquid Glass finish.
+
 ### 1.0.1 (build 7)
 
 > • Kick times now read the way you think about them — "Today 3:30 PM,"
