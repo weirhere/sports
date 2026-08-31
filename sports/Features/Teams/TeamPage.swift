@@ -425,29 +425,35 @@ struct TeamPage: View {
                     .cardSurface()
             } else if nextGame == nil {
                 // Nothing to lead with: mirror the schedule's status
-                // treatment so the tab is never silently blank.
-                VStack(spacing: 0) {
-                    if isLoadingSelected {
-                        ProgressView().padding(.vertical, Spacing.xl)
-                    } else if showsErrorForSelected {
-                        VStack(spacing: Spacing.sm) {
-                            Text("Couldn't load the season.")
+                // treatment so the tab is never silently blank. A lone
+                // spinner gets no card — a surface around it hugs into a
+                // floating pill (Andy, 2026-08-31).
+                if isLoadingSelected {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xl)
+                } else {
+                    VStack(spacing: 0) {
+                        if showsErrorForSelected {
+                            VStack(spacing: Spacing.sm) {
+                                Text("Couldn't load the season.")
+                                    .font(.teamName)
+                                    .foregroundStyle(.textSecondary)
+                                Button("Retry") { Task { await retry() } }
+                                    .font(.teamNameEmphasis)
+                                    .foregroundStyle(.textPrimary)
+                            }
+                            .padding(.vertical, Spacing.xl)
+                        } else {
+                            Text("Season TBA")
                                 .font(.teamName)
                                 .foregroundStyle(.textSecondary)
-                            Button("Retry") { Task { await retry() } }
-                                .font(.teamNameEmphasis)
-                                .foregroundStyle(.textPrimary)
+                                .padding(.vertical, Spacing.xl)
                         }
-                        .padding(.vertical, Spacing.xl)
-                    } else {
-                        Text("Season TBA")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                            .padding(.vertical, Spacing.xl)
                     }
+                    .frame(maxWidth: .infinity)
+                    .cardSurface()
                 }
-                .frame(maxWidth: .infinity)
-                .cardSurface()
             }
         }
         .padding(Spacing.sm)
@@ -477,18 +483,26 @@ struct TeamPage: View {
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
-        VStack(spacing: 0) {
+        Group {
             if let entries = conferenceStandings?.entries, !entries.isEmpty {
-                StandingsList(
-                    entries: entries,
-                    highlightTeamId: team.id,
-                    // The tab always shows the current season.
-                    showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                    year: CFBSeason.year()),
-                    liveGames: liveBoard?.games.filter(\.isLive) ?? []
-                )
+                VStack(spacing: 0) {
+                    StandingsList(
+                        entries: entries,
+                        highlightTeamId: team.id,
+                        // The tab always shows the current season.
+                        showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
+                                                                        year: CFBSeason.year()),
+                        liveGames: liveBoard?.games.filter(\.isLive) ?? []
+                    )
+                }
+                .padding(.bottom, Spacing.xs)
+                .cardSurface()
             } else if standingsLoading {
-                ProgressView().padding(.vertical, Spacing.xl)
+                // A lone spinner gets no card — a surface around it hugs
+                // into a floating pill (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
             } else if standingsFailed {
                 VStack(spacing: Spacing.sm) {
                     Text("Couldn't load standings.")
@@ -498,17 +512,18 @@ struct TeamPage: View {
                         .font(.teamNameEmphasis)
                         .foregroundStyle(.textPrimary)
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
+                .cardSurface()
             } else {
                 Text("Standings TBA")
                     .font(.teamName)
                     .foregroundStyle(.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
+                    .cardSurface()
             }
         }
-        .padding(.bottom, Spacing.xs)
-        .cardSurface()
         .padding(Spacing.sm)
         .task { await loadStandings() }
     }

@@ -192,7 +192,11 @@ struct ConferencePage: View {
             if let games, !games.isEmpty {
                 ConferenceGamesList(games: games)
             } else if gamesLoading {
-                statusCard { ProgressView().padding(.vertical, Spacing.xl) }
+                // A lone spinner gets no card — a surface around it hugs
+                // into a floating pill (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
             } else if gamesError {
                 statusCard {
                     VStack(spacing: Spacing.sm) {
@@ -231,41 +235,51 @@ struct ConferencePage: View {
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29).
     private var standingsCard: some View {
-        VStack(spacing: 0) {
+        Group {
             if let entries = standings?.entries, !entries.isEmpty {
-                StandingsList(
-                    entries: entries,
-                    highlightTeamId: destination.highlightTeamId,
-                    showsTitleGameCut: Conference.titleGameIsTopTwo(id: destination.conferenceId,
-                                                                    year: selectedYear),
-                    liveGames: liveGames
-                )
-            } else if isLoading {
-                ProgressView().padding(.vertical, Spacing.xl)
-            } else if showsError {
-                VStack(spacing: Spacing.sm) {
-                    Text("Couldn't load standings.")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                    Button("Retry") {
-                        Task { await loadStandings(year: selectedYear, force: true) }
-                    }
-                    .font(.teamNameEmphasis)
-                    .foregroundStyle(.textPrimary)
+                VStack(spacing: 0) {
+                    StandingsList(
+                        entries: entries,
+                        highlightTeamId: destination.highlightTeamId,
+                        showsTitleGameCut: Conference.titleGameIsTopTwo(id: destination.conferenceId,
+                                                                        year: selectedYear),
+                        liveGames: liveGames
+                    )
                 }
-                .padding(.vertical, Spacing.xl)
+                .padding(.bottom, Spacing.xs)
+                .cardSurface()
+            } else if isLoading {
+                // A lone spinner gets no card — a surface around it hugs
+                // into a floating pill (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            } else if showsError {
+                statusCard {
+                    VStack(spacing: Spacing.sm) {
+                        Text("Couldn't load standings.")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                        Button("Retry") {
+                            Task { await loadStandings(year: selectedYear, force: true) }
+                        }
+                        .font(.teamNameEmphasis)
+                        .foregroundStyle(.textPrimary)
+                    }
+                    .padding(.vertical, Spacing.xl)
+                }
             } else {
                 // ESPN's offseason standings can come back empty (Sun Belt
                 // did), and an old season can omit a young conference.
-                Text("Standings TBA")
-                    .font(.teamName)
-                    .foregroundStyle(.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.xl)
+                statusCard {
+                    Text("Standings TBA")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xl)
+                }
             }
         }
-        .padding(.bottom, Spacing.xs)
-        .cardSurface()
         .padding(Spacing.sm)
     }
 
