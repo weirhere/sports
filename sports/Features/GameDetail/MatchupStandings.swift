@@ -24,18 +24,24 @@ struct MatchupStandings: View {
 
     /// Whether either side has a row worth showing. Preseason hides the
     /// card entirely — the place numbers are last season's carried-over
-    /// order (the leader-teaser and cut-line rule) — but the gate is the
-    /// OVERALL record: a September team legitimately sits 0-0 in
-    /// conference while its overall line already says something.
+    /// order (the leader-teaser and cut-line rule) — but "preseason" is a
+    /// property of the SEASON, not the matchup: once anyone anywhere has
+    /// played, the tables are live and a pre-game page shows both sides'
+    /// standings even when the two teams themselves still sit 0-0. The
+    /// underway check reads the OVERALL record: a September team
+    /// legitimately sits 0-0 in conference while its overall line already
+    /// says something.
     static func hasContent(away: Team, home: Team,
                            standings: [ConferenceStandings]) -> Bool {
-        standings.contains { conference in
+        let knowsASide = standings.contains { conference in
+            conference.entries.contains { $0.team.id == away.id || $0.team.id == home.id }
+        }
+        let seasonUnderway = standings.contains { conference in
             conference.entries.contains { entry in
-                (entry.team.id == away.id || entry.team.id == home.id)
-                    && entry.overallRecord != nil
-                    && entry.overallRecord != "0-0"
+                entry.overallRecord != nil && entry.overallRecord != "0-0"
             }
         }
+        return knowsASide && seasonUnderway
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize

@@ -7,9 +7,6 @@ struct SeasonMenuChip: View {
     let current: Int
     let seasons: [Int]
     let onSelect: (Int) -> Void
-    /// Team-color hero styling: white text on a translucent scrim instead
-    /// of the elevated capsule.
-    var onDark = false
 
     var body: some View {
         Menu {
@@ -29,13 +26,10 @@ struct SeasonMenuChip: View {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))
             }
-            .foregroundStyle(onDark ? .white : Color.textPrimary)
+            .foregroundStyle(Color.textPrimary)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 8)
-            // A dark tint on hero color keeps the white label legible —
-            // untinted glass washed out against the team paint.
-            .glassCapsuleInteractive(tint: onDark ? Color.black.opacity(0.35) : nil,
-                                     fallback: onDark ? Color.black.opacity(0.3) : Color.bgElevated)
+            .glassCapsuleInteractive(fallback: Color.bgElevated)
             // Compact capsule, 44 pt tap target.
             .frame(minHeight: 44)
             .contentShape(Rectangle())

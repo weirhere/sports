@@ -1,15 +1,13 @@
 import SwiftUI
 
 /// The team page's follow control: an inverted capsule while following.
-/// `onDark` renders it in white ink for the team-color hero.
 struct FollowPill: View {
     let teamId: String
-    var onDark = false
 
     @Environment(FollowingStore.self) private var following
 
-    private var ink: Color { onDark ? .white : .textPrimary }
-    private var inverse: Color { onDark ? .black : Color.bgPrimary }
+    private var ink: Color { .textPrimary }
+    private var inverse: Color { Color.bgPrimary }
 
     var body: some View {
         let isFollowing = following.isFollowing(teamId)

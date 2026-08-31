@@ -17,7 +17,7 @@ struct DriveLogList: View {
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
                         .padding(.horizontal, Spacing.lg)
-                        .padding(.top, index == 0 ? 0 : Spacing.sm)
+                        .padding(.top, index == 0 ? Spacing.sm : Spacing.lg)
                         .padding(.bottom, Spacing.xs)
                 }
                 driveRow(drive)

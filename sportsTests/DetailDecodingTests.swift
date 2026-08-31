@@ -240,6 +240,7 @@ private func fixture(_ name: String) throws -> Data {
         for category in summary.leaders {
             #expect(category.away != nil && category.home != nil)
             #expect(category.away?.name.isEmpty == false)
+            #expect(category.away?.headshotURL != nil)
         }
     }
 
