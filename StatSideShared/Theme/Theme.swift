@@ -3,7 +3,10 @@ import UIKit
 
 // MARK: - Color tokens
 // The mono ramp plus the single live accent. Views reference these semantic
-// names only — never raw colors. Light and dark are the same design inverted.
+// names only — never raw colors. Both modes follow the same elevation rule:
+// surfaces nearer the viewer are lighter (closer to the light source),
+// surfaces further back are darker. Dark mode inverts the relationships'
+// anchors (black chrome instead of white), never the relationships.
 extension Color {
     // UIKit's dynamic provider is the only way to define scheme-adaptive colors
     // in code without asset-catalog entries; UIKit stays contained to this file.
@@ -15,17 +18,33 @@ extension Color {
         })
     }
 
+    /// Base chrome and inverted ink only — screen roots, nav bars, the
+    /// widget container, and the dark ink on textPrimary-filled chips.
+    /// Never a card fill: cards are bgCard, which parts ways with this
+    /// token in dark mode (the chrome stays black; the card rises).
     static let bgPrimary = Color(lightWhite: 1.00, darkWhite: 0.00)
-    /// The page surface accordion cards sit on. FotMob-strength gray: dark
-    /// enough that white cards pop by contrast alone, no shadow needed.
-    /// Not darker than 0.93 — textSecondary sits directly on it (onboarding
-    /// subtitle) and 0.93 is the floor that keeps 4.5:1 (see textSecondary).
-    static let bgRecessed = Color(lightWhite: 0.93, darkWhite: 0.08)
-    static let bgElevated = Color(lightWhite: 0.93, darkWhite: 0.10)
-    /// Accordion header fill: a whisper off the card, FotMob-subtle. The
-    /// card-vs-page contrast comes from bgRecessed, not from this tint.
-    /// Light value is #f8f8f8.
-    static let bgHeader = Color(lightWhite: 248 / 255, darkWhite: 0.05)
+    /// The page surface accordion cards sit on — the bottom of the ramp.
+    /// Light: FotMob-strength gray, dark enough that white cards pop by
+    /// contrast alone, no shadow needed; not darker than 0.93 —
+    /// textSecondary sits directly on it (onboarding subtitle) and 0.93 is
+    /// the floor that keeps 4.5:1 (see textSecondary). Dark: pure black,
+    /// seamless with the chrome, FotMob-style; cards pop by luminance.
+    static let bgRecessed = Color(lightWhite: 0.93, darkWhite: 0.00)
+    /// The card surface — one elevation step up from bgRecessed in both
+    /// modes. Light shares bgPrimary's white (card and chrome coincide on
+    /// a white design); dark is ~#1C1C1E, FotMob-card territory, so cards
+    /// visibly float on the black page. textSecondary (0.62) on 0.11
+    /// clears WCAG AA at 6.3:1.
+    static let bgCard = Color(lightWhite: 1.00, darkWhite: 0.11)
+    /// The top of the ramp: floating controls (the header capsule's iOS 18
+    /// fallback), banners, skeletons, placeholder discs, neutral score chips.
+    static let bgElevated = Color(lightWhite: 0.93, darkWhite: 0.17)
+    /// Accordion header fill: a whisper off the card, FotMob-subtle. Light
+    /// tints down from the card (#f8f8f8 — can't go lighter than white);
+    /// dark tints up (0.15 on a 0.11 card — dark deltas need to be larger
+    /// to register). The card-vs-page contrast comes from bgRecessed, not
+    /// from this tint.
+    static let bgHeader = Color(lightWhite: 248 / 255, darkWhite: 0.15)
     /// Soft black, not #000: true black on white causes eye strain at
     /// reading sizes. Still ~17:1 on bgPrimary. Dark mode keeps pure white —
     /// the strain problem is black-on-white, and white-on-black text at our
@@ -105,7 +124,8 @@ extension ShapeStyle where Self == Color {
 
 // MARK: - Card surface
 // The elevated-card treatment shared by Scores, Rankings, and Teams:
-// content on bgPrimary, rounded, with a soft shadow, sitting on bgRecessed.
+// content on bgCard, rounded, sitting on bgRecessed. The shadow only
+// registers in light mode; dark mode's elevation signal is luminance.
 extension View {
     func cardSurface() -> some View {
         // Clipped so full-bleed child backgrounds (accordion headers) follow
@@ -113,7 +133,7 @@ extension View {
         clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.bgPrimary)
+                    .fill(Color.bgCard)
                     .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
             )
     }

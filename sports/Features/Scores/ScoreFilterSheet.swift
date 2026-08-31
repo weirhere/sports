@@ -28,7 +28,7 @@ struct ScoreFilterSheet: View {
                         Text("By conference").tag(ScoresGrouping.conference)
                     }
                     .pickerStyle(.segmented)
-                    .listRowBackground(Color.bgPrimary)
+                    .listRowBackground(Color.bgCard)
                     if let seasonYear, !seasons.isEmpty {
                         HStack {
                             Text("Season")
@@ -45,7 +45,7 @@ struct ScoreFilterSheet: View {
                             .labelsHidden()
                             .tint(.textPrimary)
                         }
-                        .listRowBackground(Color.bgPrimary)
+                        .listRowBackground(Color.bgCard)
                     }
                 } header: {
                     heading("View")
@@ -117,7 +117,7 @@ struct ScoreFilterSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.bgPrimary)
+        .listRowBackground(Color.bgCard)
         .accessibilityAddTraits(filter == current ? .isSelected : [])
     }
 }

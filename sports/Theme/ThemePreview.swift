@@ -8,10 +8,15 @@ struct ThemePreview: View {
             VStack(alignment: .leading, spacing: Spacing.xl) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("Colors").font(.sectionHeader).foregroundStyle(.textSecondary)
+                    // Backgrounds in elevation order, furthest back first:
+                    // each swatch should read lighter than the one above it
+                    // in dark mode (bgPrimary is chrome, outside the ramp).
                     swatch("bgPrimary", .bgPrimary)
-                    swatch("bgHeader", .bgHeader)
                     swatch("bgRecessed", .bgRecessed)
+                    swatch("bgCard", .bgCard)
+                    swatch("bgHeader", .bgHeader)
                     swatch("bgElevated", .bgElevated)
+                    swatch("logoBacking", .logoBacking)
                     swatch("textPrimary", .textPrimary)
                     swatch("textSecondary", .textSecondary)
                     swatch("divider", .divider)
@@ -44,7 +49,9 @@ struct ThemePreview: View {
             .padding(Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.bgPrimary)
+        // The page surface, so the swatches demo against what cards
+        // actually sit on.
+        .background(Color.bgRecessed)
     }
 
     private func swatch(_ name: String, _ color: Color) -> some View {

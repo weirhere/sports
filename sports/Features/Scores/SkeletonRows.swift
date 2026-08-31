@@ -49,5 +49,5 @@ struct SkeletonRows: View {
 }
 
 #Preview {
-    SkeletonRows().background(Color.bgPrimary)
+    SkeletonRows().background(Color.bgCard)
 }

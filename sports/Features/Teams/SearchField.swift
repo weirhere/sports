@@ -58,7 +58,7 @@ struct SearchField: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.bgPrimary)
+                .fill(Color.bgCard)
                 // A touch stronger than the card shadow: the field floats
                 // over scrolling content, so it earns more lift.
                 .shadow(color: .black.opacity(0.08), radius: 10, y: 2)
