@@ -198,36 +198,15 @@ struct ConferencePage: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
             } else if gamesError {
-                statusCard {
-                    VStack(spacing: Spacing.sm) {
-                        Text("Couldn't load the schedule.")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                        Button("Retry") {
-                            Task { await loadGames(year: selectedYear, force: true) }
-                        }
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                    }
-                    .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Couldn't load the schedule.",
+                              retry: { Task { await loadGames(year: selectedYear, force: true) } })
+                    .cardSurface()
             } else {
-                statusCard {
-                    Text("Schedule TBA")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Schedule TBA")
+                    .cardSurface()
             }
         }
         .padding(Spacing.sm)
-    }
-
-    private func statusCard(@ViewBuilder content: () -> some View) -> some View {
-        VStack(spacing: 0) { content() }
-            .frame(maxWidth: .infinity)
-            .cardSurface()
     }
 
     // MARK: - Standings
@@ -255,29 +234,14 @@ struct ConferencePage: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
             } else if showsError {
-                statusCard {
-                    VStack(spacing: Spacing.sm) {
-                        Text("Couldn't load standings.")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                        Button("Retry") {
-                            Task { await loadStandings(year: selectedYear, force: true) }
-                        }
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                    }
-                    .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Couldn't load standings.",
+                              retry: { Task { await loadStandings(year: selectedYear, force: true) } })
+                    .cardSurface()
             } else {
                 // ESPN's offseason standings can come back empty (Sun Belt
                 // did), and an old season can omit a young conference.
-                statusCard {
-                    Text("Standings TBA")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Standings TBA")
+                    .cardSurface()
             }
         }
         .padding(Spacing.sm)

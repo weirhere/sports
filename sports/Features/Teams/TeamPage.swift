@@ -432,27 +432,13 @@ struct TeamPage: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Spacing.xl)
+                } else if showsErrorForSelected {
+                    StatusMessage(text: "Couldn't load the season.",
+                                  retry: { Task { await retry() } })
+                        .cardSurface()
                 } else {
-                    VStack(spacing: 0) {
-                        if showsErrorForSelected {
-                            VStack(spacing: Spacing.sm) {
-                                Text("Couldn't load the season.")
-                                    .font(.teamName)
-                                    .foregroundStyle(.textSecondary)
-                                Button("Retry") { Task { await retry() } }
-                                    .font(.teamNameEmphasis)
-                                    .foregroundStyle(.textPrimary)
-                            }
-                            .padding(.vertical, Spacing.xl)
-                        } else {
-                            Text("Season TBA")
-                                .font(.teamName)
-                                .foregroundStyle(.textSecondary)
-                                .padding(.vertical, Spacing.xl)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .cardSurface()
+                    StatusMessage(text: "Season TBA")
+                        .cardSurface()
                 }
             }
         }
@@ -504,23 +490,11 @@ struct TeamPage: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
             } else if standingsFailed {
-                VStack(spacing: Spacing.sm) {
-                    Text("Couldn't load standings.")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                    Button("Retry") { Task { await loadStandings(force: true) } }
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xl)
-                .cardSurface()
+                StatusMessage(text: "Couldn't load standings.",
+                              retry: { Task { await loadStandings(force: true) } })
+                    .cardSurface()
             } else {
-                Text("Standings TBA")
-                    .font(.teamName)
-                    .foregroundStyle(.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.xl)
+                StatusMessage(text: "Standings TBA")
                     .cardSurface()
             }
         }
