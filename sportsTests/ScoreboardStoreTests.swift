@@ -21,6 +21,32 @@ private struct StubProvider: ScoresProviding {
     }
 }
 
+/// A provider driven by a closure, so tests can key responses off the
+/// requested week/year — the week cache is invisible to a fixed stub.
+private struct ClosureProvider: ScoresProviding {
+    let provide: @MainActor (Int?, Int?, Int?) throws -> Scoreboard
+
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+        try await provide(weekValue, seasonType, year)
+    }
+
+    func rankings() async throws -> [Poll] { [] }
+    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
+        TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: [])
+    }
+    func gameSummary(eventId: String) async throws -> GameSummary {
+        throw ESPNError.invalidURL
+    }
+}
+
+/// Flips the closure provider into throwing mid-test.
+private final class FailSwitch {
+    var shouldFail = false
+}
+
 private func team(_ id: String, conference: Int?) -> Team {
     Team(id: id, location: "Team \(id)", name: nil, abbreviation: nil,
          displayName: nil, shortDisplayName: nil, logoURL: nil, conferenceId: conference)
@@ -345,6 +371,104 @@ private func game(_ id: String, home: Team, away: Team,
 
         let restored = store.sections(followingIds: ["1"], grouping: .date, liveOnly: true)
         #expect(restored.first?.id == GameSection.followingId)
+    }
+
+    // MARK: - Week cache & prefetch
+
+    private func weekSlot(_ value: Int) -> WeekSlot {
+        WeekSlot(label: "Week \(value)", shortLabel: "Week \(value)",
+                 seasonType: 2, value: value,
+                 startDate: Date(timeIntervalSince1970: Double(value) * 604_800),
+                 endDate: Date(timeIntervalSince1970: Double(value + 1) * 604_800))
+    }
+
+    /// Three-week 2026 strip, current week 2; every response's games are
+    /// keyed by the requested week so cache entries are distinguishable.
+    private func weekKeyedStore(failSwitch: FailSwitch = FailSwitch()) -> ScoreboardStore {
+        let slots = (1...3).map(weekSlot)
+        return ScoreboardStore(client: ClosureProvider { weekValue, _, _ in
+            if failSwitch.shouldFail { throw ESPNError.invalidURL }
+            let week = weekValue ?? 2
+            return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 2,
+                              weeks: slots,
+                              games: [game("w\(week)",
+                                           home: team("h\(week)", conference: 8),
+                                           away: team("a\(week)", conference: 8))])
+        })
+    }
+
+    /// Prefetches are fire-and-forget tasks; give them bounded room to
+    /// land instead of hanging a failing test.
+    private func drainPrefetch(_ store: ScoreboardStore, for slots: [WeekSlot]) async {
+        for _ in 0..<100 {
+            if slots.allSatisfy({ store.cachedGames(for: $0) != nil }) { return }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    @Test func prefetchWarmsBothNeighborsAfterLoad() async {
+        let store = weekKeyedStore()
+        await store.loadInitial()
+        #expect(store.selectedWeek?.id == "2-2")
+        await drainPrefetch(store, for: [weekSlot(1), weekSlot(3)])
+        #expect(store.cachedGames(for: weekSlot(1))?.map(\.id) == ["w1"])
+        #expect(store.cachedGames(for: weekSlot(3))?.map(\.id) == ["w3"])
+    }
+
+    @Test func selectCachesTheFetchedWeek() async {
+        let store = weekKeyedStore()
+        await store.loadInitial()
+        await store.select(week: weekSlot(3))
+        #expect(store.cachedGames(for: weekSlot(3))?.map(\.id) == ["w3"])
+    }
+
+    @Test func selectSeedsFromCacheWhenTheFetchFails() async {
+        let failSwitch = FailSwitch()
+        let store = weekKeyedStore(failSwitch: failSwitch)
+        await store.loadInitial()
+        await drainPrefetch(store, for: [weekSlot(3)])
+        failSwitch.shouldFail = true
+        await store.select(week: weekSlot(3))
+        // The fresh fetch died; the cached slate stands in for the old
+        // blank screen.
+        #expect(store.games.map(\.id) == ["w3"])
+        #expect(store.lastError != nil)
+    }
+
+    @Test func seasonSwitchClearsTheCache() async {
+        // The cache key spells "seasonType-value" with no year, so 2023's
+        // calendar reuses 2026's ids — stale entries would collide.
+        let slots = (1...3).map(weekSlot)
+        let store = ScoreboardStore(client: ClosureProvider { weekValue, _, year in
+            if year == 2023 {
+                return Scoreboard(seasonYear: 2023, seasonType: 2, currentWeekNumber: nil,
+                                  weeks: [self.weekSlot(1)],
+                                  games: [game("y2023",
+                                               home: team("1", conference: 8),
+                                               away: team("2", conference: 8))])
+            }
+            let week = weekValue ?? 2
+            return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 2,
+                              weeks: slots,
+                              games: [game("w\(week)",
+                                           home: team("h\(week)", conference: 8),
+                                           away: team("a\(week)", conference: 8))])
+        })
+        await store.loadInitial()
+        await drainPrefetch(store, for: [weekSlot(1), weekSlot(3)])
+
+        await store.select(season: 2023)
+        #expect(store.cachedGames(for: weekSlot(1))?.map(\.id) == ["y2023"])
+        #expect(store.cachedGames(for: weekSlot(2)) == nil)
+        #expect(store.cachedGames(for: weekSlot(3)) == nil)
+    }
+
+    @Test func sectionsFromGamesMatchesTheStoreSections() async {
+        let games = [game("g1", home: team("1", conference: 8),
+                          away: team("2", conference: 5), homeRank: 3)]
+        let store = await makeStore(games: games)
+        #expect(store.sections(from: games, followingIds: ["1"])
+            == store.sections(followingIds: ["1"]))
     }
 
     @Test func selectCurrentWeekReturnsToTheRolloverSlot() async {

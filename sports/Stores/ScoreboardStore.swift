@@ -107,6 +107,13 @@ final class ScoreboardStore {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
+    /// This season's fetched weeks, keyed by `WeekSlot.id`. The key spells
+    /// "seasonType-value" with no year, so the season switch clears the
+    /// whole cache. Feeds the swipe's preview pane and seeds a selected
+    /// week so commits and chip taps never blank (2026-08-31).
+    private(set) var weekGamesCache: [String: [Game]] = [:]
+    @ObservationIgnored private var prefetching: Set<String> = []
+
     /// The season on screen.
     private(set) var seasonYear: Int?
     /// ESPN's "now" season, captured on first load. Tops the picker range
@@ -163,20 +170,63 @@ final class ScoreboardStore {
             } else {
                 games = scoreboard.games
                 lastError = nil
+                cacheSelectedGames()
             }
         } catch {
             lastError = describe(error)
             Self.logger.error("initial load failed: \(error)")
         }
         startPollingIfNeeded()
+        prefetchAdjacentWeeks()
     }
 
     func select(week: WeekSlot) async {
         guard week.id != selectedWeek?.id else { return }
         selectedWeek = week
-        games = []
+        // Seed from the cache — the fresh fetch below still runs, and
+        // stable game ids let rows refresh in place instead of blanking.
+        games = weekGamesCache[week.id] ?? []
         await fetchSelectedWeek()
         startPollingIfNeeded()
+        prefetchAdjacentWeeks()
+    }
+
+    /// The preview pane's data: what the cache holds for a strip slot,
+    /// nil before its prefetch lands.
+    func cachedGames(for week: WeekSlot) -> [Game]? {
+        weekGamesCache[week.id]
+    }
+
+    /// Warm the swipe's ±1 targets so a drag shows the real slate. One
+    /// fetch per uncached neighbor, never polled — a preview can sit
+    /// slightly stale until its commit refreshes it (the polite-guest
+    /// trade). Safe to call repeatedly; warm and in-flight slots no-op.
+    func prefetchAdjacentWeeks() {
+        for offset in [-1, 1] {
+            guard let target = adjacentWeek(offset: offset),
+                  weekGamesCache[target.id] == nil,
+                  !prefetching.contains(target.id) else { continue }
+            prefetching.insert(target.id)
+            let season = seasonYear
+            let override = seasonOverride
+            Task { [weak self] in
+                guard let self else { return }
+                defer { prefetching.remove(target.id) }
+                guard let scoreboard = try? await client.scoreboard(
+                    weekValue: target.value, seasonType: target.seasonType, year: override)
+                else { return }
+                // A season switch mid-flight would file this under a
+                // colliding key; drop it.
+                guard seasonYear == season else { return }
+                weekGamesCache[target.id] = scoreboard.games
+            }
+        }
+    }
+
+    /// File the on-screen games under the selected slot's cache key.
+    private func cacheSelectedGames() {
+        guard let id = selectedWeek?.id else { return }
+        weekGamesCache[id] = games
     }
 
     /// Jump home to where live games happen: the current season's
@@ -215,6 +265,9 @@ final class ScoreboardStore {
         weeks = []
         games = []
         selectedWeek = nil
+        // The cache key carries no year — a season switch must start clean.
+        weekGamesCache = [:]
+        prefetching = []
         if let year = seasonOverride {
             await loadSeason(year)
             startPollingIfNeeded()
@@ -242,9 +295,11 @@ final class ScoreboardStore {
             if let slot, slot.seasonType == 2, slot.value == 1 {
                 games = scoreboard.games
                 lastError = nil
+                cacheSelectedGames()
             } else {
                 await fetchSelectedWeek()
             }
+            prefetchAdjacentWeeks()
         } catch {
             lastError = describe(error)
             Self.logger.error("season load failed: \(error)")
@@ -278,6 +333,7 @@ final class ScoreboardStore {
             seasonYear = scoreboard.seasonYear ?? seasonYear
             games = scoreboard.games
             lastError = nil
+            cacheSelectedGames()
         } catch {
             // Keep last-good games on failure.
             lastError = describe(error)
@@ -327,6 +383,19 @@ final class ScoreboardStore {
     /// collapse sections to matching games and hide the empties —
     /// "complete" means complete within the active filters.
     func sections(followingIds: Set<String>,
+                  followedConferenceIds: Set<Int> = [],
+                  grouping: ScoresGrouping = .conference,
+                  liveOnly: Bool = false,
+                  filter: ScoreFilter? = nil) -> [GameSection] {
+        sections(from: games, followingIds: followingIds,
+                 followedConferenceIds: followedConferenceIds,
+                 grouping: grouping, liveOnly: liveOnly, filter: filter)
+    }
+
+    /// The same pipeline over any game list — the swipe's preview pane
+    /// renders a cached neighbor week through it (2026-08-31).
+    func sections(from games: [Game],
+                  followingIds: Set<String>,
                   followedConferenceIds: Set<Int> = [],
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,

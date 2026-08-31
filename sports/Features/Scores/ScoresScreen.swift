@@ -58,14 +58,14 @@ struct ScoresScreen: View {
                         .id(store.selectedWeek?.id)
                         .transition(.push(from: weekSlideEdge))
                         .offset(x: dragOffset)
-                    // The adjacent week rides in with the finger as a
-                    // skeleton — the real week starts in the same loading
-                    // state, so the commit handoff is seamless.
+                    // The adjacent week rides in with the finger — its
+                    // real slate when the prefetch has landed (FotMob's
+                    // mid-swipe preview, Andy 2026-08-31), the skeleton
+                    // until then. Either way the commit handoff is
+                    // seamless: the cache seeds the real week too.
                     if dragOffset != 0,
-                       store.adjacentWeek(offset: dragOffset < 0 ? 1 : -1) != nil {
-                        ScrollView { SkeletonRows() }
-                            .scrollDisabled(true)
-                            .background(Color.bgRecessed)
+                       let target = store.adjacentWeek(offset: dragOffset < 0 ? 1 : -1) {
+                        previewPane(for: target)
                             .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
                     }
                 }
@@ -181,6 +181,10 @@ struct ScoresScreen: View {
                 let dy = value.translation.height
                 if dragAxis == nil, abs(dx) > 10 || abs(dy) > 10 {
                     dragAxis = abs(dx) > abs(dy) * 1.5 ? .horizontal : .vertical
+                    // Idempotent backstop: the neighbors usually warmed on
+                    // settle, but a failed prefetch gets another chance
+                    // the moment a swipe actually starts.
+                    if dragAxis == .horizontal { store.prefetchAdjacentWeeks() }
                 }
                 guard dragAxis == .horizontal else { return }
                 let hasTarget = store.adjacentWeek(offset: dx < 0 ? 1 : -1) != nil
@@ -303,6 +307,60 @@ struct ScoresScreen: View {
                     .onEnded { _ in pinchHandled = false }
             )
         }
+    }
+
+    /// The incoming pane during a week drag. Render-only — no scrolling,
+    /// tapping, refresh, or pinch until the commit makes it the real
+    /// content — but it shares the accordions' expansion state, so the
+    /// preview matches what lands.
+    @ViewBuilder
+    private func previewPane(for target: WeekSlot) -> some View {
+        Group {
+            if let cached = store.cachedGames(for: target) {
+                let sections = store.sections(from: cached,
+                                              followingIds: following.teamIds,
+                                              followedConferenceIds: following.conferenceIds,
+                                              grouping: uiState.scoresGrouping,
+                                              liveOnly: uiState.liveOnly,
+                                              filter: uiState.scoreFilter)
+                if sections.isEmpty {
+                    VStack(spacing: Spacing.md) {
+                        Spacer()
+                        Text(uiState.liveOnly || uiState.scoreFilter != nil
+                             ? narrowedEmptyMessage : "No games this week")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: uiState.scoresGrouping == .date ? 0 : Spacing.sm,
+                                   pinnedViews: [.sectionHeaders]) {
+                            ForEach(sections) { section in
+                                if uiState.scoresGrouping == .date {
+                                    SectionAccordion(section: section,
+                                                     isExpanded: uiState.isExpanded(section.id),
+                                                     onToggle: {},
+                                                     pinsHeader: true)
+                                } else {
+                                    SectionAccordion(section: section,
+                                                     isExpanded: uiState.isExpanded(section.id),
+                                                     onToggle: {})
+                                        .cardSurface()
+                                }
+                            }
+                        }
+                        .padding(Spacing.sm)
+                    }
+                }
+            } else {
+                ScrollView { SkeletonRows() }
+            }
+        }
+        .scrollDisabled(true)
+        .allowsHitTesting(false)
+        .background(Color.bgRecessed)
     }
 
     /// Quiet one-line banner when a refresh fails but last-good data is
