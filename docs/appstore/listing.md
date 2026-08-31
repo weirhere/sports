@@ -26,6 +26,20 @@ Primary: **Sports**. No secondary needed.
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
 
+### 1.3.1 (build 11)
+
+> • Team pages open on a new Overview tab: the next (or current) game up top,
+>   with the season's conference and overall records right under it.
+> • Swiping between weeks on Scores now shows the neighboring week's real
+>   games mid-swipe instead of placeholders, and the new week lands instantly.
+> • Dark mode got a retune: cards and sheets now sit visibly above the black
+>   background instead of blending into it.
+> • The team-color header now paints all the way up behind the status bar,
+>   and switching tabs on team and conference pages slides the right way
+>   every time.
+> • Box scores fill their card edge to edge with bigger, easier-to-read
+>   numbers.
+
 ### 1.3.0 (build 10)
 
 > • Scores opens by date now, so today's games lead the page. The by-conference
