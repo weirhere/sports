@@ -21,9 +21,23 @@ struct LogoImage: View {
         colorScheme == .dark ? (url?.darkTeamLogoVariant ?? url) : url
     }
 
+    /// The async-loaded image, or a synchronous cache hit for the first
+    /// frame: a freshly-inserted subtree (a tab pane sliding in) otherwise
+    /// shows blank discs until its `.task` lands, which read as logos
+    /// frozen in place while the cards moved (2026-08-31).
+    private var displayImage: UIImage? {
+        if let image { return image }
+        guard let target = resolvedURL else { return nil }
+        if let hit = LogoCache.shared.cachedImage(for: target) { return hit }
+        // Dark variant not cached: the light mark is the task's fallback,
+        // so it's the sync fallback too.
+        if target != url, let url { return LogoCache.shared.cachedImage(for: url) }
+        return nil
+    }
+
     var body: some View {
         Group {
-            if let image {
+            if let image = displayImage {
                 Image(uiImage: image).resizable().scaledToFit()
             } else if let placeholder {
                 Circle().fill(placeholder)

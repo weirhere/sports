@@ -510,7 +510,7 @@ struct GameRow: View {
             away: Competitor(team: georgia, score: 24, record: "6-0", rank: 3, isHome: false, winner: true),
             broadcast: nil))
     }
-    .background(Color.bgPrimary)
+    .background(Color.bgCard)
 }
 
 #Preview("Accessibility XL") {
@@ -535,6 +535,6 @@ struct GameRow: View {
             away: Competitor(team: tcu, score: 24, record: "5-0", rank: 9, isHome: false, winner: nil),
             broadcast: "ESPN"))
     }
-    .background(Color.bgPrimary)
+    .background(Color.bgCard)
     .environment(\.dynamicTypeSize, .accessibility3)
 }

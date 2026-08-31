@@ -14,7 +14,19 @@ struct TeamPage: View {
     @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
     @Environment(\.dismiss) private var dismiss
 
-    private enum Tab { case games, standings }
+    /// Raw values order the tabs — the slide direction is an ordinal
+    /// comparison, so a third tab can't break the choreography.
+    private enum Tab: Int, HeroTabItem {
+        case overview, games, standings
+
+        var title: String {
+            switch self {
+            case .overview: "Overview"
+            case .games: "Games"
+            case .standings: "Standings"
+            }
+        }
+    }
 
     /// Seasons fetched this visit, keyed by year — flipping back to a
     /// seen season costs ESPN nothing (each season is two requests).
@@ -31,7 +43,7 @@ struct TeamPage: View {
     @State private var initialLoading = false
     @State private var initialFailed = false
 
-    @State private var tab: Tab = .games
+    @State private var tab: Tab = .overview
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the team name.
     @State private var showsInlineTitle = false
@@ -145,14 +157,19 @@ struct TeamPage: View {
                 hero
                 Group {
                     switch tab {
+                    case .overview: overviewContent
                     case .games: gamesContent
                     case .standings: standingsContent
                     }
                 }
+                // geometryGroup pins every child (row logos included) to
+                // the pane while it slides — without it, subtrees resolve
+                // their own positions and marks sat still as cards moved.
+                .geometryGroup()
                 .id(tab)
                 .transition(.push(from: tabSlideEdge))
                 // The week swipe's sibling (Andy, 2026-08-29): a horizontal
-                // swipe on the content walks the tab pair; the tab buttons
+                // swipe on the content walks the tabs; the tab buttons
                 // stay, so nothing is swipe-gated. Simultaneous with a
                 // dominance check so vertical scrolling never tab-flips.
                 .simultaneousGesture(
@@ -160,12 +177,13 @@ struct TeamPage: View {
                         .onEnded { value in
                             let dx = value.translation.width
                             guard abs(dx) > 50,
-                                  abs(dx) > abs(value.translation.height) * 1.5 else { return }
-                            select(tab: dx < 0 ? .standings : .games)
+                                  abs(dx) > abs(value.translation.height) * 1.5,
+                                  let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1)),
+                                  target != .standings || showsStandingsTab else { return }
+                            select(tab: target)
                         }
                 )
             }
-            .animation(.default, value: tab)
         }
         // Once the hero's own title scrolls under the bar, the bar takes
         // over the identity (Andy, 2026-08-29): the team name fades into
@@ -177,6 +195,10 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
+        // Team color through the status-bar strip while the hero is up —
+        // the glass back/share buttons refract it, FotMob-style (Andy,
+        // 2026-08-29; mechanism replaced 2026-08-31).
+        .heroTopBand(heroColor ?? Color.bgPrimary)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -215,7 +237,14 @@ struct TeamPage: View {
                 ToolbarItem(placement: .topBarTrailing) { shareButton }
             }
         }
-        .task { await loadInitial() }
+        // Sequential: standings need the schedule's conference id. The
+        // Overview record card wants them up front now, not on first visit
+        // to the Standings tab (whose own task stays as an idempotent
+        // retry).
+        .task {
+            await loadInitial()
+            await loadStandings()
+        }
     }
 
     private var barInk: Color { heroOnDark ? .white : Color.textPrimary }
@@ -281,21 +310,17 @@ struct TeamPage: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.md)
 
-            if showsStandingsTab {
-                tabRow
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.top, Spacing.sm)
-            } else {
-                Color.clear.frame(height: Spacing.lg)
-            }
+            // Overview and Games always exist, so the row always renders;
+            // only Standings is conference-gated.
+            tabRow
+                .padding(.horizontal, Spacing.lg)
+                .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The color extends far above the hero's own bounds — through the
-        // transparent bar and the top bounce — so the system's Liquid
-        // Glass nav buttons refract team color instead of floating as
-        // flat discs (Andy, 2026-08-29, from the FotMob reference). It
-        // scrolls away with the hero; the solid bar takes over then.
-        .background((heroColor ?? Color.bgPrimary).padding(.top, -1000))
+        // The strip above — through the transparent bar and the top bounce
+        // — is heroTopBand's job: an in-content extension never escaped
+        // the ScrollView's clip (2026-08-31).
+        .background(heroColor ?? Color.bgPrimary)
     }
 
     /// On a colored hero the mark sits in a white disc so dark artwork
@@ -316,17 +341,12 @@ struct TeamPage: View {
         }
     }
 
-    /// Conference plus record on one line ("Big Ten · 10-1"); the placement
-    /// string moved into the Standings tab, where it's a table instead of a
-    /// claim. Links to the full conference page when there is one.
+    /// The conference name; the record moved into Overview's Record card,
+    /// and the placement string into the Standings tab, where it's a table
+    /// instead of a claim. Links to the full conference page when there is one.
     @ViewBuilder
     private var conferenceLine: some View {
-        // A past season's record derives from its final results — the
-        // provider's summary only describes the current season (the mapper
-        // nils it otherwise).
-        let record = schedule?.record ?? schedule?.derivedRecord
-        let name = resolvedConferenceId.map { Conference.name(for: $0) }
-        let label = [name, record].compactMap { $0 }.joined(separator: " · ")
+        let label = resolvedConferenceId.map { Conference.name(for: $0) } ?? ""
         if let id = resolvedConferenceId, Conference.tier(for: id) != .other {
             NavigationLink(value: ConferenceDestination(conferenceId: id,
                                                         name: Conference.name(for: id),
@@ -348,46 +368,96 @@ struct TeamPage: View {
         }
     }
 
-    // The Figma header component's tab specs, followed exactly (Andy,
-    // 2026-08-25): 40pt gap, 14pt vertical padding per tab, bold 14 labels
-    // at −2% tracking, a 3pt bottom bar spanning the tab, inactive ink at
-    // 50%.
     private var tabRow: some View {
-        HStack(spacing: 40) {
-            tabButton("Games", .games)
-            tabButton("Standings", .standings)
-        }
+        HeroTabBar(tabs: visibleTabs, selection: tab, ink: heroInk,
+                   onSelect: { select(tab: $0) })
+    }
+
+    private var visibleTabs: [Tab] {
+        showsStandingsTab ? [.overview, .games, .standings] : [.overview, .games]
     }
 
     /// Chip taps and content swipes share the one direction rule, the
-    /// week-select pattern.
+    /// week-select pattern. The edge commits a transaction BEFORE the
+    /// switch: the outgoing pane's `.push` resolves against the pre-change
+    /// tree, so setting both together replayed the previous direction
+    /// (the week swipe's `select(week:)` split, adopted 2026-08-31).
     private func select(tab value: Tab) {
         guard value != tab else { return }
-        tabSlideEdge = value == .standings ? .trailing : .leading
-        tab = value
-    }
-
-    private func tabButton(_ title: String, _ value: Tab) -> some View {
-        Button {
-            select(tab: value)
-        } label: {
-            Text(title)
-                .font(.tab)
-                .tracking(-0.28)
-                .foregroundStyle(tab == value ? heroInk : heroInk.opacity(0.5))
-                .padding(.vertical, 14)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(tab == value ? heroInk : Color.clear)
-                        .frame(height: 3)
-                }
-                .contentShape(Rectangle())
+        tabSlideEdge = value.rawValue > tab.rawValue ? .trailing : .leading
+        Task { @MainActor in
+            withAnimation(.default) { tab = value }
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(tab == value ? [.isSelected] : [])
     }
 
     // MARK: - Tab content
+
+    /// The team's own row in its conference table — the record card's
+    /// source while the season is current.
+    private var ownStanding: ConferenceStanding? {
+        conferenceStandings?.entries.first { $0.team.id == team.id }
+    }
+
+    /// Conference W-L is only knowable from the standings payload, which
+    /// always describes the current season — a past season shows overall
+    /// only (tiebreakers make conference records non-derivable; the
+    /// summaries-trust rule).
+    private var overviewConferenceRecord: String? {
+        guard selectedYear == currentSeasonYear else { return nil }
+        return ownStanding?.conferenceRecord
+    }
+
+    private var overviewOverallRecord: String? {
+        guard selectedYear == currentSeasonYear else { return schedule?.derivedRecord }
+        return ownStanding?.overallRecord ?? schedule?.record ?? schedule?.derivedRecord
+    }
+
+    private var overviewContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let nextGame {
+                NextGameCard(game: nextGame)
+                    .cardSurface()
+            }
+            if TeamRecordCard.hasContent(conferenceRecord: overviewConferenceRecord,
+                                         overallRecord: overviewOverallRecord) {
+                TeamRecordCard(conferenceRecord: overviewConferenceRecord,
+                               overallRecord: overviewOverallRecord)
+                    .cardSurface()
+            } else if nextGame == nil {
+                // Nothing to lead with: mirror the schedule's status
+                // treatment so the tab is never silently blank. A lone
+                // spinner gets no card — a surface around it hugs into a
+                // floating pill (Andy, 2026-08-31).
+                if isLoadingSelected {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xl)
+                } else {
+                    VStack(spacing: 0) {
+                        if showsErrorForSelected {
+                            VStack(spacing: Spacing.sm) {
+                                Text("Couldn't load the season.")
+                                    .font(.teamName)
+                                    .foregroundStyle(.textSecondary)
+                                Button("Retry") { Task { await retry() } }
+                                    .font(.teamNameEmphasis)
+                                    .foregroundStyle(.textPrimary)
+                            }
+                            .padding(.vertical, Spacing.xl)
+                        } else {
+                            Text("Season TBA")
+                                .font(.teamName)
+                                .foregroundStyle(.textSecondary)
+                                .padding(.vertical, Spacing.xl)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .cardSurface()
+                }
+            }
+        }
+        .padding(Spacing.sm)
+    }
 
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
@@ -413,18 +483,26 @@ struct TeamPage: View {
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
-        VStack(spacing: 0) {
+        Group {
             if let entries = conferenceStandings?.entries, !entries.isEmpty {
-                StandingsList(
-                    entries: entries,
-                    highlightTeamId: team.id,
-                    // The tab always shows the current season.
-                    showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                    year: CFBSeason.year()),
-                    liveGames: liveBoard?.games.filter(\.isLive) ?? []
-                )
+                VStack(spacing: 0) {
+                    StandingsList(
+                        entries: entries,
+                        highlightTeamId: team.id,
+                        // The tab always shows the current season.
+                        showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
+                                                                        year: CFBSeason.year()),
+                        liveGames: liveBoard?.games.filter(\.isLive) ?? []
+                    )
+                }
+                .padding(.bottom, Spacing.xs)
+                .cardSurface()
             } else if standingsLoading {
-                ProgressView().padding(.vertical, Spacing.xl)
+                // A lone spinner gets no card — a surface around it hugs
+                // into a floating pill (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
             } else if standingsFailed {
                 VStack(spacing: Spacing.sm) {
                     Text("Couldn't load standings.")
@@ -434,17 +512,18 @@ struct TeamPage: View {
                         .font(.teamNameEmphasis)
                         .foregroundStyle(.textPrimary)
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
+                .cardSurface()
             } else {
                 Text("Standings TBA")
                     .font(.teamName)
                     .foregroundStyle(.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
+                    .cardSurface()
             }
         }
-        .padding(.bottom, Spacing.xs)
-        .cardSurface()
         .padding(Spacing.sm)
         .task { await loadStandings() }
     }

@@ -31,7 +31,7 @@ struct SectionAccordion: View {
                         .padding(.bottom, Spacing.xs)
                         .clipShape(rowsShape)
                         .background(
-                            rowsShape.fill(Color.bgPrimary)
+                            rowsShape.fill(Color.bgCard)
                                 .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
                         )
                         .padding(.bottom, Spacing.sm)
@@ -40,7 +40,7 @@ struct SectionAccordion: View {
                 headerRow
                     .clipShape(headerShape)
                     .background(
-                        headerShape.fill(Color.bgPrimary)
+                        headerShape.fill(Color.bgCard)
                             .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
                     )
                     .padding(.bottom, isExpanded ? 0 : Spacing.sm)
