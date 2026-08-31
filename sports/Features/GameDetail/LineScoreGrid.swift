@@ -5,9 +5,10 @@ struct LineScoreGrid: View {
     let summary: GameSummary
 
     var body: some View {
-        Grid(horizontalSpacing: Spacing.lg, verticalSpacing: Spacing.xs) {
+        Grid(horizontalSpacing: Spacing.lg, verticalSpacing: Spacing.sm) {
             GridRow {
                 Text("")
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .gridColumnAlignment(.leading)
                 ForEach(periodLabels, id: \.self) { label in
                     Text(label)
@@ -38,16 +39,20 @@ struct LineScoreGrid: View {
 
     private func row(_ side: GameSummary.Side) -> GridRow<some View> {
         GridRow {
+            // The team column soaks up the card's spare width, so the
+            // numeric columns sit as one block against the trailing edge
+            // instead of stranding dead space to their right.
             Text(side.team.abbreviation ?? side.team.location)
-                .font(side.winner == true ? .metaEmphasis : .meta)
+                .font(side.winner == true ? .teamNameEmphasis : .teamName)
                 .foregroundStyle(.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             ForEach(Array(periodLabels.indices), id: \.self) { index in
                 Text(index < side.linescores.count ? side.linescores[index] : "–")
-                    .font(.meta.monospacedDigit())
+                    .font(.teamName.monospacedDigit())
                     .foregroundStyle(.textPrimary)
             }
             Text(side.score.map(String.init) ?? "–")
-                .font(.metaEmphasis.monospacedDigit())
+                .font(.teamNameEmphasis.monospacedDigit())
                 .foregroundStyle(.textPrimary)
         }
     }
