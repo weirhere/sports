@@ -135,6 +135,10 @@ enum Spacing {
 extension Font {
     static var score: Font { scaled(17, .semibold, relativeTo: .body).monospacedDigit() }
     static var scoreLive: Font { scaled(17, .heavy, relativeTo: .body).monospacedDigit() }
+    /// The game-detail header's centered score — the page's headline number,
+    /// so it outranks even heroTitle. Same weight pair as score/scoreLive.
+    static var scoreHero: Font { scaled(34, .semibold, relativeTo: .largeTitle).monospacedDigit() }
+    static var scoreHeroLive: Font { scaled(34, .heavy, relativeTo: .largeTitle).monospacedDigit() }
     static var scoreMuted: Font { scaled(17, .regular, relativeTo: .body).monospacedDigit() }
     static var teamName: Font { scaled(15, .regular, relativeTo: .subheadline) }
     static var teamNameEmphasis: Font { scaled(15, .semibold, relativeTo: .subheadline) }
