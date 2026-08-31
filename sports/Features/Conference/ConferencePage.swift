@@ -10,7 +10,18 @@ import SwiftUI
 struct ConferencePage: View {
     let destination: ConferenceDestination
 
-    private enum Tab { case games, standings }
+    /// Raw values order the tabs — the slide direction is an ordinal
+    /// comparison (TeamPage's rule).
+    private enum Tab: Int, HeroTabItem {
+        case games, standings
+
+        var title: String {
+            switch self {
+            case .games: "Games"
+            case .standings: "Standings"
+            }
+        }
+    }
 
     /// Seasons fetched this visit, keyed by year — flipping back to a seen
     /// season costs nothing (TeamPage's caching pattern).
@@ -70,6 +81,9 @@ struct ConferencePage: View {
                         case .standings: standingsCard
                         }
                     }
+                    // geometryGroup pins row logos to the sliding pane —
+                    // TeamPage's fix (2026-08-31).
+                    .geometryGroup()
                     .id(tab)
                     .transition(.push(from: tabSlideEdge))
                     // The week swipe's sibling (Andy, 2026-08-29): swipe
@@ -79,12 +93,13 @@ struct ConferencePage: View {
                             .onEnded { value in
                                 let dx = value.translation.width
                                 guard abs(dx) > 50,
-                                      abs(dx) > abs(value.translation.height) * 1.5 else { return }
-                                select(tab: dx < 0 ? .standings : .games)
+                                      abs(dx) > abs(value.translation.height) * 1.5,
+                                      let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
+                                else { return }
+                                select(tab: target)
                             }
                     )
                 }
-                .animation(.default, value: tab)
             }
             // The anchor scroll: a push from a TeamPage lands with the
             // team's own row in view, FotMob's table pattern. The Games
@@ -150,41 +165,21 @@ struct ConferencePage: View {
         .background(Color.bgPrimary)
     }
 
-    // The Figma header component's tab specs, followed exactly (TeamPage's
-    // row, monochrome ink): 40pt gap, 14pt vertical padding, bold 14 at
-    // −2% tracking, 3pt bottom bar, inactive ink at 50%.
+    // HeroTabBar carries the Figma tab specs; monochrome ink here.
     private var tabRow: some View {
-        HStack(spacing: 40) {
-            tabButton("Games", .games)
-            tabButton("Standings", .standings)
-        }
+        HeroTabBar(tabs: [.games, .standings], selection: tab, ink: .textPrimary,
+                   onSelect: { select(tab: $0) })
     }
 
-    /// Chip taps and content swipes share the one direction rule.
+    /// Chip taps and content swipes share the one direction rule. The edge
+    /// commits a transaction before the switch so the outgoing pane's
+    /// `.push` resolves against it (TeamPage's split, 2026-08-31).
     private func select(tab value: Tab) {
         guard value != tab else { return }
-        tabSlideEdge = value == .standings ? .trailing : .leading
-        tab = value
-    }
-
-    private func tabButton(_ title: String, _ value: Tab) -> some View {
-        Button {
-            select(tab: value)
-        } label: {
-            Text(title)
-                .font(.tab)
-                .tracking(-0.28)
-                .foregroundStyle(tab == value ? Color.textPrimary : Color.textPrimary.opacity(0.5))
-                .padding(.vertical, 14)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(tab == value ? Color.textPrimary : Color.clear)
-                        .frame(height: 3)
-                }
-                .contentShape(Rectangle())
+        tabSlideEdge = value.rawValue > tab.rawValue ? .trailing : .leading
+        Task { @MainActor in
+            withAnimation(.default) { tab = value }
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(tab == value ? [.isSelected] : [])
     }
 
     // MARK: - Games

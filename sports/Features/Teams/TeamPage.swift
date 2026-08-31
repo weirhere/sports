@@ -14,7 +14,18 @@ struct TeamPage: View {
     @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
     @Environment(\.dismiss) private var dismiss
 
-    private enum Tab { case games, standings }
+    /// Raw values order the tabs — the slide direction is an ordinal
+    /// comparison, so a third tab can't break the choreography.
+    private enum Tab: Int, HeroTabItem {
+        case games, standings
+
+        var title: String {
+            switch self {
+            case .games: "Games"
+            case .standings: "Standings"
+            }
+        }
+    }
 
     /// Seasons fetched this visit, keyed by year — flipping back to a
     /// seen season costs ESPN nothing (each season is two requests).
@@ -149,10 +160,14 @@ struct TeamPage: View {
                     case .standings: standingsContent
                     }
                 }
+                // geometryGroup pins every child (row logos included) to
+                // the pane while it slides — without it, subtrees resolve
+                // their own positions and marks sat still as cards moved.
+                .geometryGroup()
                 .id(tab)
                 .transition(.push(from: tabSlideEdge))
                 // The week swipe's sibling (Andy, 2026-08-29): a horizontal
-                // swipe on the content walks the tab pair; the tab buttons
+                // swipe on the content walks the tabs; the tab buttons
                 // stay, so nothing is swipe-gated. Simultaneous with a
                 // dominance check so vertical scrolling never tab-flips.
                 .simultaneousGesture(
@@ -160,12 +175,13 @@ struct TeamPage: View {
                         .onEnded { value in
                             let dx = value.translation.width
                             guard abs(dx) > 50,
-                                  abs(dx) > abs(value.translation.height) * 1.5 else { return }
-                            select(tab: dx < 0 ? .standings : .games)
+                                  abs(dx) > abs(value.translation.height) * 1.5,
+                                  let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1)),
+                                  target != .standings || showsStandingsTab else { return }
+                            select(tab: target)
                         }
                 )
             }
-            .animation(.default, value: tab)
         }
         // Once the hero's own title scrolls under the bar, the bar takes
         // over the identity (Andy, 2026-08-29): the team name fades into
@@ -348,43 +364,26 @@ struct TeamPage: View {
         }
     }
 
-    // The Figma header component's tab specs, followed exactly (Andy,
-    // 2026-08-25): 40pt gap, 14pt vertical padding per tab, bold 14 labels
-    // at −2% tracking, a 3pt bottom bar spanning the tab, inactive ink at
-    // 50%.
     private var tabRow: some View {
-        HStack(spacing: 40) {
-            tabButton("Games", .games)
-            tabButton("Standings", .standings)
-        }
+        HeroTabBar(tabs: visibleTabs, selection: tab, ink: heroInk,
+                   onSelect: { select(tab: $0) })
+    }
+
+    private var visibleTabs: [Tab] {
+        showsStandingsTab ? [.games, .standings] : [.games]
     }
 
     /// Chip taps and content swipes share the one direction rule, the
-    /// week-select pattern.
+    /// week-select pattern. The edge commits a transaction BEFORE the
+    /// switch: the outgoing pane's `.push` resolves against the pre-change
+    /// tree, so setting both together replayed the previous direction
+    /// (the week swipe's `select(week:)` split, adopted 2026-08-31).
     private func select(tab value: Tab) {
         guard value != tab else { return }
-        tabSlideEdge = value == .standings ? .trailing : .leading
-        tab = value
-    }
-
-    private func tabButton(_ title: String, _ value: Tab) -> some View {
-        Button {
-            select(tab: value)
-        } label: {
-            Text(title)
-                .font(.tab)
-                .tracking(-0.28)
-                .foregroundStyle(tab == value ? heroInk : heroInk.opacity(0.5))
-                .padding(.vertical, 14)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(tab == value ? heroInk : Color.clear)
-                        .frame(height: 3)
-                }
-                .contentShape(Rectangle())
+        tabSlideEdge = value.rawValue > tab.rawValue ? .trailing : .leading
+        Task { @MainActor in
+            withAnimation(.default) { tab = value }
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(tab == value ? [.isSelected] : [])
     }
 
     // MARK: - Tab content

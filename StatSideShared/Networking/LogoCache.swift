@@ -22,12 +22,24 @@ actor LogoCache {
         case transient
     }
 
-    private var loaded: [URL: UIImage] = [:]
+    /// The success store, and the one part of the cache readable without
+    /// the actor hop: an await lands a frame late, which froze logos as
+    /// blank discs while a freshly-inserted tab pane slid in (2026-08-31).
+    /// NSCache does its own locking, so the unsafe opt-out is sound; its
+    /// memory-pressure eviction just means a rare re-fetch.
+    nonisolated(unsafe) private let loaded = NSCache<NSURL, UIImage>()
     private var missing: Set<URL> = []
     private var inFlight: [URL: Task<FetchOutcome, Never>] = [:]
 
+    /// A cache hit on the calling thread — for first-frame paints. Misses
+    /// (including still-loading marks) come back nil; callers follow up
+    /// with `image(for:)`.
+    nonisolated func cachedImage(for url: URL) -> UIImage? {
+        loaded.object(forKey: url as NSURL)
+    }
+
     func image(for url: URL) async -> UIImage? {
-        if let image = loaded[url] { return image }
+        if let image = loaded.object(forKey: url as NSURL) { return image }
         if missing.contains(url) { return nil }
         let task = inFlight[url] ?? Task<FetchOutcome, Never> {
             guard let (data, response) = try? await URLSession.shared.data(from: url)
@@ -44,7 +56,7 @@ actor LogoCache {
         inFlight[url] = nil
         switch outcome {
         case .image(let image):
-            loaded[url] = image
+            loaded.setObject(image, forKey: url as NSURL)
             return image
         case .missing:
             missing.insert(url)
