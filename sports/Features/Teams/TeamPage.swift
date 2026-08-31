@@ -17,10 +17,11 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case games, standings
+        case overview, games, standings
 
         var title: String {
             switch self {
+            case .overview: "Overview"
             case .games: "Games"
             case .standings: "Standings"
             }
@@ -42,7 +43,7 @@ struct TeamPage: View {
     @State private var initialLoading = false
     @State private var initialFailed = false
 
-    @State private var tab: Tab = .games
+    @State private var tab: Tab = .overview
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the team name.
     @State private var showsInlineTitle = false
@@ -156,6 +157,7 @@ struct TeamPage: View {
                 hero
                 Group {
                     switch tab {
+                    case .overview: overviewContent
                     case .games: gamesContent
                     case .standings: standingsContent
                     }
@@ -231,7 +233,14 @@ struct TeamPage: View {
                 ToolbarItem(placement: .topBarTrailing) { shareButton }
             }
         }
-        .task { await loadInitial() }
+        // Sequential: standings need the schedule's conference id. The
+        // Overview record card wants them up front now, not on first visit
+        // to the Standings tab (whose own task stays as an idempotent
+        // retry).
+        .task {
+            await loadInitial()
+            await loadStandings()
+        }
     }
 
     private var barInk: Color { heroOnDark ? .white : Color.textPrimary }
@@ -297,13 +306,11 @@ struct TeamPage: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.md)
 
-            if showsStandingsTab {
-                tabRow
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.top, Spacing.sm)
-            } else {
-                Color.clear.frame(height: Spacing.lg)
-            }
+            // Overview and Games always exist, so the row always renders;
+            // only Standings is conference-gated.
+            tabRow
+                .padding(.horizontal, Spacing.lg)
+                .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The color extends far above the hero's own bounds — through the
@@ -370,7 +377,7 @@ struct TeamPage: View {
     }
 
     private var visibleTabs: [Tab] {
-        showsStandingsTab ? [.games, .standings] : [.games]
+        showsStandingsTab ? [.overview, .games, .standings] : [.overview, .games]
     }
 
     /// Chip taps and content swipes share the one direction rule, the
@@ -387,6 +394,67 @@ struct TeamPage: View {
     }
 
     // MARK: - Tab content
+
+    /// The team's own row in its conference table — the record card's
+    /// source while the season is current.
+    private var ownStanding: ConferenceStanding? {
+        conferenceStandings?.entries.first { $0.team.id == team.id }
+    }
+
+    /// Conference W-L is only knowable from the standings payload, which
+    /// always describes the current season — a past season shows overall
+    /// only (tiebreakers make conference records non-derivable; the
+    /// summaries-trust rule).
+    private var overviewConferenceRecord: String? {
+        guard selectedYear == currentSeasonYear else { return nil }
+        return ownStanding?.conferenceRecord
+    }
+
+    private var overviewOverallRecord: String? {
+        guard selectedYear == currentSeasonYear else { return schedule?.derivedRecord }
+        return ownStanding?.overallRecord ?? schedule?.record ?? schedule?.derivedRecord
+    }
+
+    private var overviewContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let nextGame {
+                NextGameCard(game: nextGame)
+                    .cardSurface()
+            }
+            if TeamRecordCard.hasContent(conferenceRecord: overviewConferenceRecord,
+                                         overallRecord: overviewOverallRecord) {
+                TeamRecordCard(conferenceRecord: overviewConferenceRecord,
+                               overallRecord: overviewOverallRecord)
+                    .cardSurface()
+            } else if nextGame == nil {
+                // Nothing to lead with: mirror the schedule's status
+                // treatment so the tab is never silently blank.
+                VStack(spacing: 0) {
+                    if isLoadingSelected {
+                        ProgressView().padding(.vertical, Spacing.xl)
+                    } else if showsErrorForSelected {
+                        VStack(spacing: Spacing.sm) {
+                            Text("Couldn't load the season.")
+                                .font(.teamName)
+                                .foregroundStyle(.textSecondary)
+                            Button("Retry") { Task { await retry() } }
+                                .font(.teamNameEmphasis)
+                                .foregroundStyle(.textPrimary)
+                        }
+                        .padding(.vertical, Spacing.xl)
+                    } else {
+                        Text("Season TBA")
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                            .padding(.vertical, Spacing.xl)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .cardSurface()
+            }
+        }
+        .padding(Spacing.sm)
+    }
 
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
