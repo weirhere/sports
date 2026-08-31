@@ -195,6 +195,10 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
+        // Team color through the status-bar strip while the hero is up —
+        // the glass back/share buttons refract it, FotMob-style (Andy,
+        // 2026-08-29; mechanism replaced 2026-08-31).
+        .heroTopBand(heroColor ?? Color.bgPrimary)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -313,12 +317,10 @@ struct TeamPage: View {
                 .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The color extends far above the hero's own bounds — through the
-        // transparent bar and the top bounce — so the system's Liquid
-        // Glass nav buttons refract team color instead of floating as
-        // flat discs (Andy, 2026-08-29, from the FotMob reference). It
-        // scrolls away with the hero; the solid bar takes over then.
-        .background((heroColor ?? Color.bgPrimary).padding(.top, -1000))
+        // The strip above — through the transparent bar and the top bounce
+        // — is heroTopBand's job: an in-content extension never escaped
+        // the ScrollView's clip (2026-08-31).
+        .background(heroColor ?? Color.bgPrimary)
     }
 
     /// On a colored hero the mark sits in a white disc so dark artwork

@@ -113,6 +113,9 @@ struct ConferencePage: View {
                 proxy.scrollTo(target, anchor: .center)
             }
         }
+        // The monochrome hero's top-bounce paint; the bar itself is solid
+        // bgPrimary here, so this only shows while rubber-banding.
+        .heroTopBand(Color.bgPrimary)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
