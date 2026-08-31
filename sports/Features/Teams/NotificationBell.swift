@@ -8,23 +8,12 @@ struct NotificationBell: View {
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
 
-    private var ink: Color { .textPrimary }
-    private var inverse: Color { Color.bgPrimary }
-
     var body: some View {
         Button {
             Task { await handleTap() }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: 14))
-                .foregroundStyle(notifications.remindersOn ? inverse : ink)
-                .padding(9)
-                .background(
-                    Circle().fill(notifications.remindersOn ? ink : Color.clear)
-                )
-                .overlay(
-                    Circle().strokeBorder(ink, lineWidth: notifications.remindersOn ? 0 : 1)
-                )
+                .foregroundStyle(Color.textPrimary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
