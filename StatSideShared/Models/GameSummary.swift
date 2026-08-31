@@ -67,6 +67,8 @@ nonisolated struct LeaderCategory: Identifiable, Hashable, Sendable {
     struct Leader: Hashable, Sendable {
         let name: String
         let statLine: String
+        /// Defaulted so CFBD's photo-less leaders construct unchanged.
+        var headshotURL: URL? = nil
     }
 
     let id: String

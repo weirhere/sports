@@ -13,6 +13,9 @@ import SwiftUI
 struct LogoImage: View {
     let url: URL?
     var placeholder: Color? = Color.bgElevated
+    /// `.fill` for imagery that should crop to its frame (player
+    /// headshots); logos keep the letterboxing `.fit` default.
+    var contentMode: ContentMode = .fit
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var image: UIImage?
@@ -38,7 +41,7 @@ struct LogoImage: View {
     var body: some View {
         Group {
             if let image = displayImage {
-                Image(uiImage: image).resizable().scaledToFit()
+                Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
             } else if let placeholder {
                 Circle().fill(placeholder)
             } else {

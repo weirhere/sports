@@ -573,7 +573,10 @@ nonisolated enum ESPNMapper {
                       .leaders?.first,
                   let name = entry.athlete?.displayName ?? entry.athlete?.shortName
             else { return nil }
-            return LeaderCategory.Leader(name: name, statLine: entry.displayValue ?? "")
+            return LeaderCategory.Leader(
+                name: name,
+                statLine: entry.displayValue ?? "",
+                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)))
         }
 
         return leaderCategories.compactMap { category in
