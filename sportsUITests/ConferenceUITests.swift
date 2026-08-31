@@ -101,8 +101,15 @@ final class ConferenceUITests: XCTestCase {
         // Scores headers carry the same affordance. Which conferences have
         // games is a calendar fact, but the section stack always renders
         // some conference during the season and the preseason slate; assert
-        // any standings button rather than a specific conference's.
-        app.navigationBars.buttons.firstMatch.tap()
+        // any standings button rather than a specific conference's. The pop
+        // targets the back button specifically — the follow pill rides the
+        // toolbar now (2026-08-31), so an unqualified first match can
+        // toggle it (dirtying the just-normalized state) instead of popping.
+        let back = app.navigationBars.buttons.matching(NSPredicate(
+            format: "NOT (label IN %@)",
+            ["Follow conference", "Following conference"])).firstMatch
+        XCTAssertTrue(tapUntilDismissed(back, dismissing: follow),
+                      "Back should pop the conference page")
         // The funnel chip marks the Scores header — the season chip moved
         // inside the filter sheet (2026-08-29), so it's no longer visible
         // at rest.
@@ -159,10 +166,17 @@ final class ConferenceUITests: XCTestCase {
         XCTAssertTrue(conferencePill.exists,
                       "Tapping the conference row should push its standings page")
 
-        // And the Top 25 row pushes the poll. The pop lands with the ACC
-        // hunt's scroll position intact, and the root is a LazyVStack — the
-        // Top 25 row at the top may not exist yet, so scroll back up to it.
-        app.navigationBars.buttons.firstMatch.tap()
+        // And the Top 25 row pushes the poll. The pop targets the back
+        // button specifically — the follow pill rides the toolbar now
+        // (2026-08-31), so an unqualified first match can toggle it
+        // instead of popping; the pill vanishing proves the pop landed.
+        // The root is a LazyVStack holding the ACC hunt's scroll position,
+        // so the Top 25 row at the top may not exist yet — scroll up to it.
+        let back = app.navigationBars.buttons.matching(NSPredicate(
+            format: "NOT (label IN %@)",
+            ["Follow conference", "Following conference"])).firstMatch
+        XCTAssertTrue(tapUntilDismissed(back, dismissing: conferencePill),
+                      "Back should pop the conference page")
         XCTAssertTrue(scrollUntilExists(app.top25Row, in: app,
                                         revealing: .above, timeout: 5),
                       "Popping back should land on the Rankings list")
