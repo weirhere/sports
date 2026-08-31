@@ -244,20 +244,28 @@ extension XCTestCase {
     /// Switches the Scores grouping through the filter sheet's segmented
     /// picker, returning false if the sheet or segment never appeared.
     /// Leaves the sheet closed.
+    ///
+    /// Retried like `selectSeason`'s menu: a funnel tap that lands while
+    /// the scoreboard is still refreshing can be swallowed by a header
+    /// re-render, and the sheet never presents.
     @MainActor
     @discardableResult
-    func setScoresGrouping(byDate: Bool, in app: XCUIApplication) -> Bool {
-        let funnel = app.scoresFilterChip
-        guard funnel.waitForExistence(timeout: 10) else { return false }
-        funnel.tap()
+    func setScoresGrouping(byDate: Bool, in app: XCUIApplication,
+                           attempts: Int = 3) -> Bool {
         let segment = app.buttons[byDate ? "By date" : "By conference"]
-        guard segment.waitForExistence(timeout: 5) else {
+        for _ in 0..<attempts {
+            if !segment.exists {
+                let funnel = app.scoresFilterChip
+                guard funnel.waitForExistence(timeout: 10) else { continue }
+                funnel.tap()
+                guard segment.waitForExistence(timeout: 5) else { continue }
+            }
+            segment.tap()
             dismissFilterSheet(in: app)
-            return false
+            return true
         }
-        segment.tap()
         dismissFilterSheet(in: app)
-        return true
+        return false
     }
 
     /// Closes the filter sheet if it's up; a no-op otherwise.
