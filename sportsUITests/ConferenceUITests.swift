@@ -23,16 +23,27 @@ final class ConferenceUITests: XCTestCase {
         // through its context menu. ACC, not SEC — the browse list is a
         // LazyVStack, so a section below the fold doesn't exist as an
         // element yet, and ACC sorts first under tier-then-name (the
-        // existing smoke test leans on it the same way).
-        XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
-                      "Teams should show the ACC conference header")
+        // existing smoke test leans on it the same way). The landmark is
+        // the search field, not a "ACC" text — Scores' conference grouping
+        // renders an ACC accordion too, so a text query can read "landed"
+        // while the app never left the Scores tab. Same reason the header
+        // predicate pins " teams": Scores' header is "ACC, N games".
+        XCTAssertTrue(openTab("Teams", in: app, until: app.searchFields.firstMatch),
+                      "Teams should show its search field")
         let accHeader = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@", "ACC,")).firstMatch
-        XCTAssertTrue(accHeader.waitForExistence(timeout: 5),
+            format: "label BEGINSWITH %@ AND label ENDSWITH %@",
+            "ACC,", " teams")).firstMatch
+        XCTAssertTrue(accHeader.waitForExistence(timeout: 15),
                       "The ACC header toggle should exist")
-        accHeader.press(forDuration: 1.0)
+        // The press is retried: a directory re-render mid-press invalidates
+        // the element snapshot and the menu never opens.
         let standingsItem = app.buttons["View ACC standings"].firstMatch
-        XCTAssertTrue(standingsItem.waitForExistence(timeout: 5),
+        for _ in 0..<3 where !standingsItem.exists {
+            guard accHeader.waitForExistence(timeout: 5) else { break }
+            accHeader.press(forDuration: 1.0)
+            _ = standingsItem.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(standingsItem.exists,
                       "The ACC header's context menu should offer standings")
         standingsItem.tap()
 
@@ -46,6 +57,12 @@ final class ConferenceUITests: XCTestCase {
             "Follow conference", "Following conference")).firstMatch
         XCTAssertTrue(conferencePill.waitForExistence(timeout: 10),
                       "The standings item should push the ACC page")
+        // The page lands on its Games tab (2026-08-29) — the table is one
+        // tab over, behind the hero's Standings chip.
+        let standingsTab = app.buttons["Standings"].firstMatch
+        XCTAssertTrue(standingsTab.waitForExistence(timeout: 5),
+                      "The ACC page should offer a Standings tab")
+        standingsTab.tap()
         let anyRow = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ OR label == %@", " overall", "Standings TBA")).firstMatch
         XCTAssertTrue(anyRow.waitForExistence(timeout: 15),
@@ -54,27 +71,42 @@ final class ConferenceUITests: XCTestCase {
         // Follow round-trip: flip on, flip back off so the simulator's
         // persisted state stays clean for other tests. Follows persist on
         // the simulator, so normalize an already-following leftover first.
-        let leftover = app.buttons["Following conference"].firstMatch
-        if leftover.waitForExistence(timeout: 2) {
-            leftover.tap()
-        }
+        // Every tap is verified by the label flipping and retried — a
+        // standings or games fetch landing mid-tap re-renders the hero,
+        // and the touch can miss the pill.
         let follow = app.buttons["Follow conference"].firstMatch
+        let following = app.buttons["Following conference"].firstMatch
+        if following.waitForExistence(timeout: 2) {
+            for _ in 0..<3 where !follow.exists {
+                guard following.exists else { break }
+                following.tap()
+                _ = follow.waitForExistence(timeout: 3)
+            }
+        }
         XCTAssertTrue(follow.waitForExistence(timeout: 5),
                       "The page should offer a conference follow pill")
-        follow.tap()
-        let following = app.buttons["Following conference"].firstMatch
-        XCTAssertTrue(following.waitForExistence(timeout: 5),
-                      "Follow should flip to Following")
-        following.tap()
-        XCTAssertTrue(app.buttons["Follow conference"].firstMatch.waitForExistence(timeout: 5),
-                      "Unfollow should flip back")
+        for _ in 0..<3 where !following.exists {
+            guard follow.exists else { break }
+            follow.tap()
+            _ = following.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(following.exists, "Follow should flip to Following")
+        for _ in 0..<3 where !follow.exists {
+            guard following.exists else { break }
+            following.tap()
+            _ = follow.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(follow.exists, "Unfollow should flip back")
 
         // Scores headers carry the same affordance. Which conferences have
         // games is a calendar fact, but the section stack always renders
         // some conference during the season and the preseason slate; assert
         // any standings button rather than a specific conference's.
         app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(openTab("Scores", in: app, until: app.seasonChip),
+        // The funnel chip marks the Scores header — the season chip moved
+        // inside the filter sheet (2026-08-29), so it's no longer visible
+        // at rest.
+        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresFilterChip),
                       "Scores should render its header")
         // A followed conference pins a whole slate into Following, and Top
         // 25 stacks another ~20 games under it — the first conference
@@ -111,13 +143,28 @@ final class ConferenceUITests: XCTestCase {
             format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
         XCTAssertTrue(scrollUntilExists(accRow, in: app, maxSwipes: 4, timeout: 5),
                       "Rankings should list the ACC near the root")
-        accRow.tap()
-        XCTAssertTrue(app.navigationBars["ACC"].waitForExistence(timeout: 10),
+        // The pushed page's landmark is the follow pill, not the nav bar:
+        // ConferencePage went `.navigationTitle("")` with the hero template
+        // (172155d), so the bar is never identified "ACC" anymore. The tap
+        // is verified and retried — one issued mid-refresh can be swallowed
+        // without the push ever starting.
+        let conferencePill = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label == %@",
+            "Follow conference", "Following conference")).firstMatch
+        for _ in 0..<3 where !conferencePill.exists {
+            guard accRow.exists else { break }
+            accRow.tap()
+            _ = conferencePill.waitForExistence(timeout: 10)
+        }
+        XCTAssertTrue(conferencePill.exists,
                       "Tapping the conference row should push its standings page")
 
-        // And the Top 25 row pushes the poll.
+        // And the Top 25 row pushes the poll. The pop lands with the ACC
+        // hunt's scroll position intact, and the root is a LazyVStack — the
+        // Top 25 row at the top may not exist yet, so scroll back up to it.
         app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(app.top25Row.waitForExistence(timeout: 5),
+        XCTAssertTrue(scrollUntilExists(app.top25Row, in: app,
+                                        revealing: .above, timeout: 5),
                       "Popping back should land on the Rankings list")
         app.top25Row.tap()
         XCTAssertTrue(app.topRankedRow.waitForExistence(timeout: 15),

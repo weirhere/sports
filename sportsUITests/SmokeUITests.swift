@@ -16,8 +16,19 @@ final class SmokeUITests: XCTestCase {
                                 "-ui.scoreFilter", ""]
         app.launch()
 
-        // Scores loads a real slate. A followed conference can push SEC
-        // screens below the fold, so be willing to scroll for it.
+        // Scores loads a real slate. Persisted follows can swell Following
+        // (and Top 25 stacks ~20 games under it) far enough that SEC sits
+        // past any reasonable swipe budget on a full Saturday, so collapse
+        // the headline sections first — ConferenceUITests does the same,
+        // and the state persists exactly like a user's tap would. The
+        // longer first wait covers the initial slate load.
+        for (index, prefix) in ["Following,", "Top 25,"].enumerated() {
+            let header = app.buttons.matching(NSPredicate(
+                format: "label BEGINSWITH %@ AND value == %@", prefix, "expanded")).firstMatch
+            if header.waitForExistence(timeout: index == 0 ? 10 : 3) {
+                header.tap()
+            }
+        }
         XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app),
                       "Scores should show the SEC section header")
 
@@ -34,7 +45,12 @@ final class SmokeUITests: XCTestCase {
         snapshot(app, "scores-by-date")
         XCTAssertTrue(setScoresGrouping(byDate: false, in: app),
                       "The filter sheet should offer the By conference segment")
-        XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app, timeout: 5),
+        // Both directions: the list keeps the day-header hunt's scroll
+        // offset across the grouping switch, which can land past SEC —
+        // a downward-only hunt then walks away from it.
+        let sec = app.staticTexts["SEC"]
+        XCTAssertTrue(scrollUntilExists(sec, in: app, timeout: 5)
+                        || scrollUntilExists(sec, in: app, revealing: .above, timeout: 2),
                       "Toggling back should restore conference sections")
 
         // Rankings leads with the Top 25 row; the poll itself is one tap
@@ -44,12 +60,12 @@ final class SmokeUITests: XCTestCase {
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "rankings")
 
-        // Teams browse + search + follow.
-        app.tabBars.buttons["Teams"].tap()
-        XCTAssertTrue(app.staticTexts["ACC"].waitForExistence(timeout: 15),
-                      "Teams should show the ACC conference header")
+        // Teams browse + search + follow. The landmark is the search field:
+        // an "ACC" text exists on the Scores tab too (conference grouping),
+        // so it can't prove the tab switch landed.
+        XCTAssertTrue(openTab("Teams", in: app, until: app.searchFields.firstMatch),
+                      "Teams should show its search field")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Georgia Bulldogs")
         let row = app.staticTexts["Georgia"].firstMatch
@@ -70,14 +86,32 @@ final class SmokeUITests: XCTestCase {
         // its scroll position from the SEC hunt above, and on a full slate
         // Following sits screens higher, outside the LazyVStack's realized
         // range. Scroll back up to it.
-        app.tabBars.buttons["Scores"].tap()
-        XCTAssertTrue(scrollUntilExists(app.staticTexts["Following"], in: app,
+        // openTab, not a bare tab tap: a tap issued while the team-page
+        // push is still settling gets swallowed, and the hunt below then
+        // swipes the team page instead of the scores list.
+        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresFilterChip),
+                      "Scores should render its header")
+        let followingHeader = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Following,")).firstMatch
+        XCTAssertTrue(scrollUntilExists(followingHeader, in: app,
                                         revealing: .above, timeout: 10),
                       "Following section should appear once a team is followed")
+        // The collapse at the top of this test (or a persisted user tap)
+        // leaves the section closed, and a collapsed section's rows don't
+        // exist as elements — expand it before hunting the game row.
+        if followingHeader.value as? String == "collapsed" {
+            followingHeader.tap()
+        }
         snapshot(app, "scores-following")
 
-        // Into a game detail from the (already expanded) Following section.
-        let gameLink = app.buttons.containing(.staticText, identifier: "Georgia").firstMatch
+        // Into a game detail from the Following section.
+        // By the row's combined label, not an inner static text: GameRow is
+        // `.accessibilityElement(children: .ignore)`, so its texts aren't
+        // queryable descendants (iOS 18's XCUITest leaked them; iOS 26's
+        // doesn't). The lookahead keeps Georgia Tech/State/Southern rows —
+        // possible via a followed conference — from matching.
+        let gameLink = app.buttons.matching(NSPredicate(
+            format: "label MATCHES %@", ".*Georgia(?! (Tech|State|Southern)).*")).firstMatch
         XCTAssertTrue(gameLink.waitForExistence(timeout: 5), "Following should list a Georgia game row")
         gameLink.tap()
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10),
