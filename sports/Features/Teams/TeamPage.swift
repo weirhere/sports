@@ -341,17 +341,12 @@ struct TeamPage: View {
         }
     }
 
-    /// Conference plus record on one line ("Big Ten · 10-1"); the placement
-    /// string moved into the Standings tab, where it's a table instead of a
-    /// claim. Links to the full conference page when there is one.
+    /// The conference name; the record moved into Overview's Record card,
+    /// and the placement string into the Standings tab, where it's a table
+    /// instead of a claim. Links to the full conference page when there is one.
     @ViewBuilder
     private var conferenceLine: some View {
-        // A past season's record derives from its final results — the
-        // provider's summary only describes the current season (the mapper
-        // nils it otherwise).
-        let record = schedule?.record ?? schedule?.derivedRecord
-        let name = resolvedConferenceId.map { Conference.name(for: $0) }
-        let label = [name, record].compactMap { $0 }.joined(separator: " · ")
+        let label = resolvedConferenceId.map { Conference.name(for: $0) } ?? ""
         if let id = resolvedConferenceId, Conference.tier(for: id) != .other {
             NavigationLink(value: ConferenceDestination(conferenceId: id,
                                                         name: Conference.name(for: id),
