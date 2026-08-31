@@ -21,12 +21,12 @@ struct GameDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // The header keeps its bones on the primary surface; the
-                // content below moves into cards on the recessed one, the
-                // Teams/Conferences template (Andy, 2026-08-25).
+                // The header sits on the card surface — headers match the
+                // cards on every entity page (Andy, 2026-08-31); the
+                // content below stays in cards on the recessed one.
                 header
                     .frame(maxWidth: .infinity)
-                    .background(Color.bgPrimary)
+                    .background(Color.bgCard)
                 if let summary {
                     VStack(spacing: Spacing.sm) {
                         // Pre-kick, the sections below are all empty — the
@@ -90,10 +90,12 @@ struct GameDetailScreen: View {
                 }
             }
         }
+        // The card color through the top bounce, matching the entity pages.
+        .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
         .navigationTitle(game.shortName ?? "Game")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

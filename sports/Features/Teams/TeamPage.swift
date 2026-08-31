@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// One team's home: a hero header in the team's own color (the budget's
-/// fourth exception — Andy's call, 2026-08-25), Games and Standings tabs,
-/// and a schedule for any season back to the CFP era.
+/// One team's home: a card-color hero header (the team-color paint retired
+/// 2026-08-31 — headers match the cards, FotMob-style), Overview, Games,
+/// and Standings tabs, and a schedule for any season back to the CFP era.
 struct TeamPage: View {
     let team: Team
 
@@ -12,7 +12,6 @@ struct TeamPage: View {
     /// Optional like the directory: the fresher-game merge degrades to the
     /// schedule payload wherever the scoreboard isn't in the environment.
     @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
-    @Environment(\.dismiss) private var dismiss
 
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
@@ -50,10 +49,12 @@ struct TeamPage: View {
     /// Which edge incoming tab content pushes from — right when walking
     /// Games → Standings, left coming back, matching the tab order.
     @State private var tabSlideEdge: Edge = .trailing
-    /// The Standings tab's data, fetched lazily on first visit.
-    @State private var conferenceStandings: ConferenceStandings?
-    @State private var standingsLoading = false
-    @State private var standingsFailed = false
+    /// The Standings tab's tables, keyed by year like the schedules —
+    /// ConferencePage's caching pattern. The tab gained past seasons when
+    /// the season chip moved into the panes (Andy, 2026-08-31).
+    @State private var standingsByYear: [Int: ConferenceStandings] = [:]
+    @State private var standingsLoadingYears: Set<Int> = []
+    @State private var standingsFailedYears: Set<Int> = []
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
@@ -131,22 +132,6 @@ struct TeamPage: View {
         liveBoard?.games.first { $0.id == game.id } ?? game
     }
 
-    // MARK: - Hero paint
-
-    /// The schedule payload is the only source that serves `color`; the
-    /// hero starts monochrome and takes the team's color when it lands.
-    private var heroColorHex: String? { schedule?.team?.colorHex ?? team.colorHex }
-    private var heroColor: Color? { Color(espnHex: heroColorHex) }
-    /// White ink on the team color, except the handful of colors too light
-    /// to carry it. Monochrome fallback uses the theme tokens.
-    private var heroOnDark: Bool { heroColor != nil && !Color.espnHexIsLight(heroColorHex) }
-    private var heroInk: Color {
-        heroColor == nil ? .textPrimary : (heroOnDark ? .white : .black)
-    }
-    private var heroInkSecondary: Color {
-        heroColor == nil ? .textSecondary : heroInk.opacity(0.6)
-    }
-
     private var showsStandingsTab: Bool {
         resolvedConferenceId.map { Conference.tier(for: $0) != .other } ?? false
     }
@@ -195,46 +180,32 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        // Team color through the status-bar strip while the hero is up —
-        // the glass back/share buttons refract it, FotMob-style (Andy,
-        // 2026-08-29; mechanism replaced 2026-08-31).
-        .heroTopBand(heroColor ?? Color.bgPrimary)
+        // The card color through the status-bar strip and the top bounce.
+        .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(heroColor ?? Color.bgPrimary, for: .navigationBar)
-        // Transparent while the hero is at the top — the glass buttons
-        // sit directly on team color; solid once the hero scrolls under,
-        // exactly when the inline title arrives.
-        .toolbarBackground(showsInlineTitle ? .visible : .hidden, for: .navigationBar)
-        .toolbarColorScheme(heroColor == nil ? nil : (heroOnDark ? .dark : .light),
-                            for: .navigationBar)
-        // Custom back and share: dark-tinted glass circles with white ink,
-        // legible on team color where the system's untinted glass washed
-        // out (Andy, 2026-08-29). The system's own glass wrapper hides on
-        // iOS 26 so the tinted circle isn't glass-on-glass; swipe-back
-        // survives the hidden system button under NavigationStack.
-        .navigationBarBackButtonHidden(true)
+        // Solid card-color bar, seamless against the bgCard hero at rest —
+        // the transparent-until-scrolled dance retired with the team-color
+        // paint it existed for (2026-08-31).
+        .toolbarBackground(Color.bgCard, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            if #available(iOS 26.0, *) {
-                ToolbarItem(placement: .topBarLeading) { backButton }
-                    .sharedBackgroundVisibility(.hidden)
-            } else {
-                ToolbarItem(placement: .topBarLeading) { backButton }
-            }
             ToolbarItem(placement: .principal) {
                 Text(team.location)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(heroOnDark ? .white : Color.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
-            if #available(iOS 26.0, *) {
-                ToolbarItem(placement: .topBarTrailing) { shareButton }
-                    .sharedBackgroundVisibility(.hidden)
-            } else {
-                ToolbarItem(placement: .topBarTrailing) { shareButton }
+            // The control row, FotMob's pattern (Andy, 2026-08-31): bell,
+            // follow, and share ride beside the system back button. The
+            // season chip moved into the tab panes to make the room.
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                NotificationBell()
+                FollowPill(teamId: team.id)
+                shareButton
             }
         }
         // Sequential: standings need the schedule's conference id. The
@@ -247,36 +218,11 @@ struct TeamPage: View {
         }
     }
 
-    private var barInk: Color { heroOnDark ? .white : Color.textPrimary }
-    private var barGlassTint: Color {
-        heroOnDark ? Color.black.opacity(0.35) : Color.white.opacity(0.4)
-    }
-
-    private var backButton: some View {
-        Button { dismiss() } label: {
-            Image(systemName: "chevron.left")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(barInk)
-                .frame(width: 38, height: 38)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .glassCircleInteractive(tint: barGlassTint,
-                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
-        .accessibilityLabel("Back")
-    }
-
     private var shareButton: some View {
         ShareLink(item: team.shareText(schedule: currentSchedule)) {
             Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(barInk)
-                .frame(width: 38, height: 38)
-                .contentShape(Circle())
+                .foregroundStyle(.textPrimary)
         }
-        .buttonStyle(.plain)
-        .glassCircleInteractive(tint: barGlassTint,
-                                fallback: heroOnDark ? Color.black.opacity(0.3) : Color.bgElevated)
         .accessibilityLabel("Share this team")
     }
 
@@ -285,22 +231,11 @@ struct TeamPage: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
-                Spacer()
-                NotificationBell(onDark: heroOnDark)
-                if let selectedYear {
-                    SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
-                                   onSelect: { select(year: $0) }, onDark: heroOnDark)
-                }
-                FollowPill(teamId: team.id, onDark: heroOnDark)
-            }
-            .padding(.horizontal, Spacing.lg)
-
-            HStack(spacing: Spacing.md) {
                 logoMark
                 VStack(alignment: .leading, spacing: 2) {
                     Text(team.location)
                         .font(.heroTitle)
-                        .foregroundStyle(heroInk)
+                        .foregroundStyle(.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     conferenceLine
@@ -317,28 +252,17 @@ struct TeamPage: View {
                 .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The strip above — through the transparent bar and the top bounce
-        // — is heroTopBand's job: an in-content extension never escaped
-        // the ScrollView's clip (2026-08-31).
-        .background(heroColor ?? Color.bgPrimary)
+        // The strip above — through the bar and the top bounce — is
+        // heroTopBand's job: an in-content extension never escaped the
+        // ScrollView's clip (2026-08-31).
+        .background(Color.bgCard)
     }
 
-    /// On a colored hero the mark sits in a white disc so dark artwork
-    /// (Ohio State's lettering) never sinks into the team color — the same
-    /// job `logoBacking` does in dark mode. Monochrome fallback goes bare.
-    @ViewBuilder
+    /// Bare mark on the card-color header — dark mode reads the `500-dark`
+    /// variant through LogoImage, so no backing disc (Andy, 2026-08-31).
     private var logoMark: some View {
-        if heroColor != nil {
-            ZStack {
-                Circle().fill(.white)
-                LogoImage(url: team.logoURL)
-                    .frame(width: 44, height: 44)
-            }
+        LogoImage(url: team.logoURL)
             .frame(width: 56, height: 56)
-        } else {
-            LogoImage(url: team.logoURL)
-                .frame(width: 56, height: 56)
-        }
     }
 
     /// The conference name; the record moved into Overview's Record card,
@@ -357,19 +281,19 @@ struct TeamPage: View {
                         .font(.system(size: 9, weight: .semibold))
                 }
                 .font(.chipEmphasis)
-                .foregroundStyle(heroInkSecondary)
+                .foregroundStyle(.textSecondary)
             }
             .buttonStyle(.plain)
             .accessibilityHint("View conference standings")
         } else if !label.isEmpty {
             Text(label)
                 .font(.chipEmphasis)
-                .foregroundStyle(heroInkSecondary)
+                .foregroundStyle(.textSecondary)
         }
     }
 
     private var tabRow: some View {
-        HeroTabBar(tabs: visibleTabs, selection: tab, ink: heroInk,
+        HeroTabBar(tabs: visibleTabs, selection: tab,
                    onSelect: { select(tab: $0) })
     }
 
@@ -392,10 +316,30 @@ struct TeamPage: View {
 
     // MARK: - Tab content
 
+    /// The chip's year before the first schedule load pins it.
+    private var standingsYear: Int { selectedYear ?? CFBSeason.year() }
+    private var selectedStandings: ConferenceStandings? { standingsByYear[standingsYear] }
+    private var standingsLoading: Bool { standingsLoadingYears.contains(standingsYear) }
+    private var standingsFailed: Bool { standingsFailedYears.contains(standingsYear) }
+
     /// The team's own row in its conference table — the record card's
-    /// source while the season is current.
+    /// source while the season is current, whatever year the chip shows.
     private var ownStanding: ConferenceStanding? {
-        conferenceStandings?.entries.first { $0.team.id == team.id }
+        currentSeasonYear.flatMap { standingsByYear[$0] }?
+            .entries.first { $0.team.id == team.id }
+    }
+
+    /// The season picker rides the pane, not the hero — the toolbar row
+    /// holds bell/follow/share and had no room (Andy, 2026-08-31).
+    @ViewBuilder
+    private var seasonRow: some View {
+        if let selectedYear {
+            HStack {
+                Spacer()
+                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                               onSelect: { select(year: $0) })
+            }
+        }
     }
 
     /// Conference W-L is only knowable from the standings payload, which
@@ -447,6 +391,7 @@ struct TeamPage: View {
 
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
+            seasonRow
             if let nextGame {
                 NextGameCard(game: nextGame)
                     .cardSurface()
@@ -469,16 +414,18 @@ struct TeamPage: View {
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
-        Group {
-            if let entries = conferenceStandings?.entries, !entries.isEmpty {
+        VStack(spacing: Spacing.sm) {
+            seasonRow
+            if let entries = selectedStandings?.entries, !entries.isEmpty {
                 VStack(spacing: 0) {
                     StandingsList(
                         entries: entries,
                         highlightTeamId: team.id,
-                        // The tab always shows the current season.
                         showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                        year: CFBSeason.year()),
-                        liveGames: liveBoard?.games.filter(\.isLive) ?? []
+                                                                        year: standingsYear),
+                        // Live claims are current-season only (ConferencePage's rule).
+                        liveGames: standingsYear == currentSeasonYear
+                            ? (liveBoard?.games.filter(\.isLive) ?? []) : []
                     )
                 }
                 .padding(.bottom, Spacing.xs)
@@ -499,7 +446,9 @@ struct TeamPage: View {
             }
         }
         .padding(Spacing.sm)
-        .task { await loadStandings() }
+        // Re-fires on year flips while the tab is up; first visit to a
+        // year fetches lazily, a seen year is a cache hit.
+        .task(id: standingsYear) { await loadStandings() }
     }
 
     // MARK: - Loads
@@ -550,16 +499,23 @@ struct TeamPage: View {
 
     private func loadStandings(force: Bool = false) async {
         guard let id = resolvedConferenceId else { return }
-        guard force || conferenceStandings?.id != id else { return }
-        guard !standingsLoading else { return }
-        standingsLoading = true
-        defer { standingsLoading = false }
+        let year = standingsYear
+        // The id re-check also covers a conference that resolved differently
+        // once the schedule payload landed.
+        guard force || standingsByYear[year]?.id != id else { return }
+        guard !standingsLoadingYears.contains(year) else { return }
+        standingsLoadingYears.insert(year)
+        defer { standingsLoadingYears.remove(year) }
         do {
-            let all = try await client.conferenceStandings()
-            conferenceStandings = all.first { $0.id == id }
-            standingsFailed = false
+            // Nil for the current season keeps the shipped request shape;
+            // an explicit past year is scoped with `season={year}`.
+            let all = try await client.conferenceStandings(
+                year: year == CFBSeason.year() ? nil : year)
+            standingsByYear[year] = all.first { $0.id == id }
+                ?? ConferenceStandings(id: id, name: Conference.name(for: id), entries: [])
+            standingsFailedYears.remove(year)
         } catch {
-            standingsFailed = true
+            standingsFailedYears.insert(year)
         }
     }
 }

@@ -5,14 +5,11 @@ import UIKit
 /// Monochrome and weight-driven like the star; denied state routes to the
 /// system's notification settings (the only path once permission is refused).
 struct NotificationBell: View {
-    /// White ink for the team-color hero.
-    var onDark = false
-
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
 
-    private var ink: Color { onDark ? .white : .textPrimary }
-    private var inverse: Color { onDark ? .black : Color.bgPrimary }
+    private var ink: Color { .textPrimary }
+    private var inverse: Color { Color.bgPrimary }
 
     var body: some View {
         Button {

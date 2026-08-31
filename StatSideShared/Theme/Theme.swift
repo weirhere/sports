@@ -88,31 +88,6 @@ extension Color {
     })
 }
 
-// MARK: - Team color (the hero exception)
-// The team-page hero paints in the team's own color (Andy's call,
-// 2026-08-25 — the color budget's fourth exception). ESPN serves a bare
-// six-digit hex; anything else degrades to nil and the hero stays mono.
-extension Color {
-    init?(espnHex: String?) {
-        guard let hex = espnHex?.trimmingCharacters(in: .whitespaces),
-              hex.count == 6, let value = UInt32(hex, radix: 16) else { return nil }
-        self.init(red: Double((value >> 16) & 0xFF) / 255,
-                  green: Double((value >> 8) & 0xFF) / 255,
-                  blue: Double(value & 0xFF) / 255)
-    }
-
-    /// True when white text would fail on this team color (a handful of
-    /// golds and silvers); the hero flips to black ink instead.
-    static func espnHexIsLight(_ hex: String?) -> Bool {
-        guard let hex = hex?.trimmingCharacters(in: .whitespaces),
-              hex.count == 6, let value = UInt32(hex, radix: 16) else { return false }
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8) & 0xFF) / 255
-        let b = Double(value & 0xFF) / 255
-        return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.6
-    }
-}
-
 // Lets views write .foregroundStyle(.textSecondary) with dot syntax.
 extension ShapeStyle where Self == Color {
     static var textPrimary: Color { .textPrimary }
