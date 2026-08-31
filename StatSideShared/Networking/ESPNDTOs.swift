@@ -425,6 +425,7 @@ nonisolated struct AthleteDTO: Decodable {
     let displayName: String?
     let shortName: String?
     let jersey: String?
+    let headshot: LogoDTO?
 }
 
 nonisolated struct GameInfoDTO: Decodable {

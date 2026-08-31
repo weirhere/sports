@@ -375,8 +375,7 @@ nonisolated enum ESPNMapper {
                 displayName: scheduleTeam.displayName,
                 shortDisplayName: scheduleTeam.shortDisplayName,
                 logoURL: logo.flatMap(URL.init(string:)),
-                conferenceId: conferenceId(from: scheduleTeam.groups),
-                colorHex: scheduleTeam.color
+                conferenceId: conferenceId(from: scheduleTeam.groups)
             )
         }
         let games = ((dto.events?.elements ?? []) + extraEvents).compactMap(game(from:))
@@ -574,7 +573,10 @@ nonisolated enum ESPNMapper {
                       .leaders?.first,
                   let name = entry.athlete?.displayName ?? entry.athlete?.shortName
             else { return nil }
-            return LeaderCategory.Leader(name: name, statLine: entry.displayValue ?? "")
+            return LeaderCategory.Leader(
+                name: name,
+                statLine: entry.displayValue ?? "",
+                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)))
         }
 
         return leaderCategories.compactMap { category in

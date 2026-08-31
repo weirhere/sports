@@ -21,12 +21,12 @@ struct GameDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // The header keeps its bones on the primary surface; the
-                // content below moves into cards on the recessed one, the
-                // Teams/Conferences template (Andy, 2026-08-25).
+                // The header sits on the card surface — headers match the
+                // cards on every entity page (Andy, 2026-08-31); the
+                // content below stays in cards on the recessed one.
                 header
                     .frame(maxWidth: .infinity)
-                    .background(Color.bgPrimary)
+                    .background(Color.bgCard)
                 if let summary {
                     VStack(spacing: Spacing.sm) {
                         // Pre-kick, the sections below are all empty — the
@@ -67,9 +67,9 @@ struct GameDetailScreen: View {
                             card(title: "Drives") { DriveLogList(summary: summary) }
                         }
                         // Pre-game the info card already places the game;
-                        // the footer is the final's quiet closing line.
-                        if showsScores {
-                            footer(summary)
+                        // once scores exist it returns as the venue card.
+                        if showsScores, summary.venue != nil || summary.attendance != nil {
+                            card(title: "Game info") { venueRows(summary) }
                         }
                     }
                     .padding(Spacing.sm)
@@ -90,10 +90,12 @@ struct GameDetailScreen: View {
                 }
             }
         }
+        // The card color through the top bounce, matching the entity pages.
+        .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
         .navigationTitle(game.shortName ?? "Game")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -164,13 +166,21 @@ struct GameDetailScreen: View {
 
     /// Renders from the scoreboard's Game immediately; the summary fills in.
     private var header: some View {
-        HStack(alignment: .top, spacing: Spacing.lg) {
-            headerSide(competitor(game.away, summary?.away))
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        return HStack(alignment: .top, spacing: Spacing.lg) {
+            headerSide(away)
             VStack(spacing: Spacing.xs) {
                 if game.isLive { LiveDot() }
+                // With scores in play the matchup's number is the page's
+                // headline: one big centered score between the logos
+                // (FotMob's full-time layout), status demoted beneath it.
+                if showsScores, let awayScore = away.score, let homeScore = home.score {
+                    scoreLine(away: (awayScore, away.winner), home: (homeScore, home.winner))
+                }
                 Text(statusLine)
                     .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
                     .multilineTextAlignment(.center)
                 // Live is the one state with no other network surface —
                 // pre-game has the info card (and statusLine's own second
@@ -184,16 +194,31 @@ struct GameDetailScreen: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.top, Spacing.md)
+            .padding(.top, showsScores ? 0 : Spacing.md)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 ([statusLine.replacingOccurrences(of: "\n", with: ", ")]
                     + (liveBroadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
-            headerSide(competitor(game.home, summary?.home))
+            headerSide(home)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
+    }
+
+    /// The centered "24 – 17": the loser's number keeps the muted ink the
+    /// per-side scores carried, so the winner still reads without color.
+    private func scoreLine(away: (score: Int, winner: Bool?),
+                           home: (score: Int, winner: Bool?)) -> some View {
+        (Text("\(away.score)")
+            .foregroundStyle(away.winner == false ? Color.textSecondary : Color.textPrimary)
+            + Text(" – ").foregroundStyle(Color.textSecondary)
+            + Text("\(home.score)")
+            .foregroundStyle(home.winner == false ? Color.textSecondary : Color.textPrimary))
+            .font(game.isLive ? .scoreHeroLive : .scoreHero)
+            // The equal-thirds header would wrap this line; let it keep its
+            // intrinsic width and the flexible sides absorb the difference.
+            .fixedSize()
     }
 
     // Delegated to GameHeaderState so the share card provably renders the
@@ -221,11 +246,6 @@ struct GameDetailScreen: View {
                     Text(record)
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
-                }
-                if showsScores, let score = side.score {
-                    Text("\(score)")
-                        .font(game.isLive ? .scoreLive : .score)
-                        .foregroundStyle(side.winner == false ? .textSecondary : .textPrimary)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -315,20 +335,20 @@ struct GameDetailScreen: View {
         "\(summary.away?.team.abbreviation ?? "AWAY") · \(summary.home?.team.abbreviation ?? "HOME")"
     }
 
-    private func footer(_ summary: GameSummary) -> some View {
-        VStack(spacing: Spacing.xs) {
+    /// The live/final counterpart to the pre-game info rows: where the
+    /// game is (was) and how many showed up.
+    @ViewBuilder
+    private func venueRows(_ summary: GameSummary) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             if let venue = summary.venue {
-                Text(venue)
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
+                infoRow("mappin.and.ellipse",
+                        [venue, summary.venueCity].compactMap { $0 }.joined(separator: " · "))
             }
             if let attendance = summary.attendance {
-                Text("Attendance \(attendance.formatted())")
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
+                infoRow("person.2", "Attendance \(attendance.formatted())")
             }
         }
-        .padding(.vertical, Spacing.lg)
+        .padding(.vertical, Spacing.xs)
     }
 
     private func load(force: Bool = false) async {

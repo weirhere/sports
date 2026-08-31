@@ -5,29 +5,15 @@ import UIKit
 /// Monochrome and weight-driven like the star; denied state routes to the
 /// system's notification settings (the only path once permission is refused).
 struct NotificationBell: View {
-    /// White ink for the team-color hero.
-    var onDark = false
-
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
-
-    private var ink: Color { onDark ? .white : .textPrimary }
-    private var inverse: Color { onDark ? .black : Color.bgPrimary }
 
     var body: some View {
         Button {
             Task { await handleTap() }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: 14))
-                .foregroundStyle(notifications.remindersOn ? inverse : ink)
-                .padding(9)
-                .background(
-                    Circle().fill(notifications.remindersOn ? ink : Color.clear)
-                )
-                .overlay(
-                    Circle().strokeBorder(ink, lineWidth: notifications.remindersOn ? 0 : 1)
-                )
+                .foregroundStyle(Color.textPrimary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)

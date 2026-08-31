@@ -1,11 +1,10 @@
 import SwiftUI
 
 /// One conference's home, on the TeamPage template (Andy's call,
-/// 2026-08-25): hero header with the cluster top-right, Games and
-/// Standings tabs (the Games tab joined 2026-08-29 — the season's full
-/// conference slate, week by week), content as cards on the recessed
-/// surface. Conferences ship no ESPN color, so the hero is the template's
-/// monochrome variant. Standings stay in the provider's order
+/// 2026-08-25): card-color hero header, Standings and Games tabs
+/// (Standings leads since 2026-08-31; the Games tab joined 2026-08-29 —
+/// the season's full conference slate, week by week), content as cards on
+/// the recessed surface. Standings stay in the provider's order
 /// (seed-backed — never re-sorted here).
 struct ConferencePage: View {
     let destination: ConferenceDestination
@@ -13,12 +12,12 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case games, standings
+        case standings, games
 
         var title: String {
             switch self {
-            case .games: "Games"
             case .standings: "Standings"
+            case .games: "Games"
             }
         }
     }
@@ -36,6 +35,9 @@ struct ConferencePage: View {
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
+    /// True once the hero title has scrolled under the nav bar — the bar's
+    /// principal slot then carries the conference name (TeamPage's rule).
+    @State private var showsInlineTitle = false
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
@@ -52,9 +54,9 @@ struct ConferencePage: View {
 
     init(destination: ConferenceDestination) {
         self.destination = destination
-        // A standings-anchored push (a team's "3rd in SEC" line) must land
-        // on the table; everything else leads with the games.
-        _tab = State(initialValue: destination.highlightTeamId == nil ? .games : .standings)
+        // Standings lead (Andy, 2026-08-31) — which is also where a
+        // standings-anchored push (a team's "3rd in SEC" line) lands.
+        _tab = State(initialValue: .standings)
     }
 
     private var standings: ConferenceStandings? { standingsByYear[selectedYear] }
@@ -77,8 +79,8 @@ struct ConferencePage: View {
                     hero
                     Group {
                         switch tab {
-                        case .games: gamesSection
                         case .standings: standingsCard
+                        case .games: gamesSection
                         }
                     }
                     // geometryGroup pins row logos to the sliding pane —
@@ -113,14 +115,40 @@ struct ConferencePage: View {
                 proxy.scrollTo(target, anchor: .center)
             }
         }
-        // The monochrome hero's top-bounce paint; the bar itself is solid
-        // bgPrimary here, so this only shows while rubber-banding.
-        .heroTopBand(Color.bgPrimary)
+        // Once the hero's own title scrolls under the bar, the bar takes
+        // over the identity — TeamPage's handoff. The threshold is this
+        // hero's own: the title row ends ~68pt down (12 top + the 56pt
+        // logo row), not TeamPage's 120.
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > 64
+        } action: { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
+            }
+        }
+        // The hero's top-bounce paint; the bar itself is solid bgCard
+        // here, so this only shows while rubber-banding.
+        .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(destination.name)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.textPrimary)
+                    .lineLimit(1)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
+            }
+            // The follow pill rides the toolbar row, FotMob's pattern
+            // (Andy, 2026-08-31); the season chip moved into the panes.
+            ToolbarItem(placement: .topBarTrailing) {
+                ConferenceFollowPill(conferenceId: destination.conferenceId)
+            }
+        }
         .task { await load(year: selectedYear) }
     }
 
@@ -128,14 +156,6 @@ struct ConferencePage: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: Spacing.md) {
-                Spacer()
-                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
-                               onSelect: { select(year: $0) })
-                ConferenceFollowPill(conferenceId: destination.conferenceId)
-            }
-            .padding(.horizontal, Spacing.lg)
-
             HStack(spacing: Spacing.md) {
                 LogoImage(url: Conference.logoURL(for: destination.conferenceId))
                     .frame(width: 44, height: 44)
@@ -165,13 +185,23 @@ struct ConferencePage: View {
                 .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bgPrimary)
+        .background(Color.bgCard)
     }
 
-    // HeroTabBar carries the Figma tab specs; monochrome ink here.
+    // HeroTabBar carries the Figma tab specs.
     private var tabRow: some View {
-        HeroTabBar(tabs: [.games, .standings], selection: tab, ink: .textPrimary,
+        HeroTabBar(tabs: [.standings, .games], selection: tab,
                    onSelect: { select(tab: $0) })
+    }
+
+    /// The season picker rides the pane, not the hero — the toolbar row
+    /// holds the follow pill (Andy, 2026-08-31, matching TeamPage).
+    private var seasonRow: some View {
+        HStack {
+            Spacer()
+            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                           onSelect: { select(year: $0) })
+        }
     }
 
     /// Chip taps and content swipes share the one direction rule. The edge
@@ -189,6 +219,7 @@ struct ConferencePage: View {
 
     private var gamesSection: some View {
         VStack(spacing: Spacing.sm) {
+            seasonRow
             if let games, !games.isEmpty {
                 ConferenceGamesList(games: games)
             } else if gamesLoading {
@@ -198,36 +229,15 @@ struct ConferencePage: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
             } else if gamesError {
-                statusCard {
-                    VStack(spacing: Spacing.sm) {
-                        Text("Couldn't load the schedule.")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                        Button("Retry") {
-                            Task { await loadGames(year: selectedYear, force: true) }
-                        }
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                    }
-                    .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Couldn't load the schedule.",
+                              retry: { Task { await loadGames(year: selectedYear, force: true) } })
+                    .cardSurface()
             } else {
-                statusCard {
-                    Text("Schedule TBA")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Schedule TBA")
+                    .cardSurface()
             }
         }
         .padding(Spacing.sm)
-    }
-
-    private func statusCard(@ViewBuilder content: () -> some View) -> some View {
-        VStack(spacing: 0) { content() }
-            .frame(maxWidth: .infinity)
-            .cardSurface()
     }
 
     // MARK: - Standings
@@ -235,7 +245,8 @@ struct ConferencePage: View {
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29).
     private var standingsCard: some View {
-        Group {
+        VStack(spacing: Spacing.sm) {
+            seasonRow
             if let entries = standings?.entries, !entries.isEmpty {
                 VStack(spacing: 0) {
                     StandingsList(
@@ -255,29 +266,14 @@ struct ConferencePage: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
             } else if showsError {
-                statusCard {
-                    VStack(spacing: Spacing.sm) {
-                        Text("Couldn't load standings.")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                        Button("Retry") {
-                            Task { await loadStandings(year: selectedYear, force: true) }
-                        }
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                    }
-                    .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Couldn't load standings.",
+                              retry: { Task { await loadStandings(year: selectedYear, force: true) } })
+                    .cardSurface()
             } else {
                 // ESPN's offseason standings can come back empty (Sun Belt
                 // did), and an old season can omit a young conference.
-                statusCard {
-                    Text("Standings TBA")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
-                }
+                StatusMessage(text: "Standings TBA")
+                    .cardSurface()
             }
         }
         .padding(Spacing.sm)

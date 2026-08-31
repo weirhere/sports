@@ -9,10 +9,6 @@ nonisolated struct Team: Identifiable, Hashable, Sendable {
     let shortDisplayName: String?
     let logoURL: URL?
     let conferenceId: Int?
-    /// ESPN's primary team color ("00274c"), currently populated only by
-    /// the schedule payload's self team — the team-page hero's paint.
-    /// Defaulted so every other mapper keeps compiling colorless.
-    var colorHex: String? = nil
 }
 
 /// One FBS conference with its member teams, for the Teams browse screen.

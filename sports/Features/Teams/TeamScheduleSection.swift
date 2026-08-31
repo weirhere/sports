@@ -27,22 +27,11 @@ struct TeamScheduleSection: View {
         } else if isLoading {
             ProgressView().padding(.vertical, Spacing.xl)
         } else if showsError {
-            VStack(spacing: Spacing.sm) {
-                Text("Couldn't load the schedule.")
-                    .font(.teamName)
-                    .foregroundStyle(.textSecondary)
-                Button("Retry", action: onRetry)
-                    .font(.teamNameEmphasis)
-                    .foregroundStyle(.textPrimary)
-            }
-            .padding(.vertical, Spacing.xl)
+            StatusMessage(text: "Couldn't load the schedule.", retry: onRetry)
         } else {
             // Reachable when the current-season fallback found both years
             // empty, or when an explicitly picked season is unpublished.
-            Text("Schedule TBA")
-                .font(.teamName)
-                .foregroundStyle(.textSecondary)
-                .padding(.vertical, Spacing.xl)
+            StatusMessage(text: "Schedule TBA")
         }
     }
 }
