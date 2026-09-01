@@ -62,9 +62,19 @@ struct ConferencePage: View {
     private var standings: ConferenceStandings? { standingsByYear[selectedYear] }
     private var isLoading: Bool { loadingYears.contains(selectedYear) }
     private var showsError: Bool { failedYears.contains(selectedYear) }
-    private var games: [Game]? { gamesByYear[selectedYear] }
     private var gamesLoading: Bool { gamesLoadingYears.contains(selectedYear) }
     private var gamesError: Bool { gamesFailedYears.contains(selectedYear) }
+
+    /// Rendered through the shared live merge: the season slate is
+    /// fetched once per (conference, year) and never polled — right for a
+    /// page that is mostly history — so without this a game that is live
+    /// when the page opens freezes at that moment's score. Past seasons
+    /// skip the merge outright; nothing in them can be live.
+    private var games: [Game]? {
+        guard let slate = gamesByYear[selectedYear] else { return nil }
+        guard selectedYear == CFBSeason.year() else { return slate }
+        return Game.merging(slate, withLive: liveBoard?.games ?? [])
+    }
 
     /// Newest first, floored at 2014 — the CFP era, matching the Scores and
     /// TeamPage selectors.
