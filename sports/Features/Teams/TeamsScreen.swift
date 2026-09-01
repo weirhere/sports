@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Browse and search the FBS, grouped by conference (from the standings
-/// API — the one source that knows membership).
+/// Browse and search every team, grouped by conference (from the standings
+/// API — the one source that knows membership), FBS conferences first and
+/// FCS under their own heading (E8).
 struct TeamsScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
@@ -23,6 +24,18 @@ struct TeamsScreen: View {
             if lhs != rhs { return lhs < rhs }
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
+    }
+
+    /// Split by division under their own headings (E8). The directory
+    /// doubled to ~250 teams, and one undifferentiated "All conferences"
+    /// list would read as though the app's slate covered all of it — which
+    /// under scope (b) it doesn't until you ask.
+    private var fbsConferences: [ConferenceTeams] {
+        conferences.filter { Conference.division(for: $0.id) != .fcs }
+    }
+
+    private var fcsConferences: [ConferenceTeams] {
+        conferences.filter { Conference.division(for: $0.id) == .fcs }
     }
 
     var body: some View {
@@ -108,14 +121,25 @@ struct TeamsScreen: View {
                                         teams: followedTeams)
                                 .id(Self.followingSectionId)
                         }
-                        ListSectionHeading(title: "All conferences")
-                        ForEach(conferences) { conference in
+                        ListSectionHeading(title: "FBS conferences")
+                        ForEach(fbsConferences) { conference in
                             teamSection(title: conference.name,
                                         sectionId: sectionId(for: conference),
                                         teams: conference.teams,
                                         logoURL: Conference.logoURL(for: conference.id),
                                         isConference: true,
                                         conferenceId: conference.id)
+                        }
+                        if !fcsConferences.isEmpty {
+                            ListSectionHeading(title: "FCS conferences")
+                            ForEach(fcsConferences) { conference in
+                                teamSection(title: conference.name,
+                                            sectionId: sectionId(for: conference),
+                                            teams: conference.teams,
+                                            logoURL: Conference.logoURL(for: conference.id),
+                                            isConference: true,
+                                            conferenceId: conference.id)
+                            }
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {

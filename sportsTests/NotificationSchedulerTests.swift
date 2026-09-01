@@ -51,7 +51,7 @@ private struct ScheduleStub: ScoresProviding {
         Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil, weeks: [], games: [])
     }
     func rankings() async throws -> [Poll] { [] }
-    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }

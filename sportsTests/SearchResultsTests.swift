@@ -37,6 +37,13 @@ private let mountainWest = ConferenceTeams(id: 17, name: "Mountain West", teams:
 private let other = ConferenceTeams(id: nil, name: "Other", teams: [])
 private let allConferences = [sec, acc, mountainWest, other]
 
+// FCS teams that collide with FBS names on purpose: "Georgia State" is a
+// real ambiguity a Georgia fan will hit, and Montana State is Big Sky.
+private let georgiaSouthern = team("290", location: "Georgia Southern",
+                                   name: "Eagles", abbreviation: "GASO",
+                                   displayName: "Georgia Southern Eagles", conference: 20)
+private let bigSky = ConferenceTeams(id: 20, name: "Big Sky", teams: [georgiaSouthern])
+
 @Suite struct SearchResultsTests {
 
     @Test func emptyAndWhitespaceQueriesReturnNothing() {
@@ -71,6 +78,27 @@ private let allConferences = [sec, acc, mountainWest, other]
         let followed = SearchResults.compute(query: "georgia", conferences: allConferences,
                                              games: [], followingIds: [georgiaTech.id])
         #expect(followed.teams == [georgiaTech, georgia])
+    }
+
+    /// E8: the directory doubled to ~250 teams when FCS joined it, but the
+    /// common query didn't change. An FCS team that matches exactly as well
+    /// as an FBS one sits below it — alphabetical order would otherwise put
+    /// "Georgia Southern" above "Georgia Tech" for a Georgia fan.
+    @Test func anFCSTeamRanksBelowAnEquallyGoodFBSMatch() {
+        let results = SearchResults.teams(matching: "georgia",
+                                          in: [bigSky] + allConferences,
+                                          followingIds: [])
+        let ids = results.map(\.id)
+        #expect(ids.firstIndex(of: "61")! < ids.firstIndex(of: "290")!)
+        #expect(ids.firstIndex(of: "59")! < ids.firstIndex(of: "290")!)
+    }
+
+    /// ...but a followed FCS team still leads, like any followed team.
+    @Test func aFollowedFCSTeamStillOutranksTheFBSField() {
+        let results = SearchResults.teams(matching: "georgia",
+                                          in: [bigSky] + allConferences,
+                                          followingIds: ["290"])
+        #expect(results.first?.id == "290")
     }
 
     @Test func exactAbbreviationBeatsPrefixBeatsSubstring() {

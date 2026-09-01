@@ -132,7 +132,11 @@ actor CFBDClient: ScoresProviding {
         return CFBDMapper.polls(from: weeks.elements, season: season, joins: joins)
     }
 
-    func fbsConferences() async throws -> [ConferenceTeams] {
+    /// FBS only, like everything else here: `/teams/fbs` has no FCS
+    /// counterpart in this client's joins, so an FCS ask gets nothing
+    /// rather than a wrong table.
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
+        guard division == .fbs else { return [] }
         let teams = try await teams(year: CFBSeason.year())
         return CFBDMapper.conferences(from: teams)
     }

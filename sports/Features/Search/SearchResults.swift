@@ -80,14 +80,19 @@ nonisolated struct SearchResults: Equatable {
                                     followingIds: Set<String>) -> [Team] {
         var seen = Set<String>()
         return conferences.flatMap(\.teams)
-            .compactMap { team -> (team: Team, followed: Bool, tier: Int)? in
+            .compactMap { team -> (team: Team, followed: Bool, tier: Int, fcs: Bool)? in
                 guard let tier = matchTier(folded, team: team),
                       seen.insert(team.id).inserted else { return nil }
-                return (team, followingIds.contains(team.id), tier)
+                return (team, followingIds.contains(team.id), tier,
+                        Conference.division(for: team.conferenceId) == .fcs)
             }
             .sorted { lhs, rhs in
                 if lhs.followed != rhs.followed { return lhs.followed }
                 if lhs.tier != rhs.tier { return lhs.tier < rhs.tier }
+                // The corpus doubled when FCS joined the directory; the
+                // common query didn't. An equally-good FCS match sits
+                // below the FBS one, under a followed team either way.
+                if lhs.fcs != rhs.fcs { return rhs.fcs }
                 return lhs.team.location.localizedCaseInsensitiveCompare(rhs.team.location) == .orderedAscending
             }
             .map(\.team)

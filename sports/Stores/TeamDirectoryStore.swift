@@ -1,9 +1,14 @@
 import Foundation
 import Observation
 
-/// The FBS universe — every conference and its member teams, fetched once
+/// Every conference and its member teams — both divisions — fetched once
 /// per launch from the standings API (the one source that knows membership)
 /// and shared by Teams browse, onboarding, and app-wide search.
+///
+/// The directory is division-complete even though the *slate* is opt-in
+/// (E8 scope (b)): browsing to an FCS team's page and searching for one
+/// are what scope (a) was, and (b) contains (a). It costs one extra
+/// request per launch, never polled.
 @Observable
 final class TeamDirectoryStore {
     private let client: any ScoresProviding
@@ -25,7 +30,12 @@ final class TeamDirectoryStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            conferences = try await client.fbsConferences()
+            // Both divisions at once, FBS first. An FCS failure costs the
+            // FCS half of browse; an FBS failure is the error, because a
+            // directory without the FBS teams isn't a directory.
+            async let fcs = try? await client.conferences(in: .fcs)
+            let fbs = try await client.conferences(in: .fbs)
+            conferences = fbs + (await fcs ?? [])
             lastError = nil
         } catch {
             lastError = "Couldn't load teams."

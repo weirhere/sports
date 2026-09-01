@@ -16,7 +16,10 @@ nonisolated protocol ScoresProviding: Sendable {
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
-    func fbsConferences() async throws -> [ConferenceTeams]
+    /// One division's conferences and their member teams, for browse,
+    /// search, and onboarding. Alphabetical by conference — the browse
+    /// screen re-sorts by tier itself.
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams]
     /// All FBS conferences' standings in one call, each in the provider's
     /// standings order (ESPN's encodes tiebreakers). Empty conferences are
     /// kept — offseason responses can have zero entries and the page needs
@@ -151,10 +154,10 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.polls(from: dto)
     }
 
-    func fbsConferences() async throws -> [ConferenceTeams] {
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
         let dto: StandingsResponseDTO = try await fetch(
             base: Self.standingsBase, path: "/standings",
-            query: [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+            query: [URLQueryItem(name: "group", value: String(division.groupId))]
         )
         return ESPNMapper.conferences(from: dto)
     }
