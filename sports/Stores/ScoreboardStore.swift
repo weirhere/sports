@@ -149,6 +149,7 @@ final class ScoreboardStore {
         let grouping: ScoresGrouping
         let liveOnly: Bool
         let filter: ScoreFilter?
+        let divisions: Set<Conference.Division>
     }
 
     /// The season on screen.
@@ -227,6 +228,23 @@ final class ScoreboardStore {
         await fetchSelectedWeek()
         startPollingIfNeeded()
         prefetchAdjacentWeeks()
+    }
+
+    /// The divisions a given set of user choices needs on the slate. FBS
+    /// is always there — the app's default promise — and FCS joins only
+    /// when someone selected an FCS conference in the filter sheet or
+    /// follows one. That "only when asked" is the whole of scope (b), and
+    /// it's what keeps the 30s poll at one request for everyone else.
+    nonisolated static func divisions(filter: ScoreFilter?,
+                                      followedConferenceIds: Set<Int>) -> Set<Conference.Division> {
+        var needed: Set<Conference.Division> = [.fbs]
+        if case .conference(let id) = filter, Conference.division(for: id) == .fcs {
+            needed.insert(.fcs)
+        }
+        if followedConferenceIds.contains(where: { Conference.division(for: $0) == .fcs }) {
+            needed.insert(.fcs)
+        }
+        return needed
     }
 
     /// Widen or narrow the slate's divisions. Async and explicit rather
@@ -476,9 +494,12 @@ final class ScoreboardStore {
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
+        // `divisions` is in the key because the bucketing loop reads it:
+        // the same games opted into FCS produce different sections.
         let key = SectionsKey(games: games, followingIds: followingIds,
                               followedConferenceIds: followedConferenceIds,
-                              grouping: grouping, liveOnly: liveOnly, filter: filter)
+                              grouping: grouping, liveOnly: liveOnly, filter: filter,
+                              divisions: divisions)
         if let memoized = sectionsMemo[key] { return memoized }
 
         var visible = liveOnly ? games.filter(\.isLive) : games
@@ -535,16 +556,16 @@ final class ScoreboardStore {
         // conference only, or Week 1's ~48 FCS matchups would pile up in
         // Other as duplicates.
         //
-        // FBS ids only, and that is now a deliberate filter rather than a
-        // side effect of the registry not knowing FCS. The registry knows
-        // all 14 FCS conferences as of E8's first item; scope (b) says the
-        // default slate stays FBS-shaped until the user opts in, so this
-        // gate lifts with the filter-sheet item, not before. Without it a
-        // Week 2 slate would sprout a Big Sky section off a single visitor.
+        // Sections follow the slate's divisions, not the registry's
+        // knowledge: FCS is opt-in (scope (b)), so until someone asks for
+        // it a Big Sky visitor at an FBS school stays in the host's
+        // section rather than spawning a Big Sky one.
         var byConference: [Int?: [Game]] = [:]
         for game in visible {
             let known = Set([game.home.team.conferenceId, game.away.team.conferenceId]
-                .compactMap { id in Conference.division(for: id) == .fbs ? id : nil })
+                .compactMap { id in
+                    Conference.division(for: id).map(divisions.contains) == true ? id : nil
+                })
             if known.isEmpty {
                 byConference[nil, default: []].append(game)
             } else {

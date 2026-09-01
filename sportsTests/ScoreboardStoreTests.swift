@@ -176,6 +176,30 @@ private func game(_ id: String, home: Team, away: Team,
         #expect(sections.map(\.id) == ["conf-SEC"])
     }
 
+    @Test func optingIntoFCSGivesTheVisitorsConferenceItsOwnSection() async {
+        // The other half of the rule above, and scope (b)'s payoff: once
+        // someone asks for FCS, the same crossover game is claimed by both
+        // sides' conferences — section completeness, unchanged, just over
+        // a wider slate.
+        let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
+                                                 away: team("2", conference: 20))])
+        #expect(store.sections(followingIds: []).map(\.id) == ["conf-SEC"])
+
+        await store.select(divisions: [.fbs, .fcs])
+        #expect(store.sections(followingIds: []).map(\.id) == ["conf-SEC", "conf-Big Sky"])
+    }
+
+    @Test func aFollowedFCSConferenceFillsFollowing() async {
+        // Following is division-agnostic by construction; this pins it, so
+        // the "a followed FCS conference behaves exactly like an FBS one"
+        // promise can't quietly regress.
+        let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
+                                                 away: team("2", conference: 20))])
+        await store.select(divisions: [.fbs, .fcs])
+        let sections = store.sections(followingIds: [], followedConferenceIds: [20])
+        #expect(sections.first?.id == "following")
+    }
+
     @Test func gameWithNoPlaceableSideBucketsIntoOther() async {
         // Only when neither side has a known conference does Other claim
         // the game — the never-lose-a-game backstop.

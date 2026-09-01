@@ -79,3 +79,41 @@ private let slot = WeekSlot(label: "Week 1", shortLabel: "Wk 1", seasonType: 2,
         #expect(Conference.Division.allCases.count == 2)
     }
 }
+
+/// Scope (b)'s actual promise: FCS costs a request only when someone asks
+/// for it. This is the rule that keeps an ordinary Saturday at one poll.
+@Suite struct DivisionOptInTests {
+    @Test func theDefaultSlateIsFBSAlone() {
+        #expect(ScoreboardStore.divisions(filter: nil, followedConferenceIds: []) == [.fbs])
+        #expect(ScoreboardStore.divisions(filter: .top25, followedConferenceIds: []) == [.fbs])
+        #expect(ScoreboardStore.divisions(filter: .conference(8),
+                                          followedConferenceIds: [1, 17]) == [.fbs])
+    }
+
+    @Test func filteringToAnFCSConferenceOptsIn() {
+        #expect(ScoreboardStore.divisions(filter: .conference(20),
+                                          followedConferenceIds: []) == [.fbs, .fcs])
+    }
+
+    @Test func followingAnFCSConferenceOptsIn() {
+        // Following has to work without a filter — a followed conference's
+        // games appear in Following on every week, not just a filtered one.
+        #expect(ScoreboardStore.divisions(filter: nil,
+                                          followedConferenceIds: [21]) == [.fbs, .fcs])
+        #expect(ScoreboardStore.divisions(filter: .top25,
+                                          followedConferenceIds: [8, 179]) == [.fbs, .fcs])
+    }
+
+    @Test func fbsNeverLeavesTheSlate() {
+        // Even filtered to one FCS conference: Following, Top 25 and the
+        // conference sections are all still FBS-shaped underneath.
+        let divisions = ScoreboardStore.divisions(filter: .conference(31),
+                                                  followedConferenceIds: [31])
+        #expect(divisions.contains(.fbs))
+    }
+
+    @Test func anUnknownConferenceIdDoesNotOptIn() {
+        #expect(ScoreboardStore.divisions(filter: .conference(999),
+                                          followedConferenceIds: [424_242]) == [.fbs])
+    }
+}
