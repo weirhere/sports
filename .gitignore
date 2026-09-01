@@ -1,2 +1,5 @@
 # Local build output (simulator derived data lands here)
 build/
+
+# Claude Code local config
+.claude/
