@@ -34,13 +34,21 @@ release-notes history now.
 >   games mid-swipe instead of placeholders, and the new week lands instantly.
 > • Dark mode got a retune: cards and sheets now sit visibly above the black
 >   background instead of blending into it.
-> • The team-color header now paints all the way up behind the status bar,
->   and switching tabs on team and conference pages slides the right way
->   every time.
+> • Team and conference pages got a cleaner header. It matches the cards now,
+>   with back, follow, and share on one row, and the season picker sits with
+>   the games it filters.
+> • Switching tabs on team and conference pages slides the right way every time.
+> • A game at the break reads "Half" instead of a stopped clock at 0:00.
+> • Live and final games lead with one big score between the logos.
 > • Box scores fill their card edge to edge with bigger, easier-to-read
 >   numbers.
 
 ### 1.3.0 (build 10)
+
+Note 2026-09-01: the team-colors line below describes the hero that retired
+on 2026-08-31 (headers match the cards now). It stays as written if build 10
+actually shipped, since this section is release history. If it never went
+up, fold the still-true bullets into 1.3.1 and drop that one.
 
 > • Scores opens by date now, so today's games lead the page. The by-conference
 >   view is one tap away in the new view sheet.
@@ -72,8 +80,12 @@ release-notes history now.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Kickoff is coming. Follow your teams, get kickoff reminders, and put their
-> games on your Home Screen — ready for Week 1 with live scores and rankings. (151)
+> Saturdays move fast. Follow your teams, filter to what's live, and get a
+> reminder 30 minutes before kickoff. Scores, rankings, and no ads in the way. (148)
+
+Rewritten 2026-09-01: the previous line was preseason copy ("Kickoff is
+coming... ready for Week 1") and Week 1 finished Aug 29. This field is
+editable without review, so it should never be the stale one.
 
 ## Description (4000 chars max) ✏️
 
@@ -85,7 +97,7 @@ release-notes history now.
 > • Your teams first: follow any FBS team and their games lead the page
 > • Top 25 games in their own section, always complete
 > • Every conference in collapsible sections that remember how you left them
-> • Live games get a pulsing dot, a possession marker, and the only red in the app
+> • Live games get a pulsing dot, a possession marker, and heavier type on the score
 > • One tap filters to live games only
 >
 > YOUR TEAMS, EVERYWHERE
@@ -102,11 +114,13 @@ release-notes history now.
 > RANKINGS AND DETAILS
 > • AP Top 25 and Coaches Poll, with movement arrows
 > • Game pages: line score, scoring plays, drive log, team stats, leaders
-> • Team pages: full season schedule and results
+> • Team pages: the record, the full season schedule, and where they stand
+> • Conference pages: full standings and every game of the season
+> • Search any team, conference, or game in this week's slate
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
-> Black, white, and your team's colors. No banner ads, no autoplay video,
+> Black, white, and team logos in full color. No banner ads, no autoplay video,
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
