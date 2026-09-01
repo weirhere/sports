@@ -27,7 +27,17 @@ actor LogoCache {
     /// blank discs while a freshly-inserted tab pane slid in (2026-08-31).
     /// NSCache does its own locking, so the unsafe opt-out is sound; its
     /// memory-pressure eviction just means a rare re-fetch.
-    nonisolated(unsafe) private let loaded = NSCache<NSURL, UIImage>()
+    ///
+    /// Capped at ~64 MB of decoded pixels: uncapped, a session that browsed
+    /// six weeks of slates held 370+ MB of 500px logo bitmaps (2026-09-01
+    /// perf pass) — NSCache would shed them under pressure, but an explicit
+    /// budget keeps the footprint honest instead of riding jetsam's
+    /// judgment. Eviction cost = decoded bytes, set per insert below.
+    nonisolated(unsafe) private let loaded: NSCache<NSURL, UIImage> = {
+        let cache = NSCache<NSURL, UIImage>()
+        cache.totalCostLimit = 64 * 1024 * 1024
+        return cache
+    }()
     private var missing: Set<URL> = []
     private var inFlight: [URL: Task<FetchOutcome, Never>] = [:]
 
@@ -56,7 +66,8 @@ actor LogoCache {
         inFlight[url] = nil
         switch outcome {
         case .image(let image):
-            loaded.setObject(image, forKey: url as NSURL)
+            let pixels = image.size.width * image.scale * image.size.height * image.scale
+            loaded.setObject(image, forKey: url as NSURL, cost: Int(pixels) * 4)
             return image
         case .missing:
             missing.insert(url)
