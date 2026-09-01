@@ -3,39 +3,38 @@ import { Skeleton } from "@/components/ui/skeleton";
 function GameRowSkeleton() {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      {/* Status column */}
-      <div className="flex w-12 shrink-0 items-center justify-center">
-        <Skeleton className="h-3 w-8" />
-      </div>
-
-      {/* Teams */}
+      {/* Team lines, mirroring the GameRow shape */}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded-full" />
-          <Skeleton className="h-3.5 w-28" />
-          <Skeleton className="ml-auto h-3.5 w-6" />
+          <Skeleton className="h-3 w-28" />
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded-full" />
-          <Skeleton className="h-3.5 w-24" />
-          <Skeleton className="ml-auto h-3.5 w-6" />
+          <Skeleton className="h-3 w-24" />
         </div>
+      </div>
+      {/* Hairline + status column */}
+      <div className="h-11 w-px shrink-0 bg-divider" />
+      <div className="flex w-20 shrink-0 flex-col gap-1.5">
+        <Skeleton className="h-2.5 w-14" />
+        <Skeleton className="h-2.5 w-10" />
       </div>
     </div>
   );
 }
 
-/** Skeleton for a single conference container with game rows */
+/** Skeleton for one section accordion (header + game rows). */
 export function ConferenceGroupSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="px-4 py-3">
-        <Skeleton className="h-4 w-24" />
+    <div className="card-surface">
+      <div className="bg-bg-header px-4 py-3">
+        <Skeleton className="h-3.5 w-24" />
       </div>
-      <div className="border-t">
+      <div>
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i}>
-            {i > 0 && <div className="mx-4 border-t" />}
+            {i > 0 && <div className="ml-4 border-t border-divider" />}
             <GameRowSkeleton />
           </div>
         ))}
