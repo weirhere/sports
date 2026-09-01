@@ -47,12 +47,27 @@ final class ConferenceLiveMergeUITests: XCTestCase {
         XCTAssertTrue(scrollUntilExists(row, in: app),
                       "the live game never appeared on the conference page")
 
+        // Two assertions, because they fail for different reasons.
+        //
+        // First: the merge lands at all. The page opens on its own season
+        // fetch, which for a live game is a pre-game snapshot until the
+        // scoreboard's copy arrives — so the row starting pre-game is
+        // correct, and the test has to wait that window out rather than
+        // race it (which is exactly how this test flaked).
+        let live = expectation(description: "conference row goes live")
+        live.assertForOverFulfill = false
+        let poll = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            let label = row.label
+            if label.contains("quarter") || label.contains("halftime") { live.fulfill() }
+        }
+        wait(for: [live], timeout: 20)
+        poll.invalidate()
+
+        // Second: it keeps landing. A one-shot merge would satisfy the
+        // check above and still leave the row frozen a minute later.
         let before = row.label
-        // fx-hold moves its score every third fetch; at a 0.5s poll that is
-        // ~1.5s, so this covers several changes even if a fetch is dropped.
-        Thread.sleep(forTimeInterval: 8)
-        let after = row.label
-        XCTAssertNotEqual(before, after,
-                          "the conference slate froze — it is not merging the live scoreboard")
+        Thread.sleep(forTimeInterval: 6)
+        XCTAssertNotEqual(before, row.label,
+                          "the conference slate stopped tracking the live scoreboard")
     }
 }

@@ -46,12 +46,14 @@ private struct ScheduleStub: ScoresProviding {
         TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: schedules[teamId] ?? [])
     }
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
         Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil, weeks: [], games: [])
     }
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
     func gameSummary(eventId: String) async throws -> GameSummary { throw ESPNError.invalidURL }
 }

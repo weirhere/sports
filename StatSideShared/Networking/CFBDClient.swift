@@ -38,7 +38,14 @@ actor CFBDClient: ScoresProviding {
 
     // MARK: - ScoresProviding
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+    /// CFBD parity stays FBS-only: every endpoint below asks for
+    /// `classification=fbs`, and CFBD's own FCS coverage would be a
+    /// separate join (different team table, different records feed), not
+    /// a parameter. An FCS request is answered with the FBS slate rather
+    /// than an error — the switch is a fallback backend, and a narrower
+    /// answer beats a blank screen.
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
         let season = year ?? CFBSeason.year()
         let slots = try await weekSlots(year: season)
         let currentSlot = CFBDMapper.currentSlot(in: slots)
@@ -130,7 +137,9 @@ actor CFBDClient: ScoresProviding {
         return CFBDMapper.conferences(from: teams)
     }
 
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] {
+        guard division == .fbs else { return [] }
         // CFBD's endpoints are year-scoped natively, so a past season is
         // the same join with a different year.
         let season = year ?? CFBSeason.year()
