@@ -26,7 +26,11 @@ enum ScoreFilter: Hashable {
         }
     }
 
-    init?(token: String) {
+    /// Pure parsing, and `UIStateStore.init` reaches it as an unapplied
+    /// function reference (`flatMap(ScoreFilter.init(token:))`) — which
+    /// is a nonisolated context, so the default MainActor isolation has
+    /// to come off.
+    nonisolated init?(token: String) {
         if token == "top25" {
             self = .top25
         } else if token.hasPrefix("conference-"),

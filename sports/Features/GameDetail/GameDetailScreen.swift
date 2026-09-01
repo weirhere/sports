@@ -361,9 +361,12 @@ struct GameDetailScreen: View {
         // Standings ride along for the matchup card — independent fetch,
         // quiet failure, skipped entirely for past-season games and once
         // loaded (the poll loop shouldn't refetch tables every 30s).
+        // The gate is decided here, on the main actor: an `async let`
+        // initializer is a nonisolated autoclosure, so it can't read
+        // `conferenceStandings` itself.
+        let needsStandings = isCurrentSeason && conferenceStandings.isEmpty
         async let standingsFetch: [ConferenceStandings]? =
-            (isCurrentSeason && conferenceStandings.isEmpty)
-                ? try? client.conferenceStandings() : nil
+            needsStandings ? try? client.conferenceStandings() : nil
         do {
             summary = try await client.gameSummary(eventId: game.id)
             lastError = nil
