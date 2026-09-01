@@ -1,8 +1,14 @@
 import SwiftUI
+import os
 
 /// The product: one screen answering "what's the state of college football
 /// right now" in one thumb, one scroll. Week strip → section stack.
 struct ScoresScreen: View {
+    /// Forensics for the self-popping live detail (BACKLOG E5, found
+    /// 2026-08-29): a pop through the path binding logs a count change; a
+    /// pop with no count change means the screen's @State was rebuilt —
+    /// two different bugs, distinguishable only if we log both.
+    private static let logger = Logger(subsystem: "com.andyryanweir.sports", category: "scoresnav")
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
@@ -117,7 +123,13 @@ struct ScoresScreen: View {
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this
         // mostly matters after the tab's view is torn down and recreated.
-        .onAppear { resolvePendingGame() }
+        .onAppear {
+            Self.logger.info("scores appeared, path depth \(path.count)")
+            resolvePendingGame()
+        }
+        .onChange(of: path.count) { old, new in
+            Self.logger.info("scores path depth \(old) -> \(new)")
+        }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: store.games) { _, _ in resolvePendingGame() }
         // The drag-commit handoff: the new week takes the screen the moment

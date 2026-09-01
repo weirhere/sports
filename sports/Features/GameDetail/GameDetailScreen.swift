@@ -125,7 +125,7 @@ struct GameDetailScreen: View {
             guard scenePhase == .active, isLiveNow else { return }
             Self.logger.info("detail polling: started for event \(game.id)")
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
+                try? await Task.sleep(for: DataProvider.pollInterval)
                 guard !Task.isCancelled else { break }
                 Self.logger.info("detail polling: tick for event \(game.id)")
                 await load(force: true)

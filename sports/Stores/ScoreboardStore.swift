@@ -354,7 +354,7 @@ final class ScoreboardStore {
         Self.logger.info("polling: started")
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
+                try? await Task.sleep(for: DataProvider.pollInterval)
                 guard !Task.isCancelled, let self else { return }
                 guard self.hasLiveGames else {
                     Self.logger.info("polling: stopped (no live games)")
