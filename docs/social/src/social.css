@@ -199,3 +199,34 @@ body {
     0 10px 24px rgba(0,0,0,0.6);
 }
 .crop img { position: absolute; display: block; max-width: none; }
+
+/* ---------- story cards (1080×1920) ----------
+   Instagram covers roughly the top and bottom 250px with its own chrome, so
+   copy stays inside the middle band and only artwork runs under it. */
+
+.stage9 { width: 1080px; height: 1920px; }
+
+.stage9 .head {
+  position: absolute;
+  top: 300px; left: 0; right: 0;
+  padding: 0 80px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.stage9 .brand { margin-bottom: 44px; }
+.stage9 .brand img { width: 48px; height: 48px; }
+.stage9 .brand .wordmark { font-size: 35px; }
+.stage9 .kicker { font-size: 19px; }
+.stage9 .headline { font-size: 76px; margin-top: 24px; }
+.stage9 .sub { font-size: 26px; margin-top: 26px; text-wrap: balance; }
+
+/* Left-aligned text in a block that still centres on the canvas. */
+.stage9 .bullets {
+  text-align: left;
+  width: max-content;
+  max-width: 880px;
+  margin-top: 40px;
+  font-size: 25px;
+}
+.stage9 .bullets li + li { margin-top: 16px; }
+.stage9 .bullets li { padding-left: 32px; }
+.stage9 .bullets li::before { width: 8px; height: 8px; left: 3px; }

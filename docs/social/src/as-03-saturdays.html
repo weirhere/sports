@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  .stage::before {
+    background:
+      radial-gradient(110% 50% at 50% 86%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+      radial-gradient(80% 30% at 50% 8%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(70% 42% at 50% 72%, #000 0%, rgba(0,0,0,0) 80%);
+    mask-image: radial-gradient(70% 42% at 50% 72%, #000 0%, rgba(0,0,0,0) 80%);
+  }
+  .phone.hero { font-size: 520px; left: 280px; top: 946px; z-index: 3; }
+</style>
+<style>
+  /* App Store 1284x2778 reflow. */
+  .stage { height: 2337px; zoom: 1.18889; }
+  .stage9 .head { top: 400px; }
+  .phone.hero { font-size: 620px; left: 230px; top: 1120px; }
+</style>
+</head>
+<body>
+<div class="stage stage9">
+  <div class="content">
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+      <div class="kicker">Built for Saturdays</div>
+      <div class="headline">One screen,<br>whole slate.</div>
+      <ul class="bullets">
+        <li><b>Your teams first</b> — their games lead the page</li>
+        <li><b>Top 25 games</b> in their own section, always complete</li>
+        <li><b>Every conference</b> in sections that remember how you left them</li>
+        <li><b>Live games</b> get a pulsing dot and the only red in the app</li>
+        <li><b>One tap</b> filters to live games only</li>
+      </ul>
+    </div>
+
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/01-scores.png">
+      <div class="glare"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

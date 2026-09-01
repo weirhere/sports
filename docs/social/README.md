@@ -20,6 +20,26 @@ crops identically in the timeline.
 
 Tweet 6 has no device on purpose. It's about absence.
 
+## Story set (9:16)
+
+The same seven beats at 1080 × 1920 (rendered 2160 × 3840), so the thread can
+run as a Story sequence in the same order.
+
+| Frame | File |
+|---|---|
+| 1 | `statside-story-1080x1920.png` |
+| 2 | `statside-story-02-follow.png` |
+| 3 | `statside-story-03-saturdays.png` |
+| 4 | `statside-story-04-week.png` |
+| 5 | `statside-story-05-rankings.png` |
+| 6 | `statside-story-06-quiet.png` |
+| 7 | `statside-story-07-closer.png` |
+
+Sources are `src/story.html` and `src/story-*.html`, all rendered at 1080,1920.
+Shared story styling is the `.stage9` block in `social.css` — note that
+`.stage9 .head` outranks a bare `.head`, so per-file overrides need the
+`.stage9` prefix or they silently lose.
+
 ## Other crops of the hero
 
 Same composition as tweet 1, reshaped for feeds that aren't 16:9.
@@ -28,6 +48,13 @@ Same composition as tweet 1, reshaped for feeds that aren't 16:9.
 |---|---|---|
 | `statside-square-1080.png` | 2160 × 2160 | Instagram feed, LinkedIn |
 | `statside-portrait-1080x1350.png` | 2160 × 2700 | Instagram 4:5, the one that fills the most feed |
+| `statside-story-1080x1920.png` | 2160 × 3840 | Instagram/Facebook Stories, 9:16 |
+
+The story version keeps every word inside the middle band, because Instagram's
+own chrome — profile header up top, reply bar at the bottom — covers roughly
+the top and bottom 250px (500px on the 2x asset). Only the devices run under
+it. Instagram downsamples to 1080 × 1920 on upload; the 2x master is there for
+headroom.
 
 ## Regenerating
 
@@ -48,8 +75,8 @@ for f in 02-follow 03-saturdays 04-week 05-rankings 06-quiet 07-closer; do
 done
 ```
 
-The hero uses `landscape.html` at 1600,900, `square.html` at 1080,1080, and
-`portrait.html` at 1080,1350. The window size must match the `.stage`
+The hero uses `landscape.html` at 1600,900, `square.html` at 1080,1080,
+`portrait.html` at 1080,1350, and `story.html` at 1080,1920. The window size must match the `.stage`
 dimensions in each file's inline `<style>` block, or the render clips.
 
 Shared styling lives in `src/social.css`; each file overrides the background
@@ -72,3 +99,24 @@ gradients and positions its own devices and crops.
 - Screens are from Week 10 of the 2025 season with final poll data, so the
   graphics are dated to that slate. Reshoot the App Store screenshots and
   re-render to move them forward.
+
+## App Store screenshot set (1284 × 2778)
+
+The same seven designs re-rendered at the size App Store Connect accepts for
+the 6.5" slot, in `docs/appstore/screenshots-marketing-1284x2778/`.
+
+This is a reflow, not a resize. A story is 1080 × 1920 (ratio 0.5625); the App
+Store slot is 1284 × 2778 (0.4622) — taller and proportionally narrower. Scaling
+the raster would either squash the artwork or slice the bleeding devices off
+flat with black beneath them.
+
+Sources are `src/as-*.html`: each one is its `story-*.html` counterpart plus a
+trailing `<style>` block that overrides the stage and the vertical positions.
+The trick is the stage becomes 1080 × 2337 with `zoom: 1.18889` — 2337 is
+2778 ÷ 1.18889, so the layout stays in familiar 1080-wide coordinates and zoom
+carries it to the exact pixel size Apple wants. Render at
+`--window-size=1284,2778 --force-device-scale-factor=1`; the output must be
+exactly 1284 × 2778 or App Store Connect rejects it.
+
+The Instagram safe-zone insets are pulled back in these, since the App Store
+draws no chrome over the image.

@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<style>
+  /* 9:16 for Instagram Stories. Instagram's own chrome covers roughly the top
+     and bottom 250px, so every word sits inside the middle band and only the
+     devices are allowed to run under it. */
+  .stage { width: 1080px; height: 1920px; }
+  .stage::before {
+    background:
+      radial-gradient(110% 60% at 50% 82%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 34%, rgba(0,0,0,0) 68%),
+      radial-gradient(80% 34% at 50% 8%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(74% 46% at 50% 68%, #000 0%, rgba(0,0,0,0) 80%);
+    mask-image: radial-gradient(74% 46% at 50% 68%, #000 0%, rgba(0,0,0,0) 80%);
+  }
+
+  .head {
+    position: absolute;
+    top: 340px; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .brand img { width: 52px; height: 52px; }
+  .wordmark { font-size: 38px; }
+
+  .headline { font-size: 86px; margin-top: 48px; }
+  .sub { font-size: 27px; margin-top: 28px; max-width: 900px; }
+  .pill { font-size: 16px; padding: 13px 24px; margin-top: 42px; }
+
+  /* Narrow canvas: the wings tuck behind the hero and show a ~200px sliver
+     each, so nothing runs off the sides. */
+  .phone.hero  { font-size: 490px; left: 295px; top: 900px;  z-index: 3; }
+  .phone.left  { font-size: 390px; left: 95px;  top: 1060px; z-index: 2;
+                 transform: rotate(-7deg); }
+  .phone.right { font-size: 390px; left: 595px; top: 1060px; z-index: 2;
+                 transform: rotate(7deg); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="content">
+
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+
+      <div class="headline">College football,<br>at a glance.</div>
+      <div class="sub">Scores, rankings, and every conference — in one thumb, one scroll.</div>
+      <div class="pill"><span class="dot"></span> Live scores · No ads · No account</div>
+    </div>
+
+    <div class="phone left">
+      <img src="../../appstore/screenshots/03-rankings.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone right">
+      <img src="../../appstore/screenshots/02-game-detail.png">
+      <div class="glare"></div>
+    </div>
+    <div class="phone hero">
+      <img src="../../appstore/screenshots/01-scores.png">
+      <div class="glare"></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
