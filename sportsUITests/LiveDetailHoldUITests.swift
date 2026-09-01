@@ -142,5 +142,16 @@ final class LiveDetailHoldUITests: XCTestCase {
         // Across the live → final flip plus post-final refresh cycles.
         hold(landmark, seconds: 20,
              message: "detail popped when the game went final")
+
+        // The poll gate's own input, read off the running app: the header
+        // renders the merged status, so "Final" here is the same `isLive`
+        // flip that cancels the detail's poll loop. Queried once, after
+        // the hold — a querying hold can ghost-activate nav controls
+        // (CLAUDE.md), and this assertion doesn't need to run during one.
+        let status = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Final"))
+            .firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5),
+                      "header never flipped to Final, so the poll never self-stopped")
     }
 }

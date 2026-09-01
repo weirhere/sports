@@ -171,7 +171,10 @@ struct GameDetailScreen: View {
         return HStack(alignment: .top, spacing: Spacing.lg) {
             headerSide(away)
             VStack(spacing: Spacing.xs) {
-                if game.isLive { LiveDot() }
+                // The merge, not the pushed snapshot: `game` is frozen at
+                // push, so a game that ends while its detail is open would
+                // keep a pulsing dot above the word "Final".
+                if isLiveNow { LiveDot() }
                 // With scores in play the matchup's number is the page's
                 // headline: one big centered score between the logos
                 // (FotMob's full-time layout), status demoted beneath it.
@@ -215,7 +218,7 @@ struct GameDetailScreen: View {
             + Text(" – ").foregroundStyle(Color.textSecondary)
             + Text("\(home.score)")
             .foregroundStyle(home.winner == false ? Color.textSecondary : Color.textPrimary))
-            .font(game.isLive ? .scoreHeroLive : .scoreHero)
+            .font(isLiveNow ? .scoreHeroLive : .scoreHero)
             // The equal-thirds header would wrap this line; let it keep its
             // intrinsic width and the flexible sides absorb the difference.
             .fixedSize()
