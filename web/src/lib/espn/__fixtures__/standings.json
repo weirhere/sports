@@ -1,0 +1,334 @@
+{
+  "children": [
+    {
+      "id": "151",
+      "name": "American Conference",
+      "shortName": "American",
+      "standings": {
+        "entries": [
+          {
+            "team": {
+              "id": "235",
+              "location": "Memphis",
+              "name": "Tigers",
+              "abbreviation": "MEM"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "1",
+                "value": 1.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "W1",
+                "value": 1.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "1-0",
+                "displayValue": "1-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "5",
+              "location": "UAB",
+              "name": "Blazers",
+              "abbreviation": "UAB"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "58",
+              "location": "South Florida",
+              "name": "Bulls",
+              "abbreviation": "USF"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "151",
+              "location": "East Carolina",
+              "name": "Pirates",
+              "abbreviation": "ECU"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "8",
+      "name": "Southeastern Conference",
+      "shortName": "SEC",
+      "standings": {
+        "entries": [
+          {
+            "team": {
+              "id": "2",
+              "location": "Auburn",
+              "name": "Tigers",
+              "abbreviation": "AUB"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "8",
+              "location": "Arkansas",
+              "name": "Razorbacks",
+              "abbreviation": "ARK"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "57",
+              "location": "Florida",
+              "name": "Gators",
+              "abbreviation": "FLA"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": "61",
+              "location": "Georgia",
+              "name": "Bulldogs",
+              "abbreviation": "UGA"
+            },
+            "stats": [
+              {
+                "name": "playoffSeed",
+                "type": "playoffseed",
+                "summary": null,
+                "displayValue": "0",
+                "value": 0.0
+              },
+              {
+                "name": "streak",
+                "type": "streak",
+                "summary": null,
+                "displayValue": "-",
+                "value": 0.0
+              },
+              {
+                "name": "overall",
+                "type": "total",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              },
+              {
+                "name": "vs. Conf.",
+                "type": "vsconf",
+                "summary": "0-0",
+                "displayValue": "0-0",
+                "value": null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "37",
+      "name": "Sun Belt Conference",
+      "shortName": "Sun Belt",
+      "standings": {
+        "entries": []
+      }
+    }
+  ]
+}

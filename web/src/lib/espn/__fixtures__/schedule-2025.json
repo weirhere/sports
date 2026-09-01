@@ -1,0 +1,369 @@
+{
+  "season": {
+    "year": 2026,
+    "type": 2
+  },
+  "requestedSeason": {
+    "year": 2025,
+    "type": 2
+  },
+  "team": {
+    "id": "333",
+    "location": "Alabama",
+    "name": "Crimson Tide",
+    "abbreviation": "ALA",
+    "displayName": "Alabama Crimson Tide",
+    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+    "color": "9e1b32",
+    "recordSummary": "0-0",
+    "standingSummary": "1st in SEC",
+    "groups": {
+      "id": "8",
+      "parent": {
+        "id": "80"
+      },
+      "isConference": true
+    }
+  },
+  "events": [
+    {
+      "id": "401752665",
+      "date": "2025-08-30T19:30Z",
+      "name": "Alabama Crimson Tide at Florida State Seminoles",
+      "shortName": "ALA @ FSU",
+      "week": {
+        "number": 1
+      },
+      "timeValid": true,
+      "competitions": [
+        {
+          "date": "2025-08-30T19:30Z",
+          "timeValid": true,
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 4,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "broadcasts": [
+            {
+              "media": {
+                "shortName": "ABC"
+              }
+            }
+          ],
+          "competitors": [
+            {
+              "homeAway": "home",
+              "winner": true,
+              "score": {
+                "value": 31.0,
+                "displayValue": "31"
+              },
+              "curatedRank": {
+                "current": 99
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "1-0"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "52",
+                "location": "Florida State",
+                "name": null,
+                "abbreviation": "FSU",
+                "displayName": "Florida State Seminoles"
+              }
+            },
+            {
+              "homeAway": "away",
+              "winner": false,
+              "score": {
+                "value": 17.0,
+                "displayValue": "17"
+              },
+              "curatedRank": {
+                "current": 8
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "0-1"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "333",
+                "location": "Alabama",
+                "name": null,
+                "abbreviation": "ALA",
+                "displayName": "Alabama Crimson Tide"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401752681",
+      "date": "2025-09-06T23:45Z",
+      "name": "UL Monroe Warhawks at Alabama Crimson Tide",
+      "shortName": "ULM @ ALA",
+      "week": {
+        "number": 2
+      },
+      "timeValid": true,
+      "competitions": [
+        {
+          "date": "2025-09-06T23:45Z",
+          "timeValid": true,
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 4,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "broadcasts": [
+            {
+              "media": {
+                "shortName": "SEC Network"
+              }
+            }
+          ],
+          "competitors": [
+            {
+              "homeAway": "home",
+              "winner": true,
+              "score": {
+                "value": 73.0,
+                "displayValue": "73"
+              },
+              "curatedRank": {
+                "current": 21
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "1-1"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "333",
+                "location": "Alabama",
+                "name": null,
+                "abbreviation": "ALA",
+                "displayName": "Alabama Crimson Tide"
+              }
+            },
+            {
+              "homeAway": "away",
+              "winner": false,
+              "score": {
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              "curatedRank": {
+                "current": 99
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "1-1"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "2433",
+                "location": "UL Monroe",
+                "name": null,
+                "abbreviation": "ULM",
+                "displayName": "UL Monroe Warhawks"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401752696",
+      "date": "2025-09-13T16:00Z",
+      "name": "Wisconsin Badgers at Alabama Crimson Tide",
+      "shortName": "WIS @ ALA",
+      "week": {
+        "number": 3
+      },
+      "timeValid": true,
+      "competitions": [
+        {
+          "date": "2025-09-13T16:00Z",
+          "timeValid": true,
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 4,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "broadcasts": [
+            {
+              "media": {
+                "shortName": "ABC"
+              }
+            }
+          ],
+          "competitors": [
+            {
+              "homeAway": "home",
+              "winner": true,
+              "score": {
+                "value": 38.0,
+                "displayValue": "38"
+              },
+              "curatedRank": {
+                "current": 19
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "2-1"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "333",
+                "location": "Alabama",
+                "name": null,
+                "abbreviation": "ALA",
+                "displayName": "Alabama Crimson Tide"
+              }
+            },
+            {
+              "homeAway": "away",
+              "winner": false,
+              "score": {
+                "value": 14.0,
+                "displayValue": "14"
+              },
+              "curatedRank": {
+                "current": 99
+              },
+              "record": [
+                {
+                  "id": "1",
+                  "abbreviation": "Game",
+                  "displayName": "Record Year To Date",
+                  "shortDisplayName": "YTD",
+                  "description": "Overall Record",
+                  "type": "total",
+                  "displayValue": "2-1"
+                },
+                {
+                  "id": "9009",
+                  "displayName": "CONF",
+                  "shortDisplayName": "CONF",
+                  "description": "Conference Record",
+                  "type": "vsconf",
+                  "displayValue": "0-0"
+                }
+              ],
+              "team": {
+                "id": "275",
+                "location": "Wisconsin",
+                "name": null,
+                "abbreviation": "WIS",
+                "displayName": "Wisconsin Badgers"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

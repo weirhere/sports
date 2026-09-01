@@ -1,99 +1,45 @@
-// Server-side ESPN API client
-// All methods are async and meant to be called from API routes or server components.
+// Server-side ESPN API bridge for the existing /api routes. Thin wrappers
+// over the provider (provider.ts) that keep the legacy response shapes the
+// routes and components already consume. New code should prefer the
+// provider's domain methods directly.
 
-import type {
-  EspnScoreboardResponse,
-  EspnGameSummaryResponse,
-  EspnRankingsResponse,
-  EspnStandingsResponse,
-} from "./types";
-import {
-  scoreboardUrl,
-  gameSummaryUrl,
-  standingsUrl,
-  rankingsUrl,
-} from "./endpoints";
-import {
-  transformScoreboard,
-  transformEvent,
-  transformRankedTeam,
-  transformStandingsEntry,
-  transformGameSummary,
-} from "./transformers";
+import type { EspnStandingsResponse, EspnRankingsResponse } from "./types";
+import { standingsUrl, rankingsUrl } from "./endpoints";
+import { transformStandings, transformPolls } from "./transformers";
+import { scoreboard, gameSummary } from "./provider";
 import type {
   Game,
   GameDetail,
-  RankedTeam,
   RankingsData,
   PollType,
   ConferenceStanding,
 } from "@/lib/types";
 
-async function fetchJson<T>(url: string, revalidate?: number): Promise<T> {
-  const res = await fetch(url, {
-    next: { revalidate: revalidate ?? 60 },
-  });
-
+async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
+  const res = await fetch(url, { next: { revalidate } });
   if (!res.ok) {
     throw new Error(`ESPN API error ${res.status}: ${url}`);
   }
-
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 export async function getScoreboard(params?: {
   week?: number;
   year?: number;
 }): Promise<{ games: Game[]; week: number }> {
-  const url = scoreboardUrl({ ...params, groups: 80 }); // FBS
-  const data = await fetchJson<EspnScoreboardResponse>(url, 30);
-
+  const board = await scoreboard({
+    weekValue: params?.week,
+    seasonType: 2,
+    year: params?.year,
+  });
   return {
-    games: transformScoreboard(data.events),
-    week: data.week?.number ?? params?.week ?? 1,
+    games: board.games,
+    week: board.currentWeekNumber ?? params?.week ?? 1,
   };
 }
 
 export async function getGameSummary(gameId: string): Promise<GameDetail> {
-  // First get the scoreboard event to get the Game object
-  const summaryUrl = gameSummaryUrl(gameId);
-  const summary = await fetchJson<EspnGameSummaryResponse>(summaryUrl, 30);
-
-  // The summary response includes header competitions which we can use to build the game
-  const headerComp = summary.header?.competitions?.[0];
-  if (!headerComp) {
-    throw new Error(`No competition data found for game ${gameId}`);
-  }
-
-  // Build an event-like object from the header for transformation
-  const game = transformEvent({
-    id: gameId,
-    date: headerComp.date,
-    name: "",
-    shortName: "",
-    season: { year: new Date().getFullYear(), type: 2 },
-    week: { number: 0 },
-    competitions: [headerComp],
-    status: headerComp.status,
-  });
-
-  return transformGameSummary(gameId, game, summary);
-}
-
-export async function getRankings(params?: {
-  year?: number;
-}): Promise<RankedTeam[]> {
-  const url = rankingsUrl(params);
-  const data = await fetchJson<EspnRankingsResponse>(url, 300);
-
-  // Get AP Top 25 poll (usually first)
-  const apPoll = data.rankings?.find(
-    (r) => r.type === "ap" || r.name.includes("AP")
-  ) ?? data.rankings?.[0];
-
-  if (!apPoll) return [];
-
-  return apPoll.ranks.map(transformRankedTeam);
+  return gameSummary(gameId);
 }
 
 const ESPN_POLL_MAP: Record<string, { type: PollType; label: string }> = {
@@ -110,28 +56,24 @@ function matchPollType(
   const n = espnName.toLowerCase();
 
   if (t === "ap" || n.includes("ap")) return ESPN_POLL_MAP.ap;
-  if (t === "coaches" || n.includes("coaches")) return ESPN_POLL_MAP.coaches;
+  if (t === "usa" || n.includes("coaches")) return ESPN_POLL_MAP.coaches;
   if (t === "cfp" || n.includes("playoff") || n.includes("cfp"))
     return ESPN_POLL_MAP.cfp;
   return null;
 }
 
-export async function getAllRankings(params?: {
-  year?: number;
-}): Promise<RankingsData[]> {
-  const url = rankingsUrl(params);
-  const data = await fetchJson<EspnRankingsResponse>(url, 300);
+export async function getAllRankings(): Promise<RankingsData[]> {
+  const data = await fetchJson<EspnRankingsResponse>(rankingsUrl(), 300);
+  const polls = transformPolls(data);
 
   const results: RankingsData[] = [];
-
-  for (const ranking of data.rankings ?? []) {
-    const match = matchPollType(ranking.type, ranking.name);
+  for (const poll of polls) {
+    const match = matchPollType(poll.type ?? "", poll.name);
     if (!match) continue;
-
     results.push({
       type: match.type,
       label: match.label,
-      teams: ranking.ranks.map(transformRankedTeam),
+      teams: poll.ranks,
     });
   }
 
@@ -140,6 +82,13 @@ export async function getAllRankings(params?: {
   results.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
 
   return results;
+}
+
+export async function getRankings(): Promise<
+  RankingsData["teams"]
+> {
+  const all = await getAllRankings();
+  return (all.find((r) => r.type === "ap") ?? all[0])?.teams ?? [];
 }
 
 export async function getStandings(params?: {
@@ -151,14 +100,5 @@ export async function getStandings(params?: {
     : undefined;
   const url = standingsUrl({ year: params?.year, group });
   const data = await fetchJson<EspnStandingsResponse>(url, 300);
-
-  const entries: ConferenceStanding[] = [];
-
-  for (const child of data.children ?? []) {
-    for (const entry of child.standings?.entries ?? []) {
-      entries.push(transformStandingsEntry(entry));
-    }
-  }
-
-  return entries;
+  return transformStandings(data).flatMap((g) => g.entries);
 }
