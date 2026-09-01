@@ -9,8 +9,10 @@ export function useFirstVisit() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const visited = localStorage.getItem(STORAGE_KEY);
-    setIsFirstVisit(!visited);
+    // localStorage is read post-hydration on purpose: a lazy initializer would
+    // diverge from the server-rendered markup. isLoaded gates render instead.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsFirstVisit(!localStorage.getItem(STORAGE_KEY));
     setIsLoaded(true);
   }, []);
 

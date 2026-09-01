@@ -11,13 +11,17 @@ export function useFavorites() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    // localStorage is read post-hydration on purpose: a lazy initializer would
+    // diverge from the server-rendered markup. isLoaded gates render instead.
     try {
       const storedTeams = localStorage.getItem(TEAM_STORAGE_KEY);
       if (storedTeams) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFavorites(JSON.parse(storedTeams));
       }
       const storedConfs = localStorage.getItem(CONF_STORAGE_KEY);
       if (storedConfs) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFavoriteConferences(JSON.parse(storedConfs));
       }
     } catch {

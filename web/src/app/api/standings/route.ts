@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStandings as getMockStandings } from "@/lib/mock";
 import { getStandings as getEspnStandings } from "@/lib/espn";
-import { useEspnApi } from "@/lib/data-source";
+import { isEspnEnabled } from "@/lib/data-source";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (useEspnApi()) {
+    if (isEspnEnabled()) {
       const standings = await getEspnStandings({ conferenceId });
       return NextResponse.json(standings);
     }

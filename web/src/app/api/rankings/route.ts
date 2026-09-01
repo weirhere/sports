@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAllRankings as getMockAllRankings } from "@/lib/mock";
 import { getAllRankings as getEspnAllRankings } from "@/lib/espn";
-import { useEspnApi } from "@/lib/data-source";
+import { isEspnEnabled } from "@/lib/data-source";
 
 export async function GET() {
   try {
-    if (useEspnApi()) {
+    if (isEspnEnabled()) {
       const rankings = await getEspnAllRankings();
       return NextResponse.json(rankings);
     }

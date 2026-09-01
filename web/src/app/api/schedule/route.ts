@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGamesByWeek } from "@/lib/mock";
 import { getScoreboard } from "@/lib/espn";
-import { useEspnApi } from "@/lib/data-source";
+import { isEspnEnabled } from "@/lib/data-source";
 import { CURRENT_SEASON_YEAR } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const year = yearParam ? Number(yearParam) : CURRENT_SEASON_YEAR;
 
   try {
-    if (useEspnApi()) {
+    if (isEspnEnabled()) {
       const result = await getScoreboard({ week, year });
       return NextResponse.json(result);
     }
