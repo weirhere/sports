@@ -8,6 +8,8 @@ A college football scores app for iOS, inspired by FotMob's information architec
 
 The target user checks scores 20+ times every fall Saturday and is tired of ad-stuffed everything-apps where CFB is one tab among 30. Speed and focus are the product.
 
+**Monorepo note:** this repo also carries `web/` — a Next.js prototype web app (`college-football-hub`), merged in with full history from the old `weirhere/sports` repo on 2026-09-01 via `git subtree`. It has its own README and PRD under `web/` and none of the iOS conventions below apply to it. Everything else in this file is about the iOS app.
+
 ## Product principles
 
 1. **The Saturday sort order is the product.** The landing page answers "what's the state of college football right now" in one thumb, one scroll. Everything else hangs off that.
