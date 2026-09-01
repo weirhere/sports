@@ -15,15 +15,30 @@ nonisolated enum GameHeaderState {
         return (side.team, side.score, side.record ?? fallback.record, side.winner)
     }
 
+    /// The status the header surfaces render from: the summary's when it
+    /// has one, EXCEPT a pre-game summary against a live scoreboard
+    /// snapshot. Kickoff doesn't un-happen — that shape is a stale or
+    /// flaky summary payload (seen from ESPN mid-Saturday), and honoring
+    /// it demoted the live header to pre AND cancelled the detail's poll
+    /// loop with nothing left to refetch the summary, freezing the screen
+    /// mid-drive. The snapshot's live status wins; the next poll's summary
+    /// takes over again.
+    static func status(_ game: Game, _ summary: GameSummary?) -> GameStatus {
+        guard let status = summary?.status else { return game.status }
+        if case .pre = status, case .live = game.status { return game.status }
+        return status
+    }
+
     static func showsScores(_ game: Game, _ summary: GameSummary?) -> Bool {
-        if case .pre = summary?.status ?? game.status { return false }
+        if case .pre = status(game, summary) { return false }
         return true
     }
 
     /// Absolute dates only — the share image outlives the moment it was
     /// made, so no "Today"/"Tomorrow" (decision log 2026-08-09).
     static func statusLine(_ game: Game, _ summary: GameSummary?) -> String {
-        switch summary?.status ?? game.status {
+        let merged = status(game, summary)
+        switch merged {
         case .pre:
             let style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
             let kick: String = if let date = game.date {
@@ -33,8 +48,7 @@ nonisolated enum GameHeaderState {
             }
             return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
         case .live:
-            let status = summary?.status ?? game.status
-            return status.liveStatusText ?? "Live"
+            return merged.liveStatusText ?? "Live"
         case .final(let detail):
             return detail ?? "Final"
         case .other(let detail):
@@ -43,7 +57,7 @@ nonisolated enum GameHeaderState {
     }
 
     static func isLive(_ game: Game, _ summary: GameSummary?) -> Bool {
-        if case .live = summary?.status ?? game.status { return true }
+        if case .live = status(game, summary) { return true }
         return false
     }
 }
