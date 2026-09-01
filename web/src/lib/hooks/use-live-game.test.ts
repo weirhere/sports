@@ -38,13 +38,6 @@ function detail(
   };
   return {
     game,
-    boxScore: {
-      gameId: game.id,
-      homeTeam: game.homeTeam,
-      awayTeam: game.awayTeam,
-      scoringDrives: [],
-    },
-    plays: [],
     homeStats: emptyStats(),
     awayStats: emptyStats(),
   };

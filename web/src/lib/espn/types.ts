@@ -270,7 +270,6 @@ export interface EspnGameSummaryResponse {
   boxscore?: EspnBoxscore;
   scoringPlays?: EspnScoringPlay[];
   drives?: EspnDrives;
-  plays?: EspnPlay[];
   leaders?: EspnTeamLeaders[];
   gameInfo?: EspnGameInfo;
 }
@@ -338,22 +337,6 @@ export interface EspnDrive {
   timeElapsed?: { displayValue?: string };
   yards?: number;
   offensivePlays?: number;
-}
-
-export interface EspnPlay {
-  id?: string;
-  text?: string;
-  type?: { id?: string; text?: string };
-  period?: { number?: number };
-  clock?: { displayValue?: string };
-  scoringPlay?: boolean;
-  team?: { id?: string };
-  start?: {
-    down?: number;
-    distance?: number;
-    yardLine?: number;
-  };
-  statYardage?: number;
 }
 
 export interface EspnTeamLeaders {
