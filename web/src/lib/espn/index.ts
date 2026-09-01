@@ -1,1 +1,19 @@
-export { getScoreboard, getGameSummary, getRankings, getAllRankings, getStandings } from "./client";
+// Legacy route-facing bridge (client.ts) plus the domain provider.
+export {
+  getScoreboard,
+  getGameSummary,
+  getRankings,
+  getAllRankings,
+  getStandings,
+} from "./client";
+export {
+  scoreboard,
+  rankings,
+  fbsConferences,
+  conferenceStandings,
+  teamSchedule,
+  conferenceGames,
+  gameSummary,
+  EspnApiError,
+  EspnDataError,
+} from "./provider";

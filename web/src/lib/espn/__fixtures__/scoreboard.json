@@ -1,0 +1,1035 @@
+{
+  "leagues": [
+    {
+      "calendar": [
+        {
+          "label": "Regular Season",
+          "value": "2",
+          "startDate": "2026-08-22T07:00Z",
+          "endDate": "2026-12-13T07:59Z",
+          "entries": [
+            {
+              "label": "Week 1",
+              "alternateLabel": "Week 1",
+              "detail": "Aug 22-Sep 7",
+              "value": "1",
+              "startDate": "2026-08-22T07:00Z",
+              "endDate": "2026-09-08T06:59Z"
+            },
+            {
+              "label": "Week 2",
+              "alternateLabel": "Week 2",
+              "detail": "Sep 8-13",
+              "value": "2",
+              "startDate": "2026-09-08T07:00Z",
+              "endDate": "2026-09-14T06:59Z"
+            },
+            {
+              "label": "Week 3",
+              "alternateLabel": "Week 3",
+              "detail": "Sep 14-20",
+              "value": "3",
+              "startDate": "2026-09-14T07:00Z",
+              "endDate": "2026-09-21T06:59Z"
+            },
+            {
+              "label": "Week 4",
+              "alternateLabel": "Week 4",
+              "detail": "Sep 21-27",
+              "value": "4",
+              "startDate": "2026-09-21T07:00Z",
+              "endDate": "2026-09-28T06:59Z"
+            },
+            {
+              "label": "Week 5",
+              "alternateLabel": "Week 5",
+              "detail": "Sep 28-Oct 4",
+              "value": "5",
+              "startDate": "2026-09-28T07:00Z",
+              "endDate": "2026-10-05T06:59Z"
+            },
+            {
+              "label": "Week 6",
+              "alternateLabel": "Week 6",
+              "detail": "Oct 5-11",
+              "value": "6",
+              "startDate": "2026-10-05T07:00Z",
+              "endDate": "2026-10-12T06:59Z"
+            },
+            {
+              "label": "Week 7",
+              "alternateLabel": "Week 7",
+              "detail": "Oct 12-18",
+              "value": "7",
+              "startDate": "2026-10-12T07:00Z",
+              "endDate": "2026-10-19T06:59Z"
+            },
+            {
+              "label": "Week 8",
+              "alternateLabel": "Week 8",
+              "detail": "Oct 19-25",
+              "value": "8",
+              "startDate": "2026-10-19T07:00Z",
+              "endDate": "2026-10-26T06:59Z"
+            },
+            {
+              "label": "Week 9",
+              "alternateLabel": "Week 9",
+              "detail": "Oct 26-Nov 1",
+              "value": "9",
+              "startDate": "2026-10-26T07:00Z",
+              "endDate": "2026-11-02T07:59Z"
+            },
+            {
+              "label": "Week 10",
+              "alternateLabel": "Week 10",
+              "detail": "Nov 2-8",
+              "value": "10",
+              "startDate": "2026-11-02T08:00Z",
+              "endDate": "2026-11-09T07:59Z"
+            },
+            {
+              "label": "Week 11",
+              "alternateLabel": "Week 11",
+              "detail": "Nov 9-15",
+              "value": "11",
+              "startDate": "2026-11-09T08:00Z",
+              "endDate": "2026-11-16T07:59Z"
+            },
+            {
+              "label": "Week 12",
+              "alternateLabel": "Week 12",
+              "detail": "Nov 16-22",
+              "value": "12",
+              "startDate": "2026-11-16T08:00Z",
+              "endDate": "2026-11-23T07:59Z"
+            },
+            {
+              "label": "Week 13",
+              "alternateLabel": "Week 13",
+              "detail": "Nov 23-29",
+              "value": "13",
+              "startDate": "2026-11-23T08:00Z",
+              "endDate": "2026-11-30T07:59Z"
+            },
+            {
+              "label": "Week 14",
+              "alternateLabel": "Week 14",
+              "detail": "Nov 30-Dec 6",
+              "value": "14",
+              "startDate": "2026-11-30T08:00Z",
+              "endDate": "2026-12-07T07:59Z"
+            },
+            {
+              "label": "Week 15",
+              "alternateLabel": "Week 15",
+              "detail": "Dec 7-12",
+              "value": "15",
+              "startDate": "2026-12-07T08:00Z",
+              "endDate": "2026-12-13T07:59Z"
+            }
+          ]
+        },
+        {
+          "label": "Postseason",
+          "value": "3",
+          "startDate": "2026-12-13T08:00Z",
+          "endDate": "2027-01-28T07:59Z",
+          "entries": [
+            {
+              "label": "Bowls",
+              "alternateLabel": "Bowls",
+              "detail": "Dec 13-Jan 27",
+              "value": "1",
+              "startDate": "2026-12-13T08:00Z",
+              "endDate": "2027-01-28T07:59Z"
+            },
+            {
+              "label": "CFP",
+              "alternateLabel": "CFP",
+              "detail": "Dec 18-Jan 28",
+              "value": "999",
+              "startDate": "2026-12-18T08:00Z",
+              "endDate": "2027-01-28T07:59Z"
+            }
+          ]
+        },
+        {
+          "label": "Off Season",
+          "value": "4",
+          "startDate": "2027-01-28T08:00Z",
+          "endDate": "2027-02-01T07:59Z",
+          "entries": [
+            {
+              "label": "All-Star",
+              "alternateLabel": "All-Star",
+              "detail": "Jan 28-31",
+              "value": "1",
+              "startDate": "2027-01-28T08:00Z",
+              "endDate": "2027-02-01T07:59Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "season": {
+    "type": 2,
+    "year": 2026
+  },
+  "week": {
+    "number": 1
+  },
+  "events": [
+    {
+      "id": "401864494",
+      "date": "2026-08-29T19:00Z",
+      "name": "San José State Spartans at USC Trojans",
+      "shortName": "SJSU @ USC",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 4,
+        "type": {
+          "id": "3",
+          "name": "STATUS_FINAL",
+          "state": "post",
+          "completed": true,
+          "description": "Final",
+          "detail": "Final",
+          "shortDetail": "Final"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401864494",
+          "date": "2026-08-29T19:00Z",
+          "timeValid": true,
+          "broadcast": "NBC",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "NBC"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "Los Angeles Memorial Coliseum",
+            "address": {
+              "city": "Los Angeles",
+              "state": "CA",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "30",
+              "homeAway": "home",
+              "score": "42",
+              "winner": true,
+              "curatedRank": {
+                "current": 14
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "1-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "home",
+                  "summary": "1-0"
+                },
+                {
+                  "name": "Road",
+                  "type": "road",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "30",
+                "location": "USC",
+                "name": "Trojans",
+                "abbreviation": "USC",
+                "displayName": "USC Trojans",
+                "shortDisplayName": "USC",
+                "conferenceId": "5",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/30.png"
+              }
+            },
+            {
+              "id": "23",
+              "homeAway": "away",
+              "score": "26",
+              "winner": false,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-1"
+                },
+                {
+                  "name": "Home",
+                  "type": "home",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Road",
+                  "type": "road",
+                  "summary": "0-1"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "23",
+                "location": "San José State",
+                "name": "Spartans",
+                "abbreviation": "SJSU",
+                "displayName": "San José State Spartans",
+                "shortDisplayName": "San José St",
+                "conferenceId": "17",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/23.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401858423",
+      "date": "2026-09-03T22:00Z",
+      "name": "Massachusetts Minutemen at Rutgers Scarlet Knights",
+      "shortName": "MASS @ RUTG",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 0,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Thu, September 3rd at 6:00 PM EDT",
+          "shortDetail": "9/3 - 6:00 PM EDT"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401858423",
+          "date": "2026-09-03T22:00Z",
+          "timeValid": true,
+          "broadcast": "BTN",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "BTN"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "SHI Stadium",
+            "address": {
+              "city": "Piscataway",
+              "state": "NJ",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "164",
+              "homeAway": "home",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "164",
+                "location": "Rutgers",
+                "name": "Scarlet Knights",
+                "abbreviation": "RUTG",
+                "displayName": "Rutgers Scarlet Knights",
+                "shortDisplayName": "Rutgers",
+                "conferenceId": "5",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png"
+              }
+            },
+            {
+              "id": "113",
+              "homeAway": "away",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "113",
+                "location": "Massachusetts",
+                "name": "Minutemen",
+                "abbreviation": "MASS",
+                "displayName": "Massachusetts Minutemen",
+                "shortDisplayName": "UMass",
+                "conferenceId": "15",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/113.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401856767",
+      "date": "2026-09-03T23:00Z",
+      "name": "Bethune-Cookman Wildcats at UCF Knights",
+      "shortName": "BCU @ UCF",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 0,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Thu, September 3rd at 7:00 PM EDT",
+          "shortDetail": "9/3 - 7:00 PM EDT"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401856767",
+          "date": "2026-09-03T23:00Z",
+          "timeValid": true,
+          "broadcast": "ESPN+",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN+"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "Acrisure Bounce House",
+            "address": {
+              "city": "Orlando",
+              "state": "FL",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "2116",
+              "homeAway": "home",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "2116",
+                "location": "UCF",
+                "name": "Knights",
+                "abbreviation": "UCF",
+                "displayName": "UCF Knights",
+                "shortDisplayName": "UCF",
+                "conferenceId": "4",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2116.png"
+              }
+            },
+            {
+              "id": "2065",
+              "homeAway": "away",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "2065",
+                "location": "Bethune-Cookman",
+                "name": "Wildcats",
+                "abbreviation": "BCU",
+                "displayName": "Bethune-Cookman Wildcats",
+                "shortDisplayName": "Bethune",
+                "conferenceId": "31",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2065.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9990001",
+      "date": "2026-09-03T22:00Z",
+      "name": "Massachusetts Minutemen at Rutgers Scarlet Knights",
+      "shortName": "MASS @ RUTG",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 0,
+        "displayClock": "0:00",
+        "period": 2,
+        "type": {
+          "id": "23",
+          "name": "STATUS_HALFTIME",
+          "state": "in",
+          "completed": false,
+          "description": "Halftime",
+          "detail": "Halftime",
+          "shortDetail": "Halftime"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401858423",
+          "date": "2026-09-03T22:00Z",
+          "timeValid": true,
+          "broadcast": "BTN",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "BTN"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "SHI Stadium",
+            "address": {
+              "city": "Piscataway",
+              "state": "NJ",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "164",
+              "homeAway": "home",
+              "score": "14",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "164",
+                "location": "Rutgers",
+                "name": "Scarlet Knights",
+                "abbreviation": "RUTG",
+                "displayName": "Rutgers Scarlet Knights",
+                "shortDisplayName": "Rutgers",
+                "conferenceId": "5",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png"
+              }
+            },
+            {
+              "id": "113",
+              "homeAway": "away",
+              "score": "10",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "113",
+                "location": "Massachusetts",
+                "name": "Minutemen",
+                "abbreviation": "MASS",
+                "displayName": "Massachusetts Minutemen",
+                "shortDisplayName": "UMass",
+                "conferenceId": "15",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/113.png"
+              }
+            }
+          ],
+          "status": {
+            "clock": 0,
+            "displayClock": "0:00",
+            "period": 2,
+            "type": {
+              "id": "23",
+              "name": "STATUS_HALFTIME",
+              "state": "in",
+              "completed": false,
+              "description": "Halftime",
+              "detail": "Halftime",
+              "shortDetail": "Halftime"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "9990002",
+      "date": "2026-11-21T05:00Z",
+      "name": "Massachusetts Minutemen at Rutgers Scarlet Knights",
+      "shortName": "MASS @ RUTG",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 0,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Thu, September 3rd at 6:00 PM EDT",
+          "shortDetail": "9/3 - 6:00 PM EDT"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401858423",
+          "date": "2026-11-21T05:00Z",
+          "timeValid": false,
+          "broadcast": "BTN",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "BTN"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "SHI Stadium",
+            "address": {
+              "city": "Piscataway",
+              "state": "NJ",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "164",
+              "homeAway": "home",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "164",
+                "location": "Rutgers",
+                "name": "Scarlet Knights",
+                "abbreviation": "RUTG",
+                "displayName": "Rutgers Scarlet Knights",
+                "shortDisplayName": "Rutgers",
+                "conferenceId": "5",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png"
+              }
+            },
+            {
+              "id": "113",
+              "homeAway": "away",
+              "score": "0",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "113",
+                "location": "Massachusetts",
+                "name": "Minutemen",
+                "abbreviation": "MASS",
+                "displayName": "Massachusetts Minutemen",
+                "shortDisplayName": "UMass",
+                "conferenceId": "15",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/113.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9990003",
+      "date": "2026-09-03T22:00Z",
+      "name": "Massachusetts Minutemen at Rutgers Scarlet Knights",
+      "shortName": "MASS @ RUTG",
+      "season": {
+        "year": 2026,
+        "type": 2
+      },
+      "week": {
+        "number": 1
+      },
+      "status": {
+        "clock": 300,
+        "displayClock": "5:00",
+        "period": 3,
+        "type": {
+          "id": "99",
+          "name": "STATUS_SOMETHING_NEW",
+          "state": "in",
+          "completed": false,
+          "description": "In Progress",
+          "detail": "5:00 - 3rd Quarter",
+          "shortDetail": "5:00 - 3rd"
+        }
+      },
+      "competitions": [
+        {
+          "id": "401858423",
+          "date": "2026-09-03T22:00Z",
+          "timeValid": true,
+          "broadcast": "BTN",
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "BTN"
+              ]
+            }
+          ],
+          "conferenceCompetition": false,
+          "venue": {
+            "fullName": "SHI Stadium",
+            "address": {
+              "city": "Piscataway",
+              "state": "NJ",
+              "country": "USA"
+            }
+          },
+          "situation": null,
+          "competitors": [
+            {
+              "id": "164",
+              "homeAway": "home",
+              "score": "21",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "164",
+                "location": "Rutgers",
+                "name": "Scarlet Knights",
+                "abbreviation": "RUTG",
+                "displayName": "Rutgers Scarlet Knights",
+                "shortDisplayName": "Rutgers",
+                "conferenceId": "5",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png"
+              }
+            },
+            {
+              "id": "113",
+              "homeAway": "away",
+              "score": "17",
+              "winner": null,
+              "curatedRank": {
+                "current": 99
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "type": "total",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Home",
+                  "type": "homerecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "Away",
+                  "type": "awayrecord",
+                  "summary": "0-0"
+                },
+                {
+                  "name": "vs. Conf.",
+                  "type": "vsconf",
+                  "summary": "0-0"
+                }
+              ],
+              "team": {
+                "id": "113",
+                "location": "Massachusetts",
+                "name": "Minutemen",
+                "abbreviation": "MASS",
+                "displayName": "Massachusetts Minutemen",
+                "shortDisplayName": "UMass",
+                "conferenceId": "15",
+                "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/113.png"
+              }
+            }
+          ],
+          "status": {
+            "clock": 300,
+            "displayClock": "5:00",
+            "period": 3,
+            "type": {
+              "id": "99",
+              "name": "STATUS_SOMETHING_NEW",
+              "state": "in",
+              "completed": false,
+              "description": "In Progress",
+              "detail": "5:00 - 3rd Quarter",
+              "shortDetail": "5:00 - 3rd"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
