@@ -8,7 +8,7 @@ A college football scores app for iOS, inspired by FotMob's information architec
 
 The target user checks scores 20+ times every fall Saturday and is tired of ad-stuffed everything-apps where CFB is one tab among 30. Speed and focus are the product.
 
-**Monorepo note:** this repo also carries `web/` — a Next.js prototype web app (`college-football-hub`), merged in with full history from the old `weirhere/sports` repo on 2026-09-01 via `git subtree`. It has its own README and PRD under `web/` and none of the iOS conventions below apply to it. Everything else in this file is about the iOS app.
+**Monorepo note:** this repo also carries `web/` — a Next.js prototype web app (`college-football-hub`), merged in with full history from a standalone web repo (confusingly also named `weirhere/sports` at the time, since deleted) on 2026-09-01 via `git subtree`. It has its own README and PRD under `web/` and none of the iOS conventions below apply to it. Everything else in this file is about the iOS app. This repo itself is **`weirhere/sports`** — renamed from `weirhere/sports-ios` on 2026-09-01; GitHub redirects the old URLs.
 
 ## Product principles
 
