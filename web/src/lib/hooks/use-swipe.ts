@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 interface UseSwipeOptions {
   onSwipeLeft?: () => void;
@@ -32,10 +32,12 @@ export function useSwipe<T extends HTMLElement = HTMLDivElement>({
   const onSwipeRightRef = useRef(onSwipeRight);
   const enabledRef = useRef(enabled);
   const thresholdRef = useRef(threshold);
-  onSwipeLeftRef.current = onSwipeLeft;
-  onSwipeRightRef.current = onSwipeRight;
-  enabledRef.current = enabled;
-  thresholdRef.current = threshold;
+  useEffect(() => {
+    onSwipeLeftRef.current = onSwipeLeft;
+    onSwipeRightRef.current = onSwipeRight;
+    enabledRef.current = enabled;
+    thresholdRef.current = threshold;
+  });
 
   // Callback ref — runs when the element mounts/unmounts
   const ref = useCallback((el: T | null) => {

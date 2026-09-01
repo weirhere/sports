@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGameDetail } from "@/lib/mock";
 import { getGameSummary } from "@/lib/espn";
-import { useEspnApi } from "@/lib/data-source";
+import { isEspnEnabled } from "@/lib/data-source";
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
   const { gameId } = await params;
 
   try {
-    if (useEspnApi()) {
+    if (isEspnEnabled()) {
       const detail = await getGameSummary(gameId);
       return NextResponse.json(detail);
     }
