@@ -1,18 +1,26 @@
 import { ScoresView } from "./scores-view";
-import { getGamesByWeek } from "@/lib/mock";
-import { CURRENT_SEASON_YEAR } from "@/lib/constants";
+import { scoreboard } from "@/lib/espn";
+import type { Scoreboard } from "@/lib/types";
 
-const CURRENT_WEEK = 8;
+// The landing page reads the live slate on every request — never frozen at
+// build time. The provider's 30s revalidate window is the request throttle.
+export const dynamic = "force-dynamic";
 
-export default function ScoresPage() {
-  const games = getGamesByWeek(CURRENT_WEEK);
+const EMPTY_BOARD: Scoreboard = { weeks: [], games: [] };
+
+export default async function ScoresPage() {
+  // A dead ESPN response degrades to the empty state instead of a 500 —
+  // the client can still walk weeks/seasons, which retries via /api.
+  const board = await scoreboard({}).catch(() => EMPTY_BOARD);
 
   return (
     <div>
       <ScoresView
-        initialGames={games}
-        initialWeek={CURRENT_WEEK}
-        initialYear={CURRENT_SEASON_YEAR}
+        initialGames={board.games}
+        initialWeeks={board.weeks}
+        initialCurrentWeekNumber={board.currentWeekNumber}
+        initialSeasonType={board.seasonType}
+        initialSeasonYear={board.seasonYear}
       />
     </div>
   );

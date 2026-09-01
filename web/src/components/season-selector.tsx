@@ -1,20 +1,22 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown } from "lucide-react";
+import { seasonYears } from "@/lib/season";
 import { cn } from "@/lib/utils";
 
 interface SeasonSelectorProps {
   selectedYear: number;
   onYearChange: (year: number) => void;
-  seasons: number[];
 }
 
 export function SeasonSelector({
   selectedYear,
   onYearChange,
-  seasons,
 }: SeasonSelectorProps) {
+  // Current season → 2014 CFP-era floor. Session state only — season
+  // selection is time navigation, never persisted.
+  const seasons = useMemo(() => seasonYears(), []);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

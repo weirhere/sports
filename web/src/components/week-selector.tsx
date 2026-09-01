@@ -1,19 +1,23 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { WEEKS } from "@/lib/constants";
+import type { WeekSlot } from "@/lib/season";
 import { cn } from "@/lib/utils";
 
 interface WeekSelectorProps {
-  selectedWeek: number;
-  onWeekChange: (week: number) => void;
-  currentWeek?: number;
+  /** Calendar-derived slots for the selected season, in season order. */
+  weeks: WeekSlot[];
+  selectedId: string;
+  onSelect: (slot: WeekSlot) => void;
+  /** ESPN's current slot for the current season, if known. */
+  currentId?: string;
 }
 
 export function WeekSelector({
-  selectedWeek,
-  onWeekChange,
-  currentWeek = 8,
+  weeks,
+  selectedId,
+  onSelect,
+  currentId,
 }: WeekSelectorProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
@@ -26,7 +30,7 @@ export function WeekSelector({
         button.offsetLeft - container.offsetWidth / 2 + button.offsetWidth / 2;
       container.scrollTo({ left: scrollLeft, behavior: "smooth" });
     }
-  }, [selectedWeek]);
+  }, [selectedId, weeks]);
 
   return (
     <div className="fixed left-0 right-0 top-14 z-40 bg-background sm:top-16">
@@ -40,22 +44,22 @@ export function WeekSelector({
           ref={scrollRef}
           className="flex gap-1 overflow-x-auto px-4 py-2 scrollbar-none"
         >
-          {WEEKS.map((week) => (
+          {weeks.map((slot) => (
             <button
-              key={week.number}
-              ref={week.number === selectedWeek ? selectedRef : undefined}
-              onClick={() => onWeekChange(week.number)}
+              key={slot.id}
+              ref={slot.id === selectedId ? selectedRef : undefined}
+              onClick={() => onSelect(slot)}
               className={cn(
                 "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                week.number === selectedWeek
+                slot.id === selectedId
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                week.number === currentWeek &&
-                  week.number !== selectedWeek &&
+                slot.id === currentId &&
+                  slot.id !== selectedId &&
                   "font-semibold text-foreground"
               )}
             >
-              {week.label}
+              {slot.shortLabel}
             </button>
           ))}
         </div>
