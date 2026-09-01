@@ -1,6 +1,5 @@
 // Legacy route-facing bridge (client.ts) plus the domain provider.
 export {
-  getScoreboard,
   getGameSummary,
   getRankings,
   getAllRankings,

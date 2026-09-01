@@ -6,9 +6,8 @@
 import type { EspnStandingsResponse, EspnRankingsResponse } from "./types";
 import { standingsUrl, rankingsUrl } from "./endpoints";
 import { transformStandings, transformPolls } from "./transformers";
-import { scoreboard, gameSummary } from "./provider";
+import { gameSummary } from "./provider";
 import type {
-  Game,
   GameDetail,
   RankingsData,
   PollType,
@@ -21,21 +20,6 @@ async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
     throw new Error(`ESPN API error ${res.status}: ${url}`);
   }
   return res.json() as Promise<T>;
-}
-
-export async function getScoreboard(params?: {
-  week?: number;
-  year?: number;
-}): Promise<{ games: Game[]; week: number }> {
-  const board = await scoreboard({
-    weekValue: params?.week,
-    seasonType: 2,
-    year: params?.year,
-  });
-  return {
-    games: board.games,
-    week: board.currentWeekNumber ?? params?.week ?? 1,
-  };
 }
 
 export async function getGameSummary(gameId: string): Promise<GameDetail> {
