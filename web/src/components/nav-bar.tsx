@@ -20,25 +20,38 @@ const TOP_LEVEL_TITLES: Record<string, string> = {
   "/search": "Search",
 };
 
+/** Sub-pages that pair the back chevron with a bar title. */
+const SUB_PAGE_TITLES: Record<string, string> = {
+  "/rankings/poll": "Top 25",
+};
+
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const title = TOP_LEVEL_TITLES[pathname];
   const showBack = title === undefined;
+  const subTitle = SUB_PAGE_TITLES[pathname];
 
   return (
     <header className="sticky top-0 z-50 w-full bg-bg-primary">
       <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:h-16">
         {/* Back button on entity pages; wordmark or title on top-level */}
         {showBack ? (
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="-ml-1 mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-bg-elevated transition-colors hover:bg-divider"
-          >
-            <ChevronLeft className="h-5 w-5 text-text-primary" />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              aria-label="Back"
+              className="-ml-1 mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-bg-elevated transition-colors hover:bg-divider"
+            >
+              <ChevronLeft className="h-5 w-5 text-text-primary" />
+            </button>
+            {subTitle && (
+              <span className="mr-6 text-[17px] font-bold tracking-tight">
+                {subTitle}
+              </span>
+            )}
+          </>
         ) : pathname === "/" ? (
           <Link href="/" className="mr-6 flex items-center gap-1.5">
             <span aria-hidden="true" className="text-[15px] leading-none">
