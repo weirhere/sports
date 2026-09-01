@@ -6,7 +6,6 @@ import { TeamLogo } from "@/components/team-logo";
 import { LiveIndicator } from "@/components/live-indicator";
 import { BoxScore } from "@/components/box-score";
 import { DriveSummary } from "@/components/drive-summary";
-import { PlayByPlay } from "@/components/play-by-play";
 import { TeamStatsComparison } from "@/components/team-stats-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,7 @@ function getStatusLabel(game: GameDetail["game"]) {
 
 export function GameDetailView({ initialData }: GameDetailViewProps) {
   const data = useLiveGame(initialData.game.id, initialData);
-  const { game, boxScore, plays, homeStats, awayStats } = data;
+  const { game, boxScore, homeStats, awayStats } = data;
   const live = isLive(game.status);
 
   return (
@@ -163,9 +162,6 @@ export function GameDetailView({ initialData }: GameDetailViewProps) {
           <TabsTrigger value="boxscore" className="flex-1 sm:flex-none">
             Box Score
           </TabsTrigger>
-          <TabsTrigger value="plays" className="flex-1 sm:flex-none">
-            Play-by-Play
-          </TabsTrigger>
           <TabsTrigger value="stats" className="flex-1 sm:flex-none">
             Team Stats
           </TabsTrigger>
@@ -181,14 +177,6 @@ export function GameDetailView({ initialData }: GameDetailViewProps) {
               awayTeam={game.awayTeam}
             />
           </div>
-        </TabsContent>
-
-        <TabsContent value="plays">
-          <PlayByPlay
-            plays={plays}
-            homeTeam={game.homeTeam}
-            awayTeam={game.awayTeam}
-          />
         </TabsContent>
 
         <TabsContent value="stats">

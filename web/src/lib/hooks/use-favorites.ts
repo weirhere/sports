@@ -21,7 +21,6 @@ export function useFavorites() {
       }
       const storedConfs = localStorage.getItem(CONF_STORAGE_KEY);
       if (storedConfs) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFavoriteConferences(JSON.parse(storedConfs));
       }
     } catch {
@@ -68,33 +67,13 @@ export function useFavorites() {
     [favoriteConferences]
   );
 
-  const reorderFavorites = useCallback((reordered: string[]) => {
-    setFavorites(reordered);
-    try {
-      localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(reordered));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
-  const reorderFavoriteConferences = useCallback((reordered: string[]) => {
-    setFavoriteConferences(reordered);
-    try {
-      localStorage.setItem(CONF_STORAGE_KEY, JSON.stringify(reordered));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
   return {
     favorites,
     toggleFavorite,
     isFavorite,
-    reorderFavorites,
     favoriteConferences,
     toggleFavoriteConference,
     isFavoriteConference,
-    reorderFavoriteConferences,
     isLoaded,
   };
 }

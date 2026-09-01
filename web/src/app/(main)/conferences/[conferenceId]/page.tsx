@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getConferenceById, ALL_CONFERENCES } from "@/config/conferences";
+import { getConferenceById } from "@/config/conferences";
 import { getStandings } from "@/lib/mock/standings";
 import { MOCK_GAMES } from "@/lib/mock/games";
 import { StandingsTable } from "@/components/standings-table";

@@ -445,10 +445,6 @@ export function getGamesByWeek(week: number): Game[] {
   return MOCK_GAMES.filter((g) => g.week === week);
 }
 
-export function getGameById(id: string): Game | undefined {
-  return MOCK_GAMES.find((g) => g.id === id);
-}
-
 export function getGamesByTeam(teamId: string): Game[] {
   return MOCK_GAMES.filter(
     (g) => g.homeTeam.team.id === teamId || g.awayTeam.team.id === teamId

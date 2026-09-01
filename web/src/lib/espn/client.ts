@@ -6,14 +6,12 @@ import type {
   EspnGameSummaryResponse,
   EspnRankingsResponse,
   EspnStandingsResponse,
-  EspnRosterResponse,
 } from "./types";
 import {
   scoreboardUrl,
   gameSummaryUrl,
   standingsUrl,
   rankingsUrl,
-  teamRosterUrl,
 } from "./endpoints";
 import {
   transformScoreboard,
@@ -21,12 +19,10 @@ import {
   transformRankedTeam,
   transformStandingsEntry,
   transformGameSummary,
-  transformRoster,
 } from "./transformers";
 import type {
   Game,
   GameDetail,
-  Player,
   RankedTeam,
   RankingsData,
   PollType,
@@ -165,14 +161,4 @@ export async function getStandings(params?: {
   }
 
   return entries;
-}
-
-export async function getRoster(
-  espnTeamId: number,
-  appTeamId: string,
-  teamName: string
-): Promise<Player[]> {
-  const url = teamRosterUrl(String(espnTeamId));
-  const data = await fetchJson<EspnRosterResponse>(url, 3600);
-  return transformRoster(data, appTeamId, teamName);
 }
