@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Top 25 | College Football Hub",
+  title: "Rankings | College Football Hub",
 };
 
 export default function RankingsLayout({
