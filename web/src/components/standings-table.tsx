@@ -57,9 +57,7 @@ export function StandingsTable({ standings }: StandingsTableProps) {
               {s.streakType && s.streakLength ? (
                 <span
                   className={
-                    s.streakType === "W"
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
+                    s.streakType === "W" ? "text-rank-up" : "text-rank-down"
                   }
                 >
                   {s.streakType}

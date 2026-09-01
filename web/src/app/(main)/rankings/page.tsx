@@ -120,7 +120,7 @@ export default function RankingsPage() {
                     <span
                       className={cn(
                         "shrink-0 text-xs font-medium",
-                        moved > 0 ? "text-green-600" : "text-live"
+                        moved > 0 ? "text-rank-up" : "text-rank-down"
                       )}
                     >
                       {moved > 0 ? `▲${moved}` : `▼${Math.abs(moved)}`}

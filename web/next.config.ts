@@ -2,12 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async redirects() {
-    // Interim: these routes were removed in the iOS-parity cleanup.
-    // Non-permanent because /following and /conferences get retargeted
-    // to /teams when the 4-tab nav lands.
+    // /following and /conferences were removed in the iOS-parity cleanup;
+    // the 4-tab nav's Teams tab is their closest surviving home.
+    // /conferences/:id moved to /conference/:id (singular, iOS parity).
     return [
-      { source: "/following", destination: "/", permanent: false },
-      { source: "/conferences", destination: "/", permanent: false },
+      { source: "/following", destination: "/teams", permanent: false },
+      { source: "/conferences", destination: "/teams", permanent: false },
+      {
+        source: "/conferences/:id",
+        destination: "/conference/:id",
+        permanent: false,
+      },
       { source: "/settings", destination: "/", permanent: false },
     ];
   },

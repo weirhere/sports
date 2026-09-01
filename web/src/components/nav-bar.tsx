@@ -6,43 +6,52 @@ import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/", label: "Games" },
-  { href: "/rankings", label: "Top 25" },
+  { href: "/", label: "Scores" },
+  { href: "/rankings", label: "Rankings" },
+  { href: "/teams", label: "Teams" },
+  { href: "/search", label: "Search" },
 ];
 
-const TOP_LEVEL_PAGES = ["/", "/rankings", "/search"];
-
-function isTopLevel(pathname: string): boolean {
-  return TOP_LEVEL_PAGES.includes(pathname);
-}
+/** Top-level pages and their bar titles; "/" gets the wordmark instead. */
+const TOP_LEVEL_TITLES: Record<string, string> = {
+  "/": "StatSide",
+  "/rankings": "Rankings",
+  "/teams": "Teams",
+  "/search": "Search",
+};
 
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const showBack = !isTopLevel(pathname);
+  const title = TOP_LEVEL_TITLES[pathname];
+  const showBack = title === undefined;
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background">
+    <header className="sticky top-0 z-50 w-full bg-bg-primary">
       <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:h-16">
-        {/* Back button on secondary pages, logo on top-level */}
+        {/* Back button on entity pages; wordmark or title on top-level */}
         {showBack ? (
           <button
             type="button"
             onClick={() => router.back()}
-            className="-ml-1 mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-muted transition-colors hover:bg-accent"
+            aria-label="Back"
+            className="-ml-1 mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-bg-elevated transition-colors hover:bg-divider"
           >
-            <ChevronLeft className="h-5 w-5 text-foreground" />
+            <ChevronLeft className="h-5 w-5 text-text-primary" />
           </button>
-        ) : (
-          <Link href="/" className="mr-6 flex items-center gap-2">
-            <span className="text-2xl font-bold tracking-tight">
-              {pathname === "/rankings"
-                ? "Top 25"
-                : pathname === "/search"
-                  ? "Search"
-                  : "CFB Hub"}
+        ) : pathname === "/" ? (
+          <Link href="/" className="mr-6 flex items-center gap-1.5">
+            <span aria-hidden="true" className="text-[15px] leading-none">
+              🏈
+            </span>
+            <span className="text-[17px] font-bold tracking-tight">
+              StatSide
             </span>
           </Link>
+        ) : (
+          <span className="mr-6 text-[17px] font-bold tracking-tight">
+            {title}
+          </span>
         )}
 
         {/* Desktop nav */}
@@ -52,12 +61,12 @@ export function NavBar() {
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-foreground",
+                "text-sm font-medium transition-colors hover:text-text-primary",
                 (link.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(link.href))
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                  ? "text-text-primary"
+                  : "text-text-secondary"
               )}
             >
               {link.label}
