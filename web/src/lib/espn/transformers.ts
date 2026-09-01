@@ -470,8 +470,11 @@ export function transformStandings(
 
 /**
  * The browse sibling of `transformStandings` over the same response:
- * alphabetical rosters, empty conferences dropped (a browse list has
- * nothing to say about an empty one).
+ * alphabetical rosters. Empty conferences are KEPT — ESPN ships the Sun
+ * Belt (group 37) with zero standings entries, and dropping it would
+ * silently list 10 FBS conferences instead of 11. Each surface decides
+ * how to render an empty roster; the transformer never hides a
+ * conference that exists.
  */
 export function transformConferenceTeams(
   response: EspnStandingsResponse
@@ -501,7 +504,6 @@ export function transformConferenceTeams(
         teams,
       };
     })
-    .filter((group) => group.teams.length > 0)
     .sort(tierNameSort);
 }
 

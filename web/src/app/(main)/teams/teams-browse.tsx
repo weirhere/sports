@@ -93,11 +93,11 @@ export function TeamsBrowse() {
       );
   }, [conferences, favorites]);
 
-  // No follow boost here: the browse filter's rows carry follow toggles,
-  // and a followed-first sort would reorder the list under the pointer.
+  // Follow boost ON — iOS parity (TeamsScreen passes the followed set to
+  // SearchResults.teams; only onboarding filters unboosted).
   const results = useMemo(
-    () => searchTeams(query, conferences),
-    [query, conferences]
+    () => searchTeams(query, conferences, new Set(favorites)),
+    [query, conferences, favorites]
   );
 
   const trimmed = query.trim();
@@ -296,9 +296,18 @@ function ConferenceSection({
       </div>
       {expanded && (
         <div className="py-1">
-          {conference.teams.map((team) => (
-            <TeamBrowseRow key={team.id} team={team} />
-          ))}
+          {conference.teams.length === 0 ? (
+            // ESPN ships the Sun Belt with zero standings entries; the
+            // conference still exists, so the section stays with a quiet
+            // degraded row instead of vanishing from the FBS list.
+            <p className="px-4 py-3 type-row-name text-text-secondary">
+              Roster unavailable
+            </p>
+          ) : (
+            conference.teams.map((team) => (
+              <TeamBrowseRow key={team.id} team={team} />
+            ))
+          )}
         </div>
       )}
     </section>

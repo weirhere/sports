@@ -18,6 +18,7 @@ import {
   transformScoreboard,
   transformCalendar,
   transformStandings,
+  transformConferenceTeams,
   transformPolls,
   transformTeamSchedule,
 } from "./transformers";
@@ -228,6 +229,24 @@ describe("transformStandings", () => {
     };
     const [sec] = transformStandings(seeded);
     expect(sec.entries.map((e) => e.team.school)).toEqual(["First", "Second"]);
+  });
+});
+
+describe("transformConferenceTeams", () => {
+  const groups = transformConferenceTeams(standings);
+
+  it("keeps empty conferences — ESPN ships the Sun Belt with zero entries", () => {
+    // Dropping the empty group would list 10 FBS conferences instead of 11.
+    expect(groups.map((g) => g.name)).toEqual(["SEC", "American", "Sun Belt"]);
+    const sunBelt = groups.find((g) => g.id === "37");
+    expect(sunBelt?.teams).toEqual([]);
+  });
+
+  it("sorts rosters alphabetically by school", () => {
+    const american = groups.find((g) => g.id === "151");
+    const schools = american?.teams.map((t) => t.school) ?? [];
+    expect(schools).toEqual([...schools].sort((a, b) => (a < b ? -1 : 1)));
+    expect(schools.length).toBeGreaterThan(0);
   });
 });
 
