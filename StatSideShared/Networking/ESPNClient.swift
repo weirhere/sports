@@ -7,7 +7,14 @@ nonisolated protocol ScoresProviding: Sendable {
     /// week. `year` selects a season (ESPN's `dates=` param, verified live
     /// 2026-07-21); always pair it with an explicit week — a bare year
     /// request dumps the entire season's events.
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard
+    ///
+    /// `divisions` is one request per division, merged by event id. FCS is
+    /// opt-in (E8 scope (b), Andy 2026-09-01), so the app asks for
+    /// `[.fbs]` unless someone has selected or followed an FCS conference
+    /// — which is what keeps the 30s poll at one request on an ordinary
+    /// Saturday.
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
     func fbsConferences() async throws -> [ConferenceTeams]
     /// All FBS conferences' standings in one call, each in the provider's
@@ -17,7 +24,8 @@ nonisolated protocol ScoresProviding: Sendable {
     /// Conference standings tables. `year` selects a season; nil means the
     /// current one. An explicit year returns exactly that season's tables —
     /// membership included (realignment years read correctly).
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings]
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings]
     /// One team's schedule. `year` selects a season; nil means the current
     /// one, with the provider free to fall back to last season while the
     /// next is unpublished. An explicit year returns exactly that season —
@@ -37,9 +45,22 @@ nonisolated extension ScoresProviding {
         try await teamSchedule(teamId: teamId, year: nil)
     }
 
+    // The FBS-only forms. Every caller that predates E8 keeps them, so
+    // "did this change what we fetch?" has one answer for the whole app:
+    // no, unless a call site names another division.
+
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+        try await scoreboard(weekValue: weekValue, seasonType: seasonType,
+                             year: year, divisions: [.fbs])
+    }
+
+    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
+        try await conferenceStandings(year: year, division: .fbs)
+    }
+
     /// The current season's standings.
     func conferenceStandings() async throws -> [ConferenceStandings] {
-        try await conferenceStandings(year: nil)
+        try await conferenceStandings(year: nil, division: .fbs)
     }
 }
 
@@ -63,22 +84,52 @@ actor ESPNClient: ScoresProviding {
         self.session = session
     }
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
-        var items = [
-            URLQueryItem(name: "groups", value: String(Conference.fbsGroupId)),
-            URLQueryItem(name: "limit", value: "300"),
-        ]
-        if let weekValue {
-            items.append(URLQueryItem(name: "week", value: String(weekValue)))
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        // Deterministic order, and FBS first when it's in the set: it is
+        // the canonical payload for anything both divisions carry.
+        let ordered = divisions.sorted { $0.groupId < $1.groupId }
+        guard let primary = ordered.first else {
+            throw ESPNError.invalidURL
         }
-        if let seasonType {
-            items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
+
+        func board(for division: Conference.Division) async throws -> Scoreboard {
+            var items = [
+                URLQueryItem(name: "groups", value: String(division.groupId)),
+                URLQueryItem(name: "limit", value: "300"),
+            ]
+            if let weekValue {
+                items.append(URLQueryItem(name: "week", value: String(weekValue)))
+            }
+            if let seasonType {
+                items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
+            }
+            if let year {
+                items.append(URLQueryItem(name: "dates", value: String(year)))
+            }
+            let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
+            return ESPNMapper.scoreboard(from: dto)
         }
-        if let year {
-            items.append(URLQueryItem(name: "dates", value: String(year)))
+
+        guard ordered.count > 1 else { return try await board(for: primary) }
+
+        // Both halves in flight at once — a union must not cost two round
+        // trips end to end.
+        async let primaryBoard = board(for: primary)
+        let secondaries = ordered.dropFirst()
+        async let secondaryBoards = withTaskGroup(of: Scoreboard?.self) { group in
+            for division in secondaries {
+                group.addTask { try? await board(for: division) }
+            }
+            return await group.reduce(into: [Scoreboard]()) { boards, board in
+                if let board { boards.append(board) }
+            }
         }
-        let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-        return ESPNMapper.scoreboard(from: dto)
+        // The primary's failure is the request's failure; a secondary's is
+        // not. Losing the FCS half should narrow the slate, never blank a
+        // Saturday that group 80 answered fine.
+        let base = try await primaryBoard
+        return ESPNMapper.merged(base, with: await secondaryBoards)
     }
 
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] {
@@ -108,8 +159,9 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.conferences(from: dto)
     }
 
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
-        var query = [URLQueryItem(name: "group", value: String(Conference.fbsGroupId))]
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] {
+        var query = [URLQueryItem(name: "group", value: String(division.groupId))]
         // Verified live 2026-08-25: `season` scopes records AND membership,
         // so realignment years read correctly.
         if let year {
@@ -191,6 +243,38 @@ nonisolated enum ESPNMapper {
             currentWeekNumber: dto.week?.number,
             weeks: weekSlots(from: dto),
             games: (dto.events?.elements ?? []).compactMap(game(from:))
+        )
+    }
+
+    /// Union two or more division payloads into one week.
+    ///
+    /// The overlap is real duplication at the source, not a modelling
+    /// choice: every FCS-at-FBS game ships in *both* group 80 and group
+    /// 81 (37 of them in Week 2 2026), so the merge dedupes **by event
+    /// id** and the base payload's copy wins. That keeps the app's
+    /// "sections are complete, never deduplicated" rule where it belongs —
+    /// about sections, not about the same event arriving twice.
+    ///
+    /// Week metadata comes from the base. ESPN serves group 81 the
+    /// byte-identical calendar (probed 2026-09-01), so there is nothing
+    /// to reconcile; if that ever stops being true, the base division is
+    /// the one the user's slate is shaped around.
+    static func merged(_ base: Scoreboard, with others: [Scoreboard]) -> Scoreboard {
+        guard !others.isEmpty else { return base }
+        var games = base.games
+        var seen = Set(games.map(\.id))
+        for board in others {
+            for game in board.games where !seen.contains(game.id) {
+                seen.insert(game.id)
+                games.append(game)
+            }
+        }
+        return Scoreboard(
+            seasonYear: base.seasonYear,
+            seasonType: base.seasonType,
+            currentWeekNumber: base.currentWeekNumber,
+            weeks: base.weeks.isEmpty ? (others.first { !$0.weeks.isEmpty }?.weeks ?? []) : base.weeks,
+            games: games
         )
     }
 

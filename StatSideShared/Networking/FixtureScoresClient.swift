@@ -47,6 +47,15 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
     private static let kicksHome = team("fx-105", "Foxtrot", "FOXT", conferenceId: 4)
     private static let flakyAway = team("fx-106", "Golf Valley", "GOLF", conferenceId: 1)
     private static let flakyHome = team("fx-107", "Hotel Poly", "HOTL", conferenceId: 1)
+    /// The FCS half of the scripted Saturday (E8). `fcsVisitor` plays at
+    /// an FBS school, so its game ships in BOTH division payloads exactly
+    /// as ESPN ships the real 37-game overlap; `fcsHome`/`fcsAway` play
+    /// each other, so their game exists only in group 81 and is the thing
+    /// a union actually adds.
+    private static let fcsVisitor = team("fx-110", "Kilo State", "KILO", conferenceId: 20)
+    private static let fcsAway = team("fx-111", "Lima A&M", "LIMA", conferenceId: 21)
+    private static let fcsHome = team("fx-112", "Mike College", "MIKE", conferenceId: 21)
+
     private static let rankedAway = team("fx-108", "India Southern", "INDS", conferenceId: 17)
     private static let rankedHome = team("fx-109", "Juliet Western", "JULW", conferenceId: 17)
 
@@ -58,7 +67,8 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
     /// row by it before the label starts churning with the score.
     static let holdAwayName = "Alpha State"
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
         let tick = await SharedState.shared.nextTick()
         // Staggered latency so responses land mid-render and overlap the
         // detail poll's, the way ESPN's real jitter interleaves them.
@@ -69,15 +79,23 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         if tick % 7 == 3 {
             throw URLError(.networkConnectionLost)
         }
+        // Merged the same way the real client merges: by event id, FBS
+        // copy winning, so the crossover game appears exactly once.
+        var games = divisions.contains(.fbs) ? Self.games(at: tick) : []
+        if divisions.contains(.fcs) {
+            let seen = Set(games.map(\.id))
+            games += Self.fcsGames(at: tick).filter { !seen.contains($0.id) }
+        }
         return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 1,
-                          weeks: Self.weeks, games: Self.games(at: tick))
+                          weeks: Self.weeks, games: games)
     }
 
     func rankings() async throws -> [Poll] { [] }
 
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
 
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] { [] }
 
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         throw URLError(.unsupportedURL)
@@ -109,8 +127,10 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         // `fixture.summaryFlicker` default opts a test INTO the frozen-pre
         // state, the configuration the ghost-push repro needs.
         let flickerless = !UserDefaults.standard.bool(forKey: "fixture.summaryFlicker")
-        guard let game = Self.games(at: max(tick, 1), flickerless: flickerless)
-            .first(where: { $0.id == eventId }) else {
+        // Both divisions, so pushing the FCS-only game's detail works.
+        let all = Self.games(at: max(tick, 1), flickerless: flickerless)
+            + Self.fcsGames(at: max(tick, 1))
+        guard let game = all.first(where: { $0.id == eventId }) else {
             throw URLError(.resourceUnavailable)
         }
         let away = GameSummary.Side(team: game.away.team, score: game.away.score,
@@ -153,6 +173,38 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         }
         return [slot(1, offsetDays: -3), slot(2, offsetDays: 4), slot(3, offsetDays: 11)]
     }()
+
+    /// The group-81 half: the overlap game (also in the FBS payload, same
+    /// event id, so a union must dedupe it) and one FCS-vs-FCS game that
+    /// only this division carries.
+    private static func fcsGames(at tick: Int) -> [Game] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        func kick(hour: Int) -> Date {
+            calendar.date(byAdding: .hour, value: hour, to: today) ?? today
+        }
+        return [
+            // Same id as the FBS payload's copy — this IS the overlap.
+            Game(id: "fx-crossover", date: kick(hour: 13),
+                 name: "Kilo State at Bravo Tech", shortName: "KILO @ BRVO",
+                 weekNumber: 1, seasonType: 2, status: .pre(detail: nil),
+                 home: Competitor(team: holdHome, score: nil, record: "2-0", rank: nil,
+                                  isHome: true, winner: nil),
+                 away: Competitor(team: fcsVisitor, score: nil, record: "1-1", rank: nil,
+                                  isHome: false, winner: nil),
+                 broadcast: "FIX5"),
+            Game(id: "fx-fcs", date: kick(hour: 14),
+                 name: "Lima A&M at Mike College", shortName: "LIMA @ MIKE",
+                 weekNumber: 1, seasonType: 2,
+                 status: .live(displayClock: "9:03", period: 2, detail: nil,
+                               phase: .playing, possessionTeamId: fcsAway.id),
+                 home: Competitor(team: fcsHome, score: 7 + tick % 3, record: "1-1",
+                                  rank: nil, isHome: true, winner: nil),
+                 away: Competitor(team: fcsAway, score: 10, record: "2-0",
+                                  rank: nil, isHome: false, winner: nil),
+                 broadcast: "FIX6"),
+        ]
+    }
 
     private static func games(at tick: Int, flickerless: Bool = false) -> [Game] {
         let calendar = Calendar.current
@@ -223,6 +275,24 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
             away: Competitor(team: kicksAway, score: kicked ? 3 : nil, record: "2-0",
                              rank: nil, isHome: false, winner: nil),
             broadcast: "FIX3"))
+
+        // The FBS side of the crossover: an FCS visitor at an FBS school,
+        // shipped in group 80 too. Same event id as the group-81 copy.
+        //
+        // Its own kickoff hour, deliberately: `ConferenceSlate.groups`
+        // sorts by date and Swift's sort isn't stable, so two games
+        // sharing a timestamp make row order churn between body
+        // evaluations — which is not a thing a real slate does, and it
+        // makes any test that reads "the first row" nondeterministic.
+        games.append(Game(
+            id: "fx-crossover", date: kick(hour: 13), name: "Kilo State at Bravo Tech",
+            shortName: "KILO @ BRVO", weekNumber: 1, seasonType: 2,
+            status: .pre(detail: nil),
+            home: Competitor(team: holdHome, score: nil, record: "2-0", rank: nil,
+                             isHome: true, winner: nil),
+            away: Competitor(team: fcsVisitor, score: nil, record: "1-1", rank: nil,
+                             isHome: false, winner: nil),
+            broadcast: "FIX5"))
 
         // fx-flaky: vanishes from every 5th payload and returns — ESPN
         // drops and re-adds events mid-Saturday.

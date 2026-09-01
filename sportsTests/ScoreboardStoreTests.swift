@@ -5,13 +5,15 @@ import Testing
 private struct StubProvider: ScoresProviding {
     let scoreboard: Scoreboard
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
         scoreboard
     }
 
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: [])
@@ -21,18 +23,74 @@ private struct StubProvider: ScoresProviding {
     }
 }
 
+/// A provider whose slate depends on the divisions asked for, mirroring
+/// ESPN: group 80 alone, or the union with group 81's extra games.
+private struct DivisionProvider: ScoresProviding {
+    let slots: [WeekSlot]
+
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        var games = [Game(id: "fbs", date: nil, name: nil, shortName: nil, weekNumber: 1,
+                          status: .pre(detail: nil),
+                          home: Competitor(team: Team(id: "h", location: "H", name: nil,
+                                                      abbreviation: nil, displayName: nil,
+                                                      shortDisplayName: nil, logoURL: nil,
+                                                      conferenceId: 8),
+                                           score: nil, record: nil, rank: nil,
+                                           isHome: true, winner: nil),
+                          away: Competitor(team: Team(id: "a", location: "A", name: nil,
+                                                      abbreviation: nil, displayName: nil,
+                                                      shortDisplayName: nil, logoURL: nil,
+                                                      conferenceId: 1),
+                                           score: nil, record: nil, rank: nil,
+                                           isHome: false, winner: nil),
+                          broadcast: nil)]
+        if divisions.contains(.fcs) {
+            games.append(Game(id: "fcs", date: nil, name: nil, shortName: nil, weekNumber: 1,
+                              status: .pre(detail: nil),
+                              home: Competitor(team: Team(id: "fh", location: "FH", name: nil,
+                                                          abbreviation: nil, displayName: nil,
+                                                          shortDisplayName: nil, logoURL: nil,
+                                                          conferenceId: 20),
+                                               score: nil, record: nil, rank: nil,
+                                               isHome: true, winner: nil),
+                              away: Competitor(team: Team(id: "fa", location: "FA", name: nil,
+                                                          abbreviation: nil, displayName: nil,
+                                                          shortDisplayName: nil, logoURL: nil,
+                                                          conferenceId: 21),
+                                               score: nil, record: nil, rank: nil,
+                                               isHome: false, winner: nil),
+                              broadcast: nil))
+        }
+        return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 2,
+                          weeks: slots, games: games)
+    }
+
+    func rankings() async throws -> [Poll] { [] }
+    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] { [] }
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
+    func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
+        TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: [])
+    }
+    func gameSummary(eventId: String) async throws -> GameSummary { throw ESPNError.invalidURL }
+}
+
 /// A provider driven by a closure, so tests can key responses off the
 /// requested week/year — the week cache is invisible to a fixed stub.
 private struct ClosureProvider: ScoresProviding {
     let provide: @MainActor (Int?, Int?, Int?) throws -> Scoreboard
 
-    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?) async throws -> Scoreboard {
+    func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
         try await provide(weekValue, seasonType, year)
     }
 
     func rankings() async throws -> [Poll] { [] }
     func fbsConferences() async throws -> [ConferenceTeams] { [] }
-    func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+    func conferenceStandings(year: Int?,
+                             division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: [])
@@ -446,6 +504,39 @@ private func game(_ id: String, home: Team, away: Team,
         // blank screen.
         #expect(store.games.map(\.id) == ["w3"])
         #expect(store.lastError != nil)
+    }
+
+    @Test func theStoreAsksForFBSOnlyUntilSomeoneOptsIn() async {
+        // E8 scope (b): the 30s poll stays one request on an ordinary
+        // Saturday. This is the assertion that the plumbing didn't quietly
+        // turn the union on for everybody.
+        let store = ScoreboardStore(client: DivisionProvider(slots: (1...3).map(weekSlot)))
+        #expect(store.divisions == [.fbs])
+        await store.loadInitial()
+        #expect(store.games.map(\.id) == ["fbs"])
+    }
+
+    @Test func aDivisionSwitchCannotServeTheStaleSlate() async {
+        // The cache key carries the divisions that produced the entry, so
+        // an FBS-only week and a union week can't collide under one
+        // WeekSlot.id — the swipe preview reads straight out of here.
+        let store = ScoreboardStore(client: DivisionProvider(slots: (1...3).map(weekSlot)))
+        await store.loadInitial()
+        await drainPrefetch(store, for: [weekSlot(1), weekSlot(3)])
+        #expect(store.cachedGames(for: weekSlot(2))?.map(\.id) == ["fbs"])
+
+        await store.select(divisions: [.fbs, .fcs])
+        // The selected week refetched as a union, and the neighbours the
+        // old key had warmed are gone rather than standing in narrower.
+        #expect(store.games.map(\.id) == ["fbs", "fcs"])
+        #expect(store.cachedGames(for: weekSlot(2))?.map(\.id) == ["fbs", "fcs"])
+    }
+
+    @Test func settingTheSameDivisionsKeepsTheCache() async {
+        let store = ScoreboardStore(client: DivisionProvider(slots: (1...3).map(weekSlot)))
+        await store.loadInitial()
+        await store.select(divisions: [.fbs])
+        #expect(store.cachedGames(for: weekSlot(2))?.map(\.id) == ["fbs"])
     }
 
     @Test func seasonSwitchClearsTheCache() async {

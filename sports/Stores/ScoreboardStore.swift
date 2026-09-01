@@ -111,9 +111,25 @@ final class ScoreboardStore {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
-    /// This season's fetched weeks, keyed by `WeekSlot.id`. The key spells
-    /// "seasonType-value" with no year, so the season switch clears the
-    /// whole cache. Feeds the swipe's preview pane and seeds a selected
+    /// Which divisions the slate covers. FBS alone unless someone opts
+    /// into FCS (E8 scope (b), Andy 2026-09-01) — the second request is
+    /// what the polite-guest rule is spending, so it only exists while
+    /// FCS is actually surfaced. The filter sheet drives this; until that
+    /// item lands it is always `[.fbs]`, which is what the app fetched
+    /// before E8.
+    private(set) var divisions: Set<Conference.Division> = [.fbs]
+
+    /// The cache key: week slot plus the divisions that produced it. A
+    /// week fetched as FBS-only and a week fetched as a union are
+    /// different slates under the same `WeekSlot.id`, and the swipe
+    /// preview reads straight out of here.
+    private func cacheKey(_ slotId: String) -> String {
+        "\(slotId)#\(divisions.map { String($0.groupId) }.sorted().joined(separator: "+"))"
+    }
+
+    /// This season's fetched weeks, keyed by `cacheKey(_:)`. The key spells
+    /// "seasonType-value#groups" with no year, so the season switch clears
+    /// the whole cache. Feeds the swipe's preview pane and seeds a selected
     /// week so commits and chip taps never blank (2026-08-31).
     private(set) var weekGamesCache: [String: [Game]] = [:]
     @ObservationIgnored private var prefetching: Set<String> = []
@@ -168,7 +184,8 @@ final class ScoreboardStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            let scoreboard = try await client.scoreboard(weekValue: nil, seasonType: nil, year: nil)
+            let scoreboard = try await client.scoreboard(
+                weekValue: nil, seasonType: nil, year: nil, divisions: divisions)
             weeks = scoreboard.weeks
             // The July offseason response can omit season; fall back to the
             // calendar's first slot (an August date, so its year IS the
@@ -206,7 +223,24 @@ final class ScoreboardStore {
         selectedWeek = week
         // Seed from the cache — the fresh fetch below still runs, and
         // stable game ids let rows refresh in place instead of blanking.
-        games = weekGamesCache[week.id] ?? []
+        games = weekGamesCache[cacheKey(week.id)] ?? []
+        await fetchSelectedWeek()
+        startPollingIfNeeded()
+        prefetchAdjacentWeeks()
+    }
+
+    /// Widen or narrow the slate's divisions. Async and explicit rather
+    /// than a settable property, because the selected week has to be
+    /// refetched: clearing the cache alone would leave the FBS-only slate
+    /// on screen with no request in flight to replace it.
+    func select(divisions newValue: Set<Conference.Division>) async {
+        guard newValue != divisions, !newValue.isEmpty else { return }
+        divisions = newValue
+        // The narrower slate must never stand in for the wider one, so
+        // every entry goes — cache keys carry the divisions that made them,
+        // but the in-flight prefetches don't.
+        weekGamesCache = [:]
+        prefetching = []
         await fetchSelectedWeek()
         startPollingIfNeeded()
         prefetchAdjacentWeeks()
@@ -215,7 +249,7 @@ final class ScoreboardStore {
     /// The preview pane's data: what the cache holds for a strip slot,
     /// nil before its prefetch lands.
     func cachedGames(for week: WeekSlot) -> [Game]? {
-        weekGamesCache[week.id]
+        weekGamesCache[cacheKey(week.id)]
     }
 
     /// Warm the swipe's ±1 targets so a drag shows the real slate. One
@@ -224,22 +258,24 @@ final class ScoreboardStore {
     /// trade). Safe to call repeatedly; warm and in-flight slots no-op.
     func prefetchAdjacentWeeks() {
         for offset in [-1, 1] {
-            guard let target = adjacentWeek(offset: offset),
-                  weekGamesCache[target.id] == nil,
-                  !prefetching.contains(target.id) else { continue }
-            prefetching.insert(target.id)
+            guard let target = adjacentWeek(offset: offset) else { continue }
+            let key = cacheKey(target.id)
+            guard weekGamesCache[key] == nil, !prefetching.contains(key) else { continue }
+            prefetching.insert(key)
             let season = seasonYear
             let override = seasonOverride
+            let groups = divisions
             Task { [weak self] in
                 guard let self else { return }
-                defer { prefetching.remove(target.id) }
+                defer { prefetching.remove(key) }
                 guard let scoreboard = try? await client.scoreboard(
-                    weekValue: target.value, seasonType: target.seasonType, year: override)
+                    weekValue: target.value, seasonType: target.seasonType,
+                    year: override, divisions: groups)
                 else { return }
-                // A season switch mid-flight would file this under a
-                // colliding key; drop it.
-                guard seasonYear == season else { return }
-                weekGamesCache[target.id] = scoreboard.games
+                // A season or division switch mid-flight would file this
+                // under a colliding key; drop it.
+                guard seasonYear == season, divisions == groups else { return }
+                weekGamesCache[key] = scoreboard.games
             }
         }
     }
@@ -248,7 +284,8 @@ final class ScoreboardStore {
     /// cache is observed (the swipe preview reads it), so a no-change poll
     /// tick must not rewrite the entry.
     private func cacheSelectedGames() {
-        guard let id = selectedWeek?.id, weekGamesCache[id] != games else { return }
+        guard let id = selectedWeek.map({ cacheKey($0.id) }),
+              weekGamesCache[id] != games else { return }
         weekGamesCache[id] = games
     }
 
@@ -306,7 +343,8 @@ final class ScoreboardStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            let scoreboard = try await client.scoreboard(weekValue: 1, seasonType: 2, year: year)
+            let scoreboard = try await client.scoreboard(
+                weekValue: 1, seasonType: 2, year: year, divisions: divisions)
             weeks = scoreboard.weeks
             seasonYear = scoreboard.seasonYear ?? year
             // No current week in a finished season: defaultSelection falls
@@ -348,7 +386,8 @@ final class ScoreboardStore {
             let scoreboard = try await client.scoreboard(
                 weekValue: selectedWeek?.value,
                 seasonType: selectedWeek?.seasonType,
-                year: seasonOverride
+                year: seasonOverride,
+                divisions: divisions
             )
             // Equality guards throughout: @Observable notifies on every
             // set, so an unconditional write here would re-render the whole
@@ -371,6 +410,13 @@ final class ScoreboardStore {
         }
     }
 
+    /// The groups in flight, for the poll log. A union doubles every tick
+    /// into two requests, so the Saturday log archive has to say which
+    /// ones it was (E8's polling-budget item).
+    private var groupsLabel: String {
+        divisions.map { String($0.groupId) }.sorted().joined(separator: "+")
+    }
+
     private func describe(_ error: Error) -> String {
         if error is DecodingError { return "Couldn't read the scoreboard." }
         return "Couldn't reach the scoreboard."
@@ -381,7 +427,7 @@ final class ScoreboardStore {
 
     func startPollingIfNeeded() {
         guard pollTask == nil, hasLiveGames else { return }
-        Self.logger.info("polling: started")
+        Self.logger.info("polling: started (groups \(self.groupsLabel))")
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: DataProvider.pollInterval)
@@ -391,7 +437,7 @@ final class ScoreboardStore {
                     self.pollTask = nil
                     return
                 }
-                Self.logger.info("polling: tick")
+                Self.logger.info("polling: tick (groups \(self.groupsLabel))")
                 await self.fetchSelectedWeek()
             }
         }
