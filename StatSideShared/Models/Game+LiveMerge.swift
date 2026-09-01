@@ -1,6 +1,9 @@
 import Foundation
 
-extension Game {
+// `nonisolated` because the project defaults types to MainActor
+// (SWIFT_DEFAULT_ACTOR_ISOLATION) and this is a pure function the Siri
+// intent calls from outside the actor.
+nonisolated extension Game {
     /// The live merge, in one place: replace a game with the scoreboard's
     /// copy of it when the scoreboard has one.
     ///

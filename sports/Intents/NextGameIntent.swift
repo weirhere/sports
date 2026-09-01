@@ -15,6 +15,15 @@ struct NextGameIntent: AppIntent {
         }
 
         let client = DataProvider.makeClient()
+        // A team's schedule knows which games exist; it does not know how
+        // one is going. The payload carries no live score and no clock
+        // once a game kicks off (the dashed-score bug, Andy 2026-08-29),
+        // so an answer built from it alone had to invent a score — and
+        // said "0, 0" out loud, mid-drive. The scoreboard is the app's one
+        // live source, fetched here alongside the schedules and merged the
+        // same way TeamPage and ConferencePage merge it.
+        async let board: Scoreboard? = try? await client.scoreboard(
+            weekValue: nil, seasonType: nil, year: nil)
         var gamesById: [String: Game] = [:]
         for teamId in followedIds {
             guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
@@ -22,13 +31,20 @@ struct NextGameIntent: AppIntent {
                 gamesById[game.id] = game
             }
         }
+        let games = Game.merging(Array(gamesById.values), withLive: await board?.games ?? [])
 
-        if let live = gamesById.values.filter(\.isLive).first {
+        // Earliest kickoff among the live ones — a Dictionary's values have
+        // no order, so "the first live game" was a different game run to
+        // run when two followed teams played at once.
+        let live = games
+            .filter(\.isLive)
+            .min { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        if let live {
             return .result(dialog: IntentDialog(stringLiteral: Self.liveLine(for: live)))
         }
 
         let now = Date.now
-        let next = gamesById.values
+        let next = games
             .filter { game in
                 guard case .pre = game.status, let date = game.date else { return false }
                 return date > now
@@ -55,9 +71,45 @@ struct NextGameIntent: AppIntent {
     }
 
     static func liveLine(for game: Game) -> String {
-        let away = "\(game.away.team.location) \(game.away.score.map(String.init) ?? "0")"
-        let home = "\(game.home.team.location) \(game.home.score.map(String.init) ?? "0")"
-        return "Live now: \(away), \(home)."
+        // Never invent a score. If the merge found no live copy of this
+        // game, the honest answer is that it's on — the app's own rule for
+        // the same gap ("Live", never a dashed non-score).
+        guard let awayScore = game.away.score, let homeScore = game.home.score else {
+            let sides = "\(game.away.team.location) and \(game.home.team.location)"
+            let clock = Self.spokenClock(game).map { ", \($0)" } ?? ""
+            return "\(sides) are playing right now\(clock)."
+        }
+        let score = "\(game.away.team.location) \(awayScore), \(game.home.team.location) \(homeScore)"
+        guard let clock = Self.spokenClock(game) else { return "Live now: \(score)." }
+        return "Live now: \(score), \(clock)."
+    }
+
+    /// Siri speaks the line, so the row's "Q3 5:24" shorthand is spelled
+    /// out — and the halftime rule holds: a parked clock is a break, not a
+    /// quarter running out (decision log, 2026-08-31).
+    static func spokenClock(_ game: Game) -> String? {
+        guard case .live(let clock, let period, _, let phase, _) = game.status else { return nil }
+        switch phase {
+        case .halftime:
+            return "at halftime"
+        case .endOfPeriod:
+            return period.map { "at the end of the \(Self.ordinal($0)) quarter" }
+        case .playing:
+            guard let period else { return nil }
+            let quarter = period > 4
+                ? "in overtime"
+                : "in the \(Self.ordinal(period)) quarter"
+            return clock.map { "\(quarter), \($0) left" } ?? quarter
+        }
+    }
+
+    private static func ordinal(_ value: Int) -> String {
+        switch value {
+        case 1: "1st"
+        case 2: "2nd"
+        case 3: "3rd"
+        default: "\(value)th"
+        }
     }
 }
 
