@@ -59,11 +59,8 @@ nonisolated extension Game {
                 parts.append("on \(network)")
             }
             body = parts.joined(separator: ", ")
-        case .live(let clock, let period, let detail, _):
-            let quarter = period.map { $0 <= 4 ? "Q\($0)" : ($0 == 5 ? "OT" : "\($0 - 4)OT") }
-            let situation = [quarter, clock].compactMap(\.self).joined(separator: " ")
-            let score = "\(scored(away)), \(scored(home))"
-            body = situation.isEmpty ? "\(score), \(detail ?? "live")" : "\(score), \(situation)"
+        case .live:
+            body = "\(scored(away)), \(scored(home)), \(status.liveStatusText ?? "live")"
         case .final(let detail):
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
             body = "Final\(overtime ? " (OT)" : ""): \(scored(away)), \(scored(home))"

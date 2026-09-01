@@ -149,19 +149,19 @@ struct GameRow: View {
                     if let network { networkText(network) }
                 }
             }
-        case .live(let displayClock, let period, _, _):
+        case .live:
             // Clock and network ride one line while they fit, then stack —
             // the same treatment as the pre-game kick line above.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Spacing.sm) {
-                    liveClockLine(clock: displayClock, period: period)
+                    liveClockLine
                     if let network {
                         Text("·").font(.meta).foregroundStyle(.textSecondary)
                         networkText(network)
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    liveClockLine(clock: displayClock, period: period)
+                    liveClockLine
                     if let network { networkText(network) }
                 }
             }
@@ -223,11 +223,11 @@ struct GameRow: View {
                         .lineLimit(1)
                 }
             }
-        case .live(let displayClock, let period, _, _):
+        case .live:
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: Spacing.xs) {
                     LiveDot()
-                    Text(liveDetail(clock: displayClock, period: period))
+                    Text(game.status.liveStatusText ?? "Live")
                         .font(.rowMetaMedium)
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
@@ -278,10 +278,10 @@ struct GameRow: View {
             .lineLimit(1)
     }
 
-    private func liveClockLine(clock: String?, period: Int?) -> some View {
+    private var liveClockLine: some View {
         HStack(spacing: Spacing.sm) {
             LiveDot()
-            Text(liveDetail(clock: clock, period: period))
+            Text(game.status.liveStatusText ?? "Live")
                 .font(.metaEmphasis)
                 .foregroundStyle(.textPrimary)
         }
@@ -336,7 +336,7 @@ struct GameRow: View {
     }
 
     private func hasPossession(_ competitor: Competitor) -> Bool {
-        if case .live(_, _, _, let possessionTeamId) = game.status {
+        if case .live(_, _, _, _, let possessionTeamId) = game.status {
             return possessionTeamId == competitor.team.id
         }
         return false
@@ -403,11 +403,6 @@ struct GameRow: View {
         return "\(kick.day) \(kick.time)"
     }
 
-    private func liveDetail(clock: String?, period: Int?) -> String {
-        let quarter = period.map { $0 <= 4 ? "Q\($0)" : ($0 == 5 ? "OT" : "\($0 - 4)OT") }
-        return [quarter, clock].compactMap(\.self).joined(separator: " ")
-    }
-
     private func finalLabel(_ detail: String?) -> String {
         // Sentence case per the 2240 spec.
         if let detail, detail.localizedCaseInsensitiveContains("OT") { return "Final OT" }
@@ -433,10 +428,17 @@ struct GameRow: View {
             }
             if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")
-        case .live(let clock, let period, _, let possessionTeamId):
+        case .live(let clock, let period, _, let phase, let possessionTeamId):
             var parts = [scoreSummary]
-            if let period { parts.append(spokenPeriod(period)) }
-            if let clock { parts.append("\(clock) left") }
+            switch phase {
+            case .halftime:
+                parts.append("halftime")
+            case .endOfPeriod:
+                if let period { parts.append("end of \(spokenPeriod(period))") }
+            case .playing:
+                if let period { parts.append(spokenPeriod(period)) }
+                if let clock { parts.append("\(clock) left") }
+            }
             if let possessionTeamId,
                let holder = [game.away, game.home].first(where: { $0.team.id == possessionTeamId }) {
                 parts.append("\(holder.team.location) has the ball")
@@ -498,7 +500,7 @@ struct GameRow: View {
         Divider().overlay(Color.divider)
         GameRow(game: Game(
             id: "2", date: .now, name: nil, shortName: "UGA @ TENN", weekNumber: 5,
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "61"),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),
             home: Competitor(team: tennessee, score: 17, record: "4-1", rank: 12, isHome: true, winner: nil),
             away: Competitor(team: georgia, score: 24, record: "5-0", rank: 3, isHome: false, winner: nil),
             broadcast: "ESPN"))
@@ -530,7 +532,7 @@ struct GameRow: View {
         Divider().overlay(Color.divider)
         GameRow(game: Game(
             id: "2", date: .now, name: nil, shortName: "TCU @ NCST", weekNumber: 5,
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "2628"),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "2628"),
             home: Competitor(team: ncState, score: 17, record: "4-1", rank: nil, isHome: true, winner: nil),
             away: Competitor(team: tcu, score: 24, record: "5-0", rank: 9, isHome: false, winner: nil),
             broadcast: "ESPN"))

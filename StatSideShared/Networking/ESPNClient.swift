@@ -257,12 +257,25 @@ nonisolated enum ESPNMapper {
                 displayClock: dto?.displayClock,
                 period: dto?.period,
                 detail: detail,
+                phase: livePhase(from: dto?.type?.name),
                 possessionTeamId: situation?.possession
             )
         case "post" where dto?.type?.completed == true:
             return .final(detail: detail)
         default:
             return .other(detail: detail)
+        }
+    }
+
+    /// ESPN's halftime and end-of-quarter arrive as `state: "in"` with the
+    /// clock at 0:00 — only the status type name says the clock isn't
+    /// running (observed live 2026-08-29: `STATUS_HALFTIME`, period 2,
+    /// displayClock "0:00").
+    static func livePhase(from statusName: String?) -> LivePhase {
+        switch statusName {
+        case "STATUS_HALFTIME": .halftime
+        case "STATUS_END_PERIOD": .endOfPeriod
+        default: .playing
         }
     }
 

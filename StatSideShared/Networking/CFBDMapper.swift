@@ -97,10 +97,17 @@ nonisolated enum CFBDMapper {
         awayId: Int
     ) -> GameStatus {
         if let live, live.status == "in_progress" {
+            // CFBD has no halftime status — infer it from a run-out
+            // second-quarter clock, and stay conservative elsewhere
+            // (an end-of-quarter guess in Q4 could mislabel a game
+            // heading to OT).
+            let halftime = live.period == 2
+                && (live.clock == "0:00" || live.clock == "00:00")
             return .live(
                 displayClock: live.clock,
                 period: live.period,
                 detail: live.period.map { "Q\($0)" },
+                phase: halftime ? .halftime : .playing,
                 possessionTeamId: possessionTeamId(live.possession, homeId: homeId, awayId: awayId)
             )
         }

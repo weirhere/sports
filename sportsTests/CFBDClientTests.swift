@@ -94,13 +94,38 @@ private func makeJoins() throws -> CFBDJoins {
 
         #expect(game.home.score == 21)      // live points beat the games row
         #expect(game.broadcast == "CBS")
-        if case .live(let clock, let period, _, let possession) = game.status {
+        if case .live(let clock, let period, _, _, let possession) = game.status {
             #expect(clock == "07:41")
             #expect(period == 3)
             #expect(possession == "61")     // "home" resolved to the home id
         } else {
             Issue.record("expected live status")
         }
+    }
+
+    @Test func runOutSecondQuarterClockReadsAsHalftime() throws {
+        // CFBD has no halftime status — the mapper infers it from the
+        // parked Q2 clock. Other quarters stay .playing (a 0:00 in Q4
+        // could be heading to OT, not a break).
+        let gameJSON = finalGameJSON.replacingOccurrences(
+            of: "\"completed\": true", with: "\"completed\": false"
+        )
+        let dto = try decode(CFBDGameDTO.self, gameJSON)
+        func phase(period: Int, clock: String) throws -> LivePhase? {
+            let liveJSON = """
+            {"id": 401520, "status": "in_progress", "period": \(period), "clock": "\(clock)",
+             "homeTeam": {"id": 61, "name": "Georgia", "points": 14},
+             "awayTeam": {"id": 333, "name": "Alabama", "points": 10}}
+            """
+            let live = try decode(CFBDScoreboardGameDTO.self, liveJSON)
+            let game = try #require(CFBDMapper.game(from: dto, live: live, media: [], joins: makeJoins()))
+            if case .live(_, _, _, let phase, _) = game.status { return phase }
+            return nil
+        }
+        #expect(try phase(period: 2, clock: "0:00") == .halftime)
+        #expect(try phase(period: 2, clock: "00:00") == .halftime)
+        #expect(try phase(period: 2, clock: "5:24") == .playing)
+        #expect(try phase(period: 4, clock: "0:00") == .playing)
     }
 
     @Test func unknownTeamDegradesGracefully() throws {

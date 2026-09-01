@@ -57,10 +57,46 @@ nonisolated enum LiveResult: Sendable {
 
 nonisolated enum GameStatus: Hashable, Sendable {
     case pre(detail: String?)
-    case live(displayClock: String?, period: Int?, detail: String?, possessionTeamId: String?)
+    case live(displayClock: String?, period: Int?, detail: String?,
+              phase: LivePhase, possessionTeamId: String?)
     case final(detail: String?)
     /// Postponed, canceled, or anything ESPN invents later. Renders its detail.
     case other(detail: String?)
+
+    /// The live status line every surface renders — "Q3 5:24", "Half",
+    /// "End Q1", "OT 0:48" — nil unless the game is live. One formatter so
+    /// the row, detail header, widget, share text, and share card can't
+    /// drift apart again; callers supply their own fallback for the rare
+    /// live game with nothing to say (`?? "Live"`).
+    var liveStatusText: String? {
+        guard case .live(let clock, let period, let detail, let phase, _) = self else { return nil }
+        switch phase {
+        case .halftime:
+            return "Half"
+        case .endOfPeriod:
+            // The clock has run out, so "Q2 0:00" would claim a running
+            // clock; the period alone carries the truth.
+            return period.map { "End \(Self.periodLabel($0))" } ?? detail
+        case .playing:
+            let line = [period.map(Self.periodLabel), clock].compactMap(\.self).joined(separator: " ")
+            return line.isEmpty ? detail : line
+        }
+    }
+
+    static func periodLabel(_ period: Int) -> String {
+        period <= 4 ? "Q\(period)" : (period == 5 ? "OT" : "\(period - 4)OT")
+    }
+}
+
+/// Where a live game's clock cycle stands. ESPN sends halftime and
+/// end-of-quarter as `state: "in"` with the clock parked at 0:00, so a
+/// renderer joining quarter + clock would show "Q2 0:00" where every other
+/// scores app says "Half" — the boundary maps the status name into this
+/// so renderers never re-derive it.
+nonisolated enum LivePhase: Hashable, Sendable {
+    case playing
+    case halftime
+    case endOfPeriod
 }
 
 nonisolated struct Competitor: Hashable, Sendable {

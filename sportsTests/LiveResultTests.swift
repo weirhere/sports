@@ -12,7 +12,7 @@ private func team(_ id: String) -> Team {
 private func game(homeScore: Int?, awayScore: Int?, live: Bool = true) -> Game {
     Game(id: "g", date: nil, name: nil, shortName: nil, weekNumber: 1,
          status: live
-            ? .live(displayClock: "5:00", period: 2, detail: nil, possessionTeamId: nil)
+            ? .live(displayClock: "5:00", period: 2, detail: nil, phase: .playing, possessionTeamId: nil)
             : .final(detail: "Final"),
          home: Competitor(team: team("home"), score: homeScore, record: nil,
                           rank: nil, isHome: true, winner: nil),
