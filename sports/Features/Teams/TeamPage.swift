@@ -131,8 +131,13 @@ struct TeamPage: View {
         Game.merging(game, withLive: liveBoard?.games ?? [])
     }
 
+    /// FBS only for now: `conferenceStandings(year:)` still asks for group
+    /// 80, so an FCS team's Standings tab would open on a permanent
+    /// "Standings TBA". The registry knows its conference (E8's first
+    /// item) — the fetch doesn't yet, and an empty tab is worse than no
+    /// tab. Lifts with the division-aware data layer.
     private var showsStandingsTab: Bool {
-        resolvedConferenceId.map { Conference.tier(for: $0) != .other } ?? false
+        Conference.division(for: resolvedConferenceId) == .fbs
     }
 
     var body: some View {
@@ -269,8 +274,12 @@ struct TeamPage: View {
     /// instead of a claim. Links to the full conference page when there is one.
     @ViewBuilder
     private var conferenceLine: some View {
+        // An FCS team now has a real conference line — the point of E8's
+        // registry item — but not a real conference *page* until the
+        // standings fetch learns about group 81, so it renders as the
+        // plain-text label below rather than a link into an empty table.
         let label = resolvedConferenceId.map { Conference.name(for: $0) } ?? ""
-        if let id = resolvedConferenceId, Conference.tier(for: id) != .other {
+        if let id = resolvedConferenceId, Conference.division(for: id) == .fbs {
             NavigationLink(value: ConferenceDestination(conferenceId: id,
                                                         name: Conference.name(for: id),
                                                         highlightTeamId: team.id)) {
