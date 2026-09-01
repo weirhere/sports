@@ -89,12 +89,16 @@ export function OnboardingModal() {
               </div>
             )
           ) : trimmed.length === 0 ? (
-            conferences.map((conference) => (
-              <ConferenceSection
-                key={conference.id ?? conference.name}
-                conference={conference}
-              />
-            ))
+            // An empty conference (ESPN ships the Sun Belt with zero
+            // entries) has nothing to toggle — onboarding skips it.
+            conferences
+              .filter((conference) => conference.teams.length > 0)
+              .map((conference) => (
+                <ConferenceSection
+                  key={conference.id ?? conference.name}
+                  conference={conference}
+                />
+              ))
           ) : results.length > 0 ? (
             <div className="card-surface py-1">
               {results.map((team) => (

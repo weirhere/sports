@@ -68,23 +68,26 @@ export function NavBar() {
         )}
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-6 sm:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-text-primary",
-                (link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href))
-                  ? "text-text-primary"
-                  : "text-text-secondary"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
+          {NAV_LINKS.map((link) => {
+            const active =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-text-primary",
+                  active ? "text-text-primary" : "text-text-secondary"
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right side */}

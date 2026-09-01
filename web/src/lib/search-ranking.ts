@@ -53,9 +53,9 @@ export function teamMatchTier(query: string, team: Team): number | null {
 /**
  * The ranked team slice, shared by app-wide search and the Teams/onboarding
  * inline filters. Sort: followed first → match tier → school alphabetical.
- * Pass no follow set for a purely match-ranked list (the inline filters do —
- * their rows toggle follows, and a followed-first boost would reorder the
- * list under the user's finger).
+ * Pass no follow set for a purely match-ranked list — onboarding does (iOS
+ * parity: only OnboardingScreen filters unboosted; the Teams tab's filter
+ * passes the followed set).
  */
 export function searchTeams(
   query: string,

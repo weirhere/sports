@@ -2,7 +2,15 @@
 
 **Version:** 1.0
 **Date:** March 14, 2026
-**Status:** In Development
+**Status:** Historical — superseded by the 2026-09-01 iOS-parity rebuild
+
+> **Status note (2026-09-01):** the app was rebuilt to mirror the StatSide
+> iOS app — the iOS app is now the spec (see the repo root's CLAUDE.md and
+> decisions log). The app runs fully live on ESPN's unofficial API with the
+> StatSide design system. Sections below describing removed features —
+> play-by-play, player search, drag-to-reorder favorites, the settings
+> screen — are historical and no longer describe the shipped app. The rest
+> of this document is kept as originally written.
 
 ---
 

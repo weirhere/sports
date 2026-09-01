@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-
 export default function Error({
   error,
   reset,
@@ -12,14 +10,20 @@ export default function Error({
   // Surface the underlying failure for debugging; the UI stays generic.
   console.error(error);
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-      <h2 className="text-2xl font-bold">Something went wrong</h2>
-      <p className="mt-2 text-muted-foreground">
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-center">
+      <h2 className="type-hero-title text-text-primary">
+        Something went wrong
+      </h2>
+      <p className="type-team-name text-text-secondary">
         An error occurred while loading this page.
       </p>
-      <Button onClick={reset} className="mt-4">
+      <button
+        type="button"
+        onClick={reset}
+        className="mt-2 rounded-full bg-text-primary px-5 py-2 type-chip-em text-bg-primary transition-opacity hover:opacity-90"
+      >
         Try again
-      </Button>
+      </button>
     </div>
   );
 }

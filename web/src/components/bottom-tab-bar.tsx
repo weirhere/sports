@@ -16,7 +16,10 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-divider bg-bg-primary pb-[env(safe-area-inset-bottom)] sm:hidden">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-divider bg-bg-primary pb-[env(safe-area-inset-bottom)] sm:hidden"
+    >
       <div className="flex">
         {TABS.map((tab) => {
           const active =
@@ -27,6 +30,7 @@ export function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 type-row-meta-medium transition-colors",
                 active
@@ -34,7 +38,7 @@ export function BottomTabBar() {
                   : "text-text-secondary active:text-text-primary"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon aria-hidden="true" className="h-5 w-5" />
               {tab.label}
             </Link>
           );

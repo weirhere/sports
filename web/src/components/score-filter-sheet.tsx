@@ -14,7 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConferenceLogo } from "./theme/conference-logo";
-import { SeasonSelector } from "./season-selector";
+import { SeasonMenuChip } from "./season-menu-chip";
+import { seasonYears } from "@/lib/season";
 import type { ScoresGrouping } from "@/lib/game-sections";
 import { conferenceFilterToken } from "@/lib/game-sections";
 import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences";
@@ -97,9 +98,10 @@ export function ScoreFilterSheet({
 
           <div className="mt-3 flex items-center justify-between">
             <span className="type-chip text-text-primary">Season</span>
-            <SeasonSelector
-              selectedYear={selectedYear}
-              onYearChange={onYearChange}
+            <SeasonMenuChip
+              value={selectedYear}
+              years={seasonYears()}
+              onSelect={onYearChange}
             />
           </div>
 
