@@ -1,288 +1,244 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+// App-wide search — the web twin of the iOS `SearchScreen`. The corpus is
+// whatever's already loaded (or one fetch away): the FBS team directory,
+// the registry conferences, and the current week's games. Results are
+// ranked client-side by `search-ranking`, so typing costs zero requests.
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
-import { SearchInput } from "@/components/search-input";
-import { cn } from "@/lib/utils";
-import { MOCK_TEAMS } from "@/lib/mock/teams";
-import { FBS_CONFERENCES } from "@/config/conferences";
 import { TeamLogo } from "@/components/team-logo";
-import type { Game, GameStatus, Team, Conference } from "@/lib/types";
+import { ConferenceLogo } from "@/components/theme/conference-logo";
+import { SearchField } from "@/components/search-field";
+import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
+import { useFavoritesContext } from "@/components/providers/favorites-provider";
+import {
+  searchTeams,
+  searchConferences,
+  searchGames,
+  type ConferenceRef,
+} from "@/lib/search-ranking";
+import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences";
+import { liveStatusText } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { Game, Scoreboard, Team } from "@/lib/types";
 
-type Category = "all" | "teams" | "conferences" | "games";
+const CONFERENCE_CORPUS: ConferenceRef[] = orderedIds.map((id) => ({
+  id,
+  name: conferenceName(id),
+}));
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "teams", label: "Teams" },
-  { value: "conferences", label: "Conferences" },
-  { value: "games", label: "Games" },
-];
-
-function isLive(status: GameStatus) {
-  return status === "in_progress" || status === "halftime" || status === "end_period";
+function isLive(game: Game): boolean {
+  return (
+    game.status === "in_progress" ||
+    game.status === "halftime" ||
+    game.status === "end_period"
+  );
 }
 
-function getGameLabel(game: Game): string {
+/** The compact status text for a search result row. */
+function gameStatusShort(game: Game): string {
   if (game.status === "complete") return "Final";
-  if (game.status === "halftime") return "Halftime";
-  if (isLive(game.status)) {
-    const q = game.quarter && game.quarter > 4 ? "OT" : `Q${game.quarter}`;
-    return `${q} ${game.clock || ""}`.trim();
+  if (game.status === "postponed") return "Postponed";
+  if (game.status === "cancelled") return "Cancelled";
+  if (game.status === "delayed") return "Delayed";
+  if (isLive(game)) {
+    return (
+      liveStatusText({
+        livePhase:
+          game.status === "halftime"
+            ? "halftime"
+            : game.status === "end_period"
+              ? "endOfPeriod"
+              : (game.livePhase ?? "playing"),
+        quarter: game.quarter,
+        clock: game.clock,
+        detail: game.statusDetail,
+      }) ?? "Live"
+    );
   }
-  return new Date(game.scheduledAt).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
+  const date = new Date(game.scheduledAt);
+  if (Number.isNaN(date.getTime())) return "TBD";
+  const day = date.toLocaleDateString("en-US", { weekday: "short" });
+  if (game.timeTBD) return `${day} TBD`;
+  const time = date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });
+  return `${day} ${time}`;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Result row components                                              */
-/* ------------------------------------------------------------------ */
+export function SearchView() {
+  const { conferences } = useTeamDirectory();
+  const { favorites } = useFavoritesContext();
+  const [query, setQuery] = useState("");
+  const [games, setGames] = useState<Game[]>([]);
 
-function TeamResult({ team }: { team: Team }) {
-  return (
-    <Link
-      href={`/team/${team.id}`}
-      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
-    >
-      <TeamLogo espnId={team.espnId} teamName={team.school} size="sm" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{team.school}</p>
-        <p className="text-xs text-muted-foreground">{team.conferenceName}</p>
-      </div>
-    </Link>
+  // The CURRENT week's slate, fetched once on mount — no params, and no
+  // refetching per keystroke (the filter is entirely client-side).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/scoreboard")
+      .then((res) => (res.ok ? (res.json() as Promise<Scoreboard>) : null))
+      .then((board) => {
+        if (!cancelled && board) setGames(board.games ?? []);
+      })
+      .catch(() => {
+        // A missing slate just leaves the This Week section empty.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const followedIds = useMemo(() => new Set(favorites), [favorites]);
+  const trimmed = query.trim();
+
+  // Follow boost ON here — results navigate, they don't toggle.
+  const teamResults = useMemo(
+    () => searchTeams(query, conferences, followedIds),
+    [query, conferences, followedIds]
   );
-}
-
-function ConferenceResult({ conf }: { conf: Conference }) {
-  return (
-    <Link
-      href={`/conference/${conf.id}`}
-      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
-    >
-      <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground">
-        {conf.shortName.slice(0, 3)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{conf.shortName}</p>
-        <p className="text-xs text-muted-foreground">{conf.name}</p>
-      </div>
-    </Link>
+  const conferenceResults = useMemo(
+    () => searchConferences(query, CONFERENCE_CORPUS),
+    [query]
   );
-}
+  const gameResults = useMemo(() => searchGames(query, games), [query, games]);
 
-function GameResult({ game }: { game: Game }) {
-  const live = isLive(game.status);
+  const isEmpty =
+    teamResults.length === 0 &&
+    conferenceResults.length === 0 &&
+    gameResults.length === 0;
 
   return (
-    <Link
-      href={`/game/${game.id}`}
-      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
-    >
-      <div className="flex items-center gap-1.5">
-        <TeamLogo espnId={game.awayTeam.team.espnId} teamName={game.awayTeam.team.school} size="sm" />
-        <span className="text-xs text-muted-foreground">@</span>
-        <TeamLogo espnId={game.homeTeam.team.espnId} teamName={game.homeTeam.team.school} size="sm" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">
-          {game.awayTeam.team.abbreviation} vs {game.homeTeam.team.abbreviation}
+    <div className="space-y-3">
+      <h1 className="sr-only">Search</h1>
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        placeholder="Teams, conferences, games"
+        autoFocus
+      />
+
+      {trimmed.length === 0 ? (
+        <p className="px-6 py-20 text-center type-team-name text-text-secondary">
+          Search teams, conferences, and this week&rsquo;s games
         </p>
-        <p className={cn(
-          "text-xs",
-          live ? "font-medium text-live" : "text-muted-foreground"
-        )}>
-          {game.status !== "scheduled" && (
-            <span>
-              {game.awayTeam.score} - {game.homeTeam.score} · {" "}
-            </span>
+      ) : isEmpty ? (
+        <p className="px-6 py-20 text-center type-team-name text-text-secondary">
+          No matches
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {teamResults.length > 0 && (
+            <ResultSection title="Teams">
+              {teamResults.map((team) => (
+                <TeamResultRow key={team.id} team={team} />
+              ))}
+            </ResultSection>
           )}
-          {getGameLabel(game)}
-        </p>
-      </div>
-    </Link>
+          {conferenceResults.length > 0 && (
+            <ResultSection title="Conferences">
+              {conferenceResults.map((conference) => (
+                <ConferenceResultRow
+                  key={conference.id}
+                  conference={conference}
+                />
+              ))}
+            </ResultSection>
+          )}
+          {gameResults.length > 0 && (
+            <ResultSection title="This Week">
+              {gameResults.map((game) => (
+                <GameResultRow key={game.id} game={game} />
+              ))}
+            </ResultSection>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Section wrapper                                                    */
-/* ------------------------------------------------------------------ */
 
 function ResultSection({
   title,
   children,
-  count,
 }: {
   title: string;
   children: React.ReactNode;
-  count: number;
 }) {
-  if (count === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-card">
-      <div className="px-4 py-2.5 bg-muted/50">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </span>
-      </div>
-      <div className="border-t">{children}</div>
-    </div>
+    <section className="card-surface pb-1">
+      <h2 className="bg-bg-header px-4 py-2.5 type-section-header text-text-primary">
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main component                                                     */
-/* ------------------------------------------------------------------ */
-
-export function SearchView() {
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<Category>("all");
-  const [games, setGames] = useState<Game[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Fetch games on mount
-  useEffect(() => {
-    fetch("/api/schedule")
-      .then((r) => r.json())
-      .then((data) => setGames(data.games ?? []))
-      .catch(() => {});
-  }, []);
-
-  // Auto-focus input
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const q = query.trim().toLowerCase();
-  const isSearching = q.length > 0;
-
-  // Filter results
-  const teamResults = useMemo(() => {
-    if (!isSearching) return [];
-    return MOCK_TEAMS.filter(
-      (t) =>
-        t.school.toLowerCase().includes(q) ||
-        t.name.toLowerCase().includes(q) ||
-        t.abbreviation.toLowerCase().includes(q) ||
-        t.conferenceName.toLowerCase().includes(q)
-    );
-  }, [q, isSearching]);
-
-  const confResults = useMemo(() => {
-    if (!isSearching) return [];
-    return FBS_CONFERENCES.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.shortName.toLowerCase().includes(q)
-    );
-  }, [q, isSearching]);
-
-  const gameResults = useMemo(() => {
-    if (!isSearching) return [];
-    return games.filter(
-      (g) =>
-        g.homeTeam.team.school.toLowerCase().includes(q) ||
-        g.homeTeam.team.abbreviation.toLowerCase().includes(q) ||
-        g.awayTeam.team.school.toLowerCase().includes(q) ||
-        g.awayTeam.team.abbreviation.toLowerCase().includes(q) ||
-        g.venue.name.toLowerCase().includes(q) ||
-        g.venue.city.toLowerCase().includes(q)
-    );
-  }, [q, isSearching, games]);
-
-  const showTeams = category === "all" || category === "teams";
-  const showConfs = category === "all" || category === "conferences";
-  const showGames = category === "all" || category === "games";
-
-  const totalResults =
-    (showTeams ? teamResults.length : 0) +
-    (showConfs ? confResults.length : 0) +
-    (showGames ? gameResults.length : 0);
-
+function TeamResultRow({ team }: { team: Team }) {
+  const label = [team.school, team.name].filter(Boolean).join(" ");
   return (
-    <div className="space-y-4">
-      {/* Search input */}
-      <SearchInput
-        ref={inputRef}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onClear={() => setQuery("")}
-        placeholder="Search teams, conferences, games..."
-      />
-
-      {/* Category tabs */}
-      <div className="flex gap-2 overflow-x-auto">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.value}
-            type="button"
-            onClick={() => setCategory(cat.value)}
-            className={cn(
-              "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              category === cat.value
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-            )}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Results */}
-      {isSearching ? (
-        totalResults > 0 ? (
-          <div className="space-y-3">
-            {showTeams && teamResults.length > 0 && (
-              <ResultSection title="Teams" count={teamResults.length}>
-                {teamResults.map((team, i) => (
-                  <div key={team.id}>
-                    {i > 0 && <div className="mx-4 border-t" />}
-                    <TeamResult team={team} />
-                  </div>
-                ))}
-              </ResultSection>
-            )}
-
-            {showConfs && confResults.length > 0 && (
-              <ResultSection title="Conferences" count={confResults.length}>
-                {confResults.map((conf, i) => (
-                  <div key={conf.id}>
-                    {i > 0 && <div className="mx-4 border-t" />}
-                    <ConferenceResult conf={conf} />
-                  </div>
-                ))}
-              </ResultSection>
-            )}
-
-            {showGames && gameResults.length > 0 && (
-              <ResultSection title="Games" count={gameResults.length}>
-                {gameResults.map((game, i) => (
-                  <div key={game.id}>
-                    {i > 0 && <div className="mx-4 border-t" />}
-                    <GameResult game={game} />
-                  </div>
-                ))}
-              </ResultSection>
-            )}
-          </div>
-        ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            No results for &ldquo;{query.trim()}&rdquo;
-          </p>
-        )
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-          <Search className="h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">
-            Search for teams, conferences, and games
-          </p>
-        </div>
+    <Link
+      href={`/team/${team.id}`}
+      aria-label={label}
+      className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
+    >
+      <TeamLogo espnId={team.espnId} teamName="" size="sm" />
+      <span className="truncate type-row-name-em text-text-primary">
+        {team.school}
+      </span>
+      {team.name && (
+        <span className="truncate type-row-name text-text-secondary">
+          {team.name}
+        </span>
       )}
-    </div>
+    </Link>
+  );
+}
+
+function ConferenceResultRow({ conference }: { conference: ConferenceRef }) {
+  return (
+    <Link
+      href={`/conference/${conference.id}`}
+      className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
+    >
+      <ConferenceLogo src={conferenceLogoUrl(conference.id)} name="" />
+      <span className="type-row-name-em text-text-primary">
+        {conference.name}
+      </span>
+    </Link>
+  );
+}
+
+/** A compact matchup line: names + short status (not the Scores GameRow). */
+function GameResultRow({ game }: { game: Game }) {
+  const live = isLive(game);
+  const away = game.awayTeam.team;
+  const home = game.homeTeam.team;
+  return (
+    <Link
+      href={`/game/${game.id}`}
+      className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
+    >
+      <span className="flex shrink-0 items-center gap-1">
+        <TeamLogo espnId={away.espnId} teamName="" size="sm" />
+        <TeamLogo espnId={home.espnId} teamName="" size="sm" />
+      </span>
+      <span className="min-w-0 flex-1 truncate type-row-name text-text-primary">
+        {away.school} at {home.school}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 tnum",
+          live
+            ? "type-row-name-em text-live"
+            : "type-row-meta-medium text-text-secondary"
+        )}
+      >
+        {gameStatusShort(game)}
+      </span>
+    </Link>
   );
 }
