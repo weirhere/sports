@@ -1,111 +1,84 @@
-import { notFound } from "next/navigation";
-import { getConferenceById } from "@/config/conferences";
-import { getStandings } from "@/lib/mock/standings";
-import { MOCK_GAMES } from "@/lib/mock/games";
-import { StandingsTable } from "@/components/standings-table";
-import { GameCard } from "@/components/game-card";
-import { EmptyState } from "@/components/empty-state";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FavoriteButton } from "@/components/favorite-button";
+// One conference's home — the iOS ConferencePage rebuilt on live data:
+// bg-card hero, Standings (default) / Games tabs, seasons back to the 2014
+// CFP floor via `?year=`. The server component owns both fetches; the
+// client shell owns tab choice only.
 
-export function generateMetadata({
-  params,
-}: {
+import { notFound } from "next/navigation";
+import { conferenceStandings, conferenceGames } from "@/lib/espn";
+import { conferenceName } from "@/lib/conferences";
+import { cfbSeasonYear } from "@/lib/season";
+import { ConferenceView } from "./conference-view";
+
+export const dynamic = "force-dynamic";
+
+interface PageProps {
   params: Promise<{ conferenceId: string }>;
-}) {
-  // Can't await in generateMetadata synchronously with our static data,
-  // but we can return a basic title
+  searchParams: Promise<{ year?: string | string[]; team?: string | string[] }>;
+}
+
+/** A validated season year, or undefined (= the current season). */
+function parseYear(raw: string | string[] | undefined): number | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value || !/^\d{4}$/.test(value)) return undefined;
+  const year = Number(value);
+  if (year < 2014 || year > cfbSeasonYear()) return undefined;
+  return year;
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { conferenceId } = await params;
+  const name = conferenceName(Number(conferenceId));
   return {
-    title: "Conference | College Football Hub",
+    title:
+      name !== "Other"
+        ? `${name} | College Football Hub`
+        : "Conference | College Football Hub",
   };
 }
 
-export default async function ConferenceDetailPage({
+export default async function ConferencePage({
   params,
-}: {
-  params: Promise<{ conferenceId: string }>;
-}) {
+  searchParams,
+}: PageProps) {
   const { conferenceId } = await params;
-  const conference = getConferenceById(conferenceId);
-
-  if (!conference) {
+  const numericId = Number(conferenceId);
+  // Registry-unknown ids 404 — the registry is the page's whole identity
+  // (name, mark, championship-cut gate).
+  if (!Number.isInteger(numericId) || conferenceName(numericId) === "Other") {
     notFound();
   }
 
-  const standings = getStandings(conferenceId);
+  const sp = await searchParams;
+  const currentYear = cfbSeasonYear();
+  const year = parseYear(sp.year);
+  const fetchYear = year === currentYear ? undefined : year;
+  const highlightRaw = Array.isArray(sp.team) ? sp.team[0] : sp.team;
+  const highlightTeamId =
+    highlightRaw && /^\d+$/.test(highlightRaw) ? highlightRaw : undefined;
 
-  // Get games involving teams from this conference
-  const conferenceGames = MOCK_GAMES.filter(
-    (g) =>
-      g.homeTeam.team.conferenceId === conferenceId ||
-      g.awayTeam.team.conferenceId === conferenceId
-  );
+  const [standingsResult, gamesResult] = await Promise.allSettled([
+    conferenceStandings(fetchYear),
+    conferenceGames(numericId, fetchYear),
+  ]);
 
-  const upcomingGames = conferenceGames.filter(
-    (g) => g.status === "scheduled"
-  );
-  const completedGames = conferenceGames.filter(
-    (g) => g.status === "complete"
-  );
+  const group =
+    standingsResult.status === "fulfilled"
+      ? (standingsResult.value.find((g) => g.id === String(numericId)) ?? {
+          id: String(numericId),
+          name: conferenceName(numericId),
+          entries: [],
+        })
+      : null;
+  const games = gamesResult.status === "fulfilled" ? gamesResult.value : null;
 
   return (
-    <div>
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{conference.name}</h1>
-          <p className="text-sm text-muted-foreground">{conference.division}</p>
-        </div>
-        <FavoriteButton teamId={conferenceId} type="conference" />
-      </div>
-
-      <Tabs defaultValue="standings" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="standings">Standings</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="results">Results</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="standings">
-          {standings.length > 0 ? (
-            <StandingsTable standings={standings} />
-          ) : (
-            <EmptyState
-              title="No standings available"
-              description="Standings data is not yet available for this conference."
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="schedule">
-          {upcomingGames.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {upcomingGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No upcoming games"
-              description="There are no scheduled games for this conference."
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="results">
-          {completedGames.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {completedGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No results yet"
-              description="No games have been completed for this conference."
-            />
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+    <ConferenceView
+      conferenceId={numericId}
+      name={conferenceName(numericId)}
+      standings={group}
+      games={games}
+      displayYear={year ?? currentYear}
+      highlightTeamId={highlightTeamId}
+    />
   );
 }

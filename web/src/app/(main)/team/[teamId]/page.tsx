@@ -1,104 +1,91 @@
-import { notFound } from "next/navigation";
-import { getTeamById, getGamesByTeam } from "@/lib/mock";
-import { TeamLogo } from "@/components/team-logo";
-import { GameCard } from "@/components/game-card";
-import { FavoriteButton } from "@/components/favorite-button";
-import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MOCK_TOP_25 } from "@/lib/mock/rankings";
+// One team's home — the iOS TeamPage rebuilt on live data: bg-card hero,
+// Overview / Games / Standings tabs, seasons back to the 2014 CFP floor via
+// `?year=`. The server component owns every fetch (the provider is the
+// per-year cache); the client shell owns tab choice only.
 
-export function generateMetadata() {
-  return { title: "Team | College Football Hub" };
+import { notFound } from "next/navigation";
+import {
+  teamSchedule,
+  conferenceStandings,
+  rankings,
+} from "@/lib/espn";
+import { cfbSeasonYear } from "@/lib/season";
+import { TeamView } from "./team-view";
+
+export const dynamic = "force-dynamic";
+
+interface PageProps {
+  params: Promise<{ teamId: string }>;
+  searchParams: Promise<{ year?: string | string[] }>;
 }
 
-export default async function TeamPage({
-  params,
-}: {
-  params: Promise<{ teamId: string }>;
-}) {
+/** A validated season year, or undefined (= the current season). */
+function parseYear(raw: string | string[] | undefined): number | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value || !/^\d{4}$/.test(value)) return undefined;
+  const year = Number(value);
+  if (year < 2014 || year > cfbSeasonYear()) return undefined;
+  return year;
+}
+
+export async function generateMetadata({ params }: PageProps) {
   const { teamId } = await params;
-  const team = getTeamById(teamId);
-
-  if (!team) {
-    notFound();
+  try {
+    const schedule = await teamSchedule(teamId);
+    const school = schedule.team?.school;
+    return {
+      title: school
+        ? `${school} | College Football Hub`
+        : "Team | College Football Hub",
+    };
+  } catch {
+    return { title: "Team | College Football Hub" };
   }
+}
 
-  const games = getGamesByTeam(teamId);
-  const ranking = MOCK_TOP_25.find((r) => r.team.id === teamId);
+export default async function TeamPage({ params, searchParams }: PageProps) {
+  const { teamId } = await params;
+  if (!/^\d+$/.test(teamId)) notFound();
 
-  const upcomingGames = games.filter((g) => g.status === "scheduled");
-  const completedGames = games.filter(
-    (g) => g.status === "complete" || g.status === "in_progress"
-  );
+  const currentYear = cfbSeasonYear();
+  const year = parseYear((await searchParams).year);
+  // Nil for the current season keeps the shipped request shape (and the
+  // provider's unpublished-season fallback); an explicit past year is
+  // scoped exactly — a user who picked 2019 must never silently get 2018.
+  const fetchYear = year === currentYear ? undefined : year;
+
+  const [scheduleResult, standingsResult, rankingsResult] =
+    await Promise.allSettled([
+      teamSchedule(teamId, fetchYear),
+      conferenceStandings(fetchYear),
+      rankings(),
+    ]);
+
+  // Unknown team: no identity and no games. A dead ESPN response for the
+  // schedule looks the same from here — there is nothing to render a hero
+  // from either way.
+  if (scheduleResult.status === "rejected") notFound();
+  const schedule = scheduleResult.value;
+  if (!schedule.team && schedule.games.length === 0) notFound();
+
+  const standingsGroups =
+    standingsResult.status === "fulfilled" ? standingsResult.value : null;
+
+  // Rank badge: the current AP top 25 (rankings are always current-season).
+  const polls = rankingsResult.status === "fulfilled" ? rankingsResult.value : [];
+  const apPoll = polls.find((poll) => poll.type === "ap") ?? polls[0];
+  const apRank = apPoll?.ranks.find((rank) => rank.team.id === teamId)?.rank;
 
   return (
-    <div>
-      {/* Team Header */}
-      <div className="mb-6 flex items-center gap-4">
-        <TeamLogo
-          espnId={team.espnId}
-          teamName={team.school}
-          size="xl"
-        />
-        <div>
-          <div className="flex items-center gap-2">
-            {ranking && (
-              <Badge variant="secondary" className="font-score">
-                #{ranking.rank}
-              </Badge>
-            )}
-            <h1 className="text-2xl font-bold">{team.school}</h1>
-            <FavoriteButton teamId={team.id} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {team.name} &middot; {team.conferenceName}
-          </p>
-          {ranking && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {ranking.record}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="schedule" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="results">Results</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="schedule">
-          {upcomingGames.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {upcomingGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No upcoming games"
-              description="There are no scheduled games for this team."
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="results">
-          {completedGames.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {completedGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No results yet"
-              description="No games have been completed for this team."
-            />
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+    <TeamView
+      teamId={teamId}
+      schedule={schedule}
+      standingsGroups={standingsGroups}
+      apRank={apRank}
+      // The payload's own year pins the chip label — the current-season
+      // fetch may fall back a season while the next one is unpublished.
+      displayYear={schedule.year ?? year ?? currentYear}
+      isCurrentSeason={(year ?? currentYear) === currentYear}
+    />
   );
 }
