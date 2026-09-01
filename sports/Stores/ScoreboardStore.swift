@@ -488,10 +488,17 @@ final class ScoreboardStore {
         // claim — an FCS visitor at an FBS school stays in the host's
         // conference only, or Week 1's ~48 FCS matchups would pile up in
         // Other as duplicates.
+        //
+        // FBS ids only, and that is now a deliberate filter rather than a
+        // side effect of the registry not knowing FCS. The registry knows
+        // all 14 FCS conferences as of E8's first item; scope (b) says the
+        // default slate stays FBS-shaped until the user opts in, so this
+        // gate lifts with the filter-sheet item, not before. Without it a
+        // Week 2 slate would sprout a Big Sky section off a single visitor.
         var byConference: [Int?: [Game]] = [:]
         for game in visible {
             let known = Set([game.home.team.conferenceId, game.away.team.conferenceId]
-                .compactMap { id in Conference.tier(for: id) == .other ? nil : id })
+                .compactMap { id in Conference.division(for: id) == .fbs ? id : nil })
             if known.isEmpty {
                 byConference[nil, default: []].append(game)
             } else {

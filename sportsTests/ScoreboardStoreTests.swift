@@ -105,6 +105,19 @@ private func game(_ id: String, home: Team, away: Team,
         #expect(sections.map(\.id) == ["conf-SEC"])
     }
 
+    @Test func aRealFCSConferenceStillDoesNotGetItsOwnSection() async {
+        // The sibling of the test above, and the one that actually bites:
+        // 20 is the Big Sky, which the registry now knows by name (E8's
+        // first item). Knowing it must not surface it — scope (b) keeps
+        // the default slate FBS-shaped until the user opts in, or one
+        // visitor at an FBS school would spawn a Big Sky section on a
+        // Saturday nobody asked for.
+        let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
+                                                 away: team("2", conference: 20))])
+        let sections = store.sections(followingIds: [])
+        #expect(sections.map(\.id) == ["conf-SEC"])
+    }
+
     @Test func gameWithNoPlaceableSideBucketsIntoOther() async {
         // Only when neither side has a known conference does Other claim
         // the game — the never-lose-a-game backstop.
