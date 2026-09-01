@@ -147,45 +147,6 @@ export interface Poll {
   ranks: RankedTeam[];
 }
 
-export type PollType = "cfp" | "ap" | "coaches";
-
-export interface RankingsData {
-  type: PollType;
-  label: string;
-  teams: RankedTeam[];
-}
-
-export interface ScoringDrive {
-  team: "home" | "away";
-  quarter: number;
-  description: string;
-  plays: number;
-  yards: number;
-  timeOfPossession: string;
-  result: string; // "Touchdown", "Field Goal", etc.
-}
-
-export interface BoxScore {
-  gameId: string;
-  homeTeam: GameTeam;
-  awayTeam: GameTeam;
-  scoringDrives: ScoringDrive[];
-}
-
-export interface Play {
-  id: string;
-  quarter: number;
-  clock: string;
-  down?: number;
-  distance?: number;
-  yardLine?: number;
-  description: string;
-  team: "home" | "away";
-  type: string; // "rush", "pass", "penalty", "kickoff", etc.
-  yards?: number;
-  scoringPlay?: boolean;
-}
-
 export interface TeamStats {
   totalYards: number;
   passingYards: number;
@@ -246,8 +207,6 @@ export interface GameDrive {
 
 export interface GameDetail {
   game: Game;
-  boxScore: BoxScore;
-  plays: Play[];
   homeStats: TeamStats;
   awayStats: TeamStats;
   // Optional summary extras (absent in mock data; populated from ESPN).

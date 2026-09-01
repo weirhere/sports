@@ -1,11 +1,4 @@
-import type {
-  Game,
-  GameDetail,
-  ConferenceStanding,
-  RankingsData,
-  Scoreboard,
-  Team,
-} from "./types";
+import type { GameDetail, Scoreboard } from "./types";
 
 const BASE = "/api";
 
@@ -35,23 +28,4 @@ export async function getScoreboard(
 
 export async function getGameDetail(gameId: string): Promise<GameDetail> {
   return fetchJson(`${BASE}/game/${gameId}`);
-}
-
-export async function getStandings(
-  conferenceId?: string
-): Promise<ConferenceStanding[]> {
-  const params = conferenceId ? `?conferenceId=${conferenceId}` : "";
-  return fetchJson(`${BASE}/standings${params}`);
-}
-
-export async function getRankings(): Promise<RankingsData[]> {
-  return fetchJson(`${BASE}/rankings`);
-}
-
-export async function getAllTeams(): Promise<Team[]> {
-  return fetchJson(`${BASE}/teams`);
-}
-
-export async function getTeamSchedule(teamId: string): Promise<Game[]> {
-  return fetchJson(`${BASE}/teams/${teamId}/schedule`);
 }

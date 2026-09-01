@@ -1,10 +1,3 @@
-// Legacy route-facing bridge (client.ts) plus the domain provider.
-export {
-  getGameSummary,
-  getRankings,
-  getAllRankings,
-  getStandings,
-} from "./client";
 export {
   scoreboard,
   rankings,

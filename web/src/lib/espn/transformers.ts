@@ -21,12 +21,9 @@ import type {
   RankedTeam,
   Poll,
   GameDetail,
-  BoxScore,
-  ScoringDrive,
   GameDrive,
   LeaderCategory,
   GameLeader,
-  Play,
   ScoringPlayItem,
   TeamStats,
   TeamScheduleData,
@@ -54,7 +51,6 @@ import type {
   EspnScheduleCompetitor,
   EspnBoxscoreTeam,
   EspnDrive,
-  EspnPlay,
   EspnScoringPlay,
   EspnTeamLeaders,
   EspnVenue,
@@ -747,21 +743,6 @@ function extractTeamStats(boxTeam: EspnBoxscoreTeam | undefined): TeamStats {
   };
 }
 
-function transformScoringDrive(
-  drive: EspnDrive,
-  homeTeamId: string
-): ScoringDrive {
-  return {
-    team: drive.team?.id === homeTeamId ? "home" : "away",
-    quarter: drive.start?.period?.number ?? 1,
-    description: drive.description ?? "",
-    plays: drive.offensivePlays ?? 0,
-    yards: drive.yards ?? 0,
-    timeOfPossession: drive.timeElapsed?.displayValue ?? "0:00",
-    result: drive.displayResult ?? drive.result ?? "",
-  };
-}
-
 function transformDrive(drive: EspnDrive, index: number): GameDrive {
   return {
     id: drive.id ?? `drive-${index}`,
@@ -785,22 +766,6 @@ function transformScoringPlay(
     text: nonEmpty(play.text),
     awayScore: play.awayScore,
     homeScore: play.homeScore,
-  };
-}
-
-function transformPlay(play: EspnPlay, homeTeamId: string): Play {
-  return {
-    id: play.id ?? "",
-    quarter: play.period?.number ?? 1,
-    clock: play.clock?.displayValue ?? "",
-    down: play.start?.down,
-    distance: play.start?.distance,
-    yardLine: play.start?.yardLine,
-    description: play.text ?? "",
-    team: play.team?.id === homeTeamId ? "home" : "away",
-    type: play.type?.text?.toLowerCase() ?? "",
-    yards: play.statYardage,
-    scoringPlay: play.scoringPlay ?? false,
   };
 }
 
@@ -852,19 +817,6 @@ export function transformGameSummary(
   const awayTeamEspnId = String(game.awayTeam.team.espnId);
   const drives = summary.drives?.previous ?? [];
 
-  const boxScore: BoxScore = {
-    gameId,
-    homeTeam: game.homeTeam,
-    awayTeam: game.awayTeam,
-    scoringDrives: drives
-      .filter((d) => d.isScore)
-      .map((d) => transformScoringDrive(d, homeTeamEspnId)),
-  };
-
-  const plays: Play[] = (summary.plays ?? []).map((p) =>
-    transformPlay(p, homeTeamEspnId)
-  );
-
   // boxscore.teams has no homeAway on some responses; ESPN orders it
   // away-first, matching the scoreboard convention.
   const boxTeams = summary.boxscore?.teams ?? [];
@@ -875,8 +827,6 @@ export function transformGameSummary(
 
   return {
     game,
-    boxScore,
-    plays,
     homeStats: extractTeamStats(homeBox),
     awayStats: extractTeamStats(awayBox),
     attendance: summary.gameInfo?.attendance,

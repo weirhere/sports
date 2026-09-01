@@ -9,6 +9,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Surface the underlying failure for debugging; the UI stays generic.
+  console.error(error);
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
       <h2 className="text-2xl font-bold">Something went wrong</h2>
