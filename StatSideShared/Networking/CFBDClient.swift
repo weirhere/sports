@@ -90,7 +90,10 @@ actor CFBDClient: ScoresProviding {
         // conference filter is ours — the joins map CFBD's conference
         // names onto our group ids, so filtering by mapped id matches the
         // ESPN backend's either-side rule exactly.
-        func fetchGames(type: String) async throws -> [Game] {
+        // `@Sendable` because the two `async let`s below run it
+        // concurrently; it captures only `season` and the actor itself,
+        // and every member it touches is already awaited.
+        @Sendable func fetchGames(type: String) async throws -> [Game] {
             let query = [
                 URLQueryItem(name: "year", value: String(season)),
                 URLQueryItem(name: "seasonType", value: type),
