@@ -345,4 +345,94 @@ private func fixture(_ name: String) throws -> Data {
             today: date(2026, 7, 20), calendar: calendar)
         #expect(slot?.value == 1)
     }
+
+    // MARK: - Rollover edge cases (BACKLOG E5): the wide Week 1, the
+    // Army-Navy-style solo week, and the overlapping postseason ranges.
+    // Dates mirror the real 2026 calendar (scoreboard-live.json): Week 15
+    // ends Dec 13 07:59Z, Bowls span Dec 13 → Jan 28, CFP Dec 18 → Jan 28
+    // — Bowls and CFP overlap for the entire playoff.
+
+    private var seasonEndSlots: [WeekSlot] {
+        [
+            WeekSlot(label: "Week 14", shortLabel: "Week 14", seasonType: 2, value: 14,
+                     startDate: date(2026, 11, 30, 8), endDate: date(2026, 12, 7, 8)),
+            WeekSlot(label: "Week 15", shortLabel: "Week 15", seasonType: 2, value: 15,
+                     startDate: date(2026, 12, 7, 8), endDate: date(2026, 12, 13, 8)),
+            WeekSlot(label: "Bowls", shortLabel: "Bowls", seasonType: 3, value: 1,
+                     startDate: date(2026, 12, 13, 8), endDate: date(2027, 1, 28, 8)),
+            WeekSlot(label: "CFP", shortLabel: "CFP", seasonType: 3, value: 999,
+                     startDate: date(2026, 12, 18, 8), endDate: date(2027, 1, 28, 8)),
+        ]
+    }
+
+    @Test func sundayDuringPlayoffPinsESPNsSlotNotFirstContaining() {
+        // Sunday Jan 3, 2027, the morning after CFP quarterfinals. Both
+        // Bowls and CFP contain yesterday; ESPN says CFP. Array order must
+        // not decide — the first-containing rule alone would land on Bowls.
+        let slot = WeekLogic.defaultSelection(
+            in: seasonEndSlots, currentWeekNumber: 999, seasonType: 3,
+            today: date(2027, 1, 3), calendar: calendar)
+        #expect(slot?.value == 999)
+        #expect(slot?.seasonType == 3)
+    }
+
+    @Test func sundayDuringBowlsHonorsESPNBowlsSlot() {
+        // Sunday Dec 20, 2026 with ESPN still calling the slot Bowls:
+        // follow ESPN through the ambiguity, not the CFP just because it
+        // also contains yesterday.
+        let slot = WeekLogic.defaultSelection(
+            in: seasonEndSlots, currentWeekNumber: 1, seasonType: 3,
+            today: date(2026, 12, 20), calendar: calendar)
+        #expect(slot?.value == 1)
+        #expect(slot?.seasonType == 3)
+    }
+
+    @Test func sundayStillPinsCompletedWeekWhenESPNFlippedForward() {
+        // The September behavior the tie-break must preserve, at the season
+        // boundary: Sunday Dec 13 (Bowls began 08:00Z that morning), ESPN
+        // already flipped to Bowls, but Saturday's games — Army-Navy's
+        // solo-week analog — were Week 15's. ESPN's slot doesn't contain
+        // yesterday, so the completed week wins.
+        let slot = WeekLogic.defaultSelection(
+            in: seasonEndSlots, currentWeekNumber: 1, seasonType: 3,
+            today: date(2026, 12, 13, 12), calendar: calendar)
+        #expect(slot?.value == 15)
+        #expect(slot?.seasonType == 2)
+    }
+
+    @Test func weekdayDuringPlayoffOverlapUsesESPNCurrent() {
+        // Wednesday Dec 30, 2026: inside both Bowls' and CFP's ranges.
+        // ESPN's (type, value) decides, whatever the array order.
+        let slot = WeekLogic.defaultSelection(
+            in: seasonEndSlots, currentWeekNumber: 999, seasonType: 3,
+            today: date(2026, 12, 30), calendar: calendar)
+        #expect(slot?.value == 999)
+        #expect(slot?.seasonType == 3)
+    }
+
+    @Test func pastSeasonLandsOnTheCFPSlot() {
+        // A finished season (no current week) lands on its conclusion —
+        // slots.last must be the CFP because the mapper emits postseason
+        // entries after regular-season ones.
+        let slot = WeekLogic.defaultSelection(
+            in: seasonEndSlots, currentWeekNumber: nil, seasonType: nil,
+            today: date(2027, 6, 1), calendar: calendar)
+        #expect(slot?.value == 999)
+        #expect(slot?.seasonType == 3)
+    }
+
+    @Test func wideWeek1CoversItsMiddleSundayAndMonday() {
+        // ESPN encodes Week 0 as a Week 1 spanning two weekends (Aug 22 →
+        // Sep 8 in 2026). The mid-span Sunday pins to Week 1 via yesterday,
+        // and the mid-span Monday stays on Week 1 via ESPN's current week —
+        // no phantom flip between the two weekends.
+        let sunday = WeekLogic.defaultSelection(
+            in: slots, currentWeekNumber: 1, seasonType: 2,
+            today: date(2026, 8, 30), calendar: calendar)
+        #expect(sunday?.value == 1)
+        let monday = WeekLogic.defaultSelection(
+            in: slots, currentWeekNumber: 1, seasonType: 2,
+            today: date(2026, 8, 31), calendar: calendar)
+        #expect(monday?.value == 1)
+    }
 }
