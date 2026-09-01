@@ -1,0 +1,65 @@
+name: CI
+
+# Build + unit-test gate for every PR. This exists so agent sessions
+# (which have no Xcode locally) never merge unverified Swift: a PR is
+# mergeable only when this is green. sportsUITests is deliberately not
+# run here — it drives the live ESPN API and depends on simulator state
+# rules (see CLAUDE.md § Running the UI tests) that a fresh runner
+# can't honor.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build + unit tests (iOS Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project builds with the iOS 26 SDK (deployment target 18.0),
+      # so pick the newest Xcode on the image rather than the default,
+      # and log the inventory so an SDK mismatch is obvious from the run.
+      - name: Select newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          NEWEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Selecting: $NEWEST"
+          sudo xcode-select -s "$NEWEST"
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      # Runner images rename their preinstalled simulators between
+      # releases, so discover one instead of hardcoding a device name.
+      - name: Pick a simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available
+          DEVICE=$(xcrun simctl list devices available \
+            | grep -Eo '^ *iPhone [^(]*' | head -1 \
+            | sed -E 's/^ +//; s/ +$//')
+          if [ -z "$DEVICE" ]; then
+            echo "No iPhone simulator available on this image" >&2
+            exit 1
+          fi
+          echo "Using simulator: $DEVICE"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+
+      # CODE_SIGNING_ALLOWED=NO: no certs on CI, and the code already
+      # degrades without entitlements (AppGroup falls back to .standard).
+      - name: Build and run unit tests
+        run: |
+          xcodebuild test \
+            -project sports.xcodeproj \
+            -scheme sports \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            -only-testing:sportsTests \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO
