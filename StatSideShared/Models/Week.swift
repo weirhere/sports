@@ -34,9 +34,20 @@ nonisolated enum WeekLogic {
     ) -> WeekSlot? {
         guard !slots.isEmpty else { return nil }
         if calendar.component(.weekday, from: today) == 1,
-           let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
-           let slot = slots.first(where: { $0.contains(yesterday) }) {
-            return slot
+           let yesterday = calendar.date(byAdding: .day, value: -1, to: today) {
+            // The Bowls and CFP slots overlap for the whole playoff (Dec 18
+            // → Jan 28 both sit inside Bowls' range), so several slots can
+            // contain yesterday. ESPN's current slot breaks the tie when it
+            // qualifies; first-containing keeps the September behavior,
+            // where ESPN's flipped-forward week never contains yesterday.
+            let containing = slots.filter { $0.contains(yesterday) }
+            if let type = seasonType, let number = currentWeekNumber,
+               let current = containing.first(where: { $0.seasonType == type && $0.value == number }) {
+                return current
+            }
+            if let slot = containing.first {
+                return slot
+            }
         }
         if let type = seasonType, let number = currentWeekNumber,
            let slot = slots.first(where: { $0.seasonType == type && $0.value == number }) {
