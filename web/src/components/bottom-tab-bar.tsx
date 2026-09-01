@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Medal, Heart, LayoutGrid, Search } from "lucide-react";
+import { CalendarDays, Medal, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/", label: "Games", icon: CalendarDays },
   { href: "/rankings", label: "Top 25", icon: Medal },
-  { href: "/following", label: "Following", icon: Heart },
-  { href: "/conferences", label: "Conferences", icon: LayoutGrid },
   { href: "/search", label: "Search", icon: Search },
 ];
 

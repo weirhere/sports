@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Game, DayGames, ConferenceGameGroup, Conference } from "@/lib/types";
 import { WeekSelector } from "@/components/week-selector";
 import { DayGroup } from "@/components/day-group";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
 import { EmptyState } from "@/components/empty-state";
-import { Separator } from "@/components/ui/separator";
 import { getSchedule } from "@/lib/api";
-import { ALL_CONFERENCES } from "@/config/conferences";
+import { FBS_CONFERENCES } from "@/config/conferences";
 import { MyTeamsSection } from "@/components/my-teams-section";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { useLiveScores } from "@/lib/hooks/use-live-scores";
@@ -56,7 +55,7 @@ function groupGamesByDay(games: Game[]): DayGames[] {
 
     const conferenceGroups: ConferenceGameGroup[] = [];
     for (const [confId, confGames] of confMap) {
-      const conference = ALL_CONFERENCES.find((c) => c.id === confId) || {
+      const conference = FBS_CONFERENCES.find((c) => c.id === confId) || {
         id: confId,
         name: confGames[0]?.homeTeam.team.conferenceName || "Unknown",
         shortName: confGames[0]?.homeTeam.team.conferenceName || "Unknown",
@@ -121,18 +120,7 @@ export function ScoresView({ initialGames, initialWeek, initialYear = CURRENT_SE
     }
   }, []);
 
-  // Separate FBS and FCS
-  const fbsGames = useMemo(
-    () => games.filter((g) => g.homeTeam.team.division === "FBS"),
-    [games]
-  );
-  const fcsGames = useMemo(
-    () => games.filter((g) => g.homeTeam.team.division === "FCS"),
-    [games]
-  );
-
-  const fbsDays = useMemo(() => groupGamesByDay(fbsGames), [fbsGames]);
-  const fcsDays = useMemo(() => groupGamesByDay(fcsGames), [fcsGames]);
+  const days = useMemo(() => groupGamesByDay(games), [games]);
 
   // Swipe left/right to change weeks
   const maxWeek = WEEKS[WEEKS.length - 1].number;
@@ -190,27 +178,9 @@ export function ScoresView({ initialGames, initialWeek, initialYear = CURRENT_SE
             {/* My Teams */}
             <MyTeamsSection games={games} />
 
-            {/* FBS Games */}
-            {fbsDays.map((day) => (
+            {days.map((day) => (
               <DayGroup key={day.date} dayGames={day} />
             ))}
-
-            {/* FCS Separator */}
-            {fcsDays.length > 0 && (
-              <>
-                <Separator className="my-6" />
-                <h2 className="text-lg font-semibold text-muted-foreground">
-                  FCS Games
-                </h2>
-                {fcsDays.map((day) => (
-                  <DayGroup
-                    key={day.date}
-                    dayGames={day}
-                    defaultOpen={false}
-                  />
-                ))}
-              </>
-            )}
           </>
         )}
       </div>

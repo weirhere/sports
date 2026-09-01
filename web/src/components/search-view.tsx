@@ -2,22 +2,20 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Search, User } from "lucide-react";
+import { Search } from "lucide-react";
 import { SearchInput } from "@/components/search-input";
 import { cn } from "@/lib/utils";
 import { MOCK_TEAMS } from "@/lib/mock/teams";
-import { ALL_CONFERENCES } from "@/config/conferences";
+import { FBS_CONFERENCES } from "@/config/conferences";
 import { TeamLogo } from "@/components/team-logo";
-import type { Player, Game, GameStatus, Team, Conference } from "@/lib/types";
+import type { Game, GameStatus, Team, Conference } from "@/lib/types";
 
-type Category = "all" | "teams" | "conferences" | "players" | "games";
+type Category = "all" | "teams" | "conferences" | "games";
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: "all", label: "All" },
   { value: "teams", label: "Teams" },
   { value: "conferences", label: "Conferences" },
-  { value: "players", label: "Players" },
   { value: "games", label: "Games" },
 ];
 
@@ -72,43 +70,6 @@ function ConferenceResult({ conf }: { conf: Conference }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{conf.shortName}</p>
         <p className="text-xs text-muted-foreground">{conf.name}</p>
-      </div>
-    </Link>
-  );
-}
-
-function PlayerResult({ player }: { player: Player }) {
-  return (
-    <Link
-      href={`/team/${player.teamId}`}
-      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
-    >
-      {player.headshotUrl ? (
-        <Image
-          src={player.headshotUrl}
-          alt={player.displayName}
-          width={24}
-          height={24}
-          className="rounded-full"
-          unoptimized
-        />
-      ) : (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted">
-          <User className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">
-          {player.displayName}
-          {player.jersey && (
-            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-              #{player.jersey}
-            </span>
-          )}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {player.position} · {player.teamName}
-        </p>
       </div>
     </Link>
   );
@@ -180,17 +141,11 @@ function ResultSection({
 export function SearchView() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category>("all");
-  const [players, setPlayers] = useState<Player[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch players and games on mount
+  // Fetch games on mount
   useEffect(() => {
-    fetch("/api/players")
-      .then((r) => r.json())
-      .then((data) => setPlayers(data))
-      .catch(() => {});
-
     fetch("/api/schedule")
       .then((r) => r.json())
       .then((data) => setGames(data.games ?? []))
@@ -219,24 +174,12 @@ export function SearchView() {
 
   const confResults = useMemo(() => {
     if (!isSearching) return [];
-    return ALL_CONFERENCES.filter(
+    return FBS_CONFERENCES.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.shortName.toLowerCase().includes(q)
     );
   }, [q, isSearching]);
-
-  const playerResults = useMemo(() => {
-    if (!isSearching) return [];
-    return players.filter(
-      (p) =>
-        p.displayName.toLowerCase().includes(q) ||
-        p.firstName.toLowerCase().includes(q) ||
-        p.lastName.toLowerCase().includes(q) ||
-        p.position.toLowerCase().includes(q) ||
-        p.teamName.toLowerCase().includes(q)
-    );
-  }, [q, isSearching, players]);
 
   const gameResults = useMemo(() => {
     if (!isSearching) return [];
@@ -253,13 +196,11 @@ export function SearchView() {
 
   const showTeams = category === "all" || category === "teams";
   const showConfs = category === "all" || category === "conferences";
-  const showPlayers = category === "all" || category === "players";
   const showGames = category === "all" || category === "games";
 
   const totalResults =
     (showTeams ? teamResults.length : 0) +
     (showConfs ? confResults.length : 0) +
-    (showPlayers ? playerResults.length : 0) +
     (showGames ? gameResults.length : 0);
 
   return (
@@ -270,7 +211,7 @@ export function SearchView() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onClear={() => setQuery("")}
-        placeholder="Search teams, conferences, players, games..."
+        placeholder="Search teams, conferences, games..."
       />
 
       {/* Category tabs */}
@@ -318,17 +259,6 @@ export function SearchView() {
               </ResultSection>
             )}
 
-            {showPlayers && playerResults.length > 0 && (
-              <ResultSection title="Players" count={playerResults.length}>
-                {playerResults.map((player, i) => (
-                  <div key={player.id}>
-                    {i > 0 && <div className="mx-4 border-t" />}
-                    <PlayerResult player={player} />
-                  </div>
-                ))}
-              </ResultSection>
-            )}
-
             {showGames && gameResults.length > 0 && (
               <ResultSection title="Games" count={gameResults.length}>
                 {gameResults.map((game, i) => (
@@ -349,7 +279,7 @@ export function SearchView() {
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
           <Search className="h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">
-            Search for teams, conferences, players, and games
+            Search for teams, conferences, and games
           </p>
         </div>
       )}

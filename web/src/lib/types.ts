@@ -66,19 +66,6 @@ export interface Conference {
   logoUrl?: string;
 }
 
-export interface Player {
-  id: string;
-  espnId: number;
-  displayName: string;
-  firstName: string;
-  lastName: string;
-  jersey?: string;
-  position: string; // "QB", "WR", etc.
-  teamId: string; // app team ID
-  teamName: string; // school name
-  headshotUrl?: string;
-}
-
 export interface ConferenceStanding {
   team: Team;
   conferenceWins: number;
@@ -160,14 +147,6 @@ export interface GameDetail {
   plays: Play[];
   homeStats: TeamStats;
   awayStats: TeamStats;
-}
-
-export interface WeekInfo {
-  number: number;
-  label: string; // "Week 1", "Bowl Games", etc.
-  startDate: string;
-  endDate: string;
-  isCurrent: boolean;
 }
 
 // Grouped game structures for the scores page

@@ -48,14 +48,6 @@ export function rankingsUrl(params?: { year?: number }): string {
   return url.toString();
 }
 
-export function teamUrl(teamId: string): string {
-  return `${ESPN_API_BASE}/teams/${teamId}`;
-}
-
-export function teamRosterUrl(teamId: string): string {
-  return `${ESPN_API_BASE}/teams/${teamId}/roster`;
-}
-
 export function teamScheduleUrl(
   teamId: string,
   params?: { year?: number }

@@ -2,17 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronLeft, Settings } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Games" },
   { href: "/rankings", label: "Top 25" },
-  { href: "/following", label: "Following" },
-  { href: "/conferences", label: "Conferences" },
 ];
 
-const TOP_LEVEL_PAGES = ["/", "/conferences", "/following", "/rankings", "/settings", "/search"];
+const TOP_LEVEL_PAGES = ["/", "/rankings", "/search"];
 
 function isTopLevel(pathname: string): boolean {
   return TOP_LEVEL_PAGES.includes(pathname);
@@ -38,17 +36,11 @@ export function NavBar() {
         ) : (
           <Link href="/" className="mr-6 flex items-center gap-2">
             <span className="text-2xl font-bold tracking-tight">
-              {pathname === "/conferences"
-                ? "Conferences"
-                : pathname === "/following"
-                  ? "Following"
-                  : pathname === "/rankings"
-                    ? "Top 25"
-                    : pathname === "/settings"
-                      ? "Settings"
-                      : pathname === "/search"
-                        ? "Search"
-                        : "CFB Hub"}
+              {pathname === "/rankings"
+                ? "Top 25"
+                : pathname === "/search"
+                  ? "Search"
+                  : "CFB Hub"}
             </span>
           </Link>
         )}
@@ -76,15 +68,6 @@ export function NavBar() {
         {/* Right side */}
         <div className="ml-auto flex items-center gap-2">
           <div id="navbar-right-slot" />
-          {pathname !== "/settings" && (
-            <Link
-              href="/settings"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Settings className="h-[18px] w-[18px]" />
-              <span className="sr-only">Settings</span>
-            </Link>
-          )}
         </div>
       </div>
     </header>

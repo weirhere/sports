@@ -28,12 +28,6 @@ export async function getGameDetail(gameId: string): Promise<GameDetail> {
   return fetchJson(`${BASE}/game/${gameId}`);
 }
 
-export async function getPlayByPlay(
-  gameId: string
-): Promise<GameDetail["plays"]> {
-  return fetchJson(`${BASE}/game/${gameId}/play-by-play`);
-}
-
 export async function getStandings(
   conferenceId?: string
 ): Promise<ConferenceStanding[]> {
