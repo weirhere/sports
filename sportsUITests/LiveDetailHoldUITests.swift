@@ -26,6 +26,14 @@ final class LiveDetailHoldUITests: XCTestCase {
             "-ui.onboardingSeen", "YES",
             "-ui.liveOnly", liveOnly ? "YES" : "NO",
             "-ui.followPromptDismissed", "YES",
+            // Pin the slate filter: it persists across launches by design
+            // (2026-08-29), so without this a suite inherits whatever the
+            // last run — or the person using this simulator — left
+            // selected, and every row query goes looking in a filtered
+            // slate. Safe as an argument-domain override because
+            // UIStateStore reads the key once at init; "none" parses to
+            // no filter.
+            "-ui.scoreFilter", "none",
             "-data.provider", "fixture",
             "-poll.interval", "0.5",
         ]

@@ -130,11 +130,21 @@ struct ScoresScreen: View {
         .onChange(of: path.count) { old, new in
             Self.logger.info("scores path depth \(old) -> \(new)")
         }
+        // The slate's divisions follow the user's choices: FBS always, FCS
+        // only while an FCS conference is filtered to or followed (E8 scope
+        // (b)). `select(divisions:)` refetches and clears the week cache,
+        // and no-ops when nothing changed — so these fire freely.
+        .task(id: neededDivisions) { await store.select(divisions: neededDivisions) }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: store.games) { _, _ in resolvePendingGame() }
         // The drag-commit handoff: the new week takes the screen the moment
         // its id lands, so the settled offset snaps home with it.
         .onChange(of: store.selectedWeek?.id) { _, _ in dragOffset = 0 }
+    }
+
+    private var neededDivisions: Set<Conference.Division> {
+        ScoreboardStore.divisions(filter: uiState.scoreFilter,
+                                  followedConferenceIds: following.conferenceIds)
     }
 
     private var sections: [GameSection] {

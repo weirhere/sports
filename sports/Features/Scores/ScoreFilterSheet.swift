@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The Scores view-options sheet: grouping (by date / by conference),
-/// season, and the ESPN-style slate filter — all games, Top 25, then every
-/// FBS conference in the app's browsing order. Consolidated here 2026-08-29
+/// season, and the ESPN-style slate filter — all games, Top 25, every FBS
+/// conference in the app's browsing order, then the FCS conferences in
+/// their own section (picking one is what opts the slate into group 81). Consolidated here 2026-08-29
 /// after the header chip row outgrew the screen; the header keeps only the
 /// funnel chip (labeled with any non-default state) and the Live chip.
 ///
@@ -71,6 +72,20 @@ struct ScoreFilterSheet: View {
                     }
                 } header: {
                     heading("Conference")
+                }
+                // Its own section, below: FCS is opt-in (E8 scope (b)), and
+                // picking one here is what puts group 81 on the slate. A
+                // flat list would have made the default slate look like it
+                // already covered 250 teams.
+                Section {
+                    ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
+                        row(filter: .conference(id), label: Conference.name(for: id)) {
+                            ConferenceLogo(url: Conference.logoURL(for: id))
+                                .frame(width: 24)
+                        }
+                    }
+                } header: {
+                    heading("FCS conference")
                 }
             }
             .listStyle(.plain)
