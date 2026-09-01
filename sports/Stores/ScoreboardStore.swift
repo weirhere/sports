@@ -14,7 +14,7 @@ enum ScoresGrouping: String {
 /// in either grouping. Persisted like the grouping (Andy, same day,
 /// superseding the session-only first cut): the labeled chip and the
 /// explanatory empty states mean a saved filter is never a mystery.
-enum ScoreFilter: Equatable {
+enum ScoreFilter: Hashable {
     case top25
     case conference(Int)
 
@@ -113,6 +113,23 @@ final class ScoreboardStore {
     /// week so commits and chip taps never blank (2026-08-31).
     private(set) var weekGamesCache: [String: [Game]] = [:]
     @ObservationIgnored private var prefetching: Set<String> = []
+
+    /// Memoized section builds. ScoresScreen's body re-evaluates on every
+    /// frame of the interactive week drag, and each evaluation asks for
+    /// the full pipeline up to three times (banner check, content, preview
+    /// pane). The key hashes the games themselves — not ids — so a poll
+    /// tick that only moves a clock can never be served stale sections.
+    /// @ObservationIgnored: a body-time fill must not re-invalidate views.
+    @ObservationIgnored private var sectionsMemo: [SectionsKey: [GameSection]] = [:]
+
+    private struct SectionsKey: Hashable {
+        let games: [Game]
+        let followingIds: Set<String>
+        let followedConferenceIds: Set<Int>
+        let grouping: ScoresGrouping
+        let liveOnly: Bool
+        let filter: ScoreFilter?
+    }
 
     /// The season on screen.
     private(set) var seasonYear: Int?
@@ -223,9 +240,11 @@ final class ScoreboardStore {
         }
     }
 
-    /// File the on-screen games under the selected slot's cache key.
+    /// File the on-screen games under the selected slot's cache key. The
+    /// cache is observed (the swipe preview reads it), so a no-change poll
+    /// tick must not rewrite the entry.
     private func cacheSelectedGames() {
-        guard let id = selectedWeek?.id else { return }
+        guard let id = selectedWeek?.id, weekGamesCache[id] != games else { return }
         weekGamesCache[id] = games
     }
 
@@ -327,12 +346,19 @@ final class ScoreboardStore {
                 seasonType: selectedWeek?.seasonType,
                 year: seasonOverride
             )
-            if !scoreboard.weeks.isEmpty {
+            // Equality guards throughout: @Observable notifies on every
+            // set, so an unconditional write here would re-render the whole
+            // scores tree on each 30s poll tick even when nothing moved.
+            if !scoreboard.weeks.isEmpty, weeks != scoreboard.weeks {
                 weeks = scoreboard.weeks
             }
-            seasonYear = scoreboard.seasonYear ?? seasonYear
-            games = scoreboard.games
-            lastError = nil
+            if let year = scoreboard.seasonYear, year != seasonYear {
+                seasonYear = year
+            }
+            if games != scoreboard.games {
+                games = scoreboard.games
+            }
+            if lastError != nil { lastError = nil }
             cacheSelectedGames()
         } catch {
             // Keep last-good games on failure.
@@ -400,10 +426,19 @@ final class ScoreboardStore {
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
+        let key = SectionsKey(games: games, followingIds: followingIds,
+                              followedConferenceIds: followedConferenceIds,
+                              grouping: grouping, liveOnly: liveOnly, filter: filter)
+        if let memoized = sectionsMemo[key] { return memoized }
+
         var visible = liveOnly ? games.filter(\.isLive) : games
         if let filter {
             visible = visible.filter(filter.matches)
         }
+        // One sort up front: filters and the bucketing loops below all
+        // preserve order, so every section inherits chronology from here
+        // instead of re-sorting its own slice of the same games.
+        visible = chronological(visible)
         var result: [GameSection] = []
 
         // Team follows or conference follows both claim a game; an FCS
@@ -415,7 +450,7 @@ final class ScoreboardStore {
         }
         if !followed.isEmpty {
             result.append(GameSection(id: GameSection.followingId, title: "Following",
-                                      games: chronological(followed)))
+                                      games: followed))
         }
 
         switch grouping {
@@ -425,10 +460,15 @@ final class ScoreboardStore {
         case .date:
             result += daySections(from: visible)
         }
+        // Old weeks' entries age out wholesale; the bound only exists so
+        // browsing a whole season can't accumulate every slate it touched.
+        if sectionsMemo.count >= 8 { sectionsMemo.removeAll() }
+        sectionsMemo[key] = result
         return result
     }
 
-    /// Top 25 → conferences, the default stack below Following.
+    /// Top 25 → conferences, the default stack below Following. Expects
+    /// `visible` already chronological; every bucket preserves that order.
     private func rankedAndConferenceSections(from visible: [Game],
                                              followingIds: Set<String>,
                                              followedConferenceIds: Set<Int>) -> [GameSection] {
@@ -436,7 +476,7 @@ final class ScoreboardStore {
         let ranked = visible.filter(\.involvesRankedTeam)
         if !ranked.isEmpty {
             result.append(GameSection(id: GameSection.top25Id, title: "Top 25",
-                                      games: chronological(ranked)))
+                                      games: ranked))
         }
 
         // A cross-conference game lands in both conferences' sections.
@@ -473,7 +513,7 @@ final class ScoreboardStore {
         for id in orderedIds {
             let name = Conference.name(for: id)
             result.append(GameSection(id: "conf-\(name)", title: name,
-                                      games: chronological(byConference[id] ?? []),
+                                      games: byConference[id] ?? [],
                                       logoURL: Conference.logoURL(for: id),
                                       isConference: true,
                                       conferenceId: id))
@@ -481,10 +521,11 @@ final class ScoreboardStore {
         return result
     }
 
-    /// One section per local calendar day, chronological; games with no
-    /// kickoff date land in a trailing "TBD" section. Ids come from local
-    /// date components (not ISO8601, whose UTC default would mis-bucket
-    /// late kicks) so expansion state keys stay stable.
+    /// One section per local calendar day; games with no kickoff date land
+    /// in a trailing "TBD" section. Expects `visible` already chronological
+    /// (the day buckets preserve it). Ids come from local date components
+    /// (not ISO8601, whose UTC default would mis-bucket late kicks) so
+    /// expansion state keys stay stable.
     private func daySections(from visible: [Game]) -> [GameSection] {
         let calendar = Calendar.current
         var byDay: [Date: [Game]] = [:]
@@ -502,11 +543,11 @@ final class ScoreboardStore {
                             parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
             return GameSection(id: id,
                                title: day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()),
-                               games: chronological(byDay[day] ?? []))
+                               games: byDay[day] ?? [])
         }
         if !undated.isEmpty {
             result.append(GameSection(id: GameSection.tbdDayId, title: "TBD",
-                                      games: chronological(undated)))
+                                      games: undated))
         }
         return result
     }

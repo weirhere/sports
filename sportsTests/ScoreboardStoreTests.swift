@@ -471,6 +471,31 @@ private func game(_ id: String, home: Team, away: Team,
             == store.sections(followingIds: ["1"]))
     }
 
+    @Test func repeatedSectionCallsServeUpdatedGameContent() async {
+        // The sections pipeline memoizes (ScoresScreen re-asks on every
+        // frame of the interactive week drag). The memo must key on game
+        // content, never ids alone — a poll tick that only moves a score
+        // or clock keeps the same ids and still has to invalidate.
+        let home = team("1", conference: 8)
+        let away = team("2", conference: 8)
+        let before = game("g1", home: home, away: away, live: true)
+        let store = await makeStore(games: [before])
+        _ = store.sections(followingIds: [])
+
+        let after = Game(id: "g1", date: before.date, name: nil, shortName: nil,
+                         weekNumber: 1,
+                         status: .live(displayClock: "2:00", period: 4, detail: nil,
+                                       phase: .playing, possessionTeamId: nil),
+                         home: Competitor(team: home, score: 21, record: nil, rank: nil,
+                                          isHome: true, winner: nil),
+                         away: Competitor(team: away, score: 17, record: nil, rank: nil,
+                                          isHome: false, winner: nil),
+                         broadcast: nil)
+        let sections = store.sections(from: [after], followingIds: [])
+        #expect(sections.first?.games.first?.home.score == 21)
+        #expect(sections.first?.games.first?.away.score == 17)
+    }
+
     @Test func selectCurrentWeekReturnsToTheRolloverSlot() async {
         // The Live toggle's jump home: browsing another week, then
         // selecting the current one, lands back on the rollover slot.
