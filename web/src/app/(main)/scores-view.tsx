@@ -1,21 +1,26 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
-import type { Game, DayGames, ConferenceGameGroup, Conference } from "@/lib/types";
+import type { Game } from "@/lib/types";
 import type { WeekSlot } from "@/lib/season";
 import { cfbSeasonYear, defaultWeekSelection } from "@/lib/season";
-import { WeekSelector } from "@/components/week-selector";
-import { DayGroup } from "@/components/day-group";
+import {
+  buildSections,
+  scoreFilterChipLabel,
+  scoreFilterLabel,
+} from "@/lib/game-sections";
+import { useUIState } from "@/lib/hooks/use-ui-state";
+import { WeekStrip } from "@/components/week-strip";
+import { SectionAccordion } from "@/components/section-accordion";
+import { ScoresHeader } from "@/components/scores-header";
+import { ScoreFilterSheet } from "@/components/score-filter-sheet";
+import { FollowPromptCard } from "@/components/follow-prompt-card";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
-import { EmptyState } from "@/components/empty-state";
-import { getScoreboard } from "@/lib/api";
-import { FBS_CONFERENCES } from "@/config/conferences";
-import { MyTeamsSection } from "@/components/my-teams-section";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { getScoreboard } from "@/lib/api";
+import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useLiveScores } from "@/lib/hooks/use-live-scores";
 import { useSwipe } from "@/lib/hooks/use-swipe";
-import { SeasonSelector } from "@/components/season-selector";
 
 interface ScoresViewProps {
   initialGames: Game[];
@@ -26,64 +31,6 @@ interface ScoresViewProps {
   /** ESPN's current season type (2 regular, 3 postseason). */
   initialSeasonType?: number;
   initialSeasonYear?: number;
-}
-
-function groupGamesByDay(games: Game[]): DayGames[] {
-  const dayMap = new Map<string, Game[]>();
-
-  for (const game of games) {
-    const date = new Date(game.scheduledAt);
-    const dateKey = date.toISOString().split("T")[0];
-    if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
-    dayMap.get(dateKey)!.push(game);
-  }
-
-  const days: DayGames[] = [];
-  const sortedDates = [...dayMap.keys()].sort();
-
-  for (const dateKey of sortedDates) {
-    const dayGames = dayMap.get(dateKey)!;
-    const date = new Date(dateKey + "T12:00:00Z");
-    const label = date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-
-    // Group by conference within this day
-    const confMap = new Map<string, Game[]>();
-    for (const game of dayGames) {
-      // Use home team's conference as the grouping key
-      const confId = game.homeTeam.team.conferenceId;
-      if (!confMap.has(confId)) confMap.set(confId, []);
-      confMap.get(confId)!.push(game);
-    }
-
-    const conferenceGroups: ConferenceGameGroup[] = [];
-    for (const [confId, confGames] of confMap) {
-      const conference = FBS_CONFERENCES.find((c) => c.id === confId) || {
-        id: confId,
-        name: confGames[0]?.homeTeam.team.conferenceName || "Unknown",
-        shortName: confGames[0]?.homeTeam.team.conferenceName || "Unknown",
-        division: confGames[0]?.homeTeam.team.division || "FBS" as const,
-      };
-      conferenceGroups.push({ conference: conference as Conference, games: confGames });
-    }
-
-    // Sort: Power 4 conferences first, then Group of 5, then others
-    conferenceGroups.sort((a, b) => {
-      const power4 = ["8", "5", "1", "4"]; // SEC, Big Ten, ACC, Big 12
-      const aIsPower4 = power4.includes(a.conference.id);
-      const bIsPower4 = power4.includes(b.conference.id);
-      if (aIsPower4 && !bIsPower4) return -1;
-      if (!aIsPower4 && bIsPower4) return 1;
-      return a.conference.name.localeCompare(b.conference.name);
-    });
-
-    days.push({ date: dateKey, label, conferenceGroups });
-  }
-
-  return days;
 }
 
 export function ScoresView({
@@ -114,6 +61,14 @@ export function ScoresView({
   const [selectedYear, setSelectedYear] = useState(currentSeasonYear);
   const [games, setGames] = useState(initialGames);
   const [loading, setLoading] = useState(false);
+  // A failed fetch with data still on screen shows the quiet banner; with
+  // nothing to show it becomes the full-screen retry state.
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const uiState = useUIState();
+  const { favorites, favoriteConferences, isLoaded: favoritesLoaded } =
+    useFavoritesContext();
 
   // The current season's requests omit `year` so they share the server
   // page's cache entries; past seasons must pin it.
@@ -156,9 +111,13 @@ export function ScoresView({
           year
         );
         cache.set(slot.id, board.games);
-        if (seq === fetchSeqRef.current) setGames(board.games);
+        if (seq === fetchSeqRef.current) {
+          setGames(board.games);
+          setFetchFailed(false);
+        }
       } catch {
-        // Keep the cached/previous slate on error.
+        // Keep the cached/previous slate; the banner/retry state says so.
+        if (seq === fetchSeqRef.current) setFetchFailed(true);
       } finally {
         if (seq === fetchSeqRef.current) setLoading(false);
       }
@@ -213,6 +172,7 @@ export function ScoresView({
         if (seq !== fetchSeqRef.current) return;
 
         setWeeks(board.weeks);
+        setFetchFailed(false);
         const slot = isCurrent
           ? defaultWeekSelection(
               board.weeks,
@@ -246,6 +206,7 @@ export function ScoresView({
         setSelectedYear(previousYear);
         const current = selectedSlotRef.current;
         if (current !== undefined) cache.set(current.id, games);
+        setFetchFailed(true);
         setLoading(false);
       }
     },
@@ -258,6 +219,7 @@ export function ScoresView({
       const slot = selectedSlotRef.current;
       if (slot !== undefined) cache.set(slot.id, updatedGames);
       setGames(updatedGames);
+      setFetchFailed(false);
     },
     [cache]
   );
@@ -290,9 +252,84 @@ export function ScoresView({
     }
   }, [selectedSlot, weeks, loading, yearParam, cache]);
 
-  const days = useMemo(() => groupGamesByDay(games), [games]);
+  // --- Sections (the game-sections engine) ---
 
-  // Swipe left/right walks to the adjacent week slot.
+  const followedConferenceIds = useMemo(
+    () =>
+      favoriteConferences
+        .map(Number)
+        .filter((id) => Number.isFinite(id)),
+    [favoriteConferences]
+  );
+
+  const sections = useMemo(
+    () =>
+      buildSections(games, {
+        grouping: uiState.grouping,
+        followedTeamIds: favorites,
+        followedConferenceIds,
+        liveOnly: uiState.liveOnly,
+        scoreFilter: uiState.scoreFilter,
+      }),
+    [
+      games,
+      uiState.grouping,
+      uiState.liveOnly,
+      uiState.scoreFilter,
+      favorites,
+      followedConferenceIds,
+    ]
+  );
+
+  // ESPN's current slot for the current season — where the Live toggle
+  // jumps, and the strip's "today".
+  const currentSlot =
+    initialSeasonType !== undefined && initialCurrentWeekNumber !== undefined
+      ? weeks.find(
+          (slot) =>
+            slot.id === `${initialSeasonType}-${initialCurrentWeekNumber}`
+        )
+      : undefined;
+
+  /**
+   * Turning the Live filter on goes to where live games are — the current
+   * week (iOS 2026-08-29): filtering a future week to nothing answers the
+   * wrong question. A past season jumps back to the current one. Turning
+   * it off stays put.
+   */
+  const handleToggleLive = () => {
+    const turningOn = !uiState.liveOnly;
+    uiState.setLiveOnly(turningOn);
+    if (!turningOn) return;
+    if (selectedYear !== currentSeasonYear) {
+      handleYearChange(currentSeasonYear);
+    } else if (
+      currentSlot !== undefined &&
+      currentSlot.id !== selectedSlot?.id
+    ) {
+      handleWeekChange(currentSlot);
+    }
+  };
+
+  const clearFilters = () => {
+    uiState.setLiveOnly(false);
+    uiState.setScoreFilter(null);
+  };
+
+  // The funnel chip's label: filter + past season ("SEC · 2019") — grouping
+  // stays unlabeled, the section headers on screen already say it.
+  const filterLabel =
+    [
+      uiState.scoreFilter !== null
+        ? scoreFilterChipLabel(uiState.scoreFilter)
+        : undefined,
+      selectedYear !== currentSeasonYear ? String(selectedYear) : undefined,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  // Swipe left/right walks to the adjacent week slot. Cached targets render
+  // instantly (loadSlot seeds from the cache); un-prefetched ones skeleton.
   const selectedIndex =
     selectedSlot !== undefined
       ? weeks.findIndex((slot) => slot.id === selectedSlot.id)
@@ -311,65 +348,178 @@ export function ScoresView({
     enabled: !loading,
   });
 
-  // ESPN's current slot gets the week strip's "today" emphasis — current
-  // season only; a past season has no current week.
-  const currentSlotId =
-    selectedYear === currentSeasonYear &&
-    initialSeasonType !== undefined &&
-    initialCurrentWeekNumber !== undefined
-      ? `${initialSeasonType}-${initialCurrentWeekNumber}`
-      : undefined;
+  const retry = () => {
+    if (selectedSlot !== undefined) loadSlot(selectedSlot, yearParam);
+  };
 
-  // Portal the season selector into the navbar right slot
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setPortalTarget(document.getElementById("navbar-right-slot"));
-    return () => setPortalTarget(null);
-  }, []);
+  // --- Empty-state derivations ---
+
+  const filtersActive = uiState.liveOnly || uiState.scoreFilter !== null;
+  const narrowedEmptyMessage = (() => {
+    const label =
+      uiState.scoreFilter !== null
+        ? scoreFilterLabel(uiState.scoreFilter)
+        : undefined;
+    if (uiState.liveOnly && label) return `No live ${label} games right now`;
+    if (uiState.liveOnly) return "No live games right now";
+    if (label) return `No ${label} games this week`;
+    return "";
+  })();
+
+  /** The next week-slot start still in the future — the offseason countdown. */
+  const nextKickoff = useMemo(() => {
+    const now = Date.now();
+    const starts = weeks
+      .map((slot) => Date.parse(slot.startDate ?? ""))
+      .filter((time) => Number.isFinite(time) && time > now);
+    return starts.length > 0 ? new Date(Math.min(...starts)) : undefined;
+  }, [weeks]);
+
+  const showFollowPrompt =
+    uiState.isLoaded &&
+    favoritesLoaded &&
+    favorites.length === 0 &&
+    favoriteConferences.length === 0 &&
+    !uiState.followPromptDismissed;
+
+  const sectionIds = sections.map((section) => section.id);
+  const allCollapsed =
+    sectionIds.length > 0 && sectionIds.every(uiState.isCollapsed);
 
   return (
     <div>
-      {portalTarget &&
-        createPortal(
-          <SeasonSelector
-            selectedYear={selectedYear}
-            onYearChange={handleYearChange}
-          />,
-          portalTarget
-        )}
+      <ScoresHeader
+        liveOnly={uiState.liveOnly}
+        onToggleLive={handleToggleLive}
+        filterLabel={filterLabel}
+        onOpenFilter={() => setSheetOpen(true)}
+      />
+      <ScoreFilterSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        current={uiState.scoreFilter}
+        onSelect={uiState.setScoreFilter}
+        grouping={uiState.grouping}
+        onSetGrouping={uiState.setGrouping}
+        selectedYear={selectedYear}
+        onYearChange={handleYearChange}
+      />
 
-      <WeekSelector
+      <WeekStrip
         weeks={weeks}
         selectedId={selectedSlot?.id ?? ""}
         onSelect={handleWeekChange}
-        currentId={currentSlotId}
       />
 
       <OnboardingModal />
 
-      <div ref={swipeRef} className="mt-8 space-y-6">
+      <div ref={swipeRef} className="mt-12">
+        {fetchFailed && games.length > 0 && (
+          <div className="mb-3 flex items-center justify-center gap-3 rounded-[10px] bg-bg-elevated px-4 py-2">
+            <span className="type-meta text-text-secondary">
+              Couldn&apos;t refresh
+            </span>
+            <button
+              type="button"
+              onClick={retry}
+              className="type-meta-em text-text-primary"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
             ))}
           </div>
-        ) : games.length === 0 ? (
-          <EmptyState
-            title="No games this week"
-            description="Check back later or select a different week."
-          />
+        ) : fetchFailed && games.length === 0 ? (
+          <EmptySlate message="Couldn't load games">
+            <button
+              type="button"
+              onClick={retry}
+              className="type-team-name-em text-text-primary"
+            >
+              Retry
+            </button>
+          </EmptySlate>
+        ) : sections.length === 0 ? (
+          filtersActive ? (
+            // The narrowed-slate empty state: name what's hiding the games,
+            // and offer the whole slate back with one button.
+            <EmptySlate message={narrowedEmptyMessage}>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="type-team-name-em text-text-primary"
+              >
+                Show all games
+              </button>
+            </EmptySlate>
+          ) : (
+            <EmptySlate message="No games this week">
+              {nextKickoff !== undefined && (
+                <p className="type-meta-em text-text-primary">
+                  Season kicks off{" "}
+                  {nextKickoff.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              )}
+            </EmptySlate>
+          )
         ) : (
           <>
-            {/* My Teams */}
-            <MyTeamsSection games={games} />
-
-            {days.map((day) => (
-              <DayGroup key={day.date} dayGames={day} />
-            ))}
+            <div className="mb-2 flex min-h-5 justify-end">
+              {/* The iOS pinch analog, scoped to on-screen sections. */}
+              <button
+                type="button"
+                onClick={() =>
+                  allCollapsed
+                    ? uiState.expandAll(sectionIds)
+                    : uiState.collapseAll(sectionIds)
+                }
+                className="type-meta text-text-secondary transition-colors hover:text-text-primary"
+              >
+                {allCollapsed ? "Expand all" : "Collapse all"}
+              </button>
+            </div>
+            <div className="space-y-3">
+              {showFollowPrompt && (
+                <FollowPromptCard onDismiss={uiState.dismissFollowPrompt} />
+              )}
+              {sections.map((section) => (
+                <SectionAccordion
+                  key={section.id}
+                  section={section}
+                  isExpanded={!uiState.isCollapsed(section.id)}
+                  onToggle={() => uiState.toggleSection(section.id)}
+                  pinsHeader={section.kind === "day"}
+                />
+              ))}
+            </div>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function EmptySlate({
+  message,
+  children,
+}: {
+  message: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <p className="type-team-name text-text-secondary">{message}</p>
+      {children}
     </div>
   );
 }
