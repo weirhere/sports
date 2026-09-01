@@ -27,6 +27,7 @@ import type {
   LeaderCategory,
   GameLeader,
   Play,
+  ScoringPlayItem,
   TeamStats,
   TeamScheduleData,
 } from "@/lib/types";
@@ -54,6 +55,7 @@ import type {
   EspnBoxscoreTeam,
   EspnDrive,
   EspnPlay,
+  EspnScoringPlay,
   EspnTeamLeaders,
   EspnVenue,
 } from "./types";
@@ -699,7 +701,12 @@ export function transformHeaderGame(
     venue: transformVenue(comp.venue ?? summary.gameInfo?.venue),
     homeTeam,
     awayTeam,
-    broadcast: nonEmpty(comp.broadcasts?.[0]?.names?.[0]),
+    // The summary header's broadcast shape differs from the scoreboard's:
+    // `media.shortName` carries the network, not `names[]`.
+    broadcast: nonEmpty(
+      comp.broadcasts?.[0]?.names?.[0] ??
+        comp.broadcasts?.[0]?.media?.shortName
+    ),
     clock: comp.status?.displayClock,
     quarter: comp.status?.period || undefined,
     week: 0,
@@ -763,6 +770,21 @@ function transformDrive(drive: EspnDrive, index: number): GameDrive {
     isScore: drive.isScore ?? false,
     summary: drive.description,
     quarter: drive.start?.period?.number,
+  };
+}
+
+function transformScoringPlay(
+  play: EspnScoringPlay,
+  index: number
+): ScoringPlayItem {
+  return {
+    id: play.id ?? `scoring-${index}`,
+    quarter: play.period?.number,
+    clock: play.clock?.displayValue,
+    typeAbbreviation: nonEmpty(play.type?.abbreviation),
+    text: nonEmpty(play.text),
+    awayScore: play.awayScore,
+    homeScore: play.homeScore,
   };
 }
 
@@ -872,5 +894,6 @@ export function transformGameSummary(
       homeTeamEspnId
     ),
     drives: drives.map(transformDrive),
+    scoringPlays: (summary.scoringPlays ?? []).map(transformScoringPlay),
   };
 }

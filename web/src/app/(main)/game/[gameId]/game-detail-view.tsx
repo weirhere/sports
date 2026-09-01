@@ -1,193 +1,100 @@
 "use client";
 
-import Link from "next/link";
-import type { GameDetail } from "@/lib/types";
-import { TeamLogo } from "@/components/team-logo";
-import { LiveIndicator } from "@/components/live-indicator";
-import { BoxScore } from "@/components/box-score";
-import { DriveSummary } from "@/components/drive-summary";
-import { TeamStatsComparison } from "@/components/team-stats-comparison";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+// The game page (iOS GameDetailScreen): header on the card surface, then
+// the cards in exactly the iOS order — pre-game info, line score, scoring,
+// team stats, leaders, matchup standings, drives, venue info. Live games
+// poll every 30s through useLiveGame; a pre-game summary never demotes a
+// live snapshot (the merge lives in the hook).
+
+import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
+import { cfbSeasonYear } from "@/lib/season";
+import { showsScores } from "./game-status";
+import { GameHeader } from "./game-header";
+import { GameInfoCard } from "./game-info-card";
+import { LineScoreCard } from "./line-score-card";
+import { ScoringPlaysCard } from "./scoring-plays-card";
+import { TeamStatsCard, hasTeamStats } from "./team-stats-card";
+import { LeadersCard } from "./leaders-card";
+import {
+  MatchupStandingsCard,
+  matchupStandingsHasContent,
+} from "./matchup-standings-card";
+import { DrivesCard } from "./drives-card";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
+  /** Current-season conference standings; null when the fetch missed —
+   * a miss just hides the matchup card. */
+  standings: ConferenceStandingsGroup[] | null;
 }
 
-function isLive(status: string) {
-  return (
-    status === "in_progress" ||
-    status === "halftime" ||
-    status === "end_period"
-  );
-}
-
-function getStatusLabel(game: GameDetail["game"]) {
-  if (game.status === "complete") return "Final";
-  if (game.status === "halftime") return "Halftime";
-  if (isLive(game.status)) {
-    const q = game.quarter && game.quarter > 4 ? "OT" : `Q${game.quarter}`;
-    return `${q} ${game.clock || ""}`.trim();
-  }
-  return new Date(game.scheduledAt).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-export function GameDetailView({ initialData }: GameDetailViewProps) {
+export function GameDetailView({
+  initialData,
+  standings,
+}: GameDetailViewProps) {
   const data = useLiveGame(initialData.game.id, initialData);
-  const { game, boxScore, homeStats, awayStats } = data;
-  const live = isLive(game.status);
+  const { game } = data;
+  const scores = showsScores(game);
+
+  const hasLinescores =
+    (game.awayTeam.linescores?.length ?? 0) > 0 ||
+    (game.homeTeam.linescores?.length ?? 0) > 0;
+  const scoringPlays = data.scoringPlays ?? [];
+  const leaders = data.leaders ?? [];
+  const drives = data.drives ?? [];
+
+  // Past-season games (reached by direct link) must not wear the current
+  // season's standings — the fetch is always the current tables.
+  const isCurrentSeason =
+    game.scheduledAt !== "" &&
+    cfbSeasonYear(new Date(game.scheduledAt)) === cfbSeasonYear();
+  const standingsVisible =
+    standings !== null &&
+    isCurrentSeason &&
+    matchupStandingsHasContent(
+      game.awayTeam.team,
+      game.homeTeam.team,
+      standings
+    );
+
+  const venueVisible =
+    scores && (Boolean(game.venue.name) || data.attendance !== undefined);
 
   return (
-    <div>
-      {/* Game Header */}
-      <div className="mb-6 rounded-xl border bg-card p-5 shadow-card">
-        {/* Top row: Away — Score — Home */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Away team */}
-          <Link
-            href={`/team/${game.awayTeam.team.id}`}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center hover:opacity-80"
-          >
-            <TeamLogo
-              espnId={game.awayTeam.team.espnId}
-              teamName={game.awayTeam.team.school}
-              size="lg"
-            />
-            <div className="min-w-0">
-              {game.awayTeam.ranking && (
-                <span className="text-xs font-medium text-muted-foreground">
-                  #{game.awayTeam.ranking}{" "}
-                </span>
-              )}
-              <span className="text-sm font-semibold">
-                {game.awayTeam.team.school}
-              </span>
-            </div>
-            {game.awayTeam.record && (
-              <span className="text-[11px] text-muted-foreground">
-                {game.awayTeam.record}
-              </span>
-            )}
-          </Link>
-
-          {/* Score */}
-          {game.status !== "scheduled" ? (
-            <div className="flex shrink-0 items-center gap-3">
-              <span
-                className={cn(
-                  "font-score text-3xl",
-                  game.awayTeam.isWinner ? "font-bold" : "text-muted-foreground"
-                )}
-              >
-                {game.awayTeam.score}
-              </span>
-              <span className="text-base text-muted-foreground">-</span>
-              <span
-                className={cn(
-                  "font-score text-3xl",
-                  game.homeTeam.isWinner ? "font-bold" : "text-muted-foreground"
-                )}
-              >
-                {game.homeTeam.score}
-              </span>
-            </div>
-          ) : (
-            <span className="shrink-0 text-sm font-medium text-muted-foreground">
-              vs
-            </span>
-          )}
-
-          {/* Home team */}
-          <Link
-            href={`/team/${game.homeTeam.team.id}`}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center hover:opacity-80"
-          >
-            <TeamLogo
-              espnId={game.homeTeam.team.espnId}
-              teamName={game.homeTeam.team.school}
-              size="lg"
-            />
-            <div className="min-w-0">
-              {game.homeTeam.ranking && (
-                <span className="text-xs font-medium text-muted-foreground">
-                  #{game.homeTeam.ranking}{" "}
-                </span>
-              )}
-              <span className="text-sm font-semibold">
-                {game.homeTeam.team.school}
-              </span>
-            </div>
-            {game.homeTeam.record && (
-              <span className="text-[11px] text-muted-foreground">
-                {game.homeTeam.record}
-              </span>
-            )}
-          </Link>
-        </div>
-
-        {/* Meta row: status, broadcast, venue */}
-        <div className="mt-4 flex flex-col items-center gap-1 border-t pt-3">
-          {live ? (
-            <LiveIndicator />
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {getStatusLabel(game)}
-            </span>
-          )}
-
-          {game.broadcast && (
-            <span className="text-xs text-muted-foreground">
-              {game.broadcast}
-            </span>
-          )}
-
-          {game.venue && (
-            <span className="text-xs text-muted-foreground">
-              {game.venue.name} - {game.venue.city}, {game.venue.state}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Detail Tabs */}
-      <Tabs defaultValue="boxscore" className="w-full">
-        <TabsList className="mb-4 w-full sm:w-auto">
-          <TabsTrigger value="boxscore" className="flex-1 sm:flex-none">
-            Box Score
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="flex-1 sm:flex-none">
-            Team Stats
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="boxscore" className="space-y-6">
-          <BoxScore homeTeam={game.homeTeam} awayTeam={game.awayTeam} />
-          <div>
-            <h3 className="mb-3 text-base font-semibold">Scoring Drives</h3>
-            <DriveSummary
-              drives={boxScore.scoringDrives}
-              homeTeam={game.homeTeam}
-              awayTeam={game.awayTeam}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stats">
-          <TeamStatsComparison
-            homeStats={homeStats}
-            awayStats={awayStats}
-            homeTeam={game.homeTeam}
-            awayTeam={game.awayTeam}
-          />
-        </TabsContent>
-      </Tabs>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
+      <GameHeader game={game} />
+      {/* Pre-kick the sections below are all empty — the info card carries
+          the "what do I need to know" load. */}
+      {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
+      {hasLinescores && <LineScoreCard game={game} />}
+      {scoringPlays.length > 0 && <ScoringPlaysCard plays={scoringPlays} />}
+      {scores && hasTeamStats(data.awayStats, data.homeStats) && (
+        <TeamStatsCard
+          awayTeam={game.awayTeam}
+          homeTeam={game.homeTeam}
+          awayStats={data.awayStats}
+          homeStats={data.homeStats}
+        />
+      )}
+      {leaders.length > 0 && (
+        <LeadersCard
+          leaders={leaders}
+          awayTeam={game.awayTeam}
+          homeTeam={game.homeTeam}
+        />
+      )}
+      {standingsVisible && (
+        <MatchupStandingsCard
+          away={game.awayTeam.team}
+          home={game.homeTeam.team}
+          standings={standings}
+        />
+      )}
+      {drives.length > 0 && <DrivesCard drives={drives} game={game} />}
+      {/* Pre-game the info card already places the game; once scores exist
+          it returns as the venue card. */}
+      {venueVisible && <GameInfoCard game={game} detail={data} mode="venue" />}
     </div>
   );
 }
