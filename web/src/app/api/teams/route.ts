@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
-import { MOCK_TEAMS } from "@/lib/mock";
+import { fbsConferences } from "@/lib/espn";
+
+// The FBS directory moves on realignment timescales; one fetch a day is
+// plenty (the provider's own fetch cache matches).
+export const revalidate = 86400;
 
 export async function GET() {
   try {
-    return NextResponse.json(MOCK_TEAMS);
-  } catch {
+    const conferences = await fbsConferences();
+    return NextResponse.json({ conferences });
+  } catch (err) {
+    console.error("Teams fetch error:", err);
     return NextResponse.json(
       { error: "Failed to fetch teams" },
-      { status: 500 }
+      { status: 502 }
     );
   }
 }
