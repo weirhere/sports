@@ -24,7 +24,7 @@ private func game(_ id: String, home: String, away: String,
                  date: now.addingTimeInterval(-3 * 3600)),
             game("pre", home: "1", away: "8", status: .pre(detail: nil),
                  date: now.addingTimeInterval(3600)),
-            game("live", home: "1", away: "7", status: .live(displayClock: "5:00", period: 2, detail: nil, possessionTeamId: nil),
+            game("live", home: "1", away: "7", status: .live(displayClock: "5:00", period: 2, detail: nil, phase: .playing, possessionTeamId: nil),
                  date: now.addingTimeInterval(-3600)),
         ]
         let picked = GameSelection.relevantGames(in: games, followedIds: ["1"], limit: 3, now: now)
@@ -62,7 +62,7 @@ private func game(_ id: String, home: String, away: String,
 
     @Test func liveGamePolls15Minutes() {
         let live = [game("g", home: "1", away: "2",
-                         status: .live(displayClock: nil, period: nil, detail: nil, possessionTeamId: nil),
+                         status: .live(displayClock: nil, period: nil, detail: nil, phase: .playing, possessionTeamId: nil),
                          date: now)]
         #expect(GameSelection.nextRefresh(after: now, games: live) == now.addingTimeInterval(15 * 60))
     }

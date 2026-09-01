@@ -34,7 +34,7 @@ private func game(status: GameStatus,
 @Suite struct GameRowAccessibilityTests {
     @Test func liveRowSpeaksScoresQuarterClockAndPossession() {
         let row = GameRow(game: game(
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "61"),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),
             homeScore: 17, awayScore: 24))
         #expect(row.accessibilitySummary ==
                 "Georgia 24, Tennessee 17, 3rd quarter, 5:24 left, Georgia has the ball")
@@ -42,15 +42,33 @@ private func game(status: GameStatus,
 
     @Test func liveRowSpeaksNetworkAfterPossession() {
         let row = GameRow(game: game(
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "61"),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),
             homeScore: 17, awayScore: 24, broadcast: "ESPN"))
         #expect(row.accessibilitySummary ==
                 "Georgia 24, Tennessee 17, 3rd quarter, 5:24 left, Georgia has the ball, on ESPN")
     }
 
+    @Test func halftimeSpeaksAsHalftimeNotAStoppedClock() {
+        // ESPN parks the clock at 0:00 over the break — "2nd quarter,
+        // 0:00 left" would claim a running clock.
+        let row = GameRow(game: game(
+            status: .live(displayClock: "0:00", period: 2, detail: "Halftime",
+                          phase: .halftime, possessionTeamId: nil),
+            homeScore: 17, awayScore: 24))
+        #expect(row.accessibilitySummary == "Georgia 24, Tennessee 17, halftime")
+    }
+
+    @Test func endOfQuarterSpeaksTheBreakNotTheClock() {
+        let row = GameRow(game: game(
+            status: .live(displayClock: "0:00", period: 3, detail: "End of 3rd Quarter",
+                          phase: .endOfPeriod, possessionTeamId: nil),
+            homeScore: 17, awayScore: 24))
+        #expect(row.accessibilitySummary == "Georgia 24, Tennessee 17, end of 3rd quarter")
+    }
+
     @Test func liveRowSpeaksRanksAndOvertime() {
         let row = GameRow(game: game(
-            status: .live(displayClock: "0:48", period: 5, detail: nil, possessionTeamId: nil),
+            status: .live(displayClock: "0:48", period: 5, detail: nil, phase: .playing, possessionTeamId: nil),
             homeScore: 27, awayScore: 27, homeRank: 12, awayRank: 3))
         #expect(row.accessibilitySummary ==
                 "number 3 Georgia 27, number 12 Tennessee 27, overtime, 0:48 left")
@@ -181,7 +199,7 @@ private func game(status: GameStatus,
 
     @Test func liveSideSpeaksLocationAndScore() {
         let screen = GameDetailScreen(game: game(
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: nil),
             homeScore: 17, awayScore: 24))
         #expect(screen.sideAccessibilityLabel((georgia, 24, nil, nil)) == "Georgia 24")
         #expect(screen.sideAccessibilityLabel((tennessee, 17, nil, nil)) == "Tennessee 17")

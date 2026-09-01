@@ -127,10 +127,8 @@ nonisolated extension WidgetGame {
             let weekday = Date.FormatStyle.dateTime.weekday(.abbreviated)
             let day = date.formatted(days < 7 ? weekday : weekday.month(.defaultDigits).day())
             return "\(day) \(time)"
-        case .live(let clock, let period, let detail, _):
-            let quarter = period.map { $0 <= 4 ? "Q\($0)" : ($0 == 5 ? "OT" : "\($0 - 4)OT") }
-            let line = [quarter, clock].compactMap(\.self).joined(separator: " ")
-            return line.isEmpty ? (detail ?? "Live") : line
+        case .live:
+            return game.status.liveStatusText ?? "Live"
         case .final(let detail):
             if let detail, detail.localizedCaseInsensitiveContains("OT") { return "FINAL OT" }
             return "FINAL"

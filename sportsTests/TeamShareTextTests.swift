@@ -91,7 +91,7 @@ private func schedule(record: String? = nil, games: [Game] = []) -> TeamSchedule
     @Test func nextGameSkipsFinalsAndLiveGames() {
         let text = buckeyes.shareText(schedule: schedule(record: "8-1", games: [
             game(status: .final(detail: "Final"), away: "Purdue"),
-            game(status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil), away: "Penn State"),
+            game(status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: nil), away: "Penn State"),
             game(status: .pre(detail: nil), away: "Michigan")
         ]))
         #expect(text.contains("Next up: vs Michigan"))

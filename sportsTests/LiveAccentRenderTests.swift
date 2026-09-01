@@ -53,7 +53,7 @@ final class LiveAccentRenderTests: XCTestCase {
                              logoURL: nil, conferenceId: 8)
         return Game(
             id: "live", date: .now, name: nil, shortName: "UGA @ TENN", weekNumber: 5,
-            status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: "61"),
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),
             home: Competitor(team: tennessee, score: 17, record: "4-1", rank: 12, isHome: true, winner: nil),
             away: Competitor(team: georgia, score: 24, record: "5-0", rank: 3, isHome: false, winner: nil),
             broadcast: "ESPN")

@@ -43,7 +43,7 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
         // it would look fine in the sheet and quietly stop being an invite.
         let shapes = [
             game(status: .pre(detail: nil)),
-            game(status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+            game(status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: nil),
                  awayScore: 24, homeScore: 17),
             game(status: .final(detail: "Final"), awayScore: 24, homeScore: 17),
             game(status: .other(detail: "Postponed"))
@@ -58,11 +58,19 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
     }
 
     @Test func liveGameCarriesScoreAndSituation() {
-        let text = game(status: .live(displayClock: "5:24", period: 3, detail: nil, possessionTeamId: nil),
+        let text = game(status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: nil),
                         awayScore: 24, homeScore: 17).shareText
         #expect(text.contains("Georgia 24"))
         #expect(text.contains("Tennessee 17"))
         #expect(text.contains("Q3 5:24"))
+    }
+
+    @Test func halftimeSharesAsHalfNotQ2Zero() {
+        let text = game(status: .live(displayClock: "0:00", period: 2, detail: "Halftime",
+                                      phase: .halftime, possessionTeamId: nil),
+                        awayScore: 24, homeScore: 17).shareText
+        #expect(text.contains("Georgia 24, Tennessee 17, Half"))
+        #expect(!text.contains("0:00"))
     }
 
     @Test func finalAndOvertimeShapes() {
@@ -76,7 +84,7 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
     @Test func missingDataDegradesQuietly() {
         // Nil score renders the same dash the rows use; nil broadcast and
         // date just drop their clauses.
-        let live = game(status: .live(displayClock: nil, period: nil, detail: nil, possessionTeamId: nil)).shareText
+        let live = game(status: .live(displayClock: nil, period: nil, detail: nil, phase: .playing, possessionTeamId: nil)).shareText
         #expect(live.contains("Georgia –"))
 
         let pre = game(status: .pre(detail: nil)).shareText

@@ -57,7 +57,7 @@ private func game(_ id: String, home: Team, away: Team,
                   live: Bool = false, date: Date? = .init(timeIntervalSince1970: 0)) -> Game {
     Game(id: id, date: date, name: nil, shortName: nil, weekNumber: 1,
          status: live
-            ? .live(displayClock: "5:00", period: 2, detail: nil, possessionTeamId: nil)
+            ? .live(displayClock: "5:00", period: 2, detail: nil, phase: .playing, possessionTeamId: nil)
             : .pre(detail: nil),
          home: Competitor(team: home, score: nil, record: nil, rank: homeRank, isHome: true, winner: nil),
          away: Competitor(team: away, score: nil, record: nil, rank: awayRank, isHome: false, winner: nil),

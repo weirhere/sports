@@ -32,10 +32,9 @@ nonisolated enum GameHeaderState {
                 "TBD"
             }
             return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
-        case .live(let clock, let period, let detail, _):
-            let quarter = period.map { $0 <= 4 ? "Q\($0)" : "OT" }
-            return [quarter, clock].compactMap(\.self).joined(separator: " ")
-                .isEmpty ? (detail ?? "Live") : [quarter, clock].compactMap(\.self).joined(separator: " ")
+        case .live:
+            let status = summary?.status ?? game.status
+            return status.liveStatusText ?? "Live"
         case .final(let detail):
             return detail ?? "Final"
         case .other(let detail):

@@ -82,6 +82,62 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
+@Suite struct LivePhaseMappingTests {
+    private func status(name: String?, clock: String? = "0:00", period: Int? = 2,
+                        detail: String? = nil) -> GameStatus {
+        ESPNMapper.status(
+            from: StatusDTO(clock: nil, displayClock: clock, period: period,
+                            type: StatusTypeDTO(id: nil, name: name, state: "in",
+                                                completed: false, detail: detail,
+                                                shortDetail: detail)),
+            situation: nil)
+    }
+
+    @Test func halftimeStatusNameMapsToHalftimePhase() {
+        // Observed live 2026-08-29: STATUS_HALFTIME arrives as state "in",
+        // period 2, displayClock "0:00" — the name is the only signal.
+        let mapped = status(name: "STATUS_HALFTIME", detail: "Halftime")
+        if case .live(_, _, _, let phase, _) = mapped {
+            #expect(phase == .halftime)
+        } else {
+            Issue.record("expected live status")
+        }
+        #expect(mapped.liveStatusText == "Half")
+    }
+
+    @Test func endOfPeriodStopsClaimingARunningClock() {
+        let mapped = status(name: "STATUS_END_PERIOD", period: 1,
+                            detail: "End of 1st Quarter")
+        if case .live(_, _, _, let phase, _) = mapped {
+            #expect(phase == .endOfPeriod)
+        } else {
+            Issue.record("expected live status")
+        }
+        #expect(mapped.liveStatusText == "End Q1")
+    }
+
+    @Test func inProgressKeepsQuarterAndClock() {
+        let mapped = status(name: "STATUS_IN_PROGRESS", clock: "5:24", period: 3)
+        #expect(mapped.liveStatusText == "Q3 5:24")
+    }
+
+    @Test func overtimePeriodsKeepTheirLabels() {
+        #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 5)
+            .liveStatusText == "OT 0:48")
+        #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 6)
+            .liveStatusText == "2OT 0:48")
+    }
+
+    @Test func bareLiveStatusFallsBackToDetailThenCaller() {
+        // Nothing to render → detail; nothing at all → nil, and every
+        // surface supplies its own "Live".
+        #expect(status(name: nil, clock: nil, period: nil, detail: "In Progress")
+            .liveStatusText == "In Progress")
+        #expect(status(name: nil, clock: nil, period: nil).liveStatusText == nil)
+        #expect(GameStatus.pre(detail: nil).liveStatusText == nil)
+    }
+}
+
 @Suite struct ConferenceStandingsDecodingTests {
     private func standings() throws -> [ConferenceStandings] {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self,
