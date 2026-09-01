@@ -38,7 +38,7 @@ export function OnboardingModal() {
       <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-yellow-500" />
+            <Star className="h-5 w-5 fill-current text-text-primary" />
             Pick Your Teams
           </DialogTitle>
           <DialogDescription>
@@ -91,7 +91,7 @@ export function OnboardingModal() {
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all",
                     selected
-                      ? "border-yellow-500/50 bg-yellow-500/10"
+                      ? "border-text-primary bg-bg-elevated"
                       : "border-border hover:bg-accent/50"
                   )}
                 >
@@ -109,7 +109,7 @@ export function OnboardingModal() {
                     </p>
                   </div>
                   {selected && (
-                    <Check className="h-4 w-4 shrink-0 text-yellow-500" />
+                    <Check className="h-4 w-4 shrink-0 text-text-primary" />
                   )}
                 </button>
               );

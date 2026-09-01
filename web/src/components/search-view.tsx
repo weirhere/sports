@@ -61,7 +61,7 @@ function TeamResult({ team }: { team: Team }) {
 function ConferenceResult({ conf }: { conf: Conference }) {
   return (
     <Link
-      href={`/conferences/${conf.id}`}
+      href={`/conference/${conf.id}`}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
     >
       <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground">
