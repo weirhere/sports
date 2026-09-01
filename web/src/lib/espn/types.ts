@@ -142,6 +142,8 @@ export interface EspnStatus {
 export interface EspnBroadcast {
   market?: string;
   names?: string[];
+  /** The summary header's shape: the network hides in `media.shortName`. */
+  media?: { shortName?: string };
 }
 
 export interface EspnSituation {

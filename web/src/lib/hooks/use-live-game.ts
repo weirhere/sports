@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import type { GameDetail, GameStatus } from "@/lib/types";
 import { getGameDetail } from "@/lib/api";
 import { POLL_INTERVAL_LIVE } from "@/lib/constants";
@@ -13,51 +13,84 @@ function isLiveStatus(status: GameStatus): boolean {
   );
 }
 
+/**
+ * A pre-game summary never demotes a live snapshot — kickoff doesn't
+ * un-happen. That shape is a stale or flaky payload (seen from ESPN
+ * mid-Saturday), and honoring it would demote the header to pre AND stop
+ * the poll loop with nothing left to refetch, freezing the page mid-drive.
+ * The live snapshot's status and scores win; the next poll's summary takes
+ * over again. Final/postponed always win — those are real transitions.
+ * (The web port of iOS `GameHeaderState.status`.)
+ */
+export function mergeLiveSnapshot(
+  prev: GameDetail,
+  incoming: GameDetail
+): GameDetail {
+  if (incoming.game.status !== "scheduled" || !isLiveStatus(prev.game.status)) {
+    return incoming;
+  }
+  return {
+    ...incoming,
+    game: {
+      ...incoming.game,
+      status: prev.game.status,
+      clock: prev.game.clock,
+      quarter: prev.game.quarter,
+      livePhase: prev.game.livePhase,
+      statusDetail: prev.game.statusDetail,
+      possession: prev.game.possession,
+      homeTeam: {
+        ...incoming.game.homeTeam,
+        score: prev.game.homeTeam.score,
+        linescores: prev.game.homeTeam.linescores,
+      },
+      awayTeam: {
+        ...incoming.game.awayTeam,
+        score: prev.game.awayTeam.score,
+        linescores: prev.game.awayTeam.linescores,
+      },
+    },
+  };
+}
+
+/**
+ * 30s polling, only while the game is live AND the tab is visible —
+ * mirroring the iOS detail screen's scene-active poll loop. A summary that
+ * comes back final stops the loop on its own; returning to a visible tab
+ * polls immediately instead of waiting out the interval.
+ */
 export function useLiveGame(gameId: string, initialData: GameDetail) {
   const [data, setData] = useState(initialData);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const visibleRef = useRef(true);
+  const live = isLiveStatus(data.game.status);
 
-  // poll only fetches and updates state — no self-rescheduling
-  const poll = useCallback(async () => {
-    if (!visibleRef.current) return;
-
-    try {
-      const updated = await getGameDetail(gameId);
-      setData(updated);
-    } catch {
-      // Silently fail
-    }
-  }, [gameId]);
-
-  // useEffect is the single owner of the timer lifecycle
   useEffect(() => {
-    if (!isLiveStatus(data.game.status)) return;
+    if (!live) return;
+    let cancelled = false;
 
-    timerRef.current = setTimeout(poll, POLL_INTERVAL_LIVE);
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+    async function poll() {
+      if (document.hidden) return;
+      try {
+        const incoming = await getGameDetail(gameId);
+        if (!cancelled) {
+          setData((prev) => mergeLiveSnapshot(prev, incoming));
+        }
+      } catch {
+        // A missed poll stays quiet; the next tick retries.
       }
-    };
-  }, [poll, data.game.status]);
+    }
 
-  // Pause polling when tab is hidden
-  useEffect(() => {
+    const timer = setInterval(poll, POLL_INTERVAL_LIVE);
     function handleVisibility() {
-      visibleRef.current = !document.hidden;
-      if (!document.hidden && timerRef.current === null) {
-        poll();
-      }
+      if (!document.hidden) void poll();
     }
-
     document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
+      cancelled = true;
+      clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [poll]);
+  }, [gameId, live]);
 
   return data;
 }

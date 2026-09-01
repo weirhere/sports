@@ -218,6 +218,22 @@ export interface LeaderCategory {
   home?: GameLeader;
 }
 
+/** One scoring play, chronological — the detail page's Scoring card rows. */
+export interface ScoringPlayItem {
+  id: string;
+  /** Period the play happened in (1–4, 5 = OT, 6 = 2OT, …). */
+  quarter?: number;
+  /** Game clock at the score, e.g. "8:55". */
+  clock?: string;
+  /** "TD", "FG" — ESPN's play-type abbreviation. */
+  typeAbbreviation?: string;
+  /** The play text: "Jayden Maiava 1 Yd Run (Caden Chittenden Kick)". */
+  text?: string;
+  /** Running score after the play. */
+  awayScore?: number;
+  homeScore?: number;
+}
+
 /** One drive, scoring or not. */
 export interface GameDrive {
   id: string;
@@ -242,6 +258,7 @@ export interface GameDetail {
   weatherTemperature?: number;
   leaders?: LeaderCategory[];
   drives?: GameDrive[];
+  scoringPlays?: ScoringPlayItem[];
 }
 
 /** The scoreboard response: the week strip's slots plus the slate. */
