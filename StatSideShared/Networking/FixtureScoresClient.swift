@@ -83,7 +83,20 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         throw URLError(.unsupportedURL)
     }
 
-    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
+    /// The scripted slate, filtered the way the real clients filter it
+    /// (either side in the conference). Read at the current tick without
+    /// advancing it: ConferencePage fetches a season exactly once and
+    /// caches it, so this snapshot is meant to go stale — the page's live
+    /// merge against the polling scoreboard is what keeps its rows honest,
+    /// and a stub returning nothing hid that whole screen from the
+    /// fixture.
+    func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] {
+        let tick = await SharedState.shared.currentTick()
+        return Self.games(at: max(tick, 1)).filter {
+            $0.home.team.conferenceId == conferenceId
+                || $0.away.team.conferenceId == conferenceId
+        }
+    }
 
     func gameSummary(eventId: String) async throws -> GameSummary {
         let tick = await SharedState.shared.currentTick()

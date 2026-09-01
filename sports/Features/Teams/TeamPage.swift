@@ -123,13 +123,12 @@ struct TeamPage: View {
         }.map(fresher)
     }
 
-    /// The scoreboard's copy of a schedule game when it has one: the
-    /// schedule payload carries no live scores or clock mid-game (the
-    /// dashed-score bug, Andy 2026-08-29), while the scoreboard polls
-    /// every 30s. A game outside the scoreboard's selected week falls
-    /// back to the schedule's own snapshot.
+    /// The schedule payload carries no live scores or clock mid-game (the
+    /// dashed-score bug, Andy 2026-08-29); the scoreboard polls every 30s.
+    /// `Game.merging` is the shared rule — ConferencePage's season slate
+    /// renders through the same one.
     private func fresher(_ game: Game) -> Game {
-        liveBoard?.games.first { $0.id == game.id } ?? game
+        Game.merging(game, withLive: liveBoard?.games ?? [])
     }
 
     private var showsStandingsTab: Bool {
@@ -399,7 +398,7 @@ struct TeamPage: View {
             VStack(spacing: 0) {
                 TeamScheduleSection(
                     teamId: team.id,
-                    games: (schedule?.games ?? []).map(fresher),
+                    games: Game.merging(schedule?.games ?? [], withLive: liveBoard?.games ?? []),
                     isLoading: isLoadingSelected,
                     showsError: showsErrorForSelected,
                     onRetry: { Task { await retry() } }
