@@ -11,7 +11,7 @@ private struct StubProvider: ScoresProviding {
     }
 
     func rankings() async throws -> [Poll] { [] }
-    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
@@ -67,7 +67,7 @@ private struct DivisionProvider: ScoresProviding {
     }
 
     func rankings() async throws -> [Poll] { [] }
-    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
@@ -88,7 +88,7 @@ private struct ClosureProvider: ScoresProviding {
     }
 
     func rankings() async throws -> [Poll] { [] }
-    func fbsConferences() async throws -> [ConferenceTeams] { [] }
+    func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }
