@@ -1,15 +1,13 @@
 name: Web CI
 
+# Deliberately unfiltered, for the same reason as ci.yml: a required
+# check that path-filters itself out of a PR never reports, and an
+# unreported required check blocks the merge permanently.
+
 on:
   pull_request:
-    paths:
-      - "web/**"
-      - ".github/workflows/web-ci.yml"
   push:
     branches: [main]
-    paths:
-      - "web/**"
-      - ".github/workflows/web-ci.yml"
 
 concurrency:
   group: web-ci-${{ github.ref }}
