@@ -142,7 +142,7 @@ struct TeamPage: View {
     /// `Game.merging` is the shared rule — ConferencePage's season slate
     /// renders through the same one.
     private func fresher(_ game: Game) -> Game {
-        Game.merging(game, withLive: liveBoard?.games ?? [])
+        Game.merging(game, withLive: liveBoard?.boardGames ?? [])
     }
 
     /// Any division we can name a conference for. The gate was FBS-only
@@ -400,7 +400,8 @@ struct TeamPage: View {
             }
             if TeamRecordCard.hasContent(conferenceRecord: overviewConferenceRecord,
                                          overallRecord: overviewOverallRecord) {
-                TeamRecordCard(conferenceRecord: overviewConferenceRecord,
+                TeamRecordCard(league: pageLeague,
+                               conferenceRecord: overviewConferenceRecord,
                                overallRecord: overviewOverallRecord)
                     .cardSurface()
             } else if nextGame == nil {
@@ -435,9 +436,10 @@ struct TeamPage: View {
             VStack(spacing: 0) {
                 TeamScheduleSection(
                     teamId: team.id,
-                    games: Game.merging(schedule?.games ?? [], withLive: liveBoard?.games ?? []),
+                    games: Game.merging(schedule?.games ?? [], withLive: liveBoard?.boardGames ?? []),
                     isLoading: isLoadingSelected,
                     showsError: showsErrorForSelected,
+                    byeWeek: schedule?.byeWeek,
                     onRetry: { Task { await retry() } }
                 )
             }
@@ -461,7 +463,7 @@ struct TeamPage: View {
                             id: resolvedConferenceId, year: standingsYear, in: pageLeague),
                         // Live claims are current-season only (ConferencePage's rule).
                         liveGames: standingsYear == currentSeasonYear
-                            ? (liveBoard?.games.filter(\.isLive) ?? []) : []
+                            ? (liveBoard?.boardGames.filter(\.isLive) ?? []) : []
                     )
                 }
                 .padding(.bottom, Spacing.xs)

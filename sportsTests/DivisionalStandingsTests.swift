@@ -103,6 +103,65 @@ import Testing
         #expect(standings.first?.name == "SEC")
     }
 
+    /// The tables hub names conferences rather than tabling them, so it
+    /// folds the divisions back into one row — the fold ConferencePage
+    /// does on demand, applied to the list.
+    @Test func theHubFoldsDivisionsIntoOneConferenceRow() throws {
+        let standings = ESPNMapper.conferenceStandings(from: try response(divisionalJSON))
+        let folded = standings.foldingDivisions()
+
+        #expect(folded.map(\.id) == [37])
+        #expect(folded.first?.name == "Sun Belt")
+        #expect(folded.first?.entries.count == 3)
+    }
+
+    /// And the folded row claims no leader: its first entry leads one
+    /// division, and the merge invents no order across them.
+    @Test func aFoldedRowHasNoLeader() throws {
+        let standings = ESPNMapper.conferenceStandings(from: try response(divisionalJSON))
+        let folded = try #require(standings.foldingDivisions().first)
+
+        #expect(folded.spansDivisions)
+        #expect(folded.leader == nil)
+        // The division tables themselves still lead with their own top team.
+        #expect(standings.first?.leader?.team.location == "Marshall")
+    }
+
+    /// A conference that ships its own table is not a division and passes
+    /// through the fold untouched — leader teaser and all.
+    @Test func theFoldLeavesFlatConferencesAlone() throws {
+        let flat = """
+        {"children": [
+          {"id": "8", "name": "Southeastern Conference", "shortName": "SEC",
+           "standings": {"entries": [\(entry("61", "Georgia", conf: "5-0", overall: "7-0"))]}}]}
+        """
+        let folded = ESPNMapper.conferenceStandings(from: try response(flat)).foldingDivisions()
+
+        #expect(folded.map(\.id) == [8])
+        #expect(folded.first?.spansDivisions == false)
+        #expect(folded.first?.leader?.team.location == "Georgia")
+    }
+
+    /// The fold restores the tier order the mapper sorts by: an unknown
+    /// division id sorts last, but the Sun Belt is a Group of Five
+    /// conference and belongs above Independents.
+    @Test func theFoldRestoresTierOrder() throws {
+        let mixed = """
+        {"children": [
+          {"id": "18", "name": "FBS Independents", "shortName": "Independents",
+           "standings": {"entries": [\(entry("87", "Notre Dame", conf: "0-0", overall: "3-0"))]}},
+          {"id": "37", "name": "Sun Belt Conference", "shortName": "Sun Belt",
+           "standings": {"entries": []},
+           "children": [
+             {"id": "167", "name": "Sun Belt - East",
+              "standings": {"entries": [\(entry("2026", "Marshall", conf: "1-0", overall: "2-1"))]}}]}]}
+        """
+        let standings = ESPNMapper.conferenceStandings(from: try response(mixed))
+
+        #expect(standings.map(\.id) == [18, 167])
+        #expect(standings.foldingDivisions().map(\.id) == [37, 18])
+    }
+
     /// An empty conference with no children still yields an empty table, so
     /// the page can say "Standings TBA" rather than erroring.
     @Test func anEmptyConferenceStillYieldsATable() throws {

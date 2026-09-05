@@ -2,12 +2,30 @@ import Foundation
 import Testing
 @testable import StatSide
 
+/// ESPN's `dates=` request, per league: a fixed pool filtered to the days
+/// asked for.
 private struct LeagueStub: ScoresProviding {
     nonisolated let league: League
-    let board: Scoreboard
+    let games: [Game]
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
-                    divisions: Set<Conference.Division>) async throws -> Scoreboard { board }
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        throw ESPNError.invalidURL
+    }
+
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        let calendar = Calendar.current
+        let lower = calendar.startOfDay(for: days.lowerBound)
+        let upper = calendar.date(byAdding: .day, value: 1,
+                                  to: calendar.startOfDay(for: days.upperBound)) ?? days.upperBound
+        return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 1, weeks: [],
+                          games: games.filter { game in
+                              guard let date = game.date else { return false }
+                              return date >= lower && date < upper
+                          })
+    }
+
     func rankings() async throws -> [Poll] { [] }
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
@@ -25,230 +43,354 @@ private func team(_ id: String, in league: League, conference: Int? = nil) -> Te
          conferenceId: conference, league: league)
 }
 
-private func game(_ id: String, home: Team, away: Team, live: Bool = false) -> Game {
-    Game(id: id, date: Date(timeIntervalSince1970: 0), name: nil, shortName: nil,
-         weekNumber: 1,
+/// Today at a fixed hour, so every game lands in today's local bucket
+/// wherever the test machine is.
+private func today(hour: Int = 12) -> Date {
+    let calendar = Calendar.current
+    return calendar.date(byAdding: .hour, value: hour,
+                         to: calendar.startOfDay(for: .now)) ?? .now
+}
+
+private func game(_ id: String, home: Team, away: Team, live: Bool = false,
+                  homeRank: Int? = nil, awayRank: Int? = nil,
+                  at date: Date? = nil) -> Game {
+    Game(id: id, date: date ?? today(), name: nil, shortName: nil, weekNumber: 1,
          status: live ? .live(displayClock: "5:00", period: 2, detail: nil,
                               phase: .playing, possessionTeamId: nil)
                       : .pre(detail: nil),
-         home: Competitor(team: home, score: live ? 7 : nil, record: nil, rank: nil,
+         home: Competitor(team: home, score: live ? 7 : nil, record: nil, rank: homeRank,
                           isHome: true, winner: nil),
-         away: Competitor(team: away, score: live ? 3 : nil, record: nil, rank: nil,
+         away: Competitor(team: away, score: live ? 3 : nil, record: nil, rank: awayRank,
                           isHome: false, winner: nil),
          broadcast: nil)
 }
 
-private let week = WeekSlot(label: "Week 1", shortLabel: "Wk 1", seasonType: 2,
-                            value: 1, startDate: nil, endDate: nil)
-
-private func board(_ games: [Game]) -> Scoreboard {
-    Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 1,
-               weeks: [week], games: games)
-}
-
 @MainActor
-private func makeScoreboards(cfb: [Game], nfl: [Game],
-                             selected: League = .collegeFootball) async -> LeagueScoreboards {
+private func makeScoreboards(cfb: [Game] = [], nfl: [Game] = []) async -> LeagueScoreboards {
     let stores: [League: ScoreboardStore] = [
         .collegeFootball: ScoreboardStore(
             league: .collegeFootball,
-            client: LeagueStub(league: .collegeFootball, board: board(cfb))),
-        .nfl: ScoreboardStore(
-            league: .nfl, client: LeagueStub(league: .nfl, board: board(nfl))),
+            client: LeagueStub(league: .collegeFootball, games: cfb)),
+        .nfl: ScoreboardStore(league: .nfl, client: LeagueStub(league: .nfl, games: nfl)),
     ]
-    let scoreboards = LeagueScoreboards(selected: selected, stores: stores)
+    let scoreboards = LeagueScoreboards(stores: stores)
     await scoreboards.loadInitial()
     return scoreboards
 }
 
-private func makeFollowing() -> FollowingStore {
+@MainActor
+private func makeFollowing(_ teams: [Team] = [],
+                           conferences: [ConferenceID] = []) -> FollowingStore {
     let name = "test.leaguescoreboards.\(UUID().uuidString)"
-    let defaults = UserDefaults(suiteName: name)!
+    let defaults = UserDefaults(suiteName: name) ?? .standard
     defaults.removePersistentDomain(forName: name)
-    return FollowingStore(defaults: defaults)
+    let store = FollowingStore(defaults: defaults)
+    for team in teams { store.toggle(team) }
+    for conference in conferences { store.toggleConference(conference) }
+    return store
 }
 
 @MainActor
 @Suite struct LeagueScoreboardsTests {
-    private let bruins = team("26", in: .collegeFootball)
-    private let seahawks = team("26", in: .nfl)
 
-    /// Each league keeps its own store, so the same ESPN id can mean two
-    /// different teams without the two slates ever mixing.
-    @Test func eachLeagueKeepsItsOwnSlate() async {
+    // MARK: - Both leagues on one day
+
+    @Test func bothLeaguesLoadTheSameDay() async {
+        let cfb = game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))
+        let nfl = game("n1", home: team("26", in: .nfl), away: team("27", in: .nfl))
+        let scoreboards = await makeScoreboards(cfb: [cfb], nfl: [nfl])
+
+        #expect(scoreboards.store(for: .collegeFootball).games(on: today()).map(\.id) == ["c1"])
+        #expect(scoreboards.store(for: .nfl).games(on: today()).map(\.id) == ["n1"])
+        #expect(Set(scoreboards.selectedDayGames.map(\.id)) == ["c1", "n1"])
+    }
+
+    @Test func eachLeagueGetsItsOwnAccordion() async {
+        let cfb = game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))
+        let nfl = game("n1", home: team("26", in: .nfl), away: team("27", in: .nfl))
+        let scoreboards = await makeScoreboards(cfb: [cfb], nfl: [nfl])
+
+        let sections = scoreboards.sections(followingIds: [])
+        #expect(sections.map(\.id) == [GameSection.id(for: .collegeFootball),
+                                       GameSection.id(for: .nfl)])
+        #expect(sections.map(\.title) == ["College Football", "NFL"])
+        #expect(sections.allSatisfy { $0.league != nil })
+    }
+
+    @Test func aLeagueWithNoGamesGetsNoSection() async {
+        let cfb = game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))
+        let scoreboards = await makeScoreboards(cfb: [cfb], nfl: [])
+
+        #expect(scoreboards.sections(followingIds: []).map(\.id)
+                == [GameSection.id(for: .collegeFootball)])
+    }
+
+    // MARK: - Following
+
+    @Test func followingLeadsAndTheGameStaysInItsLeagueToo() async {
+        // Sections are complete, never deduplicated: a followed game is in
+        // Following *and* in its league's list.
+        let home = team("1", in: .collegeFootball)
+        let cfb = game("c1", home: home, away: team("2", in: .collegeFootball))
+        let scoreboards = await makeScoreboards(cfb: [cfb])
+        let following = makeFollowing([home])
+
+        let sections = scoreboards.sections(followingIds: following.teamKeys)
+        #expect(sections.first?.id == GameSection.followingId)
+        #expect(sections.first?.games.map(\.id) == ["c1"])
+        #expect(sections.last?.games.map(\.id) == ["c1"])
+    }
+
+    @Test func followingIsCrossLeague() async {
+        let cfbTeam = team("1", in: .collegeFootball)
+        let nflTeam = team("26", in: .nfl)
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
+            cfb: [game("c1", home: cfbTeam, away: team("2", in: .collegeFootball))],
+            nfl: [game("n1", home: nflTeam, away: team("27", in: .nfl))])
+        let following = makeFollowing([cfbTeam, nflTeam])
 
-        #expect(scoreboards.store(for: .collegeFootball).games.map(\.id) == ["c1"])
-        #expect(scoreboards.store(for: .nfl).games.map(\.id) == ["n1"])
-        #expect(scoreboards.selected.league == .collegeFootball)
+        let section = try! #require(scoreboards.sections(followingIds: following.teamKeys).first)
+        #expect(section.id == GameSection.followingId)
+        #expect(Set(section.games.map(\.id)) == ["c1", "n1"])
+        // Rows tag their league when the section spans more than one —
+        // the screen's own scope no longer answers for them.
+        #expect(section.spansLeagues)
     }
 
-    // MARK: - Cross-league Following
-
-    /// "My games" shouldn't care which sport they belong to.
-    @Test func followingReachesIntoTheOtherLeague() async {
+    @Test func aSingleLeagueFollowingDoesNotTagItsRows() async {
+        let cfbTeam = team("1", in: .collegeFootball)
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
-        let following = makeFollowing()
-        following.toggle(bruins)
-        following.toggle(seahawks)
+            cfb: [game("c1", home: cfbTeam, away: team("2", in: .collegeFootball))])
+        let following = makeFollowing([cfbTeam])
 
-        let elsewhere = scoreboards.followedGamesElsewhere(than: .collegeFootball,
-                                                           following: following)
-        #expect(elsewhere.map(\.id) == ["n1"])
-
-        let sections = scoreboards.selected.sections(
-            followingIds: following.teamKeys, extraFollowingGames: elsewhere)
-        let followingSection = sections.first { $0.id == GameSection.followingId }
-        #expect(followingSection?.games.map(\.id) == ["c1", "n1"])
-        // Mixed leagues, so the rows tag which is which.
-        #expect(followingSection?.spansLeagues == true)
+        #expect(scoreboards.sections(followingIds: following.teamKeys).first?.spansLeagues == false)
     }
 
-    /// A single-league Following section tags nothing — the screen's own
-    /// scope already says which league you're looking at.
-    @Test func aSingleLeagueFollowingSectionIsUntagged() async {
+    @Test func followingHiddenWhenFollowingNobody() async {
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
-        let following = makeFollowing()
-        following.toggle(bruins)
-
-        let sections = scoreboards.selected.sections(followingIds: following.teamKeys)
-        #expect(sections.first { $0.id == GameSection.followingId }?.spansLeagues == false)
+            cfb: [game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))])
+        #expect(scoreboards.sections(followingIds: []).first?.id
+                == GameSection.id(for: .collegeFootball))
     }
 
-    /// The tag reaches VoiceOver too, so a cross-league section is legible
-    /// without sight of it.
-    @Test func aTaggedRowSpeaksItsLeagueFirst() {
-        let nflGame = game("n1", home: seahawks, away: team("25", in: .nfl))
-        let tagged = GameRow(game: nflGame, leagueTag: .nfl)
-        let untagged = GameRow(game: nflGame)
-
-        #expect(tagged.spokenLabel == "NFL, \(untagged.accessibilitySummary)")
-        // An untagged row says exactly what it always did.
-        #expect(untagged.spokenLabel == untagged.accessibilitySummary)
-    }
-
-    /// Following an id in one league must not pull the other league's team
-    /// of the same id in — the collision this whole axis exists for.
-    @Test func aCollidingIdInTheOtherLeagueIsNotFollowed() async {
+    @Test func aFollowedConferencePutsItsGamesInFollowing() async {
+        let sec = team("1", in: .collegeFootball, conference: 8)
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
-        let following = makeFollowing()
-        following.toggle(bruins)   // UCLA only
+            cfb: [game("c1", home: sec, away: team("2", in: .collegeFootball, conference: 1))])
+        let following = makeFollowing(conferences: [.cfb(8)])
 
-        #expect(scoreboards.followedGamesElsewhere(than: .collegeFootball,
-                                                   following: following).isEmpty)
+        #expect(scoreboards.sections(followingIds: following.teamKeys,
+                                     followedConferenceIds: following.conferenceIds)
+                .first?.games.map(\.id) == ["c1"])
     }
 
-    /// Browsing to another week is time navigation inside one league; the
-    /// other league's games have no honest place there, since the two
-    /// calendars don't line up at all.
-    @Test func aPastWeekDropsTheCrossLeagueGames() async {
+    @Test func anFCSVisitorJoinsFollowingViaItsFBSHost() async {
+        // The visitor carries no conference; the host's claim is what puts
+        // the game in a followed-conference fan's Following section.
+        let host = team("1", in: .collegeFootball, conference: 8)
+        let visitor = team("99", in: .collegeFootball, conference: nil)
+        let scoreboards = await makeScoreboards(cfb: [game("c1", home: host, away: visitor)])
+        let following = makeFollowing(conferences: [.cfb(8)])
+
+        #expect(scoreboards.sections(followingIds: following.teamKeys,
+                                     followedConferenceIds: following.conferenceIds)
+                .first?.games.map(\.id) == ["c1"])
+    }
+
+    // MARK: - Filters
+
+    @Test func liveOnlyNarrowsEveryLeagueAndHidesTheEmpties() async {
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
-        let following = makeFollowing()
-        following.toggle(seahawks)
+            cfb: [game("c-live", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball), live: true),
+                  game("c-pre", home: team("3", in: .collegeFootball),
+                       away: team("4", in: .collegeFootball))],
+            nfl: [game("n-pre", home: team("26", in: .nfl), away: team("27", in: .nfl))])
 
-        #expect(!scoreboards.followedGamesElsewhere(than: .collegeFootball,
-                                                    following: following).isEmpty)
-
-        let other = WeekSlot(label: "Week 9", shortLabel: "Wk 9", seasonType: 2,
-                             value: 9, startDate: nil, endDate: nil)
-        await scoreboards.store(for: .collegeFootball).select(week: other)
-
-        #expect(scoreboards.followedGamesElsewhere(than: .collegeFootball,
-                                                   following: following).isEmpty)
+        let sections = scoreboards.sections(followingIds: [], liveOnly: true)
+        #expect(sections.map(\.id) == [GameSection.id(for: .collegeFootball)])
+        #expect(sections.first?.games.map(\.id) == ["c-live"])
     }
 
-    // MARK: - Auto-pick
-
-    /// Opens on whichever league is actually playing.
-    @Test func exactlyOneLiveLeagueWinsTheColdLaunch() async {
+    @Test func aConferenceFilterHidesTheLeagueItCannotSpeakFor() async {
+        // "SEC" is not a question the NFL's slate can answer, so its
+        // section goes away rather than showing up empty.
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl), live: true)])
+            cfb: [game("c-sec", home: team("1", in: .collegeFootball, conference: 8),
+                       away: team("2", in: .collegeFootball, conference: 1)),
+                  game("c-other", home: team("3", in: .collegeFootball, conference: 4),
+                       away: team("4", in: .collegeFootball, conference: 1))],
+            nfl: [game("n1", home: team("26", in: .nfl, conference: 8),
+                       away: team("27", in: .nfl, conference: 8))])
 
-        #expect(scoreboards.autoSelectLiveLeague() == .nfl)
-        #expect(scoreboards.selectedLeague == .nfl)
+        let sections = scoreboards.sections(followingIds: [],
+                                            filter: .conference(.cfb(8)))
+        #expect(sections.map(\.id) == [GameSection.id(for: .collegeFootball)])
+        #expect(sections.first?.games.map(\.id) == ["c-sec"])
     }
 
-    /// Ambiguity leaves the saved preference alone — an app that
-    /// rearranges itself is a surprise.
-    @Test func bothLiveOrNeitherLiveChangesNothing() async {
-        let bothLive = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball), live: true)],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl), live: true)])
-        #expect(bothLive.autoSelectLiveLeague() == nil)
-        #expect(bothLive.selectedLeague == .collegeFootball)
-
-        let neitherLive = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))],
-            selected: .nfl)
-        #expect(neitherLive.autoSelectLiveLeague() == nil)
-        #expect(neitherLive.selectedLeague == .nfl)
-    }
-
-    /// An explicit choice this session is never overridden.
-    @Test func anExplicitPickBeatsTheAutoPick() async {
+    @Test func top25HidesTheNFLWhichHasNoPoll() async {
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl), live: true)])
+            cfb: [game("ranked", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball), homeRank: 3),
+                  game("unranked", home: team("3", in: .collegeFootball),
+                       away: team("4", in: .collegeFootball))],
+            nfl: [game("n1", home: team("26", in: .nfl), away: team("27", in: .nfl))])
 
-        scoreboards.select(.collegeFootball)
-        #expect(scoreboards.autoSelectLiveLeague() == nil)
-        #expect(scoreboards.selectedLeague == .collegeFootball)
+        let sections = scoreboards.sections(followingIds: [], filter: .top25)
+        #expect(sections.map(\.id) == [GameSection.id(for: .collegeFootball)])
+        #expect(sections.first?.games.map(\.id) == ["ranked"])
     }
 
-    /// A restored preference is not an explicit choice — the auto-pick is
-    /// still allowed to move off it, which is the whole point.
-    @Test func aRestoredPreferenceStillYieldsToLiveGames() async {
+    @Test func theSlateFilterLeavesFollowingAlone() async {
+        // Narrowing "my games" to the SEC would silently empty the section
+        // for a Michigan fan — the mystery state the labeled chip exists
+        // to avoid. Live still composes: it is a state, not a scope.
+        let big10 = team("3", in: .collegeFootball, conference: 5)
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl), live: true)])
+            cfb: [game("sec", home: team("1", in: .collegeFootball, conference: 8),
+                       away: team("2", in: .collegeFootball, conference: 8)),
+                  game("mine", home: big10,
+                       away: team("4", in: .collegeFootball, conference: 5))])
+        let following = makeFollowing([big10])
 
-        scoreboards.restore(.collegeFootball)
-        #expect(scoreboards.autoSelectLiveLeague() == .nfl)
+        let sections = scoreboards.sections(followingIds: following.teamKeys,
+                                            filter: .conference(.cfb(8)))
+        #expect(sections.first?.id == GameSection.followingId)
+        #expect(sections.first?.games.map(\.id) == ["mine"])
+        #expect(sections.last?.games.map(\.id) == ["sec"])
     }
 
-    /// It fires once per launch, not on every scene activation.
-    @Test func theAutoPickOnlyEverFiresOnce() async {
+    @Test func liveComposesWithFollowing() async {
+        let mine = team("1", in: .collegeFootball)
         let scoreboards = await makeScoreboards(
-            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
-            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl), live: true)])
+            cfb: [game("mine-pre", home: mine, away: team("2", in: .collegeFootball))])
+        let following = makeFollowing([mine])
 
-        #expect(scoreboards.autoSelectLiveLeague() == .nfl)
-        #expect(scoreboards.autoSelectLiveLeague() == nil)
+        #expect(scoreboards.sections(followingIds: following.teamKeys, liveOnly: true).isEmpty)
+    }
+
+    @Test func sectionsAreChronological() async {
+        let calendar = Calendar.current
+        let noon = today()
+        let evening = calendar.date(byAdding: .hour, value: 7, to: noon) ?? noon
+        let mine = team("1", in: .collegeFootball)
+        let scoreboards = await makeScoreboards(
+            cfb: [game("late", home: mine, away: team("2", in: .collegeFootball), at: evening),
+                  game("early", home: mine, away: team("3", in: .collegeFootball), at: noon)])
+        let following = makeFollowing([mine])
+
+        let sections = scoreboards.sections(followingIds: following.teamKeys)
+        #expect(sections.first?.games.map(\.id) == ["early", "late"])
+        #expect(sections.last?.games.map(\.id) == ["early", "late"])
+    }
+
+    // MARK: - The day axis
+
+    @Test func theStripOpensOnToday() async {
+        let scoreboards = await makeScoreboards()
+        #expect(Calendar.current.isDateInToday(scoreboards.selectedDay))
+        #expect(scoreboards.isOnToday)
+    }
+
+    @Test func selectingADayMovesTheWholePage() async {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today()) ?? today()
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c-today", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball)),
+                  game("c-tomorrow", home: team("3", in: .collegeFootball),
+                       away: team("4", in: .collegeFootball), at: tomorrow)])
+
+        await scoreboards.select(day: tomorrow)
+        #expect(!scoreboards.isOnToday)
+        #expect(scoreboards.sections(followingIds: []).first?.games.map(\.id) == ["c-tomorrow"])
+
+        await scoreboards.selectToday()
+        #expect(scoreboards.isOnToday)
+        #expect(scoreboards.sections(followingIds: []).first?.games.map(\.id) == ["c-today"])
+    }
+
+    @Test func adjacentDayIsBoundedByTheSeason() async {
+        let scoreboards = await makeScoreboards()
+        #expect(scoreboards.adjacentDay(offset: 1) != nil)
+        #expect(scoreboards.adjacentDay(offset: -1) != nil)
+
+        // A swipe past either end of the season is a quiet no-op.
+        let span = SeasonSpan.days(year: scoreboards.seasonYear)
+        await scoreboards.select(day: span.upperBound)
+        #expect(scoreboards.adjacentDay(offset: 1) == nil)
+        await scoreboards.select(day: span.lowerBound)
+        #expect(scoreboards.adjacentDay(offset: -1) == nil)
+    }
+
+    @Test func theStripSpansTheWholeSeason() async {
+        let scoreboards = await makeScoreboards()
+        let days = scoreboards.days()
+        let span = SeasonSpan.days(year: scoreboards.seasonYear)
+
+        #expect(days.first?.date == Calendar.current.startOfDay(for: span.lowerBound))
+        #expect(days.last?.date == Calendar.current.startOfDay(for: span.upperBound))
+        // Contiguous, one chip per day, no gaps.
+        #expect(Set(days.map(\.id)).count == days.count)
+    }
+
+    @Test func aPastSeasonRebindsTheStrip() async {
+        let scoreboards = await makeScoreboards()
+        await scoreboards.select(season: 2019)
+
+        #expect(scoreboards.seasonYear == 2019)
+        #expect(!scoreboards.isOnToday)
+        let span = SeasonSpan.days(year: 2019)
+        #expect(scoreboards.days().first?.date == Calendar.current.startOfDay(for: span.lowerBound))
+    }
+
+    @Test func availableSeasonsRunBackToTheCFPEra() async {
+        let scoreboards = await makeScoreboards()
+        #expect(scoreboards.availableSeasons.first == scoreboards.currentSeasonYear)
+        #expect(scoreboards.availableSeasons.last == 2014)
+    }
+
+    // MARK: - Deep links
+
+    @Test func aGameIsFoundByIdAcrossLeagues() async {
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))],
+            nfl: [game("n1", home: team("26", in: .nfl), away: team("27", in: .nfl))])
+
+        #expect(scoreboards.game(id: "n1")?.id == "n1")
+        #expect(scoreboards.game(id: "c1")?.id == "c1")
+        #expect(scoreboards.game(id: "nope") == nil)
     }
 }
 
-@Suite struct NFLSectionGroupingTests {
-    /// ESPN's NFL scoreboard ships no `conferenceId`, so without the
-    /// registry fallback every NFL game would land in "Other".
-    @Test func theRegistrySuppliesTheDivisionTheScoreboardOmits() {
-        #expect(Conference.division(forTeamId: "26", in: .nfl) == 3)      // Seattle → NFC West
-        #expect(Conference.division(forTeamId: "12", in: .nfl) == 6)      // KC → AFC West
-        #expect(Conference.division(forTeamId: "999", in: .nfl) == nil)
-        // College football carries its own id inline and needs no table.
-        #expect(Conference.division(forTeamId: "26", in: .collegeFootball) == nil)
+@Suite struct SeasonSpanTests {
+    @Test func aSeasonOpensInAugustAndClosesAfterTheSuperBowl() {
+        let calendar = Calendar.current
+        let span = SeasonSpan.days(year: 2026)
+        #expect(calendar.component(.year, from: span.lowerBound) == 2026)
+        #expect(calendar.component(.month, from: span.lowerBound) == 8)
+        // The NFL's February closes the app's season; college football's
+        // January would have cut the Super Bowl off.
+        #expect(calendar.component(.year, from: span.upperBound) == 2027)
+        #expect(calendar.component(.month, from: span.upperBound) == 2)
     }
 
-    /// Every NFL team resolves to a division, so no NFL game can fall into
-    /// the "Other" bucket for want of a group.
-    @Test func everyNFLTeamHasADivision() {
-        let ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                   17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 34]
-        for id in ids {
-            let division = Conference.division(forTeamId: String(id), in: .nfl)
-            #expect(division != nil, "team \(id) has no division")
-            #expect(Conference.tier(for: division, in: .nfl) == .nflDivision)
-        }
+    @Test func collegeFootballClosesInJanuary() {
+        let span = SeasonSpan.days(of: .collegeFootball, year: 2026)
+        #expect(Calendar.current.component(.month, from: span.upperBound) == 1)
+    }
+
+    @Test func aRolloverMonthBelongsToThePreviousSeason() {
+        let calendar = Calendar.current
+        let january = calendar.date(from: DateComponents(year: 2027, month: 1, day: 12))!
+        let september = calendar.date(from: DateComponents(year: 2026, month: 9, day: 12))!
+        #expect(SeasonSpan.year(containing: january) == 2026)
+        #expect(SeasonSpan.year(containing: september) == 2026)
     }
 }

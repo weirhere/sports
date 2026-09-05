@@ -19,7 +19,6 @@ final class LiveDetailHoldUITests: XCTestCase {
 
     @MainActor
     private func launchFixtureApp(liveOnly: Bool = false,
-                                  conferenceGrouping: Bool = false,
                                   summaryFlicker: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
@@ -34,13 +33,9 @@ final class LiveDetailHoldUITests: XCTestCase {
             // UIStateStore reads the key once at init; "none" parses to
             // no filter.
             "-ui.scoreFilter", "none",
-            "-ui.league", "cfb",
             "-data.provider", "fixture",
             "-poll.interval", "0.5",
         ]
-        if conferenceGrouping {
-            app.launchArguments += ["-ui.scoresGrouping", "conference"]
-        }
         if summaryFlicker {
             app.launchArguments += ["-fixture.summaryFlicker", "YES"]
         }
@@ -99,7 +94,7 @@ final class LiveDetailHoldUITests: XCTestCase {
     /// flickers.
     @MainActor
     func testLiveDetailSurvivesFilteredSectionChurn() throws {
-        let app = launchFixtureApp(liveOnly: true, conferenceGrouping: true)
+        let app = launchFixtureApp(liveOnly: true)
         let landmark = pushDetail(containing: "Alpha State", in: app)
         hold(landmark, seconds: 45,
              message: "detail popped under the Live filter's section churn")

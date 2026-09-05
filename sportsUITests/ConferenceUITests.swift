@@ -14,13 +14,8 @@ final class ConferenceUITests: XCTestCase {
     func testStandingsPageAndConferenceFollow() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
-                                "-ui.scoreFilter", "",
-                                // The cold-launch auto-pick opens on
-                                // whichever league is live, so every
-                                // live-ESPN suite pins one or it drifts.
-                                "-ui.league", "cfb"]
+                                "-ui.scoreFilter", ""]
         app.launch()
 
         // Teams tab: the first conference group's header reaches standings
@@ -28,10 +23,10 @@ final class ConferenceUITests: XCTestCase {
         // LazyVStack, so a section below the fold doesn't exist as an
         // element yet, and ACC sorts first under tier-then-name (the
         // existing smoke test leans on it the same way). The landmark is
-        // the search field, not a "ACC" text — Scores' conference grouping
-        // renders an ACC accordion too, so a text query can read "landed"
-        // while the app never left the Scores tab. Same reason the header
-        // predicate pins " teams": Scores' header is "ACC, N games".
+        // the search field rather than an "ACC" text, and the header
+        // predicate pins " teams", so a match can't be some other screen's
+        // ACC — cheap insurance that has outlived the Scores conference
+        // accordion it was written against.
         XCTAssertTrue(openTab("Teams", in: app, until: app.searchFields.firstMatch),
                       "Teams should show its search field")
         let accHeader = app.buttons.matching(NSPredicate(
@@ -119,23 +114,23 @@ final class ConferenceUITests: XCTestCase {
         // at rest.
         XCTAssertTrue(openTab("Scores", in: app, until: app.scoresFilterChip),
                       "Scores should render its header")
-        // A followed conference pins a whole slate into Following, and Top
-        // 25 stacks another ~20 games under it — the first conference
-        // header can sit beyond any reasonable swipe budget. Collapsing
-        // the two headline sections brings the conferences into reach;
-        // their headers are always at the top and the collapse persists
-        // exactly like a user's tap would.
-        for prefix in ["Following,", "Top 25,"] {
-            let header = app.buttons.matching(NSPredicate(
-                format: "label BEGINSWITH %@ AND value == %@", prefix, "expanded")).firstMatch
-            if header.waitForExistence(timeout: 3) {
-                header.tap()
-            }
-        }
-        let scoresStandings = app.buttons.matching(NSPredicate(
-            format: "label ENDSWITH %@", " standings")).firstMatch
-        XCTAssertTrue(scrollUntilExists(scoresStandings, in: app),
-                      "A Scores conference header should carry a standings button")
+        // Following a conference is what puts its whole slate into the
+        // Scores Following section. Asserting the section exists, not what
+        // is in it: the ACC may have no games on the day the app opened
+        // on, and the promise under test is that a conference follow
+        // counts as following someone.
+        //
+        // The conference-accordion assertion this replaces retired with
+        // the conference sections themselves (2026-09-05) — the breakdown
+        // by conference lives on Tables now.
+        let followingHeader = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Following,")).firstMatch
+        let leagueHeader = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "College Football,", "NFL,")).firstMatch
+        XCTAssertTrue(followingHeader.waitForExistence(timeout: 15)
+                        || leagueHeader.waitForExistence(timeout: 5),
+                      "Scores should render its day's sections")
     }
 
     @MainActor

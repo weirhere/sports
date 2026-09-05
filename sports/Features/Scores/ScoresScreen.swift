@@ -1,9 +1,15 @@
 import SwiftUI
 import os
 
-/// The product: one screen answering "what's the state of the league you
-/// follow right now" in one thumb, one scroll. League scope → week strip →
-/// section stack.
+/// The product: one screen answering "what's the state of the day" in one
+/// thumb, one scroll. Day strip → Following → one accordion per league.
+///
+/// The league used to be a segmented control and the day a week (Andy,
+/// 2026-09-05). Both changed for the same reason: a selector shows one
+/// league at a time and has to grow a segment per sport, while a week strip
+/// can only ever be honest about one league's calendar. Stacked league
+/// accordions under a shared day cost one row each and scale to whatever
+/// sport lands next.
 struct ScoresScreen: View {
     /// Forensics for the self-popping live detail (BACKLOG E5, found
     /// 2026-08-29): a pop through the path binding logs a count change; a
@@ -13,29 +19,25 @@ struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
-    // Owned by RootView so the search cover shares the loaded weeks and
-    // polling follows the scene, not this tab. One store per league; the
-    // header picks which one is on screen.
+    // Owned by RootView so the search cover shares the loaded days and
+    // polling follows the scene, not this tab.
     @Environment(LeagueScoreboards.self) private var scoreboards
 
-    private var store: ScoreboardStore { scoreboards.selected }
-
     // NavigationPath, not [Game]: the stack pushes Team (game detail's
-    // header links) and ConferenceDestination (section headers' standings
-    // links) too, and a typed path can't hold them all.
+    // header links) and ConferenceDestination (a standings link from a
+    // team page) too, and a typed path can't hold them all.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
     @State private var pinchHandled = false
-    // Which edge the incoming week's content pushes from, set before every
-    // week change so the slide matches the strip's spatial order.
-    @State private var weekSlideEdge: Edge = .trailing
-    // Nil until the first user week change: the initial load and season
+    // Which edge the incoming day's content pushes from, set before every
+    // day change so the slide matches the strip's spatial order.
+    @State private var daySlideEdge: Edge = .trailing
+    // Nil until the first user day change: the initial load and season
     // switches have no meaningful direction, so they must not slide.
-    @State private var weekSlideAnimation: Animation?
-    // The interactive week swipe (Andy's ask, 2026-08-25: content moves
-    // the moment the thumb does, not after it lifts). The content tracks
-    // the finger; past the commit threshold it settles off-screen and the
-    // adjacent week takes over with no push transition of its own.
+    @State private var daySlideAnimation: Animation?
+    // The interactive day swipe (Andy's ask, 2026-08-25, inherited from
+    // the week swipe): content moves the moment the thumb does, not after
+    // it lifts.
     @State private var dragOffset: CGFloat = 0
     @State private var dragAxis: DragAxis?
     @State private var paneWidth: CGFloat = 393
@@ -47,36 +49,35 @@ struct ScoresScreen: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 ScoresHeader(
-                    league: scoreboards.selectedLeague,
                     liveOnly: uiState.liveOnly,
                     scoreFilter: uiState.scoreFilter,
                     pastSeasonYear: pastSeasonYear,
-                    onSelectLeague: { select(league: $0) },
                     onToggleLive: { toggleLive() },
                     onTapFilter: { showsFilterSheet = true }
                 )
-                WeekStrip(weeks: store.weeks, selectedId: store.selectedWeek?.id) { week in
-                    select(week: week)
+                DayStrip(days: scoreboards.days(),
+                         selectedId: DayFormat.id(for: scoreboards.selectedDay),
+                         today: .now) { day in
+                    select(day: day)
                 }
                 Divider().overlay(Color.divider)
-                if store.lastError != nil, !sections.isEmpty {
+                if scoreboards.lastError != nil, !sections.isEmpty {
                     refreshErrorBanner
                 }
                 // The ZStack scopes the push transition: the content's
-                // identity is the selected week, so a week change slides the
-                // old slate out and the new one in from `weekSlideEdge`.
+                // identity is the selected day, so a day change slides the
+                // old slate out and the new one in from `daySlideEdge`.
                 ZStack {
                     content
-                        .id(store.selectedWeek?.id)
-                        .transition(.push(from: weekSlideEdge))
+                        .id(DayFormat.id(for: scoreboards.selectedDay))
+                        .transition(.push(from: daySlideEdge))
                         .offset(x: dragOffset)
-                    // The adjacent week rides in with the finger — its
-                    // real slate when the prefetch has landed (FotMob's
-                    // mid-swipe preview, Andy 2026-08-31), the skeleton
-                    // until then. Either way the commit handoff is
-                    // seamless: the cache seeds the real week too.
+                    // The adjacent day rides in with the finger. Its games
+                    // are already in hand — every fetch is a five-day
+                    // window, so both neighbours land in the same request
+                    // the shown day did.
                     if dragOffset != 0,
-                       let target = store.adjacentWeek(offset: dragOffset < 0 ? 1 : -1) {
+                       let target = scoreboards.adjacentDay(offset: dragOffset < 0 ? 1 : -1) {
                         previewPane(for: target)
                             .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
                     }
@@ -87,14 +88,14 @@ struct ScoresScreen: View {
                             .onChange(of: proxy.size.width) { _, width in paneWidth = width }
                     }
                 )
-                .animation(weekSlideAnimation, value: store.selectedWeek?.id)
-                // Horizontal counterpart to the week strip: swipe left for
-                // the next week, right for the previous. Simultaneous so
-                // vertical scrolling and the pinch gesture are unaffected;
-                // attached here (not inside `content`) so the empty week
-                // and error states are swipeable too — the states where
-                // leaving the week matters most.
-                .simultaneousGesture(weekSwipeGesture)
+                .animation(daySlideAnimation, value: scoreboards.selectedDay)
+                // Horizontal counterpart to the day strip: swipe left for
+                // tomorrow, right for yesterday. Simultaneous so vertical
+                // scrolling and the pinch gesture are unaffected; attached
+                // here (not inside `content`) so the empty day and error
+                // states are swipeable too — the states where leaving the
+                // day matters most.
+                .simultaneousGesture(daySwipeGesture)
             }
             .background(Color.bgPrimary)
             .toolbar(.hidden, for: .navigationBar)
@@ -110,20 +111,15 @@ struct ScoresScreen: View {
         }
         .sheet(isPresented: $showsFilterSheet) {
             ScoreFilterSheet(
-                league: scoreboards.selectedLeague,
                 current: uiState.scoreFilter,
-                grouping: uiState.scoresGrouping,
-                seasonYear: store.seasonYear,
-                seasons: store.availableSeasons,
+                seasonYear: scoreboards.seasonYear,
+                seasons: scoreboards.availableSeasons,
                 onSelect: { selection in
                     withAnimation { uiState.scoreFilter = selection }
                 },
-                onSetGrouping: { grouping in
-                    withAnimation { uiState.scoresGrouping = grouping }
-                },
                 onSelectSeason: { year in
-                    weekSlideAnimation = nil
-                    Task { await store.select(season: year) }
+                    daySlideAnimation = nil
+                    Task { await scoreboards.select(season: year) }
                 }
             )
         }
@@ -139,14 +135,14 @@ struct ScoresScreen: View {
         }
         // The slate's divisions follow the user's choices: FBS always, FCS
         // only while an FCS conference is filtered to or followed (E8 scope
-        // (b)). `select(divisions:)` refetches and clears the week cache,
-        // and no-ops when nothing changed — so these fire freely.
-        .task(id: neededDivisions) { await store.select(divisions: neededDivisions) }
+        // (b)). `select(divisions:)` refetches and no-ops when nothing
+        // changed — so this fires freely.
+        .task(id: neededDivisions) { await scoreboards.select(divisions: neededDivisions) }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
-        .onChange(of: store.games) { _, _ in resolvePendingGame() }
-        // The drag-commit handoff: the new week takes the screen the moment
-        // its id lands, so the settled offset snaps home with it.
-        .onChange(of: store.selectedWeek?.id) { _, _ in dragOffset = 0 }
+        .onChange(of: scoreboards.selectedDay) { _, _ in
+            dragOffset = 0
+            resolvePendingGame()
+        }
     }
 
     private var neededDivisions: Set<Conference.Division> {
@@ -155,96 +151,55 @@ struct ScoresScreen: View {
     }
 
     private var sections: [GameSection] {
-        store.sections(followingIds: following.teamKeys,
-                       followedConferenceIds: following.conferenceIds,
-                       grouping: uiState.scoresGrouping,
-                       liveOnly: uiState.liveOnly,
-                       filter: uiState.scoreFilter,
-                       extraFollowingGames: followedGamesElsewhere)
-    }
-
-    /// Followed games from the leagues that aren't on screen. Following is
-    /// the one section that stays cross-league — "my games" shouldn't care
-    /// which sport they belong to.
-    private var followedGamesElsewhere: [Game] {
-        scoreboards.followedGamesElsewhere(than: scoreboards.selectedLeague,
-                                           following: following)
-    }
-
-    /// Switching leagues re-scopes the whole screen: week strip, sections,
-    /// filter and season all belong to the league. The slide direction
-    /// follows the selector's own order, left to right.
-    private func select(league: League) {
-        guard league != scoreboards.selectedLeague else { return }
-        let forward = (League.allCases.firstIndex(of: league) ?? 0)
-            > (League.allCases.firstIndex(of: scoreboards.selectedLeague) ?? 0)
-        // Commit the edge before the switch — setting both together makes
-        // the outgoing pane resolve `.push` against the stale edge and
-        // slide the wrong way (the week-swipe lesson, 2026-08-31).
-        withTransaction(Transaction()) {
-            weekSlideEdge = forward ? .trailing : .leading
-            weekSlideAnimation = .easeOut(duration: 0.22)
-        }
-        scoreboards.select(league)
-        uiState.league = league
-        dragOffset = 0
+        scoreboards.sections(followingIds: following.teamKeys,
+                             followedConferenceIds: following.conferenceIds,
+                             liveOnly: uiState.liveOnly,
+                             filter: uiState.scoreFilter)
     }
 
     /// The selected season when browsing the past — what the funnel chip
     /// surfaces so a 2019 slate is never mistaken for this week.
     private var pastSeasonYear: Int? {
-        guard let year = store.seasonYear, year != store.currentSeasonYear else { return nil }
-        return year
+        scoreboards.seasonYear == scoreboards.currentSeasonYear ? nil : scoreboards.seasonYear
     }
 
-    /// Turning the Live filter on goes to where live games are — the
-    /// current week (Andy, 2026-08-29): filtering a future week to
-    /// nothing answers the wrong question. Within the season the jump
-    /// slides like a chip tap; a past season resets with no direction
-    /// (season switches never slide). Turning it off stays put.
+    /// Turning the Live filter on goes to where live games are — today
+    /// (Andy, 2026-08-29, when this was the current week): filtering a
+    /// future day to nothing answers the wrong question. Turning it off
+    /// stays put.
     private func toggleLive() {
         withAnimation { uiState.liveOnly.toggle() }
-        guard uiState.liveOnly else { return }
-        if store.seasonYear != store.currentSeasonYear {
-            weekSlideAnimation = nil
-            Task { await store.selectCurrentWeek() }
-        } else if let home = store.currentWeekSlot, home.id != store.selectedWeek?.id {
-            select(week: home)
-        }
+        guard uiState.liveOnly, !scoreboards.isOnToday else { return }
+        daySlideAnimation = nil
+        Task { await scoreboards.selectToday() }
     }
 
-    /// Every user week change funnels through here so chip taps and swipes
+    /// Every user day change funnels through here so chip taps and swipes
     /// share one direction rule: content slides the way the strip moves.
-    private func select(week: WeekSlot) {
-        guard week.id != store.selectedWeek?.id else { return }
-        if let from = store.weeks.firstIndex(where: { $0.id == store.selectedWeek?.id }),
-           let to = store.weeks.firstIndex(where: { $0.id == week.id }) {
-            weekSlideEdge = to > from ? .trailing : .leading
-        }
-        weekSlideAnimation = .default
-        Task { await store.select(week: week) }
+    private func select(day: Date) {
+        let day = Calendar.current.startOfDay(for: day)
+        guard day != scoreboards.selectedDay else { return }
+        daySlideEdge = day > scoreboards.selectedDay ? .trailing : .leading
+        daySlideAnimation = .default
+        Task { await scoreboards.select(day: day) }
     }
 
-    /// A gesture-only accelerator, like the pinch: the week strip keeps a
-    /// tappable chip per week, so nothing is swipe-gated for VoiceOver or
+    /// A gesture-only accelerator, like the pinch: the day strip keeps a
+    /// tappable chip per day, so nothing is swipe-gated for VoiceOver or
     /// switch users. The axis locks on first movement so vertical scroll
-    /// flicks never jiggle the week; horizontal drags move the content
+    /// flicks never jiggle the day; horizontal drags move the content
     /// immediately, commit on distance or flick velocity, and season ends
     /// resist instead of paging. No haptic (the budget of three holds).
-    private var weekSwipeGesture: some Gesture {
+    private var daySwipeGesture: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
                 if dragAxis == nil, abs(dx) > 10 || abs(dy) > 10 {
                     dragAxis = abs(dx) > abs(dy) * 1.5 ? .horizontal : .vertical
-                    // Idempotent backstop: the neighbors usually warmed on
-                    // settle, but a failed prefetch gets another chance
-                    // the moment a swipe actually starts.
-                    if dragAxis == .horizontal { store.prefetchAdjacentWeeks() }
                 }
                 guard dragAxis == .horizontal else { return }
-                let hasTarget = store.adjacentWeek(offset: dx < 0 ? 1 : -1) != nil
+                let hasTarget = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1) != nil
                 dragOffset = hasTarget ? dx : dx * 0.25
             }
             .onEnded { value in
@@ -258,7 +213,7 @@ struct ScoresScreen: View {
                 let commits = abs(dx) > paneWidth * 0.35
                     || (sameDirection && abs(flick) > paneWidth * 0.6)
                 guard commits,
-                      let target = store.adjacentWeek(offset: dx < 0 ? 1 : -1) else {
+                      let target = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1) else {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
                         dragOffset = 0
                     }
@@ -270,22 +225,20 @@ struct ScoresScreen: View {
                 } completion: {
                     // The push transition is the chip taps' mechanism; the
                     // drag already animated, so the id swap is instant. The
-                    // offset resets when the week actually changes (see
-                    // onChange below), so the skeleton pane covers the
-                    // handoff frame.
-                    weekSlideAnimation = nil
-                    Task { await store.select(week: target) }
+                    // offset resets when the day actually changes (see
+                    // onChange above), so the preview covers the handoff.
+                    daySlideAnimation = nil
+                    Task { await scoreboards.select(day: target) }
                 }
             }
     }
 
-    /// Lands a widget/notification tap on its game once the current week is
-    /// loaded. The widget only links current-week games, so `store.games`
-    /// is the complete search space; an id that isn't there (week rolled
-    /// over) degrades to landing on Scores.
+    /// Lands a widget/notification tap on its game. The search space is
+    /// every day currently in memory across every league; an id that isn't
+    /// there degrades to landing on Scores.
     private func resolvePendingGame() {
         guard let pendingId = router.pendingGameId,
-              let game = store.games.first(where: { $0.id == pendingId }) else { return }
+              let game = scoreboards.game(id: pendingId) else { return }
         router.pendingGameId = nil
         path = NavigationPath([game])
     }
@@ -297,51 +250,27 @@ struct ScoresScreen: View {
             emptyState
         } else {
             ScrollView {
-                // pinnedViews only bites in the date grouping, where each
-                // accordion emits a Section whose day header sticks to the
-                // top while its games scroll (Andy, 2026-08-25).
-                // Date mode runs spacing 0 so a pinned header sits flush on
-                // its rows; each section carries its own gap to the next.
-                LazyVStack(spacing: uiState.scoresGrouping == .date ? 0 : Spacing.sm,
-                           pinnedViews: [.sectionHeaders]) {
+                LazyVStack(spacing: Spacing.sm) {
                     // The Following slot's empty state: following nobody
                     // renders the follow prompt where the section would be.
                     if !following.followsAnyone, !uiState.followPromptDismissed {
                         FollowPromptCard()
                             .cardSurface()
-                            .padding(.bottom, uiState.scoresGrouping == .date ? Spacing.sm : 0)
                     }
                     ForEach(sections) { section in
-                        if uiState.scoresGrouping == .date {
-                            SectionAccordion(
-                                section: section,
-                                isExpanded: uiState.isExpanded(section.id),
-                                onToggle: { withAnimation { uiState.toggle(section.id) } },
-                                onOpenStandings: section.conference.map { id in
-                                    { path.append(ConferenceDestination(conference: id,
-                                                                        name: section.title)) }
-                                },
-                                pinsHeader: true
-                            )
-                        } else {
-                            SectionAccordion(
-                                section: section,
-                                isExpanded: uiState.isExpanded(section.id),
-                                onToggle: { withAnimation { uiState.toggle(section.id) } },
-                                onOpenStandings: section.conference.map { id in
-                                    { path.append(ConferenceDestination(conference: id,
-                                                                        name: section.title)) }
-                                }
-                            )
-                            .cardSurface()
-                        }
+                        SectionAccordion(
+                            section: section,
+                            isExpanded: uiState.isExpanded(section.id),
+                            onToggle: { withAnimation { uiState.toggle(section.id) } }
+                        )
+                        .cardSurface()
                     }
                 }
                 .padding(Spacing.sm)
             }
             .background(Color.bgRecessed)
             .refreshable {
-                await store.refresh()
+                await scoreboards.refresh()
                 refreshCount += 1
             }
             .sensoryFeedback(.success, trigger: refreshCount)
@@ -366,53 +295,39 @@ struct ScoresScreen: View {
         }
     }
 
-    /// The incoming pane during a week drag. Render-only — no scrolling,
+    /// The incoming pane during a day drag. Render-only — no scrolling,
     /// tapping, refresh, or pinch until the commit makes it the real
     /// content — but it shares the accordions' expansion state, so the
     /// preview matches what lands.
     @ViewBuilder
-    private func previewPane(for target: WeekSlot) -> some View {
+    private func previewPane(for target: Date) -> some View {
+        let sections = scoreboards.sections(day: target,
+                                            followingIds: following.teamKeys,
+                                            followedConferenceIds: following.conferenceIds,
+                                            liveOnly: uiState.liveOnly,
+                                            filter: uiState.scoreFilter)
         Group {
-            if let cached = store.cachedGames(for: target) {
-                let sections = store.sections(from: cached,
-                                              followingIds: following.teamKeys,
-                                              followedConferenceIds: following.conferenceIds,
-                                              grouping: uiState.scoresGrouping,
-                                              liveOnly: uiState.liveOnly,
-                                              filter: uiState.scoreFilter)
-                if sections.isEmpty {
-                    VStack(spacing: Spacing.md) {
-                        Spacer()
-                        Text(uiState.liveOnly || uiState.scoreFilter != nil
-                             ? narrowedEmptyMessage : "No games this week")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: uiState.scoresGrouping == .date ? 0 : Spacing.sm,
-                                   pinnedViews: [.sectionHeaders]) {
-                            ForEach(sections) { section in
-                                if uiState.scoresGrouping == .date {
-                                    SectionAccordion(section: section,
-                                                     isExpanded: uiState.isExpanded(section.id),
-                                                     onToggle: {},
-                                                     pinsHeader: true)
-                                } else {
-                                    SectionAccordion(section: section,
-                                                     isExpanded: uiState.isExpanded(section.id),
-                                                     onToggle: {})
-                                        .cardSurface()
-                                }
-                            }
-                        }
-                        .padding(Spacing.sm)
-                    }
+            if sections.isEmpty {
+                VStack(spacing: Spacing.md) {
+                    Spacer()
+                    Text(emptyMessage(for: target))
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
             } else {
-                ScrollView { SkeletonRows() }
+                ScrollView {
+                    LazyVStack(spacing: Spacing.sm) {
+                        ForEach(sections) { section in
+                            SectionAccordion(section: section,
+                                             isExpanded: uiState.isExpanded(section.id),
+                                             onToggle: {})
+                                .cardSurface()
+                        }
+                    }
+                    .padding(Spacing.sm)
+                }
             }
         }
         .scrollDisabled(true)
@@ -428,7 +343,7 @@ struct ScoresScreen: View {
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
             Button("Retry") {
-                Task { await store.refresh() }
+                Task { await scoreboards.refresh() }
             }
             .font(.metaEmphasis)
             .foregroundStyle(.textPrimary)
@@ -441,17 +356,17 @@ struct ScoresScreen: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if store.isLoading {
+        if !scoreboards.selectedDayIsLoaded {
             ScrollView { SkeletonRows() }
         } else {
             VStack(spacing: Spacing.md) {
                 Spacer()
-                if let error = store.lastError {
+                if let error = scoreboards.lastError {
                     Text(error)
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                     Button("Retry") {
-                        Task { await store.refresh() }
+                        Task { await scoreboards.refresh() }
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
@@ -472,42 +387,35 @@ struct ScoresScreen: View {
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
                 } else {
-                    Text("No games this week")
+                    Text(emptyMessage(for: scoreboards.selectedDay))
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
-                    if let kickoff = nextKickoff {
-                        Text("Season kicks off \(kickoff.formatted(.dateTime.weekday(.wide).month().day()))")
-                            .font(.metaEmphasis)
-                            .foregroundStyle(.textPrimary)
-                        Text(kickoff, style: .relative)
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                    }
                 }
                 Spacer()
             }
             .frame(maxWidth: .infinity)
             // The stack is mostly empty space, which doesn't hit-test;
-            // without this, the week swipe dies exactly where it's most
-            // needed — on an empty week.
+            // without this, the day swipe dies exactly where it's most
+            // needed — on an empty day.
             .contentShape(Rectangle())
         }
     }
 
-    /// What the narrowed-slate empty state says: live and the conference
-    /// filter compose into one sentence.
+    private func emptyMessage(for day: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(day) { return "No games today" }
+        if calendar.isDateInTomorrow(day) { return "No games tomorrow" }
+        return "No games on \(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))"
+    }
+
+    /// What the narrowed-slate empty state says: live and the slate filter
+    /// compose into one sentence.
     private var narrowedEmptyMessage: String {
         switch (uiState.liveOnly, uiState.scoreFilter) {
         case (true, let filter?): "No live \(filter.label) games right now"
         case (true, nil): "No live games right now"
-        case (false, let filter?): "No \(filter.label) games this week"
+        case (false, let filter?): "No \(filter.label) games this day"
         case (false, nil): ""
         }
-    }
-
-    /// The next week-slot start still in the future — the offseason
-    /// countdown target.
-    private var nextKickoff: Date? {
-        store.weeks.compactMap(\.startDate).filter { $0 > .now }.min()
     }
 }

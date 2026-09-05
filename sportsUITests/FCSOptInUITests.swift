@@ -26,8 +26,6 @@ final class FCSOptInUITests: XCTestCase {
             // UIStateStore reads the key once at init; "none" parses to
             // no filter.
             "-ui.scoreFilter", "none",
-            "-ui.league", "cfb",
-            "-ui.scoresGrouping", "conference",
             "-data.provider", "fixture",
             "-poll.interval", "0.5",
         ]
@@ -56,28 +54,28 @@ final class FCSOptInUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Filtered to Missouri Valley"].waitForExistence(timeout: 10),
                       "the FCS conference was never actually selected")
 
-        // The section exists at all — conference accordions start
-        // collapsed on Scores (only Following and Top 25 open by default),
-        // so this header, whose label carries the game count, is the first
-        // proof the slate widened.
-        let section = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
-                                  "Missouri Valley", "game"))
-            .firstMatch
-        XCTAssertTrue(scrollUntilExists(section, in: app),
-                      "opting into FCS produced no section for it")
-        section.tap()
+        // The filter narrows the league accordion rather than spawning a
+        // conference one (2026-09-05: the conference breakdown moved to
+        // Tables), so the proof is the league section still being there
+        // with the FCS slate inside it. League sections start open.
+        let league = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "College Football,")).firstMatch
+        XCTAssertTrue(league.waitForExistence(timeout: 10),
+                      "opting into FCS left no college football section")
+        if league.value as? String == "collapsed" {
+            league.tap()
+        }
 
         // And its games are real: `fx-fcs` lives ONLY in the fixture's
         // group-81 payload, so finding it proves the store widened its
         // fetch rather than re-filtering games it already had. That the
         // default slate does NOT carry it is covered by DivisionOptInTests
         // and ScoreboardStoreTests, without a 20-swipe scroll to prove a
-        // negative — which also left the header scrolled off screen.
+        // negative.
         let fcsRow = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", "Lima A&M"))
             .firstMatch
         XCTAssertTrue(scrollUntilExists(fcsRow, in: app),
-                      "the FCS section's games never rendered")
+                      "the FCS slate's games never rendered")
     }
 }

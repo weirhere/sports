@@ -231,6 +231,11 @@ nonisolated struct ScheduleResponseDTO: Decodable {
     let requestedSeason: ScheduleSeasonDTO?
     let team: ScheduleTeamDTO?
     let events: LossyArray<ScheduleEventDTO>?
+    /// The week this team doesn't play. The NFL ships it at the top level
+    /// (verified live 2026-09-05: Seattle's 2025 schedule says 8); college
+    /// football omits it, since an open date there isn't a league-assigned
+    /// bye anyone plans around.
+    let byeWeek: FlexibleInt?
 }
 
 nonisolated struct ScheduleSeasonDTO: Decodable {

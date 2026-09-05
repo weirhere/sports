@@ -12,36 +12,36 @@ final class ScreenshotTests: XCTestCase {
         let prefix = ProcessInfo.processInfo.environment["SNAPSHOT_PREFIX"] ?? "shot"
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
-                                "-ui.scoreFilter", "",
-                                // The cold-launch auto-pick opens on
-                                // whichever league is live, so every
-                                // live-ESPN suite pins one or it drifts.
-                                "-ui.league", "cfb"]
+                                "-ui.scoreFilter", ""]
         app.launch()
 
-        // Scores, conference grouping — expand SEC so rows are visible.
-        let sec = app.staticTexts["SEC"]
-        XCTAssertTrue(sec.waitForExistence(timeout: 15))
+        // Scores: the day's slate, one accordion per league. Which leagues
+        // are playing depends on the day, so the shot waits on whichever
+        // one is there rather than naming it.
+        let anyLeague = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "College Football,", "NFL,")).firstMatch
+        XCTAssertTrue(anyLeague.waitForExistence(timeout: 20))
         let gameLink = app.scrollViews.buttons.matching(NSPredicate(
             format: "label CONTAINS %@", " at ")).firstMatch
         if !gameLink.exists {
-            sec.tap()
+            anyLeague.tap()
         }
-        XCTAssertTrue(gameLink.waitForExistence(timeout: 5),
-                      "Expanding SEC should reveal game rows")
-        snapshot(app, "\(prefix)-scores-conference")
+        XCTAssertTrue(gameLink.waitForExistence(timeout: 10),
+                      "An expanded league should reveal game rows")
+        snapshot(app, "\(prefix)-scores")
 
-        // Scores, date grouping — the toggle lives in the filter sheet.
-        XCTAssertTrue(setScoresGrouping(byDate: true, in: app))
-        _ = app.staticTexts.matching(NSPredicate(
-            format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*"))
-            .firstMatch.waitForExistence(timeout: 5)
-        snapshot(app, "\(prefix)-scores-by-date")
-        XCTAssertTrue(setScoresGrouping(byDate: false, in: app))
+        // The filter sheet, which now carries the season and the slate.
+        let funnel = app.scoresFilterChip
+        if funnel.waitForExistence(timeout: 10) {
+            funnel.tap()
+            _ = app.staticTexts["Slate"].waitForExistence(timeout: 5)
+            snapshot(app, "\(prefix)-scores-filter")
+            dismissFilterSheet(in: app)
+        }
 
-        // Game detail off the expanded SEC section.
+        // Game detail off the expanded league section.
         XCTAssertTrue(gameLink.waitForExistence(timeout: 5))
         gameLink.tap()
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))

@@ -39,9 +39,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// The league's own mark, for the selector and cross-league rows.
+    /// The league's own mark, where one exists.
+    ///
+    /// Only the NFL's does: `leagues/500/nfl.png` is real, and every
+    /// college-football spelling 404s (`college-football`, `ncaa`,
+    /// `ncaaf`, `cfb`, `ncaa_football` — all probed live 2026-09-05).
+    /// Which is why the Scores league headers are name-only, the same
+    /// language the Tables hub uses: one league wearing a badge and the
+    /// other wearing a hole reads as a missing asset, not a hierarchy.
     var logoURL: URL? {
-        URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
+        guard self == .nfl else { return nil }
+        return URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
     }
 
     /// How far back the season picker goes. College football floors at the
@@ -56,21 +64,6 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         switch self {
         case .collegeFootball: 1
         case .nfl: 2
-        }
-    }
-
-    /// Weekdays (`Calendar` numbering, 1 = Sunday) on which the week strip
-    /// stays pinned to the week that just finished rather than following
-    /// ESPN's flipped-forward current week.
-    ///
-    /// College football's slate is Saturday, so Sunday is catch-up day and
-    /// the new poll drops in place. The NFL's week runs Thursday → Monday,
-    /// so Monday night is still *this* week and Tuesday is the dead day —
-    /// both pin back, and the strip rolls over Wednesday morning.
-    var completedWeekWeekdays: Set<Int> {
-        switch self {
-        case .collegeFootball: [1]        // Sunday
-        case .nfl: [2, 3]                 // Monday, Tuesday
         }
     }
 
@@ -89,6 +82,11 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// the column says what it actually holds.
     static func inGroupRecordCaption(_ league: League) -> String {
         league == .nfl ? "DIV" : "CONF"
+    }
+
+    /// The long form, for a card row rather than a table column.
+    static func inGroupRecordLabel(_ league: League) -> String {
+        league == .nfl ? "Division" : "Conference"
     }
 
     /// The spoken form, for the row's VoiceOver sentence.

@@ -8,54 +8,52 @@ final class SmokeUITests: XCTestCase {
         let app = XCUIApplication()
         // A fresh simulator would otherwise get the pick-your-teams sheet;
         // the arg lands in UserDefaults' argument domain and marks it seen.
-        // Grouping is pinned to conference the same way — the test asserts
-        // conference headers, and the sim may have "by date" persisted.
+        // The Scores filters persist across launches by design, so every
+        // suite that queries game rows pins them or it inherits whatever
+        // the last run left selected.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
-                                "-ui.scoreFilter", "",
-                                // The cold-launch auto-pick opens on
-                                // whichever league is live, so every
-                                // live-ESPN suite pins one or it drifts.
-                                "-ui.league", "cfb"]
+                                "-ui.scoreFilter", ""]
         app.launch()
 
-        // Scores loads a real slate. Persisted follows can swell Following
-        // (and Top 25 stacks ~20 games under it) far enough that SEC sits
-        // past any reasonable swipe budget on a full Saturday, so collapse
-        // the headline sections first — ConferenceUITests does the same,
-        // and the state persists exactly like a user's tap would. The
-        // longer first wait covers the initial slate load.
-        for (index, prefix) in ["Following,", "Top 25,"].enumerated() {
-            let header = app.buttons.matching(NSPredicate(
-                format: "label BEGINSWITH %@ AND value == %@", prefix, "expanded")).firstMatch
-            if header.waitForExistence(timeout: index == 0 ? 10 : 3) {
-                header.tap()
-            }
-        }
-        XCTAssertTrue(scrollUntilExists(app.staticTexts["SEC"], in: app),
-                      "Scores should show the SEC section header")
+        // Scores loads a real slate as one accordion per league. At least
+        // one of them has to be there — which one depends on the day, so
+        // the assertion names neither: a September Saturday is college
+        // football only, a September Sunday is the NFL only.
+        //
+        // Deliberately not asserting on the day: whichever day the app
+        // opens on, the leagues are its sections.
+        let anyLeague = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "College Football,", "NFL,")).firstMatch
+        XCTAssertTrue(anyLeague.waitForExistence(timeout: 20),
+                      "Scores should show at least one league accordion")
+        snapshot(app, "scores-day")
 
-        // Grouping toggle, now inside the filter sheet: by date swaps
-        // conference sections for day sections; toggling back restores the
-        // conference stack. The funnel chip lives in the fixed header, so
-        // it stays hittable after scrolling.
-        XCTAssertTrue(setScoresGrouping(byDate: true, in: app),
-                      "The filter sheet should offer the By date segment")
-        let dayHeader = app.staticTexts.matching(NSPredicate(
-            format: "label MATCHES %@", "(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day.*")).firstMatch
-        XCTAssertTrue(scrollUntilExists(dayHeader, in: app, timeout: 5),
-                      "Date grouping should show a day section header")
-        snapshot(app, "scores-by-date")
-        XCTAssertTrue(setScoresGrouping(byDate: false, in: app),
-                      "The filter sheet should offer the By conference segment")
-        // Both directions: the list keeps the day-header hunt's scroll
-        // offset across the grouping switch, which can land past SEC —
-        // a downward-only hunt then walks away from it.
-        let sec = app.staticTexts["SEC"]
-        XCTAssertTrue(scrollUntilExists(sec, in: app, timeout: 5)
-                        || scrollUntilExists(sec, in: app, revealing: .above, timeout: 2),
-                      "Toggling back should restore conference sections")
+        // The accordion collapses and reopens, and the state is the user's
+        // to keep — league sections start open and remember being closed.
+        let wasExpanded = anyLeague.value as? String == "expanded"
+        anyLeague.tap()
+        XCTAssertNotEqual(anyLeague.value as? String,
+                          wasExpanded ? "expanded" : "collapsed",
+                          "Tapping a league header should toggle it")
+        anyLeague.tap()
+
+        // The day strip walks the season. Yesterday always exists inside
+        // it, and the Today chip is the way back — it only appears once
+        // the strip has wandered off today.
+        let today = app.buttons["day-strip-today"]
+        XCTAssertFalse(today.exists, "The Today chip should be hidden on today")
+        app.swipeLeft()
+        XCTAssertTrue(today.waitForExistence(timeout: 10),
+                      "Swiping to another day should offer the way back")
+        today.tap()
+        // XCUIElement has no wait-for-absence, and the chip disappearing
+        // *is* the assertion — the strip only offers it off today.
+        let goneExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: today)
+        XCTAssertEqual(XCTWaiter().wait(for: [goneExpectation], timeout: 10), .completed,
+                       "Tapping Today should return the strip home")
 
         // Tables leads with the Top 25 row; the poll itself is one tap
         // down. Which poll depends on the calendar — the AP preseason Top

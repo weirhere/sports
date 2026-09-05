@@ -24,7 +24,10 @@ struct ConferencePage: View {
 
     /// Seasons fetched this visit, keyed by year — flipping back to a seen
     /// season costs nothing (TeamPage's caching pattern).
-    @State private var standingsByYear: [Int: ConferenceStandings] = [:]
+    /// The season's standings tables — one for a conference that ships
+    /// its own, one per division for a divisional one (the Sun Belt,
+    /// the 2019 AAC), which the page renders as separate tables.
+    @State private var standingsByYear: [Int: [ConferenceStandings]] = [:]
     @State private var gamesByYear: [Int: [Game]] = [:]
     @State private var selectedYear = CFBSeason.year()
     @State private var loadingYears: Set<Int> = []
@@ -56,7 +59,7 @@ struct ConferencePage: View {
     /// past season's table gets no live claims.
     private var liveGames: [Game] {
         guard selectedYear == CFBSeason.year() else { return [] }
-        return liveBoard?.games.filter(\.isLive) ?? []
+        return liveBoard?.boardGames.filter(\.isLive) ?? []
     }
 
     init(destination: ConferenceDestination) {
@@ -66,7 +69,24 @@ struct ConferencePage: View {
         _tab = State(initialValue: .standings)
     }
 
-    private var standings: ConferenceStandings? { standingsByYear[selectedYear] }
+    /// The tables with something in them. A division that ships no entries
+    /// yet isn't a card saying nothing.
+    private var standingsTables: [ConferenceStandings] {
+        (standingsByYear[selectedYear] ?? []).filter { !$0.entries.isEmpty }
+    }
+
+    /// Every table's teams: a divisional conference's hero count is the
+    /// conference's, not one division's.
+    private var teamCount: Int {
+        standingsTables.reduce(0) { $0 + $1.entries.count }
+    }
+
+    /// Whether those tables are the conference's divisions rather than the
+    /// conference itself — the payload's answer, which is the only one that
+    /// can't go stale when a conference drops its divisions.
+    private var isDivisional: Bool {
+        standingsTables.contains { $0.parentId != nil }
+    }
     private var isLoading: Bool { loadingYears.contains(selectedYear) }
     private var showsError: Bool { failedYears.contains(selectedYear) }
     private var gamesLoading: Bool { gamesLoadingYears.contains(selectedYear) }
@@ -80,7 +100,7 @@ struct ConferencePage: View {
     private var games: [Game]? {
         guard let slate = gamesByYear[selectedYear] else { return nil }
         guard selectedYear == CFBSeason.year() else { return slate }
-        return Game.merging(slate, withLive: liveBoard?.games ?? [])
+        return Game.merging(slate, withLive: liveBoard?.boardGames ?? [])
     }
 
     /// Newest first, floored at 2014 — the CFP era, matching the Scores and
@@ -125,10 +145,12 @@ struct ConferencePage: View {
             // tab deliberately has no equivalent — the page opens at the
             // top with the hero in view (Andy, 2026-08-29, reverting the
             // scroll-to-current-week first cut).
-            .onChange(of: standings) { _, loaded in
+            .onChange(of: standingsTables) { _, loaded in
                 guard tab == .standings,
                       let target = destination.highlightTeamId,
-                      loaded?.entries.contains(where: { $0.team.id == target }) == true else { return }
+                      loaded.contains(where: { table in
+                          table.entries.contains { $0.team.id == target }
+                      }) else { return }
                 proxy.scrollTo(target, anchor: .center)
             }
         }
@@ -186,8 +208,8 @@ struct ConferencePage: View {
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    if let count = standings?.entries.count, count > 0 {
-                        Text("\(count) teams")
+                    if teamCount > 0 {
+                        Text("\(teamCount) teams")
                             .font(.chipEmphasis)
                             .foregroundStyle(.textSecondary)
                     }
@@ -264,19 +286,32 @@ struct ConferencePage: View {
     private var standingsCard: some View {
         VStack(spacing: Spacing.sm) {
             seasonRow
-            if let entries = standings?.entries, !entries.isEmpty {
-                VStack(spacing: 0) {
-                    StandingsList(
-                        entries: entries,
-                        highlightTeamId: destination.highlightTeamId,
-                        showsTitleGameCut: Conference.titleGameIsTopTwo(
-                            id: destination.conferenceId, year: selectedYear,
-                            in: destination.league),
-                        liveGames: liveGames
-                    )
+            if !standingsTables.isEmpty {
+                // One card per table. A divisional conference gets two (or
+                // four), each headed by its division and each ranked from 1
+                // — the standings' own shape. Merging them into a single
+                // 1-through-14 table would number teams across divisions
+                // ESPN never ranked against each other (Andy, 2026-09-05).
+                ForEach(standingsTables, id: \.name) { table in
+                    VStack(spacing: 0) {
+                        if isDivisional {
+                            CardHeader(title: table.divisionName(under: destination.name))
+                        }
+                        StandingsList(
+                            entries: table.entries,
+                            highlightTeamId: destination.highlightTeamId,
+                            // A division's top two are not the conference's:
+                            // in a divisional format the division winners
+                            // meet, so the cut claims nothing here.
+                            showsTitleGameCut: !isDivisional && Conference.titleGameIsTopTwo(
+                                id: destination.conferenceId, year: selectedYear,
+                                in: destination.league),
+                            liveGames: liveGames
+                        )
+                    }
+                    .padding(.bottom, Spacing.xs)
+                    .cardSurface()
                 }
-                .padding(.bottom, Spacing.xs)
-                .cardSurface()
             } else if isLoading {
                 // A lone spinner gets no card — a surface around it hugs
                 // into a floating pill (Andy, 2026-08-31).
@@ -324,16 +359,13 @@ struct ConferencePage: View {
                 division: Conference.division(for: destination.conferenceId,
                                               in: destination.league) ?? .fbs)
             // A divisional season splits one conference into two or four
-            // tables (the 2019 AAC's East and West). Take the conference's
-            // own table when ESPN ships one, otherwise merge its divisions
-            // in payload order so the page has a table instead of "TBA".
+            // tables (the Sun Belt's East and West, the 2019 AAC's). The
+            // conference's own table when ESPN ships one, its divisions
+            // otherwise — kept apart, because each division's order is the
+            // only ranking the payload actually makes.
             let mine = all.filter { $0.belongs(to: destination.conference) }
-            standingsByYear[year] = mine.first { $0.parentId == nil }
-                ?? mine.merged(as: destination.conferenceId, name: destination.name,
-                               league: destination.league)
-                ?? ConferenceStandings(id: destination.conferenceId,
-                                       name: destination.name, entries: [],
-                                       league: destination.league)
+            let own = mine.filter { $0.parentId == nil }
+            standingsByYear[year] = own.isEmpty ? mine : own
             failedYears.remove(year)
         } catch {
             failedYears.insert(year)

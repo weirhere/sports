@@ -40,6 +40,13 @@ nonisolated struct ConferenceTeams: Identifiable, Hashable, Sendable {
     /// The unambiguous identity — group id 8 is the SEC here and the AFC
     /// in the NFL.
     var conference: ConferenceID? { id.map { ConferenceID(league, $0) } }
+
+    /// A `ForEach` identity that can't collide across leagues. `id` alone
+    /// is the bare group id, so a list holding both the SEC and the AFC
+    /// would hand SwiftUI two rows claiming to be number 8 — which corrupts
+    /// the layout into blank card-sized gaps, the way duplicate ids did on
+    /// the tables hub.
+    var rowId: String { conference?.token ?? "other-\(name)" }
 }
 
 /// ESPN conference group ids, hardcoded per league with an "Other" fallback

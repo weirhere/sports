@@ -8,6 +8,8 @@ struct TeamsScreen: View {
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
     @Environment(TeamDirectoryStore.self) private var directory
+    /// Optional so previews without the environment still render; search
+    /// ranking just loses its in-scope tiebreak.
 
     @State private var searchText = ""
     // Heterogeneous: browse rows push Team, group headers push
@@ -32,11 +34,26 @@ struct TeamsScreen: View {
     /// list would read as though the app's slate covered all of it — which
     /// under scope (b) it doesn't until you ask.
     private var fbsConferences: [ConferenceTeams] {
-        conferences.filter { Conference.division(for: $0.id, in: $0.league) != .fcs }
+        conferences.filter {
+            $0.league == .collegeFootball
+                && Conference.division(for: $0.id, in: $0.league) != .fcs
+        }
     }
 
     private var fcsConferences: [ConferenceTeams] {
-        conferences.filter { Conference.division(for: $0.id, in: $0.league) == .fcs }
+        conferences.filter {
+            $0.league == .collegeFootball
+                && Conference.division(for: $0.id, in: $0.league) == .fcs
+        }
+    }
+
+    /// The NFL's two conferences, in AFC-then-NFC order rather than the
+    /// alphabetical one browse gives college football — that's the order
+    /// the league itself is always listed in.
+    private var nflConferences: [ConferenceTeams] {
+        Conference.topLevelIds(in: .nfl).compactMap { id in
+            conferences.first { $0.league == .nfl && $0.id == id }
+        }
     }
 
     var body: some View {
@@ -122,8 +139,11 @@ struct TeamsScreen: View {
                                         teams: followedTeams)
                                 .id(Self.followingSectionId)
                         }
+                        // The league is the outermost level of browse now.
+                        // College football leads: it is what the app is for,
+                        // and it is the longer list.
                         ListSectionHeading(title: "FBS conferences")
-                        ForEach(fbsConferences) { conference in
+                        ForEach(fbsConferences, id: \.rowId) { conference in
                             teamSection(title: conference.name,
                                         sectionId: sectionId(for: conference),
                                         teams: conference.teams,
@@ -131,9 +151,23 @@ struct TeamsScreen: View {
                                         isConference: true,
                                         conference: conference.conference)
                         }
+                        // The NFL sits above the FCS tail: FCS is the
+                        // opt-in long list (E8 scope (b)), the NFL is a
+                        // first-class league.
+                        if !nflConferences.isEmpty {
+                            ListSectionHeading(title: "NFL")
+                            ForEach(nflConferences, id: \.rowId) { conference in
+                                teamSection(title: conference.name,
+                                            sectionId: sectionId(for: conference),
+                                            teams: conference.teams,
+                                            logoURL: Conference.logoURL(for: conference.conference),
+                                            isConference: true,
+                                            conference: conference.conference)
+                            }
+                        }
                         if !fcsConferences.isEmpty {
                             ListSectionHeading(title: "FCS conferences")
-                            ForEach(fcsConferences) { conference in
+                            ForEach(fcsConferences, id: \.rowId) { conference in
                                 teamSection(title: conference.name,
                                             sectionId: sectionId(for: conference),
                                             teams: conference.teams,
@@ -144,8 +178,10 @@ struct TeamsScreen: View {
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {
+                            let spansLeagues = Set(searchResults.map(\.league)).count > 1
                             ForEach(searchResults) { team in
-                                TeamBrowseRow(team: team)
+                                TeamBrowseRow(team: team,
+                                              leagueTag: spansLeagues ? team.league : nil)
                             }
                         }
                         .padding(.vertical, Spacing.xs)
@@ -271,8 +307,12 @@ struct TeamsScreen: View {
 
     private static let followingSectionId = "teams.following"
 
+    /// League-qualified, because the collapse state is persisted and group
+    /// id 8 is the SEC *and* the AFC — a bare id would have collapsed both
+    /// cards with one tap. Existing college-football state resets once,
+    /// which costs nothing: absence means expanded.
     private func sectionId(for conference: ConferenceTeams) -> String {
-        "teams.conf.\(conference.id.map(String.init) ?? "other")"
+        "teams.conf.\(conference.conference?.token ?? "other")"
     }
 
     private var followedTeams: [Team] {
@@ -283,6 +323,7 @@ struct TeamsScreen: View {
 
     private var searchResults: [Team] {
         SearchResults.teams(matching: searchText, in: conferences,
-                            followingIds: following.teamKeys)
+                            followingIds: following.teamKeys,
+                            preferredLeague: following.preferredLeague)
     }
 }

@@ -23,6 +23,20 @@ nonisolated protocol ScoresProviding: Sendable {
     /// makes exactly one request.
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard
+
+    /// Every game kicking off inside a range of days — the Scores screen's
+    /// only fetch since the day strip replaced the week strip (2026-09-05).
+    ///
+    /// The range is read on ESPN's Eastern clock (`DayFormat.espnToken`),
+    /// so the store asks for a window two days wider than the day it is
+    /// showing: that absorbs the ET-to-local offset for any time zone, and
+    /// it warms the swipe's ±1 neighbours in the same request rather than
+    /// spending three.
+    ///
+    /// The season is implied by the dates, so there is no `year` here —
+    /// a 2019 range returns 2019 games (verified live 2026-09-05).
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
     /// One division's conferences and their member teams, for browse,
     /// search, and onboarding. Alphabetical by conference — the browse
@@ -65,6 +79,15 @@ nonisolated extension ScoresProviding {
                              year: year, divisions: [.fbs])
     }
 
+    func scoreboard(days: ClosedRange<Date>) async throws -> Scoreboard {
+        try await scoreboard(days: days, divisions: [.fbs])
+    }
+
+    /// One day's slate, on its own terms.
+    func scoreboard(day: Date) async throws -> Scoreboard {
+        try await scoreboard(days: day...day, divisions: [.fbs])
+    }
+
     func conferenceStandings(year: Int?) async throws -> [ConferenceStandings] {
         try await conferenceStandings(year: year, division: .fbs)
     }
@@ -105,6 +128,38 @@ actor ESPNClient: ScoresProviding {
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        var items: [URLQueryItem] = []
+        if let weekValue {
+            items.append(URLQueryItem(name: "week", value: String(weekValue)))
+        }
+        if let seasonType {
+            items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
+        }
+        if let year {
+            items.append(URLQueryItem(name: "dates", value: String(year)))
+        }
+        return try await scoreboard(query: items, divisions: divisions)
+    }
+
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        // `dates=20260904-20260908` — verified live 2026-09-05 for both
+        // leagues, past seasons included (a 2019 range returns 2019 games).
+        // What it does *not* return is the season calendar or an honest
+        // `season.year`: both come back empty or pinned to the current
+        // season, which is why the day strip's bounds come from the plain
+        // launch request instead.
+        let from = DayFormat.espnToken(for: days.lowerBound)
+        let to = DayFormat.espnToken(for: days.upperBound)
+        let value = from == to ? from : "\(from)-\(to)"
+        return try await scoreboard(query: [URLQueryItem(name: "dates", value: value)],
+                                    divisions: divisions)
+    }
+
+    /// The shared half of every scoreboard request: one call per division,
+    /// merged by event id.
+    private func scoreboard(query: [URLQueryItem],
+                            divisions: Set<Conference.Division>) async throws -> Scoreboard {
         // Deterministic order, and FBS first when it's in the set: it is
         // the canonical payload for anything both divisions carry. The NFL
         // has no divisions, so it asks once with no group filter.
@@ -115,19 +170,15 @@ actor ESPNClient: ScoresProviding {
         }
 
         func board(for division: Conference.Division?) async throws -> Scoreboard {
-            var items = [URLQueryItem(name: "limit", value: "300")]
+            // 400, not the 300 the week form used: a five-day college
+            // football window in September runs ~80 events, but a bowl
+            // fortnight or a wide range can carry far more, and a silent
+            // truncation would look like missing games.
+            var items = [URLQueryItem(name: "limit", value: "400")]
             if let division {
                 items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
             }
-            if let weekValue {
-                items.append(URLQueryItem(name: "week", value: String(weekValue)))
-            }
-            if let seasonType {
-                items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
-            }
-            if let year {
-                items.append(URLQueryItem(name: "dates", value: String(year)))
-            }
+            items += query
             let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
             return ESPNMapper.scoreboard(from: dto, league: league)
         }
@@ -569,7 +620,8 @@ nonisolated enum ESPNMapper {
             record: summariesTrusted ? dto.team?.recordSummary : nil,
             standing: summariesTrusted ? dto.team?.standingSummary : nil,
             year: dto.requestedSeason?.year,
-            games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+            games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) },
+            byeWeek: dto.byeWeek?.value
         )
     }
 
