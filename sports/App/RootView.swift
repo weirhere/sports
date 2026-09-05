@@ -11,7 +11,7 @@ struct RootView: View {
     // Scoreboard and team directory live here, not in their tabs, so the
     // search cover (and any tab) sees the same loaded data, and polling
     // follows the scene's lifecycle instead of one tab's.
-    @State private var scoreboard = ScoreboardStore(client: DataProvider.makeClient())
+    @State private var scoreboards = LeagueScoreboards()
     @State private var directory = TeamDirectoryStore()
     @State private var router: Router
     @State private var selectedTab: Tab = .scores
@@ -44,7 +44,18 @@ struct RootView: View {
             }
         }
         .tint(.primary)
-        .task { await scoreboard.loadInitial() }
+        .task {
+            scoreboards.restore(uiState.league)
+            await scoreboards.loadInitial()
+            // Open on whichever league is actually playing — once per cold
+            // launch, and only when exactly one is live (see
+            // `autoSelectLiveLeague`). The pick becomes the saved
+            // preference so a Sunday spent on the NFL doesn't spring back
+            // to college football on Monday.
+            if let picked = scoreboards.autoSelectLiveLeague() {
+                uiState.league = picked
+            }
+        }
         .task { await directory.load() }
         .onAppear {
             // The pick-your-teams moment: offered once, and only to someone
@@ -92,13 +103,13 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                scoreboard.startPollingIfNeeded()
+                scoreboards.startPollingIfNeeded()
                 Task {
                     await notifications.refreshAuthorization()
                     await notifications.resync(followedKeys: following.teamKeys)
                 }
             } else {
-                scoreboard.stopPolling()
+                scoreboards.stopPolling()
             }
         }
         .alert("Get kickoff reminders?", isPresented: $showReminderOffer) {
@@ -118,7 +129,7 @@ struct RootView: View {
         .environment(uiState)
         .environment(router)
         .environment(notifications)
-        .environment(scoreboard)
+        .environment(scoreboards)
         .environment(directory)
     }
 }

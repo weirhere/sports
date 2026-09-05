@@ -144,6 +144,30 @@ nonisolated enum Conference {
         3: "NFC West",
     ]
 
+    /// Which division each NFL team plays in, read live from
+    /// `standings?level=3` on 2026-09-05.
+    ///
+    /// Hardcoded because the scoreboard payload has to be told: unlike
+    /// college football, ESPN's NFL scoreboard ships **no `conferenceId`
+    /// on its teams at all**, so without this every NFL game would fall
+    /// into the "Other" bucket. A 32-row table is the honest fix — the NFL
+    /// last realigned in 2002, so this is about as stable as a constant
+    /// gets, and an id the table doesn't know still degrades to "Other".
+    private static let nflTeamDivisions: [Int: Int] = [
+        1: 11, 2: 4, 3: 10, 4: 12, 5: 12, 6: 1, 7: 6, 8: 10,
+        9: 10, 10: 13, 11: 13, 12: 6, 13: 6, 14: 3, 15: 4, 16: 10,
+        17: 4, 18: 11, 19: 1, 20: 4, 21: 1, 22: 3, 23: 12, 24: 6,
+        25: 3, 26: 3, 27: 11, 28: 1, 29: 11, 30: 13, 33: 12, 34: 13,
+    ]
+
+    /// The division an NFL team plays in, for payloads that carry no group
+    /// of their own. Nil for college football, whose scoreboard ships the
+    /// conference id inline.
+    static func division(forTeamId id: String?, in league: League) -> Int? {
+        guard league == .nfl, let id, let numeric = Int(id) else { return nil }
+        return nflTeamDivisions[numeric]
+    }
+
     private static let nflNames: [Int: String] =
         nflConferenceNames.merging(nflDivisionNames) { conf, _ in conf }
 
@@ -243,7 +267,13 @@ nonisolated enum Conference {
     }
 
     static func logoURL(for id: Int?, in league: League) -> URL? {
-        guard let id, let slug = logoSlugs(in: league)[id] else { return nil }
+        // An NFL division has no mark of its own, so it wears its
+        // conference's — an AFC East header showing the AFC shield reads
+        // better than the generic fallback glyph.
+        guard let id else { return nil }
+        guard let slug = logoSlugs(in: league)[id] else {
+            return parent(of: id, in: league).flatMap { logoURL(for: $0, in: league) }
+        }
         return URL(string:
             "https://a.espncdn.com/i/teamlogos/\(league.conferenceLogoPathComponent)/500/\(slug).png")
     }

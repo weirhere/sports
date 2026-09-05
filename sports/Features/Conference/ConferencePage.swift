@@ -39,11 +39,18 @@ struct ConferencePage: View {
     /// principal slot then carries the conference name (TeamPage's rule).
     @State private var showsInlineTitle = false
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    /// Scoped to this conference's league: group id 8 is the SEC in
+    /// college football and the AFC in the NFL.
+    private var client: any ScoresProviding {
+        DataProvider.makeClient(league: destination.league)
+    }
 
     /// Optional like TeamPage's: the live standings dots degrade to none
     /// wherever the scoreboard isn't in the environment.
-    @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
+    @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+
+    /// The live board for this conference's league.
+    private var liveBoard: ScoreboardStore? { scoreboards?.store(for: destination.league) }
 
     /// In-progress games for the standings dots — current season only; a
     /// past season's table gets no live claims.

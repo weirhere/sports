@@ -24,9 +24,16 @@ final class AppStoreScreenshots: XCTestCase {
                                 "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
                                 "-ui.scoreFilter", "",
+                                // Pin the league: the cold-launch auto-pick
+                                // opens on whichever one is live, and a
+                                // store screenshot has to be reproducible.
+                                "-ui.league", "cfb",
                                 // Seed follows so the Following section leads
                                 // with content (argument-domain array syntax).
-                                "-following.teamIds", "(61, 130, 251)"]
+                                // League-qualified since the namespacing
+                                // migration — a bare id reads as nobody.
+                                "-following.teamKeys",
+                                "(cfb:61, cfb:130, cfb:251)"]
         app.launch()
 
         let env = ProcessInfo.processInfo.environment

@@ -42,7 +42,11 @@ struct GameDetailScreen: View {
     /// game ESPN hasn't filled in look exactly as they did before.
     private var showsTabs: Bool { !(summary?.boxScore.isEmpty ?? true) }
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    /// Scoped to the game's league — the summary endpoint lives behind
+    /// its own sport path, and event ids are fetched through it.
+    private var client: any ScoresProviding {
+        DataProvider.makeClient(league: game.home.team.league)
+    }
 
     var body: some View {
         ScrollView {

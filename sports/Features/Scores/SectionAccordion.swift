@@ -188,7 +188,12 @@ struct SectionAccordion: View {
                         // noise (Andy, 2026-08-25). A day section's header
                         // still names the whole day, so its rows stay
                         // time-only.
-                        GameRow(game: game, timeOnly: isDaySection)
+                        GameRow(game: game, timeOnly: isDaySection,
+                                // Only a cross-league section tags its rows;
+                                // elsewhere the screen's scope already says
+                                // which league you're looking at.
+                                leagueTag: section.spansLeagues
+                                    ? game.home.team.league : nil)
                     }
                     .buttonStyle(.plain)
                     .contextMenu {

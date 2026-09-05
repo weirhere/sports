@@ -1,15 +1,21 @@
 import SwiftUI
 
 /// The Scores view-options sheet: grouping (by date / by conference),
-/// season, and the ESPN-style slate filter — all games, Top 25, every FBS
-/// conference in the app's browsing order, then the FCS conferences in
-/// their own section (picking one is what opts the slate into group 81). Consolidated here 2026-08-29
+/// season, and the ESPN-style slate filter. Consolidated here 2026-08-29
 /// after the header chip row outgrew the screen; the header keeps only the
 /// funnel chip (labeled with any non-default state) and the Live chip.
+///
+/// The slate list is the selected league's, because a filter can only
+/// narrow what's on screen: college football offers Top 25 and every FBS
+/// conference in the app's browsing order, then the FCS conferences in
+/// their own section (picking one is what opts the slate into group 81).
+/// The NFL offers the AFC and NFC and their eight divisions — and no
+/// Top 25, because `/nfl/rankings` is a 404 and the poll doesn't exist.
 ///
 /// Grouping and season apply in place; a conference tap selects and
 /// dismisses, with the checkmark marking the active row.
 struct ScoreFilterSheet: View {
+    let league: League
     let current: ScoreFilter?
     let grouping: ScoresGrouping
     let seasonYear: Int?
@@ -19,6 +25,30 @@ struct ScoreFilterSheet: View {
     let onSelectSeason: (Int) -> Void
 
     @Environment(\.dismiss) private var dismiss
+
+    /// What the selected league can narrow to. College football lists its
+    /// FBS conferences (FCS gets its own section below); the NFL lists the
+    /// AFC and NFC with their four divisions under each, which is how a
+    /// fan reads the league.
+    private var slateIds: [Int] {
+        switch league {
+        case .collegeFootball:
+            Conference.orderedIds
+        case .nfl:
+            Conference.topLevelIds(in: .nfl)
+                .flatMap { [$0] + Conference.children(of: $0, in: .nfl) }
+        }
+    }
+
+    @ViewBuilder
+    private func conferenceRow(_ id: Int) -> some View {
+        let conference = ConferenceID(league, id)
+        row(filter: .conference(conference),
+            label: Conference.name(for: conference)) {
+            ConferenceLogo(url: Conference.logoURL(for: conference))
+                .frame(width: 24)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -58,38 +88,35 @@ struct ScoreFilterSheet: View {
                             .foregroundStyle(.textSecondary)
                             .frame(width: 24)
                     }
-                    row(filter: .top25, label: "Top 25") {
-                        Image(systemName: "trophy")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.textSecondary)
-                            .frame(width: 24)
-                    }
-                    ForEach(Conference.orderedIds, id: \.self) { id in
-                        let conference = ConferenceID(.collegeFootball, id)
-                        row(filter: .conference(conference),
-                            label: Conference.name(for: conference)) {
-                            ConferenceLogo(url: Conference.logoURL(for: conference))
+                    // No poll row for the NFL: `/nfl/rankings` is a 404,
+                    // so a Top 25 filter would narrow to nothing forever.
+                    if league == .collegeFootball {
+                        row(filter: .top25, label: "Top 25") {
+                            Image(systemName: "trophy")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.textSecondary)
                                 .frame(width: 24)
                         }
                     }
+                    ForEach(slateIds, id: \.self) { id in
+                        conferenceRow(id)
+                    }
                 } header: {
-                    heading("Conference")
+                    heading(league == .nfl ? "Division" : "Conference")
                 }
                 // Its own section, below: FCS is opt-in (E8 scope (b)), and
                 // picking one here is what puts group 81 on the slate. A
                 // flat list would have made the default slate look like it
-                // already covered 250 teams.
-                Section {
-                    ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
-                        let conference = ConferenceID(.collegeFootball, id)
-                        row(filter: .conference(conference),
-                            label: Conference.name(for: conference)) {
-                            ConferenceLogo(url: Conference.logoURL(for: conference))
-                                .frame(width: 24)
+                // already covered 250 teams. The NFL has no second
+                // division to opt into, so the section simply isn't there.
+                if league == .collegeFootball {
+                    Section {
+                        ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
+                            conferenceRow(id)
                         }
+                    } header: {
+                        heading("FCS conference")
                     }
-                } header: {
-                    heading("FCS conference")
                 }
             }
             .listStyle(.plain)
@@ -143,7 +170,8 @@ struct ScoreFilterSheet: View {
 
 #Preview {
     Color.bgPrimary.sheet(isPresented: .constant(true)) {
-        ScoreFilterSheet(current: .conference(.cfb(8)), grouping: .date,
+        ScoreFilterSheet(league: .collegeFootball,
+                         current: .conference(.cfb(8)), grouping: .date,
                          seasonYear: 2026,
                          seasons: Array(stride(from: 2026, through: 2014, by: -1)),
                          onSelect: { _ in }, onSetGrouping: { _ in },

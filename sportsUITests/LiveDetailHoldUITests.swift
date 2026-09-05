@@ -34,6 +34,7 @@ final class LiveDetailHoldUITests: XCTestCase {
             // UIStateStore reads the key once at init; "none" parses to
             // no filter.
             "-ui.scoreFilter", "none",
+            "-ui.league", "cfb",
             "-data.provider", "fixture",
             "-poll.interval", "0.5",
         ]

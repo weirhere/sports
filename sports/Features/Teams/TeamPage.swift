@@ -11,7 +11,11 @@ struct TeamPage: View {
     @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
     /// Optional like the directory: the fresher-game merge degrades to the
     /// schedule payload wherever the scoreboard isn't in the environment.
-    @Environment(ScoreboardStore.self) private var liveBoard: ScoreboardStore?
+    @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+
+    /// The live board for *this page's* league — an NFL team's scores come
+    /// from the NFL scoreboard, never college football's.
+    private var liveBoard: ScoreboardStore? { scoreboards?.store(for: pageLeague) }
 
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
@@ -56,7 +60,10 @@ struct TeamPage: View {
     @State private var standingsLoadingYears: Set<Int> = []
     @State private var standingsFailedYears: Set<Int> = []
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    /// Scoped to the page's own league. ESPN team ids collide — id 5 is
+    /// the Cleveland Browns and UAB — so a league-less client here fetches
+    /// a different team's schedule entirely.
+    private var client: any ScoresProviding { DataProvider.makeClient(league: pageLeague) }
 
     private var schedule: TeamSchedule? {
         selectedYear.flatMap { schedules[$0] }
@@ -89,11 +96,22 @@ struct TeamPage: View {
     }
 
     private var resolvedConferenceId: Int? {
+        // The directory is league-scoped on purpose: ESPN team ids collide,
+        // so an unfiltered lookup would hand the Cleveland Browns UAB's
+        // conference (both are id 5).
+        let leagueDirectory = (directory?.allTeams ?? []).filter { $0.league == pageLeague }
         let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
-            ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
+            ?? leagueDirectory.first(where: { $0.id == team.id })?.conferenceId
+        // The claim check is a college-football rule — it defends against
+        // an opponent from outside the divisions we fetch (D-II, D-III).
+        // Every NFL team is inside the one league we fetch, and its
+        // registry answers for all 32, so there is nothing to disprove.
+        guard pageLeague == .collegeFootball else {
+            return Conference.isKnown(claimed, in: pageLeague) ? claimed : nil
+        }
         return ConferenceClaim.resolve(claimed: claimed, teamId: team.id,
-                                       directory: directory?.allTeams ?? [])
+                                       directory: leagueDirectory)
     }
 
     private var isLoadingSelected: Bool {

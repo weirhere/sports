@@ -112,8 +112,12 @@ import Testing
                 == "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/sec.png")
         #expect(Conference.logoURL(for: .nfl(8))?.absoluteString
                 == "https://a.espncdn.com/i/teamlogos/nfl/500/afc.png")
-        // Divisions have no mark of their own.
-        #expect(Conference.logoURL(for: .nfl(3)) == nil)
+        // A division has no mark of its own and wears its conference's.
+        #expect(Conference.logoURL(for: .nfl(3))?.absoluteString
+                == "https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png")
+        // An id neither table knows still has no logo.
+        #expect(Conference.logoURL(for: .nfl(999)) == nil)
+        #expect(Conference.logoURL(for: .cfb(999)) == nil)
     }
 }
 
