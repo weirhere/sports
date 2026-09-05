@@ -16,6 +16,10 @@ struct GameDetailScreen: View {
     /// The matchup-standings card's data; a miss just hides the card.
     @State private var conferenceStandings: [ConferenceStandings] = []
     @State private var tab: Tab = .summary
+    @State private var isSharing = false
+    /// Rendered on the share tap, so the card can never carry a score the
+    /// screen has already moved past.
+    @State private var shareCardPNG: Data?
     /// Which edge incoming tab content pushes from, the entity pages'
     /// rule: trailing walking forward, leading coming back.
     @State private var tabSlideEdge: Edge = .trailing
@@ -115,15 +119,24 @@ struct GameDetailScreen: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(
-                    item: GameShareCard(game: game, summary: summary, shareText: shareText),
-                    message: Text(shareText),
-                    preview: SharePreview(game.shortName ?? game.name ?? "Game")
-                ) {
+                // Not a ShareLink: only UIActivityItemSource can hand
+                // Messages the score card as the link's preview image.
+                Button {
+                    Task {
+                        shareCardPNG = await renderedShareCard()
+                        isSharing = true
+                    }
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                         .foregroundStyle(.textPrimary)
                 }
                 .accessibilityLabel("Share this game")
+                .sheet(isPresented: $isSharing) {
+                    GameShareSheet(source: GameShareItemSource(
+                        title: shareBody,
+                        link: ShareSignOff.appStoreLink,
+                        cardPNG: shareCardPNG))
+                }
             }
         }
         // The third of the app's three haptics: a live score changing under
@@ -169,15 +182,33 @@ struct GameDetailScreen: View {
 
     /// Shares what the header shows — the summary's fresher score when it
     /// has one, not the pushed row's snapshot.
-    private var shareText: String {
+    private var shareText: String { ShareSignOff.appended(to: shareBody) }
+
+    /// The share sentence without the sign-off, composed from the fresher
+    /// summary score. Doubles as the link preview's title, where the
+    /// branding would only repeat what the store link already says.
+    private var shareBody: String {
         let away = competitor(game.away, summary?.away)
         let home = competitor(game.home, summary?.home)
         guard showsScores, let awayScore = away.score, let homeScore = home.score else {
-            return game.shareText
+            return game.shareBody
         }
         let status = statusLine.replacingOccurrences(of: "\n", with: ", ")
-        return ShareSignOff.appended(
-            to: "\(away.team.location) \(awayScore), \(home.team.location) \(homeScore), \(status)")
+        return "\(away.team.location) \(awayScore), \(home.team.location) \(homeScore), \(status)"
+    }
+
+    /// Rendered on demand rather than kept warm: the logos are already in
+    /// `LogoCache` from the header above, so this costs a frame, and a
+    /// card rendered at tap time can't be stale.
+    private func renderedShareCard() async -> Data? {
+        let card = GameShareCard(game: game, summary: summary, shareText: shareText)
+        do {
+            return try await card.pngData()
+        } catch {
+            // The share still works — the bubble just loses its picture.
+            Self.logger.error("share card render failed: \(String(describing: error))")
+            return nil
+        }
     }
 
     /// Renders from the scoreboard's Game immediately; the summary fills in.

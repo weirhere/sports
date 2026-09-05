@@ -90,7 +90,9 @@ nonisolated struct GameShareCard: Transferable, Sendable {
         ProxyRepresentation(exporting: \.shareText)
     }
 
-    private func pngData() async throws -> Data {
+    /// Internal, not private: the link-preview item source renders the
+    /// same card for `LPLinkMetadata`.
+    func pngData() async throws -> Data {
         // LogoCache dedupes in-flight fetches and answers instantly for
         // marks the scoreboard already warmed — the common case. A miss
         // (offline, never-fetched team) degrades to the placeholder disc.

@@ -95,3 +95,35 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
         #expect(postponed.contains("Postponed"))
     }
 }
+
+/// The body/sign-off split the link preview introduced: the bubble's title
+/// wants the score, not the branding, since the store URL is the link.
+@Suite struct GameShareBodyTests {
+    @Test func bodyCarriesTheScoreAndNothingElse() {
+        let body = game(status: .final(detail: nil), awayScore: 24, homeScore: 17).shareBody
+        #expect(body == "Final: Georgia 24, Tennessee 17")
+        #expect(!body.contains("StatSide"))
+        #expect(!body.contains(ShareSignOff.appStoreURL))
+    }
+
+    /// The two can't drift: the signed text is the body plus the sign-off,
+    /// by construction, in every state.
+    @Test func signedTextIsAlwaysTheBodyPlusTheSignOff() {
+        let states: [GameStatus] = [
+            .pre(detail: nil),
+            .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: nil),
+            .final(detail: nil),
+            .other(detail: "Postponed"),
+        ]
+        for status in states {
+            let g = game(status: status, awayScore: 24, homeScore: 17)
+            #expect(g.shareText == ShareSignOff.appended(to: g.shareBody))
+        }
+    }
+
+    /// The link the preview points at is the link the text carries.
+    @Test func storeLinkAndStoreURLAreTheSameDestination() {
+        #expect(ShareSignOff.appStoreLink.absoluteString == ShareSignOff.appStoreURL)
+    }
+}
+
