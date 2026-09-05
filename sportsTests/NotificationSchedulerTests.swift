@@ -54,6 +54,12 @@ private struct ScheduleStub: ScoresProviding {
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
         Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil, weeks: [], games: [])
     }
+
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        try await scoreboard(weekValue: nil, seasonType: nil, year: nil,
+                             divisions: divisions)
+    }
     func rankings() async throws -> [Poll] { [] }
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,

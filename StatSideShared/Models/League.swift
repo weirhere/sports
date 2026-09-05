@@ -39,9 +39,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// The league's own mark, for the selector and cross-league rows.
+    /// The league's own mark, where one exists.
+    ///
+    /// Only the NFL's does: `leagues/500/nfl.png` is real, and every
+    /// college-football spelling 404s (`college-football`, `ncaa`,
+    /// `ncaaf`, `cfb`, `ncaa_football` — all probed live 2026-09-05).
+    /// Which is why the Scores league headers are name-only, the same
+    /// language the Tables hub uses: one league wearing a badge and the
+    /// other wearing a hole reads as a missing asset, not a hierarchy.
     var logoURL: URL? {
-        URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
+        guard self == .nfl else { return nil }
+        return URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
     }
 
     /// How far back the season picker goes. College football floors at the
@@ -89,6 +97,11 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// the column says what it actually holds.
     static func inGroupRecordCaption(_ league: League) -> String {
         league == .nfl ? "DIV" : "CONF"
+    }
+
+    /// The long form, for a card row rather than a table column.
+    static func inGroupRecordLabel(_ league: League) -> String {
+        league == .nfl ? "Division" : "Conference"
     }
 
     /// The spoken form, for the row's VoiceOver sentence.

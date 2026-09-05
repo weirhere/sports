@@ -24,7 +24,46 @@ nonisolated extension Array where Element == ConferenceStandings {
     func merged(as id: Int?, name: String, league: League) -> ConferenceStandings? {
         guard !isEmpty else { return nil }
         return ConferenceStandings(id: id, name: name,
-                                   entries: flatMap(\.entries), league: league)
+                                   entries: flatMap(\.entries), league: league,
+                                   spansDivisions: count > 1)
+    }
+
+    /// One row per conference, divisions folded into their parent — the Sun
+    /// Belt, not "Sun Belt - East" and "Sun Belt - West" — for lists that
+    /// name conferences rather than table them. The standings themselves
+    /// still keep each division's table: this is a display fold, and the
+    /// folded row says so (`spansDivisions`), so nothing reads a division
+    /// leader as the conference's.
+    ///
+    /// Divisions whose parent we can't name pass through unfolded: a merged
+    /// row has to be able to say which conference it is.
+    ///
+    /// Re-sorts by the mappers' tier-then-name rule, which the fold can
+    /// change — an unknown division id sorts last, its conference doesn't.
+    /// A no-op for every table the fold left alone.
+    func foldingDivisions() -> [ConferenceStandings] {
+        var folded: [ConferenceStandings] = []
+        var merged: Set<ConferenceID> = []
+        for table in self {
+            guard let parentId = table.parentId,
+                  Conference.tier(for: parentId, in: table.league) != .other else {
+                folded.append(table)
+                continue
+            }
+            let parent = ConferenceID(table.league, parentId)
+            guard merged.insert(parent).inserted else { continue }
+            let divisions = filter { $0.parentId == parentId && $0.league == table.league }
+            if let table = divisions.merged(as: parentId,
+                                            name: Conference.name(for: parent),
+                                            league: table.league) {
+                folded.append(table)
+            }
+        }
+        return folded.sorted { lhs, rhs in
+            let (lt, rt) = (Conference.tier(for: lhs.id, in: lhs.league),
+                            Conference.tier(for: rhs.id, in: rhs.league))
+            return lt == rt ? lhs.name < rhs.name : lt < rt
+        }
     }
 }
 
@@ -43,6 +82,9 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     /// 2019 AAC's East and West, or an NFL `level=3` request. The page for
     /// the parent conference collects these instead of finding nothing.
     var parentId: Int? = nil
+    /// Set on a table merged from several divisions: its entry order is
+    /// each division's in turn, so it ranks nothing across them.
+    var spansDivisions: Bool = false
 
     /// The unambiguous identity — group id 8 is the SEC here and the AFC
     /// in the NFL.
@@ -69,10 +111,26 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
         return entries.sorted { ($0.playoffSeed ?? 0) < ($1.playoffSeed ?? 0) }
     }
 
+    /// A division's own name inside its conference's page: ESPN ships
+    /// "Sun Belt - East", and the hero one card above already said Sun
+    /// Belt. Anything that doesn't start with the conference's name is
+    /// left alone — a name we can't shorten honestly stays whole.
+    func divisionName(under conferenceName: String) -> String {
+        guard name.count > conferenceName.count,
+              name.lowercased().hasPrefix(conferenceName.lowercased()) else { return name }
+        let tail = name.dropFirst(conferenceName.count)
+            .drop { $0 == " " || $0 == "-" || $0 == "\u{2013}" || $0 == ":" }
+        return tail.isEmpty ? name : String(tail)
+    }
+
     /// The top team, but only once the standings say something: a 0-0
-    /// "leader" is last season's carried-over order, not information.
+    /// "leader" is last season's carried-over order, not information. A
+    /// table merged from divisions has no top team at all — its first entry
+    /// leads one division, and naming it the conference's leader would be
+    /// the cross-division ranking the merge deliberately refuses to invent.
     var leader: ConferenceStanding? {
-        guard let first = entries.first,
+        guard !spansDivisions,
+              let first = entries.first,
               let record = first.conferenceRecord, record != "0-0" else { return nil }
         return first
     }

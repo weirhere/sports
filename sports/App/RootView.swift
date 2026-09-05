@@ -48,18 +48,11 @@ struct RootView: View {
             }
         }
         .tint(.primary)
-        .task {
-            scoreboards.restore(uiState.league)
-            await scoreboards.loadInitial()
-            // Open on whichever league is actually playing — once per cold
-            // launch, and only when exactly one is live (see
-            // `autoSelectLiveLeague`). The pick becomes the saved
-            // preference so a Sunday spent on the NFL doesn't spring back
-            // to college football on Monday.
-            if let picked = scoreboards.autoSelectLiveLeague() {
-                uiState.league = picked
-            }
-        }
+        // Every league's slate for the day the app opened on. The
+        // cold-launch league auto-pick retired with the league scope
+        // itself (2026-09-05) — nothing has to be picked when both
+        // leagues are on the page.
+        .task { await scoreboards.loadInitial() }
         .task { await directory.load() }
         .onAppear {
             // The pick-your-teams moment: offered once, and only to someone

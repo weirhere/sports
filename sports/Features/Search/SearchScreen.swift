@@ -20,8 +20,9 @@ struct SearchScreen: View {
     private var results: SearchResults {
         SearchResults.compute(query: searchText,
                               conferences: directory.conferences,
-                              games: scoreboards.all.flatMap(\.games),
-                              followingIds: following.teamKeys)
+                              games: scoreboards.allLoadedGames,
+                              followingIds: following.teamKeys,
+                              preferredLeague: following.preferredLeague)
     }
 
     var body: some View {
@@ -57,13 +58,15 @@ struct SearchScreen: View {
                     if !results.teams.isEmpty {
                         resultSection("Teams") {
                             ForEach(results.teams) { team in
-                                SearchTeamRow(team: team) { select(team) }
+                                SearchTeamRow(team: team,
+                                              leagueTag: results.spansLeagues ? team.league : nil)
+                                { select(team) }
                             }
                         }
                     }
                     if !results.conferences.isEmpty {
                         resultSection("Conferences") {
-                            ForEach(results.conferences) { conference in
+                            ForEach(results.conferences, id: \.rowId) { conference in
                                 SearchConferenceRow(conference: conference) { select(conference) }
                             }
                         }

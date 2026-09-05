@@ -4,6 +4,10 @@ import SwiftUI
 /// quiet metric rows. Strings come straight from the standings payload (or
 /// the schedule's derived record for past seasons) — never recomputed here.
 struct TeamRecordCard: View {
+    /// Which league's vocabulary the in-group row uses — "Conference" in
+    /// college football, "Division" in the NFL, whose payload carries a
+    /// division record and no conference one.
+    var league: League = .collegeFootball
     /// Nil hides the row — past seasons and no-conference teams show
     /// overall only.
     let conferenceRecord: String?
@@ -20,7 +24,7 @@ struct TeamRecordCard: View {
         VStack(spacing: 0) {
             CardHeader(title: "Record")
             if let conferenceRecord {
-                row("Conference", conferenceRecord)
+                row(League.inGroupRecordLabel(league), conferenceRecord)
                 if overallRecord != nil {
                     Divider().overlay(Color.divider)
                         .padding(.leading, Spacing.lg)

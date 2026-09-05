@@ -15,6 +15,21 @@ struct OnboardingScreen: View {
 
     private var conferences: [ConferenceTeams] { directory.conferences }
 
+    /// Grouped by league, with the NFL above the FCS tail. FCS is the
+    /// opt-in long tail (E8 scope (b)); the NFL is a first-class league,
+    /// and burying it under fourteen FCS conferences on the pick-your-teams
+    /// screen is how nobody would ever find it.
+    private var groups: [(title: String, conferences: [ConferenceTeams])] {
+        let cfb = conferences.filter { $0.league == .collegeFootball }
+        let fbs = cfb.filter { Conference.division(for: $0.id, in: $0.league) != .fcs }
+        let fcs = cfb.filter { Conference.division(for: $0.id, in: $0.league) == .fcs }
+        let nfl = Conference.topLevelIds(in: .nfl).compactMap { id in
+            conferences.first { $0.league == .nfl && $0.id == id }
+        }
+        return [("FBS conferences", fbs), ("NFL", nfl), ("FCS conferences", fcs)]
+            .filter { !$0.1.isEmpty }
+    }
+
     var body: some View {
         NavigationStack {
             content
@@ -56,8 +71,11 @@ struct OnboardingScreen: View {
                 LazyVStack(spacing: Spacing.sm) {
                     if searchText.isEmpty {
                         subtitle
-                        ForEach(conferences) { conference in
-                            conferenceSection(conference)
+                        ForEach(groups, id: \.title) { group in
+                            ListSectionHeading(title: group.title)
+                            ForEach(group.conferences, id: \.rowId) { conference in
+                                conferenceSection(conference)
+                            }
                         }
                     } else if !searchResults.isEmpty {
                         VStack(spacing: 0) {
@@ -88,7 +106,9 @@ struct OnboardingScreen: View {
     }
 
     private var subtitle: some View {
-        Text("Your teams lead the Scores screen every Saturday. You can always change them from the Teams tab.")
+        // Was "every Saturday" — true of college football, wrong for a
+        // Sunday NFL follow now that both leagues are pickable here.
+        Text("Your teams lead the Scores screen every week. You can always change them from the Teams tab.")
             .font(.meta)
             .foregroundStyle(.textSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)

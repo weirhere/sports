@@ -14,6 +14,10 @@ nonisolated struct TeamSchedule: Sendable {
     /// current-season fallback, never for an explicitly requested year.
     let year: Int?
     let games: [Game]
+    /// The week this team is off. Only the NFL assigns one, and a fan plans
+    /// around it, so the schedule shows it rather than leaving a silent gap
+    /// between two week numbers.
+    var byeWeek: Int? = nil
 
     /// W-L counted from final results — the only honest record for a past
     /// season. Nil until at least one game is final (or when the team's

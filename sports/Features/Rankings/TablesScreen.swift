@@ -1,15 +1,21 @@
 import SwiftUI
 
 /// The tables hub, FotMob-Leagues-shaped: a Following section first, then
-/// the complete list — followed rows repeat there, since sections stay
-/// complete.
+/// every league as its own accordion — followed rows repeat inside them,
+/// since sections stay complete.
 ///
-/// Contextual, because the two leagues answer "who's good" differently.
-/// College football leads with the Top 25 row (the poll one tap down, so
-/// the conferences aren't buried under 25 rank rows) and lists its
-/// conferences. The NFL has no poll at all — `/nfl/rankings` is a 404 —
-/// so its hub is the AFC and the NFC, and a tab named "Rankings" would
-/// have been half a screen of dead space. Hence "Tables".
+/// The league is an accordion header rather than a segmented control
+/// (Andy, 2026-09-05): a control shows one league at a time and has to
+/// grow a new segment per sport, while stacked accordions show them all
+/// and cost one row each. The hub is also the one screen that isn't scoped
+/// to the app-wide league — "who's good" has an answer per league, and
+/// they fit on one page.
+///
+/// Each league answers the question its own way. College football leads
+/// with the Top 25 row (the poll one tap down, so the conferences aren't
+/// buried under 25 rank rows) and lists its conferences. The NFL has no
+/// poll at all — `/nfl/rankings` is a 404 — so it is the AFC and the NFC,
+/// with no poll row rather than an empty one. Hence "Tables".
 struct TablesScreen: View {
     /// The FBS polls we show, in picker order. ESPN's response also carries
     /// FCS and DII/DIII polls — filtered out.
@@ -17,35 +23,16 @@ struct TablesScreen: View {
 
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
-    @Environment(LeagueScoreboards.self) private var scoreboards
 
     @State private var polls: [Poll] = []
-    @State private var conferences: [ConferenceStandings] = []
+    /// Standings per league, each fetched and failing independently.
+    @State private var standings: [League: [ConferenceStandings]] = [:]
     @State private var isLoading = false
     @State private var lastError: String?
 
-    private var league: League { scoreboards.selectedLeague }
-
-    private var client: any ScoresProviding { DataProvider.makeClient(league: league) }
-
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // The same scope control the Scores header carries: the
-                // league is one app-wide scope, so changing it here
-                // changes it there (Sofascore's sport row, which sits on
-                // every screen rather than one).
-                HStack {
-                    Spacer(minLength: 0)
-                    LeagueSelector(selected: league, onSelect: select(league:))
-                        .padding(4)
-                        .glassCapsule(fallback: Color.bgElevated)
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, Spacing.lg)
-                .padding(.bottom, Spacing.sm)
-                content
-            }
+            content
                 .background(Color.bgPrimary)
                 .navigationTitle("Tables")
                 .navigationBarTitleDisplayMode(.inline)
@@ -63,61 +50,70 @@ struct TablesScreen: View {
                     GameDetailScreen(game: game)
                 }
         }
-        .task(id: league) { await load() }
+        .task { await load() }
     }
 
-    private func select(league: League) {
-        scoreboards.select(league)
-        uiState.league = league
+    /// The leagues with something to show. A league whose standings didn't
+    /// come back isn't there at all, rather than being there and empty.
+    private var populatedLeagues: [League] {
+        League.allCases.filter { !rows(for: $0).isEmpty }
     }
 
-    /// Empty for the NFL, which has no poll — the section simply isn't
-    /// there, rather than being there and empty.
-    private var displayedPolls: [Poll] {
+    /// Empty for the NFL, which has no poll.
+    private func displayedPolls(for league: League) -> [Poll] {
         guard league == .collegeFootball else { return [] }
         return Self.pollTypes.compactMap { type in polls.first { $0.type == type } }
     }
 
-    /// The Following section's conference rows. The Top 25 row leads the
-    /// section regardless — it's the hub's #1 answer, not a follow state.
+    /// Divisions folded into their conference: the hub names conferences,
+    /// so the Sun Belt is one row here even though its standings are two
+    /// tables (the page that tables them still gets both).
+    private func conferences(in league: League) -> [ConferenceStandings] {
+        (standings[league] ?? []).foldingDivisions()
+    }
+
+    /// What a league's accordion holds — its conferences, plus the poll row
+    /// where the league has one. The count in the header is this.
+    private func rows(for league: League) -> [TableRow] {
+        var rows: [TableRow] = []
+        let polls = displayedPolls(for: league)
+        if !polls.isEmpty { rows.append(.poll(polls)) }
+        rows += conferences(in: league).map(TableRow.conference)
+        return rows
+    }
+
+    /// The Following section's conference rows, across every league.
     private var followedConferences: [ConferenceStandings] {
-        conferences.filter { conference in
+        League.allCases.flatMap(conferences(in:)).filter { conference in
             conference.conference.map(following.isFollowingConference) ?? false
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        if !displayedPolls.isEmpty || !conferences.isEmpty {
+        if !populatedLeagues.isEmpty {
             ScrollView {
-                // FotMob-Leagues shape per the P1 review: Following leads
-                // (Top 25 row + followed conferences), then the complete
-                // list — followed rows repeat there, sections stay
-                // complete, never deduplicated.
+                // FotMob-Leagues shape: Following leads, then the complete
+                // list — followed rows repeat inside their league, sections
+                // stay complete, never deduplicated.
                 LazyVStack(spacing: Spacing.sm) {
-                    if !displayedPolls.isEmpty || !followedConferences.isEmpty {
+                    if !followedConferences.isEmpty {
                         ListSectionHeading(title: "Following")
-                    }
-                    if !displayedPolls.isEmpty {
-                        Top25Row(polls: displayedPolls)
-                            .padding(.vertical, Spacing.xs)
-                            .cardSurface()
-                    }
-                    // Section-prefixed ids: a followed conference appears in
-                    // both sections, and duplicate identities inside one
-                    // LazyVStack corrupt its layout (blank card-sized gaps).
-                    ForEach(followedConferences, id: \.followingRowId) { conference in
-                        ConferenceListRow(conference: conference)
-                            .padding(.vertical, Spacing.xs)
-                            .cardSurface()
-                    }
-                    if !conferences.isEmpty {
-                        ListSectionHeading(title: allSectionTitle)
-                        ForEach(conferences, id: \.allRowId) { conference in
-                            ConferenceListRow(conference: conference)
-                                .padding(.vertical, Spacing.xs)
-                                .cardSurface()
+                        VStack(spacing: 0) {
+                            // Section-prefixed ids: a followed conference
+                            // appears in both sections, and duplicate
+                            // identities inside one LazyVStack corrupt its
+                            // layout (blank card-sized gaps).
+                            ForEach(followedConferences, id: \.followingRowId) { conference in
+                                ConferenceListRow(conference: conference)
+                            }
                         }
+                        .padding(.vertical, Spacing.xs)
+                        .cardSurface()
+                    }
+                    ListSectionHeading(title: "Leagues")
+                    ForEach(populatedLeagues) { league in
+                        leagueSection(league)
                     }
                 }
                 .padding(Spacing.sm)
@@ -130,7 +126,7 @@ struct TablesScreen: View {
             Spacer()
         } else {
             Spacer()
-            Text(lastError ?? emptyMessage)
+            Text(lastError ?? "No tables right now")
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)
             Button("Retry") {
@@ -142,42 +138,122 @@ struct TablesScreen: View {
         }
     }
 
-    /// The NFL's two groups are conferences; college football's list is
-    /// conferences too, but the word does different work in each.
-    private var allSectionTitle: String {
-        league == .nfl ? "Conferences" : "All conferences"
+    /// One league's accordion, the Teams-browse card: a bgHeader toggle row
+    /// over the league's rows, collapse state persisted like every other
+    /// accordion in the app.
+    private func leagueSection(_ league: League) -> some View {
+        let sectionId = Self.sectionId(for: league)
+        let isExpanded = !uiState.isConferenceCollapsed(sectionId)
+        let rows = rows(for: league)
+        return VStack(spacing: 0) {
+            Button {
+                withAnimation { uiState.toggleConference(sectionId) }
+            } label: {
+                HStack(spacing: Spacing.sm) {
+                    Text(league.displayName)
+                        .font(.sectionHeader)
+                        .foregroundStyle(.textPrimary)
+                    Text("\(rows.count)")
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.textSecondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.md)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("tables-league-\(league.rawValue)")
+            .accessibilityLabel("\(league.displayName), \(rows.count) \(rows.count == 1 ? "table" : "tables")")
+            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+            .accessibilityAddTraits(.isHeader)
+            .background(Color.bgHeader)
+
+            if isExpanded {
+                ForEach(rows) { row in
+                    switch row {
+                    case .poll(let polls):
+                        Top25Row(polls: polls)
+                    case .conference(let conference):
+                        ConferenceListRow(conference: conference)
+                    }
+                }
+            }
+        }
+        .padding(.bottom, isExpanded ? Spacing.xs : 0)
+        .cardSurface()
     }
 
-    private var emptyMessage: String {
-        league == .nfl ? "No standings right now" : "No rankings right now"
+    /// League-qualified and namespaced: the collapse state is persisted
+    /// alongside every conference accordion's, so the key has to be unique
+    /// across screens. Absence means expanded, so a new league arrives open.
+    private static func sectionId(for league: League) -> String {
+        "tables.league.\(league.rawValue)"
     }
 
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        // Clear first: a league switch must not leave the previous one's
-        // tables on screen while the new fetch is in flight.
+        // Clear first: a refresh must not leave stale tables on screen
+        // while the new fetches are in flight.
         polls = []
-        conferences = []
-        // The two fetches fail independently: no poll is a screen-level
-        // error only when there are no conferences either; a standings miss
-        // just hides the CONFERENCES card under a healthy Top 25 row.
-        async let pollsFetch = client.rankings()
-        async let standingsFetch = client.conferenceStandings()
+        standings = [:]
+        // The fetches fail independently: no poll is a screen-level error
+        // only when no league's standings came back either; a standings
+        // miss just drops that league's accordion.
+        async let pollsFetch = DataProvider.makeClient(league: .collegeFootball).rankings()
+        async let standingsFetch = Self.allStandings()
         do {
             polls = try await pollsFetch
             lastError = nil
         } catch {
             lastError = "Couldn't load tables."
         }
-        conferences = (try? await standingsFetch) ?? []
+        standings = await standingsFetch
+    }
+
+    /// Every league's standings in parallel — one league's outage leaves
+    /// the others' tables on screen rather than emptying the hub.
+    private static func allStandings() async -> [League: [ConferenceStandings]] {
+        await withTaskGroup(of: (League, [ConferenceStandings]).self) { group in
+            for league in League.allCases {
+                group.addTask {
+                    let client = DataProvider.makeClient(league: league)
+                    return (league, (try? await client.conferenceStandings()) ?? [])
+                }
+            }
+            var standings: [League: [ConferenceStandings]] = [:]
+            for await (league, tables) in group {
+                standings[league] = tables
+            }
+            return standings
+        }
+    }
+}
+
+/// A row inside a league's accordion: its poll, or one of its conferences.
+private enum TableRow: Identifiable {
+    case poll([Poll])
+    case conference(ConferenceStandings)
+
+    var id: String {
+        switch self {
+        case .poll: "poll"
+        case .conference(let conference): conference.id.map(String.init) ?? conference.name
+        }
     }
 }
 
 private extension ConferenceStandings {
-    /// The hub shows a followed conference in both sections; these give the
-    /// two appearances distinct ForEach identities so the shared LazyVStack
-    /// never sees a duplicate id.
-    var followingRowId: String { "following-\(id.map(String.init) ?? name)" }
-    var allRowId: String { "all-\(id.map(String.init) ?? name)" }
+    /// The hub shows a followed conference in both the Following section
+    /// and its league's accordion; this gives the Following appearance a
+    /// distinct ForEach identity, league-qualified because group id 8 is
+    /// the SEC and the AFC.
+    var followingRowId: String {
+        "following-\(league.rawValue)-\(id.map(String.init) ?? name)"
+    }
 }

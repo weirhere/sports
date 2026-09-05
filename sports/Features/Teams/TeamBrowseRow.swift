@@ -7,6 +7,10 @@ import SwiftUI
 /// of the two splitting one line into a pair of ellipses.
 struct TeamBrowseRow: View {
     let team: Team
+    /// Set where the surrounding list spans leagues — the browse screen's
+    /// search results. Inside a conference card the league is already the
+    /// heading above, so the tag would repeat it.
+    var leagueTag: League? = nil
 
     @Environment(FollowingStore.self) private var following
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -30,10 +34,11 @@ struct TeamBrowseRow: View {
                         nicknameText
                     }
                     Spacer(minLength: Spacing.sm)
+                    leagueTagText
                 }
                 .contentShape(Rectangle())
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(team.displayName ?? team.location)
+                .accessibilityLabel(spokenLabel)
             }
             .buttonStyle(.plain)
             .contextMenu {
@@ -48,6 +53,24 @@ struct TeamBrowseRow: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 5)
+    }
+
+    var spokenLabel: String {
+        let name = team.displayName ?? team.location
+        guard let leagueTag else { return name }
+        return "\(name), \(leagueTag.shortName)"
+    }
+
+    @ViewBuilder
+    private var leagueTagText: some View {
+        if let leagueTag {
+            Text(leagueTag.shortName)
+                .font(.meta)
+                .tracking(0.4)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+                .fixedSize()
+        }
     }
 
     private var locationText: some View {

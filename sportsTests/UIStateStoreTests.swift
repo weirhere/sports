@@ -11,30 +11,30 @@ import Testing
         return defaults
     }
 
-    @Test func daySectionsStartExpandedAndToggleInverts() {
+    @Test func leagueSectionsStartExpandedAndToggleInverts() {
         let store = UIStateStore(defaults: makeDefaults())
-        let dayId = "\(GameSection.dayPrefix)2026-08-29"
+        let leagueId = GameSection.id(for: .nfl)
 
-        // Inverse semantics: unknown day ids are expanded; unknown
-        // conference-style ids are collapsed.
-        #expect(store.isExpanded(dayId))
+        // Inverse semantics: unknown league ids are expanded; every other
+        // id is collapsed until something opens it.
+        #expect(store.isExpanded(leagueId))
         #expect(!store.isExpanded("conf-SEC"))
 
-        store.toggle(dayId)
-        #expect(!store.isExpanded(dayId))
-        store.expand(dayId)
-        #expect(store.isExpanded(dayId))
+        store.toggle(leagueId)
+        #expect(!store.isExpanded(leagueId))
+        store.expand(leagueId)
+        #expect(store.isExpanded(leagueId))
     }
 
-    @Test func collapsedDaysPersistAcrossInstances() {
+    @Test func collapsedLeaguesPersistAcrossInstances() {
         let defaults = makeDefaults()
-        let dayId = "\(GameSection.dayPrefix)2026-08-29"
-        UIStateStore(defaults: defaults).toggle(dayId)
+        let leagueId = GameSection.id(for: .collegeFootball)
+        UIStateStore(defaults: defaults).toggle(leagueId)
 
         let reloaded = UIStateStore(defaults: defaults)
-        #expect(!reloaded.isExpanded(dayId))
-        // Day state routes through collapsedDays, never expandedSections.
-        #expect(!reloaded.expandedSections.contains(dayId))
+        #expect(!reloaded.isExpanded(leagueId))
+        // League state routes through collapsedDays, never expandedSections.
+        #expect(!reloaded.expandedSections.contains(leagueId))
     }
 
     @Test func expandConferenceForcesOpenAndPersists() {
@@ -55,49 +55,52 @@ import Testing
 
     @Test func collapseAllAndExpandAllHandleMixedSemantics() {
         let store = UIStateStore(defaults: makeDefaults())
-        let dayId = "\(GameSection.dayPrefix)2026-08-29"
-        let ids = [GameSection.followingId, "conf-SEC", dayId, GameSection.tbdDayId]
+        let cfbId = GameSection.id(for: .collegeFootball)
+        let nflId = GameSection.id(for: .nfl)
+        let ids = [GameSection.followingId, cfbId, nflId]
 
         store.collapseAll(ids)
         for id in ids {
             #expect(!store.isExpanded(id))
         }
-        // Day ids route through collapsedDays, never expandedSections;
+        // League ids route through collapsedDays, never expandedSections;
         // Following (open by default) actually left expandedSections.
-        #expect(store.collapsedDays.contains(dayId))
-        #expect(!store.expandedSections.contains(dayId))
+        #expect(store.collapsedDays.contains(cfbId))
+        #expect(!store.expandedSections.contains(cfbId))
         #expect(!store.expandedSections.contains(GameSection.followingId))
 
         store.expandAll(ids)
         for id in ids {
             #expect(store.isExpanded(id))
         }
-        #expect(!store.collapsedDays.contains(dayId))
+        #expect(!store.collapsedDays.contains(cfbId))
     }
 
     @Test func bulkOpsPersistAcrossInstances() {
         let defaults = makeDefaults()
-        let dayId = "\(GameSection.dayPrefix)2026-08-29"
-        UIStateStore(defaults: defaults).collapseAll(["conf-SEC", dayId, GameSection.top25Id])
+        let leagueId = GameSection.id(for: .nfl)
+        UIStateStore(defaults: defaults).collapseAll(["conf-SEC", leagueId,
+                                                     GameSection.followingId])
 
         let reloaded = UIStateStore(defaults: defaults)
         #expect(!reloaded.isExpanded("conf-SEC"))
-        #expect(!reloaded.isExpanded(dayId))
-        #expect(!reloaded.isExpanded(GameSection.top25Id))
+        #expect(!reloaded.isExpanded(leagueId))
+        #expect(!reloaded.isExpanded(GameSection.followingId))
     }
 
     @Test func bulkOpsAreIdempotentAndScoped() {
         let store = UIStateStore(defaults: makeDefaults())
+        let leagueId = GameSection.id(for: .collegeFootball)
 
-        // Only the passed ids move; Top 25 stays open by default.
+        // Only the passed ids move; the league stays open by default.
         store.collapseAll(["conf-SEC"])
         store.collapseAll(["conf-SEC"])
         #expect(!store.isExpanded("conf-SEC"))
-        #expect(store.isExpanded(GameSection.top25Id))
+        #expect(store.isExpanded(leagueId))
 
         store.expandAll([])
         store.collapseAll([])
-        #expect(store.isExpanded(GameSection.top25Id))
+        #expect(store.isExpanded(leagueId))
     }
 
     @Test func filtersPersistAndDefaultToOff() {
@@ -116,14 +119,5 @@ import Testing
         #expect(UIStateStore(defaults: defaults).scoreFilter == .top25)
         reloaded.scoreFilter = nil
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
-    }
-
-    @Test func scoresGroupingRoundTripsAndDefaultsToDate() {
-        let defaults = makeDefaults()
-        let store = UIStateStore(defaults: defaults)
-        #expect(store.scoresGrouping == .date)
-
-        store.scoresGrouping = .conference
-        #expect(UIStateStore(defaults: defaults).scoresGrouping == .conference)
     }
 }

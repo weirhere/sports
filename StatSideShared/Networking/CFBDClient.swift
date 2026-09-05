@@ -127,6 +127,55 @@ actor CFBDClient: ScoresProviding {
         }
     }
 
+    /// CFBD has no day endpoint — `/games` is keyed by year and week — so
+    /// a day window resolves to the week slots it overlaps, fetched and
+    /// unioned, then filtered back down to the range. Usually one slot,
+    /// two across a week boundary.
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DayFormat.eastern
+        let lower = calendar.startOfDay(for: days.lowerBound)
+        let upper = calendar.date(byAdding: .day, value: 1,
+                                  to: calendar.startOfDay(for: days.upperBound)) ?? days.upperBound
+
+        let season = CFBSeason.year(for: days.lowerBound)
+        let slots = try await weekSlots(year: season)
+        // A slot overlaps the window when it starts before the window ends
+        // and ends after it starts; slots with no dates can't be judged, so
+        // they stay out rather than dragging in a whole season.
+        let overlapping = slots.filter { slot in
+            guard let start = slot.startDate, let end = slot.endDate else { return false }
+            return start < upper && end > lower
+        }
+        guard !overlapping.isEmpty else {
+            return Scoreboard(seasonYear: season, seasonType: nil,
+                              currentWeekNumber: nil, weeks: slots, games: [])
+        }
+
+        var games: [Game] = []
+        var seen = Set<String>()
+        for slot in overlapping {
+            guard let board = try? await scoreboard(weekValue: slot.value,
+                                                    seasonType: slot.seasonType,
+                                                    year: season,
+                                                    divisions: divisions) else { continue }
+            for game in board.games where !seen.contains(game.id) {
+                seen.insert(game.id)
+                games.append(game)
+            }
+        }
+        // A game with no kickoff date can't be placed in a day, so it stays
+        // out of a day-scoped slate rather than showing up on every day.
+        return Scoreboard(
+            seasonYear: season, seasonType: nil, currentWeekNumber: nil, weeks: slots,
+            games: games.filter { game in
+                guard let date = game.date else { return false }
+                return date >= lower && date < upper
+            }
+        )
+    }
+
     func rankings() async throws -> [Poll] {
         let season = CFBSeason.year()
         let weeks: LossyArray<CFBDPollWeekDTO> = try await fetch(

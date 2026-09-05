@@ -24,8 +24,6 @@ final class ReminderOfferUITests: XCTestCase {
                                 "-ui.notificationsPrompted", "NO",
                                 // The suite queries game rows on Teams; the
                                 // auto-pick would otherwise open on
-                                // whichever league happens to be live.
-                                "-ui.league", "cfb",
                                 // Empty the league-qualified follow set —
                                 // the pre-league key stopped being read
                                 // when the namespacing migration landed.

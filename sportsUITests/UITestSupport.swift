@@ -159,12 +159,12 @@ extension XCTestCase {
 
     /// Scrolls `element` into view inside `strip` and taps it.
     ///
-    /// Two traps here. Direction isn't fixed — the week strip opens on the
-    /// current week, so Week 10 sits off to the right in a fresh season and
-    /// off to the left in a completed one, and scrolling the wrong way walks
-    /// away from it until the loop gives up. And `swipeLeft`/`swipeRight`
-    /// travel the strip's full width, roughly six weeks, so a fixed swipe
-    /// overshoots and then ping-pongs past the target forever.
+    /// Two traps here. Direction isn't fixed — the day strip opens on
+    /// today, so a target sits off to the right in one season and off to
+    /// the left in another, and scrolling the wrong way walks away from it
+    /// until the loop gives up. And `swipeLeft`/`swipeRight` travel the
+    /// strip's full width, so a fixed swipe overshoots and then ping-pongs
+    /// past the target forever.
     ///
     /// So: drag a controlled fraction of the strip, and halve that fraction
     /// every time the direction reverses. It converges instead of oscillating.
@@ -241,36 +241,9 @@ extension XCTestCase {
         return false
     }
 
-    /// Switches the Scores grouping through the filter sheet's segmented
-    /// picker, returning false if the sheet or segment never appeared.
-    /// Leaves the sheet closed.
-    ///
-    /// Retried like `selectSeason`'s menu: a funnel tap that lands while
-    /// the scoreboard is still refreshing can be swallowed by a header
-    /// re-render, and the sheet never presents.
-    @MainActor
-    @discardableResult
-    func setScoresGrouping(byDate: Bool, in app: XCUIApplication,
-                           attempts: Int = 3) -> Bool {
-        let segment = app.buttons[byDate ? "By date" : "By conference"]
-        for _ in 0..<attempts {
-            if !segment.exists {
-                let funnel = app.scoresFilterChip
-                guard funnel.waitForExistence(timeout: 10) else { continue }
-                funnel.tap()
-                guard segment.waitForExistence(timeout: 5) else { continue }
-            }
-            segment.tap()
-            dismissFilterSheet(in: app)
-            return true
-        }
-        dismissFilterSheet(in: app)
-        return false
-    }
-
     /// Closes the filter sheet if it's up; a no-op otherwise.
     @MainActor
-    private func dismissFilterSheet(in app: XCUIApplication) {
+    func dismissFilterSheet(in app: XCUIApplication) {
         let cancel = app.buttons["Cancel"]
         if cancel.waitForExistence(timeout: 3) { cancel.tap() }
     }

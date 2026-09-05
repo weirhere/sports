@@ -6,7 +6,6 @@ final class UIStateStore {
     private static let expandedKey = "ui.expandedSections"
     private static let collapsedConferencesKey = "ui.collapsedConferences"
     private static let collapsedDaysKey = "ui.collapsedDays"
-    private static let groupingKey = "ui.scoresGrouping"
     private static let pollChoiceKey = "ui.pollChoice"
 
     /// Section ids currently expanded. Following + Top 25 start open on
@@ -18,17 +17,12 @@ final class UIStateStore {
     /// so absence means expanded.
     private(set) var collapsedConferences: Set<String>
 
-    /// Day sections collapsed in the Scores date grouping. Inverse
-    /// semantics like `collapsedConferences` — days start expanded.
+    /// Scores sections that start open and are remembered when closed —
+    /// the league accordions since 2026-09-05, the day sections before
+    /// them (same key, same inverse semantics as `collapsedConferences`).
+    /// A league whose games you never want to see is a choice worth
+    /// keeping; a league you have never touched should be showing.
     private(set) var collapsedDays: Set<String>
-
-    /// Which grouping the Scores screen uses. Defaults to `.date` — "what's
-    /// now first" (Josh Vertucci feedback, 2026-08-29); conference grouping
-    /// stays one chip tap away. A stored property (not a UserDefaults
-    /// passthrough) so @Observable tracks the toggle.
-    var scoresGrouping: ScoresGrouping {
-        didSet { defaults.set(scoresGrouping.rawValue, forKey: Self.groupingKey) }
-    }
 
     /// Whether the Scores follow-prompt card was dismissed. Stored (not a
     /// passthrough) so the card leaves the screen the moment it's tapped.
@@ -57,15 +51,6 @@ final class UIStateStore {
         }
     }
 
-    /// The league the Scores screen is scoped to. Persisted like the other
-    /// view choices; the cold-launch auto-pick may override it once when
-    /// exactly one league has games in progress (see `LeagueScoreboards`),
-    /// and writes its pick back here so the choice sticks.
-    var league: League {
-        didSet { defaults.set(league.rawValue, forKey: Self.leagueKey) }
-    }
-
-    private static let leagueKey = "ui.league"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
@@ -77,14 +62,10 @@ final class UIStateStore {
         if let saved = defaults.stringArray(forKey: Self.expandedKey) {
             expandedSections = Set(saved)
         } else {
-            expandedSections = [GameSection.followingId, GameSection.top25Id]
+            expandedSections = [GameSection.followingId]
         }
         collapsedConferences = Set(defaults.stringArray(forKey: Self.collapsedConferencesKey) ?? [])
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
-        scoresGrouping = defaults.string(forKey: Self.groupingKey)
-            .flatMap(ScoresGrouping.init(rawValue:)) ?? .date
-        league = defaults.string(forKey: Self.leagueKey)
-            .flatMap(League.init(rawValue:)) ?? .collegeFootball
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
         liveOnly = defaults.bool(forKey: Self.liveOnlyKey)
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
@@ -93,14 +74,22 @@ final class UIStateStore {
     }
 
     func isExpanded(_ sectionId: String) -> Bool {
-        if sectionId.hasPrefix(GameSection.dayPrefix) {
+        if Self.defaultsOpen(sectionId) {
             return !collapsedDays.contains(sectionId)
         }
         return expandedSections.contains(sectionId)
     }
 
+    /// League sections start open — the screen is a day's slate, and a
+    /// collapsed-by-default league would hide the whole point of the page.
+    /// Following keeps the opt-in `expandedSections` semantics it has had
+    /// since launch, where it is seeded open on first run.
+    private static func defaultsOpen(_ sectionId: String) -> Bool {
+        sectionId.hasPrefix(GameSection.leaguePrefix)
+    }
+
     func toggle(_ sectionId: String) {
-        if sectionId.hasPrefix(GameSection.dayPrefix) {
+        if Self.defaultsOpen(sectionId) {
             if collapsedDays.contains(sectionId) {
                 collapsedDays.remove(sectionId)
             } else {
@@ -118,7 +107,7 @@ final class UIStateStore {
     }
 
     func expand(_ sectionId: String) {
-        if sectionId.hasPrefix(GameSection.dayPrefix) {
+        if Self.defaultsOpen(sectionId) {
             guard collapsedDays.contains(sectionId) else { return }
             collapsedDays.remove(sectionId)
             persistCollapsedDays()
@@ -157,12 +146,13 @@ final class UIStateStore {
         }
     }
 
-    /// Day sections track collapsed state; everything else tracks expanded.
+    /// Defaults-open sections track collapsed state; everything else
+    /// tracks expanded.
     private func partition(_ sectionIds: [String]) -> (dayIds: Set<String>, otherIds: Set<String>) {
         var dayIds = Set<String>()
         var otherIds = Set<String>()
         for id in sectionIds {
-            if id.hasPrefix(GameSection.dayPrefix) {
+            if Self.defaultsOpen(id) {
                 dayIds.insert(id)
             } else {
                 otherIds.insert(id)

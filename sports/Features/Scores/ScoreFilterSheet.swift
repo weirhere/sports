@@ -1,36 +1,37 @@
 import SwiftUI
 
-/// The Scores view-options sheet: grouping (by date / by conference),
-/// season, and the ESPN-style slate filter. Consolidated here 2026-08-29
-/// after the header chip row outgrew the screen; the header keeps only the
-/// funnel chip (labeled with any non-default state) and the Live chip.
+/// The Scores view-options sheet: season, and the ESPN-style slate filter.
+/// Consolidated here 2026-08-29 after the header chip row outgrew the
+/// screen; the header keeps only the funnel chip (labeled with any
+/// non-default state) and the Live chip.
 ///
-/// The slate list is the selected league's, because a filter can only
-/// narrow what's on screen: college football offers Top 25 and every FBS
-/// conference in the app's browsing order, then the FCS conferences in
-/// their own section (picking one is what opts the slate into group 81).
-/// The NFL offers the AFC and NFC and their eight divisions — and no
-/// Top 25, because `/nfl/rankings` is a 404 and the poll doesn't exist.
+/// The grouping control came back out on 2026-09-05, when the day became
+/// the screen's axis and the leagues became its sections — there is one
+/// shape now, and the section headers on screen already say what it is.
 ///
-/// Grouping and season apply in place; a conference tap selects and
-/// dismisses, with the checkmark marking the active row.
+/// The slate list spans every league, because the screen does: college
+/// football offers Top 25 and every FBS conference in the app's browsing
+/// order, then the FCS conferences in their own section (picking one is
+/// what opts the slate into group 81). The NFL offers the AFC and NFC and
+/// their eight divisions — and no Top 25, because `/nfl/rankings` is a 404
+/// and the poll doesn't exist.
+///
+/// Season applies in place; a conference tap selects and dismisses, with
+/// the checkmark marking the active row.
 struct ScoreFilterSheet: View {
-    let league: League
     let current: ScoreFilter?
-    let grouping: ScoresGrouping
     let seasonYear: Int?
     let seasons: [Int]
     let onSelect: (ScoreFilter?) -> Void
-    let onSetGrouping: (ScoresGrouping) -> Void
     let onSelectSeason: (Int) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
-    /// What the selected league can narrow to. College football lists its
-    /// FBS conferences (FCS gets its own section below); the NFL lists the
-    /// AFC and NFC with their four divisions under each, which is how a
-    /// fan reads the league.
-    private var slateIds: [Int] {
+    /// What a league can narrow to. College football lists its FBS
+    /// conferences (FCS gets its own section below); the NFL lists the AFC
+    /// and NFC with their four divisions under each, which is how a fan
+    /// reads the league.
+    private func slateIds(in league: League) -> [Int] {
         switch league {
         case .collegeFootball:
             Conference.orderedIds
@@ -41,7 +42,7 @@ struct ScoreFilterSheet: View {
     }
 
     @ViewBuilder
-    private func conferenceRow(_ id: Int) -> some View {
+    private func conferenceRow(_ id: Int, in league: League) -> some View {
         let conference = ConferenceID(league, id)
         row(filter: .conference(conference),
             label: Conference.name(for: conference)) {
@@ -53,14 +54,8 @@ struct ScoreFilterSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Picker("View", selection: Binding(get: { grouping }, set: onSetGrouping)) {
-                        Text("By date").tag(ScoresGrouping.date)
-                        Text("By conference").tag(ScoresGrouping.conference)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.bgCard)
-                    if let seasonYear, !seasons.isEmpty {
+                if let seasonYear, !seasons.isEmpty {
+                    Section {
                         HStack {
                             Text("Season")
                                 .font(.teamName)
@@ -77,9 +72,9 @@ struct ScoreFilterSheet: View {
                             .tint(.textPrimary)
                         }
                         .listRowBackground(Color.bgCard)
+                    } header: {
+                        heading("View")
                     }
-                } header: {
-                    heading("View")
                 }
                 Section {
                     row(filter: nil, label: "All games") {
@@ -88,35 +83,40 @@ struct ScoreFilterSheet: View {
                             .foregroundStyle(.textSecondary)
                             .frame(width: 24)
                     }
-                    // No poll row for the NFL: `/nfl/rankings` is a 404,
-                    // so a Top 25 filter would narrow to nothing forever.
-                    if league == .collegeFootball {
-                        row(filter: .top25, label: "Top 25") {
-                            Image(systemName: "trophy")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.textSecondary)
-                                .frame(width: 24)
-                        }
-                    }
-                    ForEach(slateIds, id: \.self) { id in
-                        conferenceRow(id)
+                    // Top 25 is a college-football question — the NFL has
+                    // no poll (`/nfl/rankings` is a 404) — so selecting it
+                    // hides the NFL section rather than emptying it.
+                    row(filter: .top25, label: "Top 25") {
+                        Image(systemName: "trophy")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.textSecondary)
+                            .frame(width: 24)
                     }
                 } header: {
-                    heading(league == .nfl ? "Division" : "Conference")
+                    heading("Slate")
+                }
+                // One section per league, in the same order the accordions
+                // stack on screen — a filter narrows to a conference, and
+                // which league's conference it is has to be obvious.
+                ForEach(League.allCases) { league in
+                    Section {
+                        ForEach(slateIds(in: league), id: \.self) { id in
+                            conferenceRow(id, in: league)
+                        }
+                    } header: {
+                        heading(league.displayName)
+                    }
                 }
                 // Its own section, below: FCS is opt-in (E8 scope (b)), and
                 // picking one here is what puts group 81 on the slate. A
                 // flat list would have made the default slate look like it
-                // already covered 250 teams. The NFL has no second
-                // division to opt into, so the section simply isn't there.
-                if league == .collegeFootball {
-                    Section {
-                        ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
-                            conferenceRow(id)
-                        }
-                    } header: {
-                        heading("FCS conference")
+                // already covered 250 teams.
+                Section {
+                    ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
+                        conferenceRow(id, in: .collegeFootball)
                     }
+                } header: {
+                    heading("FCS conference")
                 }
             }
             .listStyle(.plain)
@@ -170,11 +170,10 @@ struct ScoreFilterSheet: View {
 
 #Preview {
     Color.bgPrimary.sheet(isPresented: .constant(true)) {
-        ScoreFilterSheet(league: .collegeFootball,
-                         current: .conference(.cfb(8)), grouping: .date,
+        ScoreFilterSheet(current: .conference(.cfb(8)),
                          seasonYear: 2026,
                          seasons: Array(stride(from: 2026, through: 2014, by: -1)),
-                         onSelect: { _ in }, onSetGrouping: { _ in },
+                         onSelect: { _ in },
                          onSelectSeason: { _ in })
     }
 }

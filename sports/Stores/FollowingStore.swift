@@ -23,6 +23,28 @@ final class FollowingStore {
 
     var followsAnyone: Bool { !teamKeys.isEmpty || !conferenceIds.isEmpty }
 
+    /// The league the user follows most, for search's ranking tiebreak.
+    ///
+    /// It replaced the Scores screen's league scope on 2026-09-05, when
+    /// that scope stopped existing — the leagues share the page now. Nil
+    /// on a tie or with nothing followed, which is what "no preference"
+    /// means: search then ranks on the match itself.
+    var preferredLeague: League? {
+        var counts: [League: Int] = [:]
+        for key in teamKeys {
+            guard let raw = key.split(separator: ":", maxSplits: 1).first,
+                  let league = League(rawValue: String(raw)) else { continue }
+            counts[league, default: 0] += 1
+        }
+        for conference in conferenceIds {
+            counts[conference.league, default: 0] += 1
+        }
+        let ranked = counts.sorted { $0.value > $1.value }
+        guard let top = ranked.first else { return nil }
+        guard ranked.count == 1 || ranked[1].value < top.value else { return nil }
+        return top.key
+    }
+
     func isFollowing(_ team: Team) -> Bool {
         teamKeys.contains(team.followKey)
     }

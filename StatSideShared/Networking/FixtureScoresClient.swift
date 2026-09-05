@@ -99,6 +99,14 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
                           weeks: Self.weeks, games: games)
     }
 
+    /// The scripted slate is "now"-relative, so every day window resolves
+    /// to the same tick as the week form. The suite drives a live game,
+    /// not a calendar.
+    func scoreboard(days: ClosedRange<Date>,
+                    divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        try await scoreboard(weekValue: nil, seasonType: nil, year: nil, divisions: divisions)
+    }
+
     func rankings() async throws -> [Poll] { [] }
 
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }

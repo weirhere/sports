@@ -6,125 +6,45 @@ struct SectionAccordion: View {
     let section: GameSection
     let isExpanded: Bool
     let onToggle: () -> Void
-    /// Pushes this conference's standings page; nil for non-conference
-    /// sections (and "Other"), which hides the affordance entirely.
-    var onOpenStandings: (() -> Void)? = nil
 
     @Environment(FollowingStore.self) private var following
 
-    /// True in the date grouping, where the day header pins to the top
-    /// while its games scroll (Andy, 2026-08-25) — the header becomes a
-    /// floating bar and the rows their own card. Conference mode keeps the
-    /// single-card accordion.
-    var pinsHeader: Bool = false
-
     var body: some View {
-        if pinsHeader {
-            // The header pins while its games scroll, but still reads as
-            // the card's own top edge: top corners on the header, bottom
-            // corners on the rows, zero gap between them (the owning
-            // LazyVStack runs spacing 0 in date mode; the section's gap to
-            // the next card is the explicit bottom padding here).
-            Section {
-                if isExpanded {
-                    VStack(spacing: 0) { expandedRows }
-                        .padding(.bottom, Spacing.xs)
-                        .clipShape(rowsShape)
-                        .background(
-                            rowsShape.fill(Color.bgCard)
-                                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
-                        )
-                        .padding(.bottom, Spacing.sm)
-                }
-            } header: {
-                headerRow
-                    .clipShape(headerShape)
-                    .background(
-                        headerShape.fill(Color.bgCard)
-                            .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
-                    )
-                    .padding(.bottom, isExpanded ? 0 : Spacing.sm)
+        VStack(spacing: 0) {
+            headerRow
+            if isExpanded {
+                expandedRows
             }
-        } else {
-            VStack(spacing: 0) {
-                headerRow
-                if isExpanded {
-                    expandedRows
-                }
-            }
-            // Collapsing rows animate out INSIDE the shrinking card —
-            // unclipped they paint over the next section's header until
-            // the animation settles (Andy, 2026-08-29).
-            .clipped()
         }
+        // Collapsing rows animate out INSIDE the shrinking card —
+        // unclipped they paint over the next section's header until
+        // the animation settles (Andy, 2026-08-29).
+        .clipped()
     }
 
-    /// Top of the card; the bottom squares off against the rows while
-    /// expanded and rounds back when the section is just its header.
-    private var headerShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(topLeadingRadius: 10,
-                               bottomLeadingRadius: isExpanded ? 0 : 10,
-                               bottomTrailingRadius: isExpanded ? 0 : 10,
-                               topTrailingRadius: 10,
-                               style: .continuous)
-    }
-
-    private var rowsShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(topLeadingRadius: 0,
-                               bottomLeadingRadius: 10,
-                               bottomTrailingRadius: 10,
-                               topTrailingRadius: 0,
-                               style: .continuous)
-    }
-
+    /// The whole row toggles. The two-surface conference header retired
+    /// with the conference sections themselves on 2026-09-05 — the
+    /// breakdown by conference lives on Tables now, and a league header
+    /// has nowhere else to go.
     private var headerRow: some View {
-            // A conference header splits into two surfaces (Andy's call,
-            // 2026-08-25, superseding the whole-width-toggle promise): the
-            // mark + name push the conference page, everything after them
-            // toggles. Non-conference headers keep the whole row as the
-            // toggle — there is nowhere for their name to go.
-            HStack(spacing: 0) {
-                if let onOpenStandings {
-                    Button(action: onOpenStandings) {
-                        identity
-                            .padding(.leading, Spacing.lg)
-                            .padding(.vertical, Spacing.md)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    // The retired trailing icon's label, so the standings
-                    // path keeps its spoken name (and its UI-test hook).
-                    .accessibilityLabel("\(section.title) standings")
-                    toggleButton {
-                        HStack(spacing: Spacing.sm) {
-                            countAndChevron
-                        }
-                        .padding(.leading, Spacing.sm)
-                        .padding(.trailing, Spacing.lg)
-                        .padding(.vertical, Spacing.md)
-                        .contentShape(Rectangle())
-                    }
-                } else {
-                    toggleButton {
-                        HStack(spacing: Spacing.sm) {
-                            identity
-                            countAndChevron
-                        }
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.vertical, Spacing.md)
-                        .contentShape(Rectangle())
-                    }
+            toggleButton {
+                HStack(spacing: Spacing.sm) {
+                    identity
+                    countAndChevron
                 }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.md)
+                .contentShape(Rectangle())
             }
             .background(Color.bgHeader)
     }
 
-    /// The mark + name — a conference header's navigation surface.
+    /// The mark + name. League headers are name-only — ESPN publishes no
+    /// college-football league mark, and the Tables hub sets the same
+    /// language for its league accordions.
     private var identity: some View {
         HStack(spacing: Spacing.sm) {
-            if section.isConference {
-                ConferenceLogo(url: section.logoURL)
-            } else if let symbol = headerSymbol {
+            if let symbol = headerSymbol {
                 // Same footprint as ConferenceLogo so every section
                 // title starts at the same x.
                 Image(systemName: symbol)
@@ -158,25 +78,7 @@ struct SectionAccordion: View {
         .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
         .accessibilityValue(isExpanded ? "expanded" : "collapsed")
         .accessibilityAddTraits(.isHeader)
-        // Redundant paths to the page, like GameRow's context menu +
-        // custom actions. Both builders are empty for non-conference
-        // sections, which suppresses the menu and the action entirely.
-        .contextMenu {
-            if let onOpenStandings {
-                Button {
-                    onOpenStandings()
-                } label: {
-                    Label("View \(section.title) standings",
-                          systemImage: "list.number")
-                }
-            }
-        }
-        .accessibilityActions {
-            if let onOpenStandings {
-                Button("View \(section.title) standings",
-                       action: onOpenStandings)
-            }
-        }
+        .accessibilityIdentifier("scores-section-\(section.id)")
     }
 
     private var expandedRows: some View {
@@ -188,7 +90,11 @@ struct SectionAccordion: View {
                         // noise (Andy, 2026-08-25). A day section's header
                         // still names the whole day, so its rows stay
                         // time-only.
-                        GameRow(game: game, timeOnly: isDaySection,
+                        // Every section on the screen is one day's slate,
+                        // and the day strip above says which day — so the
+                        // rows are kickoff time and network only. VoiceOver
+                        // still speaks the full date (2026-08-09).
+                        GameRow(game: game, timeOnly: true,
                                 // Only a cross-league section tags its rows;
                                 // elsewhere the screen's scope already says
                                 // which league you're looking at.
@@ -237,19 +143,10 @@ struct SectionAccordion: View {
         following.isFollowing(team) ? "Unfollow \(team.location)" : "Follow \(team.location)"
     }
 
-    /// Header glyph for the non-conference sections. star.fill echoes the
-    /// follow toggle on team pages; trophy.fill marks the poll; day
-    /// sections get a calendar so their titles x-align with Following's.
+    /// Header glyph for the sections with no mark of their own. star.fill
+    /// echoes the follow toggle on team pages, and sits in the same 18pt
+    /// footprint a league mark does so every title starts at the same x.
     private var headerSymbol: String? {
-        switch section.id {
-        case GameSection.followingId: "star.fill"
-        case GameSection.top25Id: "trophy.fill"
-        case let id where id.hasPrefix(GameSection.dayPrefix): "calendar"
-        default: nil
-        }
-    }
-
-    private var isDaySection: Bool {
-        section.id.hasPrefix(GameSection.dayPrefix)
+        section.id == GameSection.followingId ? "star.fill" : nil
     }
 }

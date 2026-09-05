@@ -13,10 +13,23 @@ nonisolated struct SearchResults: Equatable {
         teams.isEmpty && conferences.isEmpty && games.isEmpty
     }
 
+    /// Whether the team results come from more than one league, and so need
+    /// telling apart. Searching "Miami" returns the Hurricanes and the
+    /// Dolphins; "Panthers" returns Carolina and seventeen colleges.
+    var spansLeagues: Bool {
+        Set(teams.map(\.league)).count > 1
+    }
+
+    /// `preferredLeague` is the scope the user is already in — the league
+    /// the Scores and Tables screens are showing. It breaks ties within an
+    /// equal match tier, so someone scoped to the NFL searching "Cardinals"
+    /// gets Arizona before thirteen colleges. Time-to-answer beats corpus
+    /// breadth, which is the whole reason search exists here.
     static func compute(query: String,
                         conferences: [ConferenceTeams],
                         games: [Game],
-                        followingIds: Set<String>) -> SearchResults {
+                        followingIds: Set<String>,
+                        preferredLeague: League? = nil) -> SearchResults {
         let folded = fold(query.trimmingCharacters(in: .whitespaces))
         guard !folded.isEmpty else { return .none }
 
@@ -37,7 +50,9 @@ nonisolated struct SearchResults: Equatable {
                     .contains { fold($0).contains(folded) }
         }
 
-        return SearchResults(teams: rankedTeams(folded, in: conferences, followingIds: followingIds),
+        return SearchResults(teams: rankedTeams(folded, in: conferences,
+                                                followingIds: followingIds,
+                                                preferredLeague: preferredLeague),
                              conferences: matchedConferences,
                              games: chronological(matchedGames))
     }
@@ -48,10 +63,12 @@ nonisolated struct SearchResults: Equatable {
     /// boost would reorder the list under the user's finger).
     static func teams(matching query: String,
                       in conferences: [ConferenceTeams],
-                      followingIds: Set<String> = []) -> [Team] {
+                      followingIds: Set<String> = [],
+                      preferredLeague: League? = nil) -> [Team] {
         let folded = fold(query.trimmingCharacters(in: .whitespaces))
         guard !folded.isEmpty else { return [] }
-        return rankedTeams(folded, in: conferences, followingIds: followingIds)
+        return rankedTeams(folded, in: conferences, followingIds: followingIds,
+                           preferredLeague: preferredLeague)
     }
 
     // MARK: - Matching
@@ -77,19 +94,28 @@ nonisolated struct SearchResults: Equatable {
 
     private static func rankedTeams(_ folded: String,
                                     in conferences: [ConferenceTeams],
-                                    followingIds: Set<String>) -> [Team] {
+                                    followingIds: Set<String>,
+                                    preferredLeague: League? = nil) -> [Team] {
         var seen = Set<String>()
         return conferences.flatMap(\.teams)
-            .compactMap { team -> (team: Team, followed: Bool, tier: Int, fcs: Bool)? in
+            .compactMap { team -> (team: Team, followed: Bool, tier: Int,
+                                   inScope: Bool, fcs: Bool)? in
                 guard let tier = matchTier(folded, team: team),
+                      // Keyed on the follow key, not the id: ESPN team ids
+                      // collide across leagues, and UCLA and the Seahawks
+                      // are both id 26.
                       seen.insert(team.followKey).inserted else { return nil }
                 return (team, followingIds.contains(team.followKey), tier,
+                        preferredLeague.map { team.league == $0 } ?? false,
                         Conference.division(for: team.conferenceId,
                                             in: team.league) == .fcs)
             }
             .sorted { lhs, rhs in
                 if lhs.followed != rhs.followed { return lhs.followed }
                 if lhs.tier != rhs.tier { return lhs.tier < rhs.tier }
+                // The league you are already looking at wins an equal
+                // match — scoped to the NFL, "Cardinals" means Arizona.
+                if lhs.inScope != rhs.inScope { return lhs.inScope }
                 // The corpus doubled when FCS joined the directory; the
                 // common query didn't. An equally-good FCS match sits
                 // below the FBS one, under a followed team either way.

@@ -1,7 +1,7 @@
 import XCTest
 
 /// App Store screenshot capture — a sibling of ScreenshotTests, but aimed at
-/// the store rather than design review. It shoots the current week live, so
+/// the store rather than design review. It shoots the current day live, so
 /// the slate carries the app's whole argument: green live dots and running
 /// clocks next to the finals, with the followed teams on top.
 ///
@@ -12,22 +12,16 @@ import XCTest
 ///     xcrun simctl status_bar <udid> override --time "9:41" \
 ///       --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
 ///
-/// Out of season the current week is empty (and Week 1 is a slate of FCS
-/// blowouts against preseason 0-0 records) — pass
-/// `TEST_RUNNER_SCREENSHOT_SEASON=2025`
-/// and `TEST_RUNNER_SCREENSHOT_WEEK="Week 10"` to shoot a completed Saturday.
+/// Out of season today is empty — pass `TEST_RUNNER_SCREENSHOT_SEASON=2025`
+/// and `TEST_RUNNER_SCREENSHOT_DAY="Saturday, November 8"` (the day chip's
+/// spoken label) to shoot a completed Saturday.
 final class AppStoreScreenshots: XCTestCase {
     @MainActor
     func testCaptureStoreScreenshots() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
                                 "-ui.scoreFilter", "",
-                                // Pin the league: the cold-launch auto-pick
-                                // opens on whichever one is live, and a
-                                // store screenshot has to be reproducible.
-                                "-ui.league", "cfb",
                                 // Seed follows so the Following section leads
                                 // with content (argument-domain array syntax).
                                 // League-qualified since the namespacing
@@ -41,23 +35,24 @@ final class AppStoreScreenshots: XCTestCase {
             XCTAssertTrue(selectSeason(year, in: app),
                           "Season menu should switch to \(year)")
         }
-        if let week = env["SCREENSHOT_WEEK"] {
-            let chip = app.buttons[week]
-            // The strip's HStack isn't lazy, so every week button exists in the
-            // hierarchy even when scrolled offscreen — find the strip by content.
-            let strip = app.scrollViews.containing(.button, identifier: week).firstMatch
-            XCTAssertTrue(strip.waitForExistence(timeout: 15), "Week strip should load")
+        if let day = env["SCREENSHOT_DAY"] {
+            // Chips are addressed by their spoken label ("Saturday,
+            // November 8"); the strip's HStack isn't lazy, so every day
+            // button exists in the hierarchy even scrolled offscreen.
+            let chip = app.buttons[day]
+            let strip = app.scrollViews.containing(.button, identifier: day).firstMatch
+            XCTAssertTrue(strip.waitForExistence(timeout: 15), "Day strip should load")
             XCTAssertTrue(scrollToAndTap(chip, in: strip, within: app.windows.firstMatch),
-                          "\(week) should be reachable in the strip")
+                          "\(day) should be reachable in the strip")
         }
 
-        // Scores: expand nothing — Following and Top 25 are open by default,
-        // which is the hero shot. Wait for a row that has a score on it, so
-        // the slate isn't a screen of kickoff times.
+        // Scores: expand nothing — Following and the league accordions are
+        // open by default, which is the hero shot. Wait for a row that has
+        // a score on it, so the slate isn't a screen of kickoff times.
         let played = app.scrollViews.buttons.matching(NSPredicate(
             format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", " left", "final"))
         XCTAssertTrue(played.firstMatch.waitForExistence(timeout: 20),
-                      "The week should show games with scores")
+                      "The day should show games with scores")
         snapshot(app, "01-scores")
 
         // Game detail, off a completed game where there is one. The live
