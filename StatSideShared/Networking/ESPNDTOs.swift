@@ -367,6 +367,26 @@ nonisolated struct LinescoreDTO: Decodable {
 
 nonisolated struct BoxscoreDTO: Decodable {
     let teams: [BoxscoreTeamDTO]?
+    let players: [BoxscorePlayersDTO]?
+}
+
+nonisolated struct BoxscorePlayersDTO: Decodable {
+    let team: TeamDTO?
+    let statistics: [BoxscorePlayerGroupDTO]?
+}
+
+nonisolated struct BoxscorePlayerGroupDTO: Decodable {
+    let name: String?       // "passing"
+    let text: String?       // "Miami Passing" — team name prefixed
+    let labels: [String]?   // the column headers, live-vs-final variable
+    let totals: [String]?
+    let athletes: LossyArray<BoxscoreAthleteDTO>?
+}
+
+nonisolated struct BoxscoreAthleteDTO: Decodable {
+    let athlete: AthleteDTO?
+    /// Positionally paired with the group's `labels`.
+    let stats: [String]?
 }
 
 nonisolated struct BoxscoreTeamDTO: Decodable {
@@ -422,6 +442,7 @@ nonisolated struct LeaderEntryDTO: Decodable {
 }
 
 nonisolated struct AthleteDTO: Decodable {
+    let id: String?
     let displayName: String?
     let shortName: String?
     let jersey: String?

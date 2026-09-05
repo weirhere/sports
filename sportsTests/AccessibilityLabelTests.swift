@@ -311,3 +311,50 @@ private func game(status: GameStatus,
         #expect(row.accessibilitySummary == "SEC")
     }
 }
+
+// MARK: - Scoring plays
+
+private func scoringSummary(plays: [ScoringPlay]) -> GameSummary {
+    GameSummary(
+        home: GameSummary.Side(team: tennessee, score: 17, record: nil,
+                               rank: nil, winner: nil, linescores: []),
+        away: GameSummary.Side(team: georgia, score: 24, record: nil,
+                               rank: nil, winner: nil, linescores: []),
+        status: .final(detail: nil), scoringPlays: plays, drives: [], teamStats: [],
+        leaders: [], venue: nil, attendance: nil)
+}
+
+private func scoringPlay(teamId: String?, away: Int, home: Int) -> ScoringPlay {
+    ScoringPlay(id: "p", period: 1, clock: "7:55",
+                text: "Trevor Etienne 3 Yd Run", typeAbbreviation: "TD",
+                teamId: teamId, awayScore: away, homeScore: home)
+}
+
+/// The row's whole problem, in VoiceOver form: before E9 it spoke the play
+/// and the score and never said whose points those were.
+@MainActor
+@Suite struct ScoringPlayAccessibilityTests {
+    @Test func rowNamesTheScoringTeam() {
+        let play = scoringPlay(teamId: "61", away: 7, home: 0)
+        let list = ScoringPlaysList(summary: scoringSummary(plays: [play]))
+        #expect(list.accessibilitySummary(for: play) ==
+                "Georgia, Trevor Etienne 3 Yd Run, Georgia 7, Tennessee 0")
+    }
+
+    @Test func rowNamesTheHomeTeamWhenItScores() {
+        let play = scoringPlay(teamId: "2633", away: 7, home: 7)
+        let list = ScoringPlaysList(summary: scoringSummary(plays: [play]))
+        #expect(list.accessibilitySummary(for: play) ==
+                "Tennessee, Trevor Etienne 3 Yd Run, Georgia 7, Tennessee 7")
+    }
+
+    /// CFBD resolves the scorer by school name and can miss. The row then
+    /// speaks exactly what it spoke before the team mark existed.
+    @Test func unresolvedTeamStillSpeaksThePlayAndScore() {
+        let play = scoringPlay(teamId: "9999", away: 7, home: 0)
+        let list = ScoringPlaysList(summary: scoringSummary(plays: [play]))
+        #expect(list.accessibilitySummary(for: play) ==
+                "Trevor Etienne 3 Yd Run, Georgia 7, Tennessee 0")
+    }
+}
+

@@ -13,7 +13,7 @@ struct DriveLogList: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(summary.drives.enumerated()), id: \.element.id) { index, drive in
                 if periodMarker(at: index) {
-                    Text(periodLabel(drive.period))
+                    Text(PeriodLabel.text(drive.period))
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
                         .padding(.horizontal, Spacing.lg)
@@ -31,21 +31,9 @@ struct DriveLogList: View {
         index == 0 || summary.drives[index].period != summary.drives[index - 1].period
     }
 
-    private func periodLabel(_ period: Int?) -> String {
-        guard let period else { return "—" }
-        switch period {
-        case 1: return "1ST QUARTER"
-        case 2: return "2ND QUARTER"
-        case 3: return "3RD QUARTER"
-        case 4: return "4TH QUARTER"
-        case 5: return "OVERTIME"
-        default: return "\(period - 4)OT"
-        }
-    }
-
     private func driveRow(_ drive: Drive) -> some View {
         HStack(spacing: Spacing.md) {
-            LogoImage(url: team(for: drive)?.logoURL)
+            LogoImage(url: summary.team(withId: drive.teamId)?.logoURL)
                 .frame(width: logoSize, height: logoSize)
             Text(drive.result ?? "—")
                 .font(drive.isScore ? .metaEmphasis : .meta)
@@ -63,18 +51,11 @@ struct DriveLogList: View {
         .accessibilityLabel(accessibilitySummary(for: drive))
     }
 
-    private func team(for drive: Drive) -> Team? {
-        [summary.home, summary.away]
-            .compactMap(\.self)
-            .first { $0.team.id == drive.teamId }?
-            .team
-    }
-
     /// One spoken sentence: "Miami, punt, 5 plays, 20 yards, 2:39".
     /// Internal, not private, so the label shape is unit-testable.
     func accessibilitySummary(for drive: Drive) -> String {
         var parts: [String] = []
-        if let location = team(for: drive)?.location { parts.append(location) }
+        if let location = summary.team(withId: drive.teamId)?.location { parts.append(location) }
         if let result = drive.result { parts.append(result.lowercased()) }
         if let summary = drive.summary { parts.append(summary) }
         return parts.joined(separator: ", ")

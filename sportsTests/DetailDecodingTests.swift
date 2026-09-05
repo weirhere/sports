@@ -206,6 +206,92 @@ private func fixture(_ name: String) throws -> Data {
         #expect(first.awayScore != nil && first.homeScore != nil)
     }
 
+    /// The field the row's team mark hangs off. It has been mapped since
+    /// E2 and was never asserted; the Scoring card only started reading it
+    /// in E9.
+    @Test func scoringPlaysCarryTheScoringTeam() throws {
+        let summary = try loadSummary()
+        let sides = Set([summary.away, summary.home].compactMap { $0?.team.id })
+        #expect(sides.count == 2)
+        for play in summary.scoringPlays {
+            let teamId = try #require(play.teamId, "every scoring play names a team")
+            #expect(sides.contains(teamId), "the scorer is one of the two sides")
+            #expect(summary.team(withId: teamId) != nil)
+        }
+    }
+
+    @Test func decodesBoxScore() throws {
+        let summary = try loadSummary()
+        #expect(summary.boxScore.count == 2)
+        let box = try #require(summary.boxScore.first { $0.teamId == summary.away?.team.id })
+
+        let passing = try #require(box.categories.first { $0.id == "passing" })
+        // Columns come from the payload — a final game's passing group
+        // carries QBR, a live one doesn't.
+        #expect(passing.columns == ["C/ATT", "YDS", "AVG", "TD", "INT", "QBR"])
+        #expect(passing.players.count == 1)
+        // The team-name prefix comes off ESPN's "Miami Passing".
+        #expect(passing.label == "Passing")
+        #expect(passing.totals.count == passing.columns.count)
+
+        let defensive = try #require(box.categories.first { $0.id == "defensive" })
+        #expect(defensive.players.count == 16)
+
+        // ESPN ships all ten groups for every game whether or not anyone
+        // recorded one; the empty ones aren't sections.
+        #expect(!box.categories.contains { $0.id == "fumbles" })
+        #expect(!box.categories.contains { $0.id == "interceptions" })
+
+        // Every row aligns with its header, always.
+        for category in box.categories {
+            for player in category.players {
+                #expect(player.stats.count == category.columns.count)
+            }
+        }
+    }
+
+    /// A row whose stat count doesn't match the header would put every
+    /// number under the wrong column, so it's dropped rather than shown.
+    @Test func boxScoreDropsMisalignedRows() throws {
+        let json = Data("""
+        {"players": [{
+          "team": {"id": "1", "displayName": "Test Team"},
+          "statistics": [{
+            "name": "passing", "text": "Test Team Passing",
+            "labels": ["C/ATT", "YDS"],
+            "totals": ["10/14", "118"],
+            "athletes": [
+              {"athlete": {"id": "a", "displayName": "Good Row"}, "stats": ["10/14", "118"]},
+              {"athlete": {"id": "b", "displayName": "Short Row"}, "stats": ["3/4"]}
+            ]
+          }]
+        }]}
+        """.utf8)
+        let dto = try JSONDecoder().decode(BoxscoreDTO.self, from: json)
+        let box = try #require(ESPNMapper.boxScore(from: dto).first)
+        let passing = try #require(box.categories.first)
+        #expect(passing.players.map(\.name) == ["Good Row"])
+    }
+
+    /// A totals row that doesn't match the header is dropped the same way,
+    /// leaving the table without one rather than misaligned.
+    @Test func boxScoreDropsMisalignedTotals() throws {
+        let json = Data("""
+        {"players": [{
+          "team": {"id": "1", "displayName": "Test Team"},
+          "statistics": [{
+            "name": "kickReturns", "labels": ["NO", "YDS"], "totals": ["2"],
+            "athletes": [{"athlete": {"id": "a", "displayName": "Returner"}, "stats": ["2", "40"]}]
+          }]
+        }]}
+        """.utf8)
+        let dto = try JSONDecoder().decode(BoxscoreDTO.self, from: json)
+        let category = try #require(ESPNMapper.boxScore(from: dto).first?.categories.first)
+        #expect(category.totals.isEmpty)
+        // No `text` to strip a prefix from, so the group name is humanized.
+        #expect(category.label == "Kick Returns")
+    }
+
     @Test func decodesDrives() throws {
         let summary = try loadSummary()
         #expect(summary.drives.count == 22)

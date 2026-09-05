@@ -587,6 +587,7 @@ nonisolated enum ESPNMapper {
             },
             teamStats: teamStats(from: dto.boxscore),
             leaders: leaders(from: dto.leaders?.elements ?? [], competitors: competitors),
+            boxScore: boxScore(from: dto.boxscore),
             venue: dto.gameInfo?.venue?.fullName,
             attendance: dto.gameInfo?.attendance,
             venueCity: {
@@ -600,6 +601,68 @@ nonisolated enum ESPNMapper {
             weatherCondition: dto.gameInfo?.weather?.displayValue,
             weatherTemperature: dto.gameInfo?.weather?.temperature.map(Int.init)
         )
+    }
+
+    static func boxScore(from boxscore: BoxscoreDTO?) -> [BoxScore] {
+        (boxscore?.players ?? []).compactMap { entry -> BoxScore? in
+            guard let teamId = entry.team?.id else { return nil }
+            let categories = (entry.statistics ?? []).compactMap { group -> BoxScore.Category? in
+                guard let name = group.name else { return nil }
+                // No headers, nothing to align stats against.
+                let columns = group.labels ?? []
+                guard !columns.isEmpty else { return nil }
+
+                let players = (group.athletes?.elements ?? []).compactMap { row -> BoxScore.Player? in
+                    guard let athlete = row.athlete,
+                          let name = athlete.displayName ?? athlete.shortName,
+                          let stats = row.stats,
+                          // A row that doesn't match the header would put
+                          // every number under the wrong column. Drop it
+                          // rather than render a lie.
+                          stats.count == columns.count
+                    else { return nil }
+                    return BoxScore.Player(
+                        id: athlete.id ?? "\(teamId)-\(name)",
+                        name: name,
+                        jersey: athlete.jersey,
+                        headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),
+                        stats: stats)
+                }
+                // ESPN ships all ten categories for every game whether or
+                // not anyone recorded one. An interception group with no
+                // interceptions isn't a section, it's noise.
+                guard !players.isEmpty else { return nil }
+
+                let totals = group.totals ?? []
+                return BoxScore.Category(
+                    id: name,
+                    label: categoryLabel(name: name, text: group.text, team: entry.team),
+                    columns: columns,
+                    players: players,
+                    totals: totals.count == columns.count ? totals : [])
+            }
+            guard !categories.isEmpty else { return nil }
+            return BoxScore(teamId: teamId, categories: categories)
+        }
+    }
+
+    /// ESPN's group text is the team-prefixed "Miami Passing"; the card
+    /// header already says whose table this is, so the prefix comes off.
+    /// Falls back to un-camel-casing the group name ("kickReturns").
+    static func categoryLabel(name: String, text: String?, team: TeamDTO?) -> String {
+        for prefix in [team?.displayName, team?.location, team?.name].compactMap(\.self) {
+            if let text, text.hasPrefix(prefix) {
+                let stripped = text.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+                if !stripped.isEmpty { return stripped }
+            }
+        }
+        if let text, !text.isEmpty, team == nil { return text }
+        var words = ""
+        for character in name {
+            if character.isUppercase, !words.isEmpty { words.append(" ") }
+            words.append(character)
+        }
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     /// The comparison stats worth a bar, in display order.
