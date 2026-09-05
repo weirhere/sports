@@ -104,6 +104,33 @@ private func makeFollowing() -> FollowingStore {
             followingIds: following.teamKeys, extraFollowingGames: elsewhere)
         let followingSection = sections.first { $0.id == GameSection.followingId }
         #expect(followingSection?.games.map(\.id) == ["c1", "n1"])
+        // Mixed leagues, so the rows tag which is which.
+        #expect(followingSection?.spansLeagues == true)
+    }
+
+    /// A single-league Following section tags nothing — the screen's own
+    /// scope already says which league you're looking at.
+    @Test func aSingleLeagueFollowingSectionIsUntagged() async {
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c1", home: bruins, away: team("2", in: .collegeFootball))],
+            nfl: [game("n1", home: seahawks, away: team("25", in: .nfl))])
+        let following = makeFollowing()
+        following.toggle(bruins)
+
+        let sections = scoreboards.selected.sections(followingIds: following.teamKeys)
+        #expect(sections.first { $0.id == GameSection.followingId }?.spansLeagues == false)
+    }
+
+    /// The tag reaches VoiceOver too, so a cross-league section is legible
+    /// without sight of it.
+    @Test func aTaggedRowSpeaksItsLeagueFirst() {
+        let nflGame = game("n1", home: seahawks, away: team("25", in: .nfl))
+        let tagged = GameRow(game: nflGame, leagueTag: .nfl)
+        let untagged = GameRow(game: nflGame)
+
+        #expect(tagged.spokenLabel == "NFL, \(untagged.accessibilitySummary)")
+        // An untagged row says exactly what it always did.
+        #expect(untagged.spokenLabel == untagged.accessibilitySummary)
     }
 
     /// Following an id in one league must not pull the other league's team

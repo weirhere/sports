@@ -100,6 +100,10 @@ struct GameSection: Identifiable, Hashable {
     /// with. Qualified because group id 8 is the SEC in college football
     /// and the AFC in the NFL.
     var conference: ConferenceID? = nil
+    /// True when this section's games come from more than one league —
+    /// only Following ever can. Its rows then tag their league, since the
+    /// screen's own scope no longer answers for them.
+    var spansLeagues = false
 }
 
 @Observable
@@ -570,8 +574,10 @@ final class ScoreboardStore {
             followed = chronological(followed + elsewhere)
         }
         if !followed.isEmpty {
+            let leagues = Set(followed.map(\.home.team.league))
             result.append(GameSection(id: GameSection.followingId, title: "Following",
-                                      games: followed))
+                                      games: followed,
+                                      spansLeagues: leagues.count > 1))
         }
 
         switch grouping {

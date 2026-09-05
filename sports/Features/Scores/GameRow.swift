@@ -14,6 +14,11 @@ struct GameRow: View {
     /// whole day — the row spends nothing on the date, just kick time and
     /// network. VoiceOver still hears the full date.
     var timeOnly: Bool = false
+    /// Set only where a section mixes leagues — the Following section, which
+    /// stays cross-league. Everywhere else the league is already the screen's
+    /// scope, so a tag on every row would be noise saying what the header
+    /// above it already said.
+    var leagueTag: League? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 28
@@ -32,7 +37,16 @@ struct GameRow: View {
         // quarter" — instead of a dozen fragments. Logos and layout stay
         // visual-only, and the spoken label is identical in both layouts.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilitySummary)
+        .accessibilityLabel(spokenLabel)
+    }
+
+    /// The league leads the sentence where a section mixes them — "NFL,
+    /// Cleveland at Jacksonville…" — so VoiceOver gets what the tag gives
+    /// a sighted reader. Internal, like `accessibilitySummary`, so the
+    /// label shape is unit-testable.
+    var spokenLabel: String {
+        guard let leagueTag else { return accessibilitySummary }
+        return "\(leagueTag.displayName), \(accessibilitySummary)"
     }
 
     // MARK: - Compact layout (default text sizes)
@@ -132,6 +146,14 @@ struct GameRow: View {
 
     @ViewBuilder
     private var stackedStatus: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            leagueTagText
+            stackedStatusLines
+        }
+    }
+
+    @ViewBuilder
+    private var stackedStatusLines: some View {
         switch game.status {
         case .pre:
             // Kick time and network ride one line while they fit; past that
@@ -188,6 +210,28 @@ struct GameRow: View {
 
     @ViewBuilder
     private var statusColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            leagueTagText
+            statusLines
+        }
+    }
+
+    /// Quiet, uppercase, and above the status — the column's own caption.
+    /// Chrome, so it stays monochrome; the team marks beside it are the
+    /// colour that tells you which sport this is at a glance anyway.
+    @ViewBuilder
+    private var leagueTagText: some View {
+        if let leagueTag {
+            Text(leagueTag.shortName)
+                .font(.rowMeta)
+                .tracking(0.4)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+        }
+    }
+
+    @ViewBuilder
+    private var statusLines: some View {
         switch game.status {
         case .pre:
             VStack(alignment: .leading, spacing: 2) {
