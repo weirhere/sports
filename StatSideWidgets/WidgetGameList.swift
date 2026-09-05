@@ -79,11 +79,21 @@ struct WidgetHeader: View {
 
 /// One game: two team lines (scores inline, absent entirely pre-game) and
 /// a trailing status column — kickoff time, live clock, or FINAL.
+///
+/// The status column is a FIXED width, which is the whole point: on a
+/// `minWidth` it grew with its own content, so a row reading "ACC Network"
+/// pushed its scores further left than a row reading "FOX" and the score
+/// column zig-zagged down the list. The app's `GameRow` pins the same
+/// column at 80pt for the same reason (Andy, 2026-09-05).
 struct WidgetGameRow: View {
     let game: WidgetGame
 
+    @ScaledMetric(relativeTo: .caption2) private var statusWidth: CGFloat = 64
+
     var body: some View {
-        HStack(spacing: Spacing.md) {
+        // sm rather than the app's md on each side of the divider: the
+        // widget card has a fraction of a phone row's width to spend.
+        HStack(spacing: Spacing.sm) {
             // maxWidth lets each team line's internal spacer push its score
             // to the block's trailing edge, scores forming their own column.
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -91,29 +101,21 @@ struct WidgetGameRow: View {
                 WidgetTeamRow(line: game.home, emphasize: game.isLive, showScore: game.showsScores)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Trailing-aligned so the (shorter) network line hangs off the
-            // time's right edge, per the Figma mock.
-            VStack(alignment: .trailing, spacing: 1) {
-                HStack(spacing: Spacing.xs) {
-                    if game.isLive {
-                        Circle()
-                            .fill(Color.liveAccent)
-                            .frame(width: 6, height: 6)
-                    }
-                    Text(game.statusLine)
-                        .font(game.isLive ? .metaEmphasis : .metaMedium)
-                        .foregroundStyle(game.isLive ? .textPrimary : .textSecondary)
-                        .lineLimit(1)
-                }
-                if let network = game.network {
-                    Text(network)
-                        .font(.metaMedium)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                }
+            // Only where there's a score column to divide from. A pre-game
+            // row has nothing on its left but names and records, and a
+            // hairline there would separate nothing.
+            if game.showsScores {
+                Rectangle()
+                    .fill(Color.divider)
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity)
             }
-            .frame(minWidth: 60, alignment: .center)
+            statusColumn
+                .frame(width: statusWidth, alignment: .trailing)
         }
+        // Ideal height, so the divider stretches to the team block rather
+        // than to the card's stretched-to-fill height.
+        .fixedSize(horizontal: false, vertical: true)
         .padding(Spacing.sm)
         // Cards split the leftover height evenly (the mock's stretch-to-fill
         // rows) instead of leaving a dead gap above the footer.
@@ -122,5 +124,34 @@ struct WidgetGameRow: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.bgHeader)
         )
+    }
+
+    /// Trailing-aligned so the (shorter) network line hangs off the time's
+    /// right edge, per the Figma mock — and so time and network hold the
+    /// same right edge whether or not the row has scores.
+    ///
+    /// Type matches the app's status column exactly: 10 medium over 10
+    /// regular (Andy, 2026-09-05). Supersedes the 12pt `metaMedium` these
+    /// lines took in the 2026-08-23 widget remix.
+    private var statusColumn: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            HStack(spacing: Spacing.xs) {
+                if game.isLive {
+                    Circle()
+                        .fill(Color.liveAccent)
+                        .frame(width: 6, height: 6)
+                }
+                Text(game.statusLine)
+                    .font(.rowMetaMedium)
+                    .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+            }
+            if let network = game.network {
+                Text(network)
+                    .font(.rowMeta)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
+        }
     }
 }
