@@ -157,13 +157,26 @@ actually goes up, resized from the masters in `screenshots/`. Learned the
 expensive way during the 1.0 submission.
 
 Screenshots carry forward automatically on a version update — you only
-replace them when the shots themselves change. Note that the nine promo PNGs
-in `docs/social/` crop into these masters at hardcoded pixel offsets, so
+replace them when the shots themselves change. Note that the promo PNGs in
+`docs/social/` crop into these masters at hardcoded pixel offsets, so
 reshooting means re-rendering those too (see docs/social/README.md).
 Order suggestion: scores (hero) → **widget on the Home Screen** → game detail
 → rankings → teams → team page. The widget frame is captured manually from
 the simulator (springboard is outside the UI test's reach) — it's the
 reviewer's first visual evidence of native functionality, put it second.
+
+### What actually goes up
+
+The plain shots above are the masters; the store listing uses the *marketing*
+frames built from them — device on a black stage, one headline apiece:
+
+- `docs/appstore/screenshots-marketing-1284x2778/` — the 6.5" slot, eight PNGs
+- `docs/appstore/screenshots-marketing-1320x2868/` — the same eight at 6.9"
+
+Reshot 2026-09-05 for 1.4.0 against a live Week 1 Saturday. The set went from
+seven frames to eight: box scores got their own (`06-boxscore`), which pushed
+quiet and the closer to 07 and 08. Both sizes render from the same
+`docs/social/src/as-*.html` sources — see that README for the `?69` flag.
 
 ## App Privacy (nutrition label)
 

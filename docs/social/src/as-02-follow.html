@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="social.css">
+<script>if (location.search.indexOf("69") >= 0) document.documentElement.classList.add("as69");</script>
 <style>
   .stage::before {
     background:
@@ -14,29 +15,33 @@
     mask-image: radial-gradient(72% 40% at 50% 66%, #000 0%, rgba(0,0,0,0) 80%);
   }
 
+  /* The team-page hero: back, bell, Following, share, then the identity
+     block and the tab row — source y 170-1170. Full width, because the
+     Following pill lives out on the toolbar's trailing edge now. */
   .crop.follow {
-    width: 560px; height: 373px;
+    width: 560px; height: 424px;
     left: 260px; top: 806px;
     transform: rotate(-2.5deg);
     z-index: 2;
   }
-  .crop.follow img { width: 1027px; left: -233px; top: -327px; }
+  .crop.follow img { width: 560px; left: 0; top: -72px; }
 
+  /* Scores' Following card, source y 500-1460. */
   .crop.section {
-    width: 880px; height: 452px;
+    width: 880px; height: 640px;
     left: 100px; top: 1218px;
     z-index: 3;
   }
-  .crop.section img { width: 880px; left: 0; top: -322px; }
+  .crop.section img { width: 880px; left: 0; top: -333px; }
 </style>
 <style>
   /* App Store 1284x2778 reflow. */
   .stage { height: 2337px; zoom: 1.18889; }
   .stage9 .head { top: 430px; }
-  .crop.follow { width: 640px; height: 427px; left: 220px; top: 1010px; }
-  .crop.follow img { width: 1173px; left: -267px; top: -373px; }
-  .crop.section { width: 980px; height: 503px; left: 50px; top: 1520px; }
-  .crop.section img { width: 980px; left: 0; top: -359px; }
+  .crop.follow { width: 640px; height: 485px; left: 220px; top: 990px; }
+  .crop.follow img { width: 640px; left: 0; top: -82px; }
+  .crop.section { width: 980px; height: 792px; left: 50px; top: 1545px; }
+  .crop.section img { width: 980px; left: 0; top: -371px; }
 </style>
 </head>
 <body>

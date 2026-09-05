@@ -1,6 +1,22 @@
+/* Inter, loaded by path — the render must not silently fall back. Chrome
+   picks Helvetica when this file is missing, which is visibly wider than the
+   set on the App Store. Repoint this at wherever your copy of Inter lives.
+   The headline weights are variable (`.sub` asks for 450), so the variable
+   TTF is the file that matters. */
+@font-face {
+  font-family: "Inter";
+  src: url("/Users/andyweir/Library/CloudStorage/Dropbox/Work/Tools/Fonts/I/Inter/Inter-VariableFont_slnt,wght.ttf")
+       format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
+  /* The app's live accent went green on 2026-08-29; red is now rankings-down
+     only. The stage is black, so these are the dark-mode token values. */
+  --green: #33D166;
   --red: #FF453B;
   --gray: #8E8E93;
 }
@@ -91,8 +107,8 @@ body {
   width: 0.62em;
   height: 0.62em;
   border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 0 0.28em rgba(255,69,59,0.22);
+  background: var(--green);
+  box-shadow: 0 0 0 0.28em rgba(51,209,102,0.22);
 }
 
 /* ---------- device ---------- */
@@ -230,3 +246,14 @@ body {
 .stage9 .bullets li + li { margin-top: 16px; }
 .stage9 .bullets li { padding-left: 32px; }
 .stage9 .bullets li::before { width: 8px; height: 8px; left: 3px; }
+
+/* ---------- App Store reflows ----------
+   The as-*.html files carry the 6.5" (1284×2778) numbers inline. Loading one
+   with `?69` in the URL flips it to 6.9" (1320×2868): the stage stays 1080
+   wide so every position above still reads in familiar coordinates, and only
+   the height and zoom change — 2346.55 × 1.222222 lands on 1320 × 2868
+   exactly, the way 2337 × 1.18889 lands on 1284 × 2778.
+
+   This outranks the inline `.stage` blocks on specificity, not source order,
+   so it works from a shared file. */
+html.as69 .stage { height: 2346.55px; zoom: 1.222222; }
