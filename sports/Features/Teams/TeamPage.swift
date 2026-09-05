@@ -77,27 +77,14 @@ struct TeamPage: View {
     /// pushed value (instant, pre-fetch), then the team directory (covers
     /// Rankings/game-detail entry paths that push no id).
     ///
-    /// One veto, disproof-shaped (refined 2026-08-29): an FCS opponent's
-    /// payload can reuse a group id that collides with our FBS table, so
-    /// an unknown team's claim stands only when the directory can't
-    /// disprove it — the claimed conference has a roster and this team
-    /// isn't on it. An EMPTY roster proves nothing: ESPN ships the Sun
-    /// Belt with zero standings entries (still true 2026-08-29), and the
-    /// old know-the-team-or-nothing veto was silently stripping every
-    /// Sun Belt page of its conference line and Standings tab. (The
-    /// veto's original NDSU example aged out — their Mountain West line
-    /// is real 2026 realignment, confirmed against the standings.)
+    /// The claim check lives in `ConferenceClaim` — a rule that has been
+    /// wrong twice belongs somewhere a test can reach it.
     private var resolvedConferenceId: Int? {
         let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
             ?? directory?.allTeams.first(where: { $0.id == team.id })?.conferenceId
-        if let directory, !directory.allTeams.isEmpty,
-           !directory.allTeams.contains(where: { $0.id == team.id }),
-           let claimed,
-           directory.allTeams.contains(where: { $0.conferenceId == claimed }) {
-            return nil
-        }
-        return claimed
+        return ConferenceClaim.resolve(claimed: claimed, teamId: team.id,
+                                       directory: directory?.allTeams ?? [])
     }
 
     private var isLoadingSelected: Bool {
@@ -131,13 +118,13 @@ struct TeamPage: View {
         Game.merging(game, withLive: liveBoard?.games ?? [])
     }
 
-    /// FBS only for now: `conferenceStandings(year:)` still asks for group
-    /// 80, so an FCS team's Standings tab would open on a permanent
-    /// "Standings TBA". The registry knows its conference (E8's first
-    /// item) — the fetch doesn't yet, and an empty tab is worse than no
-    /// tab. Lifts with the division-aware data layer.
+    /// Any division we can name a conference for. The gate was FBS-only
+    /// while `conferenceStandings` could only ask for group 80; it now
+    /// asks for the team's own division, so an FCS team gets a real table
+    /// instead of a permanent "Standings TBA". `.other` still hides the
+    /// tab — an id we can't name has no table to show.
     private var showsStandingsTab: Bool {
-        Conference.division(for: resolvedConferenceId) == .fbs
+        Conference.division(for: resolvedConferenceId) != nil
     }
 
     var body: some View {
@@ -274,12 +261,13 @@ struct TeamPage: View {
     /// instead of a claim. Links to the full conference page when there is one.
     @ViewBuilder
     private var conferenceLine: some View {
-        // An FCS team now has a real conference line — the point of E8's
-        // registry item — but not a real conference *page* until the
-        // standings fetch learns about group 81, so it renders as the
-        // plain-text label below rather than a link into an empty table.
+        // Both divisions link now: the conference page fetches standings
+        // for its own division, and ESPN serves its Games tab off the same
+        // `groups={id}` scoreboard call either way (probed 2026-09-03:
+        // Big Sky 2026 returns 96 events). An id we can't name still
+        // renders as plain text — there's no page to send it to.
         let label = resolvedConferenceId.map { Conference.name(for: $0) } ?? ""
-        if let id = resolvedConferenceId, Conference.division(for: id) == .fbs {
+        if let id = resolvedConferenceId, Conference.division(for: id) != nil {
             NavigationLink(value: ConferenceDestination(conferenceId: id,
                                                         name: Conference.name(for: id),
                                                         highlightTeamId: team.id)) {
@@ -518,7 +506,8 @@ struct TeamPage: View {
             // Nil for the current season keeps the shipped request shape;
             // an explicit past year is scoped with `season={year}`.
             let all = try await client.conferenceStandings(
-                year: year == CFBSeason.year() ? nil : year)
+                year: year == CFBSeason.year() ? nil : year,
+                division: Conference.division(for: id) ?? .fbs)
             standingsByYear[year] = all.first { $0.id == id }
                 ?? ConferenceStandings(id: id, name: Conference.name(for: id), entries: [])
             standingsFailedYears.remove(year)

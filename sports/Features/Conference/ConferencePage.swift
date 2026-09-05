@@ -312,7 +312,8 @@ struct ConferencePage: View {
             // Nil for the current season keeps the shipped request shape;
             // an explicit past year is scoped with `season={year}`.
             let all = try await client.conferenceStandings(
-                year: year == CFBSeason.year() ? nil : year)
+                year: year == CFBSeason.year() ? nil : year,
+                division: Conference.division(for: destination.conferenceId) ?? .fbs)
             standingsByYear[year] = all.first { $0.id == destination.conferenceId }
                 ?? ConferenceStandings(id: destination.conferenceId,
                                        name: destination.name, entries: [])
