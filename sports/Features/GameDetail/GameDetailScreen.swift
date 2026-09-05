@@ -15,6 +15,28 @@ struct GameDetailScreen: View {
     @State private var lastError: String?
     /// The matchup-standings card's data; a miss just hides the card.
     @State private var conferenceStandings: [ConferenceStandings] = []
+    @State private var tab: Tab = .summary
+    /// Which edge incoming tab content pushes from, the entity pages'
+    /// rule: trailing walking forward, leading coming back.
+    @State private var tabSlideEdge: Edge = .trailing
+
+    /// Raw values order the tabs — the slide direction is an ordinal
+    /// comparison. Summary keeps every card the screen has always had, in
+    /// the order it had them; Box score is purely additive.
+    private enum Tab: Int, HeroTabItem {
+        case summary, boxScore
+
+        var title: String {
+            switch self {
+            case .summary: "Summary"
+            case .boxScore: "Box score"
+            }
+        }
+    }
+
+    /// No player stats, no tab row: pre-kick games, CFBD's feed, and any
+    /// game ESPN hasn't filled in look exactly as they did before.
+    private var showsTabs: Bool { !(summary?.boxScore.isEmpty ?? true) }
 
     private let client: any ScoresProviding = DataProvider.makeClient()
 
@@ -24,55 +46,49 @@ struct GameDetailScreen: View {
                 // The header sits on the card surface — headers match the
                 // cards on every entity page (Andy, 2026-08-31); the
                 // content below stays in cards on the recessed one.
-                header
-                    .frame(maxWidth: .infinity)
-                    .background(Color.bgCard)
+                VStack(spacing: 0) {
+                    header
+                    if showsTabs {
+                        // Leading, with the entity pages' Spacing.lg gutter —
+                        // Team and Conference anchor their tab rows to the
+                        // left edge and this is the same component.
+                        HeroTabBar(tabs: [.summary, .boxScore], selection: tab,
+                                   onSelect: { select(tab: $0) })
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Spacing.lg)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color.bgCard)
                 if let summary {
-                    VStack(spacing: Spacing.sm) {
-                        // Pre-kick, the sections below are all empty — the
-                        // game-info card carries the "what do I need to
-                        // know" load (FotMob's Preview cards, monochrome).
-                        if !showsScores {
-                            card(title: "Game info") { gameInfoRows(summary) }
-                        }
-                        if summary.away?.linescores.isEmpty == false {
-                            card { LineScoreGrid(summary: summary) }
-                        }
-                        if !summary.scoringPlays.isEmpty {
-                            card(title: "Scoring") { ScoringPlaysList(summary: summary) }
-                        }
-                        if !summary.teamStats.isEmpty {
-                            card(title: "Team stats", subtitle: statsLegend(summary)) {
-                                TeamStatsCompare(summary: summary)
-                            }
-                        }
-                        if !summary.leaders.isEmpty {
-                            card(title: "Leaders") { LeadersList(summary: summary) }
-                        }
-                        // The two sides' conference standing "so far" —
-                        // only for current-season games (the fetch is
-                        // always the current tables, and 2019's page must
-                        // not wear 2026's numbers).
-                        if isCurrentSeason,
-                           MatchupStandings.hasContent(away: game.away.team,
-                                                       home: game.home.team,
-                                                       standings: conferenceStandings) {
-                            card(title: "Standings") {
-                                MatchupStandings(away: game.away.team,
-                                                 home: game.home.team,
-                                                 standings: conferenceStandings)
-                            }
-                        }
-                        if !summary.drives.isEmpty {
-                            card(title: "Drives") { DriveLogList(summary: summary) }
-                        }
-                        // Pre-game the info card already places the game;
-                        // once scores exist it returns as the venue card.
-                        if showsScores, summary.venue != nil || summary.attendance != nil {
-                            card(title: "Game info") { venueRows(summary) }
+                    Group {
+                        if tab == .boxScore, showsTabs {
+                            BoxScoreList(summary: summary)
+                                .padding(Spacing.sm)
+                        } else {
+                            summaryCards(summary)
                         }
                     }
-                    .padding(Spacing.sm)
+                    // geometryGroup pins every child to the pane while it
+                    // slides — without it, subtrees resolve their own
+                    // positions and marks sit still as cards move.
+                    .geometryGroup()
+                    .id(tab)
+                    .transition(.push(from: tabSlideEdge))
+                    // The entity pages' swipe: horizontal walks the tabs,
+                    // with a dominance check so vertical scrolling never
+                    // tab-flips. The buttons stay, so nothing is gated.
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                let dx = value.translation.width
+                                guard showsTabs, abs(dx) > 50,
+                                      abs(dx) > abs(value.translation.height) * 1.5,
+                                      let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
+                                else { return }
+                                select(tab: target)
+                            }
+                    )
                 } else if isLoading {
                     ProgressView().padding(.vertical, Spacing.xl)
                 } else if lastError != nil {
@@ -268,6 +284,71 @@ struct GameDetailScreen: View {
     private var showsScores: Bool { GameHeaderState.showsScores(game, summary) }
 
     private var statusLine: String { GameHeaderState.statusLine(game, summary) }
+
+
+    /// Tab taps and content swipes share the one direction rule. The edge
+    /// commits a transaction BEFORE the switch: the outgoing pane's
+    /// `.push` resolves against the pre-change tree, so setting both
+    /// together replays the previous direction (the entity pages' split,
+    /// 2026-08-31).
+    private func select(tab value: Tab) {
+        guard value != tab else { return }
+        tabSlideEdge = value.rawValue > tab.rawValue ? .trailing : .leading
+        Task { @MainActor in
+            withAnimation(.default) { tab = value }
+        }
+    }
+
+    /// Every card the screen has always had, in the order it had them —
+    /// the Box score tab is additive, so nothing here moved.
+    @ViewBuilder
+    private func summaryCards(_ summary: GameSummary) -> some View {
+        VStack(spacing: Spacing.sm) {
+                    // Pre-kick, the sections below are all empty — the
+                    // game-info card carries the "what do I need to
+                    // know" load (FotMob's Preview cards, monochrome).
+                    if !showsScores {
+                        card(title: "Game info") { gameInfoRows(summary) }
+                    }
+                    if summary.away?.linescores.isEmpty == false {
+                        card { LineScoreGrid(summary: summary) }
+                    }
+                    if !summary.scoringPlays.isEmpty {
+                        card(title: "Scoring") { ScoringPlaysList(summary: summary) }
+                    }
+                    if !summary.teamStats.isEmpty {
+                        card(title: "Team stats", subtitle: statsLegend(summary)) {
+                            TeamStatsCompare(summary: summary)
+                        }
+                    }
+                    if !summary.leaders.isEmpty {
+                        card(title: "Leaders") { LeadersList(summary: summary) }
+                    }
+                    // The two sides' conference standing "so far" —
+                    // only for current-season games (the fetch is
+                    // always the current tables, and 2019's page must
+                    // not wear 2026's numbers).
+                    if isCurrentSeason,
+                       MatchupStandings.hasContent(away: game.away.team,
+                                                   home: game.home.team,
+                                                   standings: conferenceStandings) {
+                        card(title: "Standings") {
+                            MatchupStandings(away: game.away.team,
+                                             home: game.home.team,
+                                             standings: conferenceStandings)
+                        }
+                    }
+                    if !summary.drives.isEmpty {
+                        card(title: "Drives") { DriveLogList(summary: summary) }
+                    }
+                    // Pre-game the info card already places the game;
+                    // once scores exist it returns as the venue card.
+                    if showsScores, summary.venue != nil || summary.attendance != nil {
+                        card(title: "Game info") { venueRows(summary) }
+                    }
+            }
+            .padding(Spacing.sm)
+    }
 
     /// One content card: optional bordered header, then the section's own
     /// rows — the same recipe as the team-page cards.
