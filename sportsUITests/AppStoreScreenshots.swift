@@ -1,10 +1,21 @@
 import XCTest
 
-/// App Store screenshot capture — a sibling of ScreenshotTests, but instead
-/// of walking the current week (empty in the offseason) it navigates to a
-/// full regular-season Saturday so the shots show the app at its best.
-/// Run on the store-required 6.9" device (iPhone 17 Pro Max) and export the
-/// attachments from the xcresult with `xcresulttool export attachments`.
+/// App Store screenshot capture — a sibling of ScreenshotTests, but aimed at
+/// the store rather than design review. It shoots the current week live, so
+/// the slate carries the app's whole argument: green live dots and running
+/// clocks next to the finals, with the followed teams on top.
+///
+/// Run on the store devices (iPhone 17 Pro Max for 6.9", 16 Plus for 6.5")
+/// with `-parallel-testing-enabled NO`, and export the attachments from the
+/// xcresult with `xcresulttool export attachments`. Set the status bar first:
+///
+///     xcrun simctl status_bar <udid> override --time "9:41" \
+///       --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+///
+/// Out of season the current week is empty (and Week 1 is a slate of FCS
+/// blowouts against preseason 0-0 records) — pass
+/// `TEST_RUNNER_SCREENSHOT_SEASON=2025`
+/// and `TEST_RUNNER_SCREENSHOT_WEEK="Week 10"` to shoot a completed Saturday.
 final class AppStoreScreenshots: XCTestCase {
     @MainActor
     func testCaptureStoreScreenshots() throws {
@@ -18,47 +29,64 @@ final class AppStoreScreenshots: XCTestCase {
                                 "-following.teamIds", "(61, 130, 251)"]
         app.launch()
 
-        // In the offseason ESPN's "current" season is the upcoming one —
-        // all 0-0 records and TBD kickoffs. Switch to the completed 2025
-        // season so every shot shows real scores and a Top 25 section.
-        XCTAssertTrue(selectSeason(2025, in: app),
-                      "Season menu should switch to 2025")
+        let env = ProcessInfo.processInfo.environment
+        if let year = env["SCREENSHOT_SEASON"].flatMap(Int.init) {
+            XCTAssertTrue(selectSeason(year, in: app),
+                          "Season menu should switch to \(year)")
+        }
+        if let week = env["SCREENSHOT_WEEK"] {
+            let chip = app.buttons[week]
+            // The strip's HStack isn't lazy, so every week button exists in the
+            // hierarchy even when scrolled offscreen — find the strip by content.
+            let strip = app.scrollViews.containing(.button, identifier: week).firstMatch
+            XCTAssertTrue(strip.waitForExistence(timeout: 15), "Week strip should load")
+            XCTAssertTrue(scrollToAndTap(chip, in: strip, within: app.windows.firstMatch),
+                          "\(week) should be reachable in the strip")
+        }
 
-        // Then walk the week strip to a regular-season Saturday.
-        let weekTen = app.buttons["Week 10"]
-        // The strip's HStack isn't lazy, so every week button exists in the
-        // hierarchy even when scrolled offscreen — find the strip by content.
-        let strip = app.scrollViews.containing(.button, identifier: "Week 10").firstMatch
-        XCTAssertTrue(strip.waitForExistence(timeout: 15), "Week strip should load")
-        XCTAssertTrue(scrollToAndTap(weekTen, in: strip, within: app.windows.firstMatch),
-                      "Week 10 should be reachable in the strip")
-
-        // Scores: wait for game rows, expand nothing — Following and Top 25
-        // are open by default, which is the hero shot. A completed week's
-        // rows carry "Final" in their labels (scheduled rows say " at ").
-        let gameLink = app.scrollViews.buttons.matching(NSPredicate(
-            format: "label CONTAINS[c] %@", "final")).firstMatch
-        XCTAssertTrue(gameLink.waitForExistence(timeout: 15),
-                      "Week 10 should show completed game rows")
+        // Scores: expand nothing — Following and Top 25 are open by default,
+        // which is the hero shot. Wait for a row that has a score on it, so
+        // the slate isn't a screen of kickoff times.
+        let played = app.scrollViews.buttons.matching(NSPredicate(
+            format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", " left", "final"))
+        XCTAssertTrue(played.firstMatch.waitForExistence(timeout: 20),
+                      "The week should show games with scores")
         snapshot(app, "01-scores")
 
-        // Game detail off the first visible game.
-        gameLink.tap()
+        // Game detail, off a completed game where there is one. The live
+        // treatment is already the Scores shot's job; what the detail and box
+        // score need is a game with a full stat line behind it, and a game in
+        // the first quarter has almost nothing to show.
+        let final = app.scrollViews.buttons.matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "final")).firstMatch
+        let game = final.exists ? final : played.firstMatch
+        game.tap()
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
         // Let line score / leaders finish loading before the shot.
         _ = app.staticTexts["Total"].waitForExistence(timeout: 8)
         snapshot(app, "02-game-detail")
+
+        // Box score — 1.4.0's headline. The tab row is hidden entirely when a
+        // game ships no player stats, so this shot is conditional.
+        let boxScore = app.buttons["Box score"]
+        if boxScore.waitForExistence(timeout: 5) {
+            boxScore.tap()
+            _ = app.staticTexts["Passing"].waitForExistence(timeout: 8)
+            snapshot(app, "03-box-score")
+        } else {
+            XCTFail("No box score on \(game.label) — reshoot against a game with player stats")
+        }
         app.navigationBars.buttons.firstMatch.tap()
 
         // Rankings.
         XCTAssertTrue(openRankingsPoll(in: app),
                       "The Top 25 row should push a poll with a ranked #1")
-        snapshot(app, "03-rankings")
+        snapshot(app, "04-rankings")
 
         // Teams browse.
         XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
                       "Teams browse should load")
-        snapshot(app, "04-teams")
+        snapshot(app, "05-teams")
 
         // A team page, via search.
         let search = app.searchFields.firstMatch
@@ -71,7 +99,7 @@ final class AppStoreScreenshots: XCTestCase {
         _ = app.buttons.matching(NSPredicate(
             format: "label IN %@", ["Follow", "Following"])).firstMatch
             .waitForExistence(timeout: 10)
-        snapshot(app, "05-team-page")
+        snapshot(app, "06-team-page")
     }
 
     @MainActor

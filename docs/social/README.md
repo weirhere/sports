@@ -56,17 +56,74 @@ the top and bottom 250px (500px on the 2x asset). Only the devices run under
 it. Instagram downsamples to 1080 × 1920 on upload; the 2x master is there for
 headroom.
 
+## App Store screenshot set
+
+The App Store frames live in `src/as-*.html` and render to
+`docs/appstore/screenshots-marketing-1284x2778/` (6.5") and
+`docs/appstore/screenshots-marketing-1320x2868/` (6.9").
+
+Eight beats, not the thread's seven — box scores landed in 1.4.0 and earned a
+frame of their own, which pushed "designed quiet" and the closer to 07 and 08.
+
+| Frame | File | What it shows |
+|---|---|---|
+| 1 | `01-hero.png` | Three devices — Scores, Rankings, Game detail |
+| 2 | `02-follow.png` | The team-page hero and the Following section it feeds |
+| 3 | `03-saturdays.png` | The five bullets, Scores device alongside |
+| 4 | `04-week.png` | The week strip, and the slate it controls |
+| 5 | `05-rankings.png` | The poll |
+| 6 | `06-boxscore.png` | Box score tab, both teams, real stat lines |
+| 7 | `07-quiet.png` | Typographic — the four things the app doesn't do |
+| 8 | `08-closer.png` | Icon, wordmark, tagline, disclaimer |
+
+Each `as-*.html` is its `story-*.html` counterpart plus a trailing `<style>`
+block that overrides the stage and the vertical positions. This is a reflow,
+not a resize: a story is 1080 × 1920 (ratio 0.5625) and the App Store slot is
+1284 × 2778 (0.4622) — taller and proportionally narrower, so scaling the
+raster would either squash the artwork or slice the bleeding devices off flat.
+The trick is that the stage becomes 1080 × 2337 with `zoom: 1.18889` — 2337 is
+2778 ÷ 1.18889 — so the layout stays in familiar 1080-wide coordinates and zoom
+carries it to the exact pixel size Apple wants.
+
+**6.9" comes off the same files.** Loading one with `?69` in the URL adds an
+`as69` class to `<html>`, and the rule for it in `social.css` swaps the stage
+to 1080 × 2346.55 at `zoom: 1.222222`, which lands on 1320 × 2868. It outranks
+the inline `.stage` blocks on specificity, so it works from the shared file
+without touching all eight sources. Positions stay in 1080 coordinates either
+way; the only difference is ~10px more vertical room.
+
+The Instagram safe-zone insets are pulled back in these, since the App Store
+draws no chrome over the image.
+
 ## Regenerating
 
-Source is plain HTML/CSS in `src/`, rendered with headless Chromium at 2x.
-Type is Inter (Inter Display for headlines) — install it locally first; without
-it the render falls back to whatever sans the system has.
+Source is plain HTML/CSS in `src/`, rendered with headless Chromium.
 
 ```sh
 cd docs/social/src
-CHROME=/path/to/chrome   # any Chromium/Chrome build
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+AS=../../appstore
 
-# every thread graphic is 1600×900
+for f in as-*.html; do
+  n=${f#as-}; n=${n%.html}
+  "$CHROME" --headless --hide-scrollbars --allow-file-access-from-files \
+    --force-device-scale-factor=1 --window-size=1284,2778 \
+    --screenshot="$AS/screenshots-marketing-1284x2778/$n.png" \
+    --virtual-time-budget=5000 "file://$PWD/$f"
+  "$CHROME" --headless --hide-scrollbars --allow-file-access-from-files \
+    --force-device-scale-factor=1 --window-size=1320,2868 \
+    --screenshot="$AS/screenshots-marketing-1320x2868/$n.png" \
+    --virtual-time-budget=5000 "file://$PWD/$f?69"
+done
+```
+
+The output must be exactly 1284 × 2778 / 1320 × 2868 or App Store Connect
+rejects it. The window size must match the stage dimensions, or the render
+clips.
+
+The thread graphics are 1600 × 900 at 2x:
+
+```sh
 for f in 02-follow 03-saturdays 04-week 05-rankings 06-quiet 07-closer; do
   "$CHROME" --headless --hide-scrollbars --allow-file-access-from-files \
     --force-device-scale-factor=2 --window-size=1600,900 \
@@ -76,11 +133,19 @@ done
 ```
 
 The hero uses `landscape.html` at 1600,900, `square.html` at 1080,1080,
-`portrait.html` at 1080,1350, and `story.html` at 1080,1920. The window size must match the `.stage`
-dimensions in each file's inline `<style>` block, or the render clips.
+`portrait.html` at 1080,1350, and `story.html` at 1080,1920.
 
 Shared styling lives in `src/social.css`; each file overrides the background
 gradients and positions its own devices and crops.
+
+### Type
+
+Inter, loaded by absolute path in a `@font-face` at the top of `social.css`.
+It used to rely on Inter being installed system-wide, which failed silently —
+Chrome falls back to Helvetica, and the headlines render visibly wider than
+the set already on the App Store. If the path moves, repoint that one rule.
+The weights are variable (`.sub` asks for 450), so the variable TTF is the
+file that matters.
 
 ## Notes
 
@@ -88,6 +153,15 @@ gradients and positions its own devices and crops.
   the card width and offset with negative `top` to land on the region you want.
   Screenshots are 1320 × 2868, so `scale = card_width / 1320` and
   `top = -region_y * scale`. Change the screenshots and every offset moves.
+- **The thread and story sources still carry the pre-1.4.0 offsets.** The
+  `as-*` crops were re-aimed at the 2026-09-05 reshoot; `02-follow.html`,
+  `04-week.html` and their `story-*` counterparts were not, so re-rendering
+  those today lands their windows on the wrong rows. The committed PNGs in
+  `docs/social/` are the old renders and are still internally consistent —
+  they just can't be regenerated without the same pass. Regions worth knowing
+  on the current shots: week strip `y 380-500`, Scores' Following card
+  `y 526-1536`, Top 25 card `y 1560-2608`, the team-page hero through its
+  first card `y 170-1170`.
 - Device frames are driven by one number: `font-size` on `.phone` sets its
   width (`width: 1em`), and the bezel and radii are `em` fractions of it. The
   outer radius is `screen-radius + bezel`, so the curves stay concentric at any
@@ -96,27 +170,6 @@ gradients and positions its own devices and crops.
   to a fixed width while the radii scale.
 - Absolute positioning inside `.content` can silently drop content in headless
   renders — keep copy in normal flow and let the flex column stack it.
-- Screens are from Week 10 of the 2025 season with final poll data, so the
-  graphics are dated to that slate. Reshoot the App Store screenshots and
-  re-render to move them forward.
-
-## App Store screenshot set (1284 × 2778)
-
-The same seven designs re-rendered at the size App Store Connect accepts for
-the 6.5" slot, in `docs/appstore/screenshots-marketing-1284x2778/`.
-
-This is a reflow, not a resize. A story is 1080 × 1920 (ratio 0.5625); the App
-Store slot is 1284 × 2778 (0.4622) — taller and proportionally narrower. Scaling
-the raster would either squash the artwork or slice the bleeding devices off
-flat with black beneath them.
-
-Sources are `src/as-*.html`: each one is its `story-*.html` counterpart plus a
-trailing `<style>` block that overrides the stage and the vertical positions.
-The trick is the stage becomes 1080 × 2337 with `zoom: 1.18889` — 2337 is
-2778 ÷ 1.18889, so the layout stays in familiar 1080-wide coordinates and zoom
-carries it to the exact pixel size Apple wants. Render at
-`--window-size=1284,2778 --force-device-scale-factor=1`; the output must be
-exactly 1284 × 2778 or App Store Connect rejects it.
-
-The Instagram safe-zone insets are pulled back in these, since the App Store
-draws no chrome over the image.
+- Screens are a live Week 1 Saturday of the 2026 season, shot 2026-09-05:
+  two games in progress, USC–San José State final, and a preseason AP poll.
+  Reshoot the App Store screenshots and re-render to move them forward.
