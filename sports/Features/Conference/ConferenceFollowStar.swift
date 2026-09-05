@@ -3,7 +3,7 @@ import SwiftUI
 /// Star toggle for following a conference — FollowButton's twin, driving
 /// the conference set. Filled when following; weight, not color.
 struct ConferenceFollowStar: View {
-    let conferenceId: Int
+    let conference: ConferenceID
     /// Spoken in the label — a list of identical "Follow conference"
     /// buttons gives VoiceOver nothing to distinguish.
     let conferenceName: String
@@ -12,9 +12,9 @@ struct ConferenceFollowStar: View {
 
     var body: some View {
         Button {
-            following.toggleConference(conferenceId)
+            following.toggleConference(conference)
         } label: {
-            Image(systemName: following.isFollowingConference(conferenceId) ? "star.fill" : "star")
+            Image(systemName: following.isFollowingConference(conference) ? "star.fill" : "star")
                 .font(.system(size: 16))
                 .foregroundStyle(.textPrimary)
                 // Trailing-aligned so the star's right edge sits on the same
@@ -24,9 +24,9 @@ struct ConferenceFollowStar: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(following.isFollowingConference(conferenceId)
+        .accessibilityLabel(following.isFollowingConference(conference)
                             ? "Unfollow \(conferenceName)" : "Follow \(conferenceName)")
         .sensoryFeedback(.impact(weight: .light),
-                         trigger: following.isFollowingConference(conferenceId))
+                         trigger: following.isFollowingConference(conference))
     }
 }

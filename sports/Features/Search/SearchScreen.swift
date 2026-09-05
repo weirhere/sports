@@ -21,7 +21,7 @@ struct SearchScreen: View {
         SearchResults.compute(query: searchText,
                               conferences: directory.conferences,
                               games: scoreboard.games,
-                              followingIds: following.teamIds)
+                              followingIds: following.teamKeys)
     }
 
     var body: some View {
@@ -126,7 +126,7 @@ struct SearchScreen: View {
     }
 
     private func select(_ conference: ConferenceTeams) {
-        guard let id = conference.id else { return }
+        guard let id = conference.conference else { return }
         router.pendingConferenceId = id
     }
 

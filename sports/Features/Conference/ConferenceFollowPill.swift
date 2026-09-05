@@ -4,14 +4,14 @@ import SwiftUI
 /// conference follow set instead. Kept separate: the two differ in id type
 /// and store method, and the pill is smaller than a generalization.
 struct ConferenceFollowPill: View {
-    let conferenceId: Int
+    let conference: ConferenceID
 
     @Environment(FollowingStore.self) private var following
 
     var body: some View {
-        let isFollowing = following.isFollowingConference(conferenceId)
+        let isFollowing = following.isFollowingConference(conference)
         Button {
-            following.toggleConference(conferenceId)
+            following.toggleConference(conference)
         } label: {
             HStack(spacing: Spacing.xs) {
                 Image(systemName: isFollowing ? "star.fill" : "star")

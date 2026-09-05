@@ -9,7 +9,7 @@ struct SearchConferenceRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: Spacing.md) {
-                ConferenceLogo(url: Conference.logoURL(for: conference.id))
+                ConferenceLogo(url: Conference.logoURL(for: conference.conference))
                 Text(conference.name)
                     .font(.teamName)
                     .foregroundStyle(.textPrimary)

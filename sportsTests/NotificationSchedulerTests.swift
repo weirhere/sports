@@ -40,6 +40,10 @@ private actor FakeCenter: NotificationCentering {
 }
 
 private struct ScheduleStub: ScoresProviding {
+    /// The stubs are college-football fixtures; the protocol needs a
+    /// league, and one is as good as the payloads they return.
+    nonisolated var league: League { .collegeFootball }
+
     let schedules: [String: [Game]]
 
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
@@ -98,7 +102,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
         let center = FakeCenter()
         let scheduler = makeScheduler(center: center, schedules: ["1": games])
 
-        await scheduler.requestAndEnable(followedIds: ["1"])
+        await scheduler.requestAndEnable(followedKeys: ["cfb:1"])
 
         let added = await center.added
         #expect(added.count == NotificationScheduler.maxScheduled)
@@ -117,7 +121,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
             client: ScheduleStub(schedules: ["1": [preGame("g1", home: "1", away: "2", kickoff: original)]]),
             defaults: defaults
         )
-        await first.requestAndEnable(followedIds: ["1"])
+        await first.requestAndEnable(followedKeys: ["cfb:1"])
         let originalId = NotificationScheduler.requestId(gameId: "g1", kickoff: original)
         #expect(await center.pending == [originalId])
 
@@ -129,7 +133,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
             defaults: defaults
         )
         await second.refreshAuthorization()
-        await second.resync(followedIds: ["1"])
+        await second.resync(followedKeys: ["cfb:1"])
 
         #expect(await center.removed.contains(originalId))
         #expect(await center.pending == [NotificationScheduler.requestId(gameId: "g1", kickoff: moved)])
@@ -142,10 +146,10 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
             schedules: ["1": [preGame("g1", home: "1", away: "2",
                                       kickoff: .now.addingTimeInterval(86_400))]]
         )
-        await scheduler.requestAndEnable(followedIds: ["1"])
+        await scheduler.requestAndEnable(followedKeys: ["cfb:1"])
         #expect(await center.pending.count == 1)
 
-        await scheduler.resync(followedIds: [])
+        await scheduler.resync(followedKeys: [])
         #expect(await center.pending.isEmpty)
     }
 
@@ -161,7 +165,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
             // Inside the 30-minute lead window: the reminder moment is gone.
             preGame("imminent", home: "1", away: "4", kickoff: .now.addingTimeInterval(10 * 60)),
         ]])
-        await scheduler.requestAndEnable(followedIds: ["1"])
+        await scheduler.requestAndEnable(followedKeys: ["cfb:1"])
         #expect(await center.added.isEmpty)
     }
 
@@ -170,7 +174,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
                               kickoff: .now.addingTimeInterval(86_400))
         let center = FakeCenter()
         let scheduler = makeScheduler(center: center, schedules: ["1": [rivalry], "2": [rivalry]])
-        await scheduler.requestAndEnable(followedIds: ["1", "2"])
+        await scheduler.requestAndEnable(followedKeys: ["cfb:1", "cfb:2"])
         #expect(await center.added.count == 1)
     }
 
@@ -182,7 +186,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
                                       kickoff: .now.addingTimeInterval(86_400))]]
         )
         // Never enabled — resync must be a no-op.
-        await scheduler.resync(followedIds: ["1"])
+        await scheduler.resync(followedKeys: ["cfb:1"])
         #expect(await center.added.isEmpty)
     }
 
@@ -193,7 +197,7 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
             schedules: ["1": [preGame("g1", home: "1", away: "2",
                                       kickoff: .now.addingTimeInterval(86_400))]]
         )
-        let granted = await scheduler.requestAndEnable(followedIds: ["1"])
+        let granted = await scheduler.requestAndEnable(followedKeys: ["cfb:1"])
         #expect(!granted)
         #expect(scheduler.isDenied)
         #expect(!scheduler.remindersOn)

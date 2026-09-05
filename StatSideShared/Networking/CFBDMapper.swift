@@ -206,12 +206,13 @@ nonisolated enum CFBDMapper {
             guard !mapped.isEmpty else { return nil }
             return ConferenceTeams(
                 id: id,
-                name: id != nil ? Conference.name(for: id) : name,
+                name: id != nil ? Conference.name(for: id, in: .collegeFootball) : name,
                 teams: mapped.sorted { $0.location < $1.location }
             )
         }
         .sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            let (lt, rt) = (Conference.tier(for: lhs.id, in: .collegeFootball),
+                            Conference.tier(for: rhs.id, in: .collegeFootball))
             return lt == rt ? lhs.name < rhs.name : lt < rt
         }
     }
@@ -260,12 +261,13 @@ nonisolated enum CFBDMapper {
             }
             return ConferenceStandings(
                 id: id,
-                name: id != nil ? Conference.name(for: id) : name,
+                name: id != nil ? Conference.name(for: id, in: .collegeFootball) : name,
                 entries: sorted.map(\.0)
             )
         }
         .sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            let (lt, rt) = (Conference.tier(for: lhs.id, in: .collegeFootball),
+                            Conference.tier(for: rhs.id, in: .collegeFootball))
             return lt == rt ? lhs.name < rhs.name : lt < rt
         }
     }

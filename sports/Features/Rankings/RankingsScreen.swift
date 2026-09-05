@@ -50,7 +50,7 @@ struct RankingsScreen: View {
     /// section regardless — it's the hub's #1 answer, not a follow state.
     private var followedConferences: [ConferenceStandings] {
         conferences.filter { conference in
-            conference.id.map(following.isFollowingConference) ?? false
+            conference.conference.map(following.isFollowingConference) ?? false
         }
     }
 

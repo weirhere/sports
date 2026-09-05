@@ -148,7 +148,7 @@ struct ScoresScreen: View {
     }
 
     private var sections: [GameSection] {
-        store.sections(followingIds: following.teamIds,
+        store.sections(followingIds: following.teamKeys,
                        followedConferenceIds: following.conferenceIds,
                        grouping: uiState.scoresGrouping,
                        liveOnly: uiState.liveOnly,
@@ -282,8 +282,8 @@ struct ScoresScreen: View {
                                 section: section,
                                 isExpanded: uiState.isExpanded(section.id),
                                 onToggle: { withAnimation { uiState.toggle(section.id) } },
-                                onOpenStandings: section.conferenceId.map { id in
-                                    { path.append(ConferenceDestination(conferenceId: id,
+                                onOpenStandings: section.conference.map { id in
+                                    { path.append(ConferenceDestination(conference: id,
                                                                         name: section.title)) }
                                 },
                                 pinsHeader: true
@@ -293,8 +293,8 @@ struct ScoresScreen: View {
                                 section: section,
                                 isExpanded: uiState.isExpanded(section.id),
                                 onToggle: { withAnimation { uiState.toggle(section.id) } },
-                                onOpenStandings: section.conferenceId.map { id in
-                                    { path.append(ConferenceDestination(conferenceId: id,
+                                onOpenStandings: section.conference.map { id in
+                                    { path.append(ConferenceDestination(conference: id,
                                                                         name: section.title)) }
                                 }
                             )
@@ -340,7 +340,7 @@ struct ScoresScreen: View {
         Group {
             if let cached = store.cachedGames(for: target) {
                 let sections = store.sections(from: cached,
-                                              followingIds: following.teamIds,
+                                              followingIds: following.teamKeys,
                                               followedConferenceIds: following.conferenceIds,
                                               grouping: uiState.scoresGrouping,
                                               liveOnly: uiState.liveOnly,

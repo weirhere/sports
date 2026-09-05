@@ -7,7 +7,7 @@ import SwiftUI
 /// share, and the pill is the only one the system will squeeze. The label
 /// is the control's whole meaning, so the icon was what could go.
 struct FollowPill: View {
-    let teamId: String
+    let team: Team
 
     @Environment(FollowingStore.self) private var following
 
@@ -15,9 +15,9 @@ struct FollowPill: View {
     private var inverse: Color { Color.bgPrimary }
 
     var body: some View {
-        let isFollowing = following.isFollowing(teamId)
+        let isFollowing = following.isFollowing(team)
         Button {
-            following.toggle(teamId)
+            following.toggle(team)
         } label: {
             Text(isFollowing ? "Following" : "Follow")
                 .font(.chip)

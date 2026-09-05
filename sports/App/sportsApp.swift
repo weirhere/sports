@@ -15,6 +15,8 @@ struct sportsApp: App {
 
     init() {
         AppGroup.migrateFollowingIfNeeded()
+        // Must run after the App Group copy: it reads the suite's bare keys.
+        AppGroup.migrateLeagueNamespacingIfNeeded()
         let router = Router()
         let delegate = NotificationDelegate(router: router)
         _router = State(initialValue: router)

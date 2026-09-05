@@ -50,9 +50,9 @@ struct ScoresHeader: View {
     VStack(spacing: Spacing.lg) {
         ScoresHeader(liveOnly: false, scoreFilter: nil,
                      pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
-        ScoresHeader(liveOnly: true, scoreFilter: .conference(8),
+        ScoresHeader(liveOnly: true, scoreFilter: .conference(.cfb(8)),
                      pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
-        ScoresHeader(liveOnly: false, scoreFilter: .conference(12),
+        ScoresHeader(liveOnly: false, scoreFilter: .conference(.cfb(12)),
                      pastSeasonYear: 2019, onToggleLive: {}, onTapFilter: {})
     }
     .background(Color.bgPrimary)

@@ -13,25 +13,25 @@ import Testing
 
     @Test func everyFCSConferenceHasARealName() {
         for id in Self.fcsIds {
-            #expect(Conference.name(for: id) != "Other", "id \(id) fell through to Other")
+            #expect(Conference.name(for: id, in: .collegeFootball) != "Other", "id \(id) fell through to Other")
         }
-        #expect(Conference.name(for: 179) == "Ohio Valley")
+        #expect(Conference.name(for: 179, in: .collegeFootball) == "Ohio Valley")
         // Not "Independents" — id 18 already owns that, and a browse list
         // showing both would read as a duplicate.
-        #expect(Conference.name(for: 32) == "FCS Independents")
-        #expect(Conference.name(for: 18) == "Independents")
+        #expect(Conference.name(for: 32, in: .collegeFootball) == "FCS Independents")
+        #expect(Conference.name(for: 18, in: .collegeFootball) == "Independents")
     }
 
     @Test func unknownIdsStillDegradeToOther() {
-        #expect(Conference.name(for: 999) == "Other")
-        #expect(Conference.name(for: nil) == "Other")
-        #expect(Conference.tier(for: 999) == .other)
-        #expect(Conference.division(for: 999) == nil)
+        #expect(Conference.name(for: 999, in: .collegeFootball) == "Other")
+        #expect(Conference.name(for: nil, in: .collegeFootball) == "Other")
+        #expect(Conference.tier(for: 999, in: .collegeFootball) == .other)
+        #expect(Conference.division(for: 999, in: .collegeFootball) == nil)
     }
 
     @Test func divisionsAreDisjointAndComplete() {
-        for id in Self.fcsIds { #expect(Conference.division(for: id) == .fcs, "id \(id)") }
-        for id in Conference.orderedIds { #expect(Conference.division(for: id) == .fbs, "id \(id)") }
+        for id in Self.fcsIds { #expect(Conference.division(for: id, in: .collegeFootball) == .fcs, "id \(id)") }
+        for id in Conference.orderedIds { #expect(Conference.division(for: id, in: .collegeFootball) == .fbs, "id \(id)") }
         #expect(Conference.Division.fbs.groupId == 80)
         #expect(Conference.Division.fcs.groupId == 81)
         #expect(Conference.fbsGroupId == 80)
@@ -40,15 +40,15 @@ import Testing
     /// United Athletic ships no `ncaa_conf` mark under any plausible slug
     /// (probed 2026-09-01). A nil beats a URL that 404s.
     @Test func missingLogoIsNilNeverABrokenURL() {
-        #expect(Conference.logoURL(for: 177) == nil)
-        #expect(Conference.logoURL(for: 20)?.absoluteString
+        #expect(Conference.logoURL(for: 177, in: .collegeFootball) == nil)
+        #expect(Conference.logoURL(for: 20, in: .collegeFootball)?.absoluteString
             == "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big_sky.png")
-        #expect(Conference.logoURL(for: 179)?.absoluteString.hasSuffix("/ovc.png") == true)
+        #expect(Conference.logoURL(for: 179, in: .collegeFootball)?.absoluteString.hasSuffix("/ovc.png") == true)
     }
 
     @Test func everyOtherFCSConferenceHasALogo() {
         for id in Self.fcsIds where id != 177 {
-            #expect(Conference.logoURL(for: id) != nil, "id \(id) lost its mark")
+            #expect(Conference.logoURL(for: id, in: .collegeFootball) != nil, "id \(id) lost its mark")
         }
     }
 
@@ -60,19 +60,19 @@ import Testing
     }
 
     @Test func fbsTiersAreUnchanged() {
-        #expect(Conference.tier(for: 8) == .power4)
-        #expect(Conference.tier(for: 17) == .group5)
-        #expect(Conference.tier(for: 18) == .independent)
+        #expect(Conference.tier(for: 8, in: .collegeFootball) == .power4)
+        #expect(Conference.tier(for: 17, in: .collegeFootball) == .group5)
+        #expect(Conference.tier(for: 18, in: .collegeFootball) == .independent)
     }
 
     @Test func fcsConferencesTierBelowIndependentsButAboveUnknown() {
-        #expect(Conference.tier(for: 20) == .fcs)
+        #expect(Conference.tier(for: 20, in: .collegeFootball) == .fcs)
         #expect(Conference.Tier.independent < Conference.Tier.fcs)
         #expect(Conference.Tier.fcs < Conference.Tier.other)
     }
 
     @Test func fcsOrderIsAlphabetical() {
-        let names = Conference.orderedIds(in: .fcs).map { Conference.name(for: $0) }
+        let names = Conference.orderedIds(in: .fcs).map { Conference.name(for: $0, in: .collegeFootball) }
         #expect(names == names.sorted())
         #expect(names.count == 14)
     }
@@ -83,12 +83,12 @@ import Testing
     /// cut line must never claim top-two about one.
     @Test func theStandingsCutLineStaysFBSOnly() {
         for id in Self.fcsIds {
-            #expect(!Conference.titleGameIsTopTwo(id: id, year: 2026), "id \(id)")
+            #expect(!Conference.titleGameIsTopTwo(id: id, year: 2026, in: .collegeFootball), "id \(id)")
         }
-        #expect(Conference.titleGameIsTopTwo(id: 8, year: 2026))
-        #expect(Conference.titleGameIsTopTwo(id: 37, year: 2026))
-        #expect(!Conference.titleGameIsTopTwo(id: 37, year: 2025))
-        #expect(!Conference.titleGameIsTopTwo(id: 18, year: 2026))
+        #expect(Conference.titleGameIsTopTwo(id: 8, year: 2026, in: .collegeFootball))
+        #expect(Conference.titleGameIsTopTwo(id: 37, year: 2026, in: .collegeFootball))
+        #expect(!Conference.titleGameIsTopTwo(id: 37, year: 2025, in: .collegeFootball))
+        #expect(!Conference.titleGameIsTopTwo(id: 18, year: 2026, in: .collegeFootball))
     }
 
     /// CFBD asks every endpoint for `classification=fbs`, so no FCS name

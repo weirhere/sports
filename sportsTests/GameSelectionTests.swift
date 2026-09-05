@@ -27,7 +27,7 @@ private func game(_ id: String, home: String, away: String,
             game("live", home: "1", away: "7", status: .live(displayClock: "5:00", period: 2, detail: nil, phase: .playing, possessionTeamId: nil),
                  date: now.addingTimeInterval(-3600)),
         ]
-        let picked = GameSelection.relevantGames(in: games, followedIds: ["1"], limit: 3, now: now)
+        let picked = GameSelection.relevantGames(in: games, followedKeys: ["cfb:1"], limit: 3, now: now)
         #expect(picked.map(\.id) == ["live", "pre", "final"])
     }
 
@@ -38,14 +38,14 @@ private func game(_ id: String, home: String, away: String,
             game("late", home: "1", away: "8", status: .final(detail: "Final"),
                  date: now.addingTimeInterval(-2 * 3600)),
         ]
-        let picked = GameSelection.relevantGames(in: games, followedIds: ["1"], limit: 1, now: now)
+        let picked = GameSelection.relevantGames(in: games, followedKeys: ["cfb:1"], limit: 1, now: now)
         #expect(picked.map(\.id) == ["late"])
     }
 
     @Test func unfollowedGamesAreInvisible() {
         let games = [game("g", home: "1", away: "2", status: .pre(detail: nil), date: now)]
-        #expect(GameSelection.relevantGames(in: games, followedIds: ["99"], limit: 3, now: now).isEmpty)
-        #expect(GameSelection.relevantGames(in: games, followedIds: [], limit: 3, now: now).isEmpty)
+        #expect(GameSelection.relevantGames(in: games, followedKeys: ["cfb:99"], limit: 3, now: now).isEmpty)
+        #expect(GameSelection.relevantGames(in: games, followedKeys: [], limit: 3, now: now).isEmpty)
     }
 
     @Test func limitHolds() {
@@ -53,7 +53,7 @@ private func game(_ id: String, home: String, away: String,
             game("g\($0)", home: "1", away: "\($0 + 10)", status: .pre(detail: nil),
                  date: now.addingTimeInterval(Double($0) * 3600))
         }
-        let picked = GameSelection.relevantGames(in: games, followedIds: ["1"], limit: 3, now: now)
+        let picked = GameSelection.relevantGames(in: games, followedKeys: ["cfb:1"], limit: 3, now: now)
         #expect(picked.count == 3)
         #expect(picked.map(\.id) == ["g1", "g2", "g3"])
     }

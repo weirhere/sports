@@ -76,7 +76,7 @@ private let bigSky = ConferenceTeams(id: 20, name: "Big Sky", teams: [georgiaSou
                                                games: [], followingIds: [])
         #expect(unfollowed.teams == [georgia, georgiaTech])
         let followed = SearchResults.compute(query: "georgia", conferences: allConferences,
-                                             games: [], followingIds: [georgiaTech.id])
+                                             games: [], followingIds: [georgiaTech.followKey])
         #expect(followed.teams == [georgiaTech, georgia])
     }
 
@@ -97,7 +97,7 @@ private let bigSky = ConferenceTeams(id: 20, name: "Big Sky", teams: [georgiaSou
     @Test func aFollowedFCSTeamStillOutranksTheFBSField() {
         let results = SearchResults.teams(matching: "georgia",
                                           in: [bigSky] + allConferences,
-                                          followingIds: ["290"])
+                                          followingIds: ["cfb:290"])
         #expect(results.first?.id == "290")
     }
 
@@ -187,7 +187,7 @@ private let bigSky = ConferenceTeams(id: 20, name: "Big Sky", teams: [georgiaSou
         let slice = SearchResults.teams(matching: "georgia", in: allConferences)
         #expect(slice == [georgia, georgiaTech])
         let boosted = SearchResults.teams(matching: "georgia", in: allConferences,
-                                          followingIds: [georgiaTech.id])
+                                          followingIds: [georgiaTech.followKey])
         #expect(boosted == [georgiaTech, georgia])
     }
 }

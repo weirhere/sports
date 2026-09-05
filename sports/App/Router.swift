@@ -12,7 +12,7 @@ final class Router {
     /// Search's conference intent. Today the Teams tab consumes it (expand
     /// + scroll to the section); a dedicated conference destination can take
     /// it over without search changing.
-    var pendingConferenceId: Int?
+    var pendingConferenceId: ConferenceID?
     /// In-app "go browse teams" intent — the Scores follow prompt's CTA.
     /// RootView switches tabs and resets it; no id to resolve.
     var pendingTeamsBrowse = false

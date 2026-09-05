@@ -63,15 +63,27 @@ final class NotificationScheduler {
     private(set) var isDenied = false
 
     private let center: any NotificationCentering
-    private let client: any ScoresProviding
+    /// One client per league — a followed team's schedule lives behind its
+    /// own league's endpoint. Injected as a factory so tests can hand over
+    /// a single stub for both.
+    private let makeClient: @Sendable (League) -> any ScoresProviding
     private let defaults: UserDefaults
 
     init(center: any NotificationCentering = SystemNotificationCenter(),
-         client: any ScoresProviding = DataProvider.makeClient(),
+         makeClient: @escaping @Sendable (League) -> any ScoresProviding = {
+             DataProvider.makeClient(league: $0)
+         },
          defaults: UserDefaults = .standard) {
         self.center = center
-        self.client = client
+        self.makeClient = makeClient
         self.defaults = defaults
+    }
+
+    /// Convenience for tests and previews that only care about one backend.
+    convenience init(center: any NotificationCentering = SystemNotificationCenter(),
+                     client: any ScoresProviding,
+                     defaults: UserDefaults = .standard) {
+        self.init(center: center, makeClient: { _ in client }, defaults: defaults)
     }
 
     /// Re-checks system authorization — called on scene-active so the bell
@@ -90,13 +102,13 @@ final class NotificationScheduler {
     /// Returns false when the system says no — the caller shows nothing;
     /// the bell's denied state carries the message.
     @discardableResult
-    func requestAndEnable(followedIds: Set<String>) async -> Bool {
+    func requestAndEnable(followedKeys: Set<String>) async -> Bool {
         let granted = (try? await center.requestAuthorization()) ?? false
         isDenied = !granted
         defaults.set(granted, forKey: Self.enabledKey)
         remindersOn = granted
         if granted {
-            await resync(followedIds: followedIds)
+            await resync(followedKeys: followedKeys)
         }
         return granted
     }
@@ -110,16 +122,27 @@ final class NotificationScheduler {
     /// Rebuilds the pending set from followed teams' schedules. Cheap on
     /// the API — one schedule fetch per followed team, only when follows
     /// change, the scene activates, or reminders turn on.
-    func resync(followedIds: Set<String>) async {
+    ///
+    /// Keys are league-qualified (`"cfb:130"`, `"nfl:26"`), because ESPN
+    /// team ids collide across leagues and a bare id would fetch the wrong
+    /// team's schedule. The nearest-24 cap is deliberately shared across
+    /// leagues: the next kickoffs win, whichever sport they belong to.
+    func resync(followedKeys: Set<String>) async {
         guard remindersOn else { return }
-        guard !followedIds.isEmpty else {
+        guard !followedKeys.isEmpty else {
             await center.removePending(identifiers: pendingKickoffIds())
             return
         }
 
         var gamesById: [String: Game] = [:]
-        for teamId in followedIds {
-            guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
+        for key in followedKeys {
+            let parts = key.split(separator: ":", maxSplits: 1)
+            // A bare id predates the league axis and means college football.
+            let league = parts.count == 2 ? League(rawValue: String(parts[0])) : .collegeFootball
+            guard let league else { continue }
+            let teamId = parts.count == 2 ? String(parts[1]) : key
+            guard let schedule = try? await makeClient(league).teamSchedule(teamId: teamId)
+            else { continue }
             for game in schedule.games {
                 // Dedupe by game id: both-teams-followed games get one
                 // reminder. TBD kickoffs (nil date, or a placeholder date
