@@ -49,8 +49,13 @@ struct GameDetailScreen: View {
                 VStack(spacing: 0) {
                     header
                     if showsTabs {
+                        // Leading, with the entity pages' Spacing.lg gutter —
+                        // Team and Conference anchor their tab rows to the
+                        // left edge and this is the same component.
                         HeroTabBar(tabs: [.summary, .boxScore], selection: tab,
                                    onSelect: { select(tab: $0) })
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Spacing.lg)
                     }
                 }
                 .frame(maxWidth: .infinity)
