@@ -156,7 +156,7 @@ struct ConferencePage: View {
             // The follow pill rides the toolbar row, FotMob's pattern
             // (Andy, 2026-08-31); the season chip moved into the panes.
             ToolbarItem(placement: .topBarTrailing) {
-                ConferenceFollowPill(conferenceId: destination.conferenceId)
+                ConferenceFollowPill(conference: destination.conference)
             }
         }
         .task { await load(year: selectedYear) }
@@ -167,7 +167,7 @@ struct ConferencePage: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
-                LogoImage(url: Conference.logoURL(for: destination.conferenceId))
+                LogoImage(url: Conference.logoURL(for: destination.conference))
                     .frame(width: 44, height: 44)
                     // Navy marks (Big Ten, ACC) vanish on black; the backing
                     // disc is chrome, not color, so the budget holds.
@@ -262,8 +262,9 @@ struct ConferencePage: View {
                     StandingsList(
                         entries: entries,
                         highlightTeamId: destination.highlightTeamId,
-                        showsTitleGameCut: Conference.titleGameIsTopTwo(id: destination.conferenceId,
-                                                                        year: selectedYear),
+                        showsTitleGameCut: Conference.titleGameIsTopTwo(
+                            id: destination.conferenceId, year: selectedYear,
+                            in: destination.league),
                         liveGames: liveGames
                     )
                 }
@@ -312,11 +313,13 @@ struct ConferencePage: View {
             // Nil for the current season keeps the shipped request shape;
             // an explicit past year is scoped with `season={year}`.
             let all = try await client.conferenceStandings(
-                year: year == CFBSeason.year() ? nil : year,
-                division: Conference.division(for: destination.conferenceId) ?? .fbs)
-            standingsByYear[year] = all.first { $0.id == destination.conferenceId }
+                year: year == SeasonYear.year(for: destination.league) ? nil : year,
+                division: Conference.division(for: destination.conferenceId,
+                                              in: destination.league) ?? .fbs)
+            standingsByYear[year] = all.first { $0.conference == destination.conference }
                 ?? ConferenceStandings(id: destination.conferenceId,
-                                       name: destination.name, entries: [])
+                                       name: destination.name, entries: [],
+                                       league: destination.league)
             failedYears.remove(year)
         } catch {
             failedYears.insert(year)

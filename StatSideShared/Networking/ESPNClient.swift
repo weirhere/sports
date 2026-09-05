@@ -3,6 +3,10 @@ import Foundation
 /// The domain-facing contract. If ESPN's API dies, a CFBD-backed client
 /// conforms to this same protocol and the rest of the app never notices.
 nonisolated protocol ScoresProviding: Sendable {
+    /// Which league this client answers for. Every id it returns — team,
+    /// conference, event — belongs to this league's namespace.
+    var league: League { get }
+
     /// Fetch the scoreboard. Pass nil for everything to get ESPN's current
     /// week. `year` selects a season (ESPN's `dates=` param, verified live
     /// 2026-07-21); always pair it with an explicit week — a bare year
@@ -13,6 +17,10 @@ nonisolated protocol ScoresProviding: Sendable {
     /// `[.fbs]` unless someone has selected or followed an FCS conference
     /// — which is what keeps the 30s poll at one request on an ordinary
     /// Saturday.
+    ///
+    /// Divisions are a college-football concept. The NFL's scoreboard takes
+    /// no group filter at all, so an NFL client ignores this and always
+    /// makes exactly one request.
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard
     func rankings() async throws -> [Poll]
@@ -75,32 +83,42 @@ nonisolated enum ESPNError: Error {
 /// Talks to ESPN's unofficial API. An actor so fetching and decoding stay
 /// off the main thread (the project defaults types to MainActor).
 actor ESPNClient: ScoresProviding {
-    private static let base = "https://site.api.espn.com/apis/site/v2/sports/football/college-football"
+    /// The sport path segment is the only thing separating the two leagues'
+    /// endpoints — verified live 2026-09-05: scoreboard, standings, summary
+    /// and team-schedule responses are shape-identical.
+    nonisolated let league: League
+
+    private let base: String
     // Conference membership lives on the standings API (apis/v2, not
     // site/v2); the /teams endpoint carries no conference data.
-    private static let standingsBase = "https://site.api.espn.com/apis/v2/sports/football/college-football"
+    private let standingsBase: String
 
     private let session: URLSession
     private let decoder = JSONDecoder()
 
-    init(session: URLSession = .shared) {
+    init(league: League = .collegeFootball, session: URLSession = .shared) {
+        self.league = league
         self.session = session
+        self.base = "https://site.api.espn.com/apis/site/v2/sports/football/\(league.pathSegment)"
+        self.standingsBase = "https://site.api.espn.com/apis/v2/sports/football/\(league.pathSegment)"
     }
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
         // Deterministic order, and FBS first when it's in the set: it is
-        // the canonical payload for anything both divisions carry.
-        let ordered = divisions.sorted { $0.groupId < $1.groupId }
+        // the canonical payload for anything both divisions carry. The NFL
+        // has no divisions, so it asks once with no group filter.
+        let ordered = league == .nfl ? [Conference.Division?.none]
+                                     : divisions.sorted { $0.groupId < $1.groupId }.map { $0 }
         guard let primary = ordered.first else {
             throw ESPNError.invalidURL
         }
 
-        func board(for division: Conference.Division) async throws -> Scoreboard {
-            var items = [
-                URLQueryItem(name: "groups", value: String(division.groupId)),
-                URLQueryItem(name: "limit", value: "300"),
-            ]
+        func board(for division: Conference.Division?) async throws -> Scoreboard {
+            var items = [URLQueryItem(name: "limit", value: "300")]
+            if let division {
+                items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
+            }
             if let weekValue {
                 items.append(URLQueryItem(name: "week", value: String(weekValue)))
             }
@@ -111,7 +129,7 @@ actor ESPNClient: ScoresProviding {
                 items.append(URLQueryItem(name: "dates", value: String(year)))
             }
             let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-            return ESPNMapper.scoreboard(from: dto)
+            return ESPNMapper.scoreboard(from: dto, league: league)
         }
 
         guard ordered.count > 1 else { return try await board(for: primary) }
@@ -143,44 +161,51 @@ actor ESPNClient: ScoresProviding {
         let items = [
             URLQueryItem(name: "groups", value: String(conferenceId)),
             URLQueryItem(name: "limit", value: "400"),
-            URLQueryItem(name: "dates", value: String(year ?? CFBSeason.year())),
+            URLQueryItem(name: "dates", value: String(year ?? SeasonYear.year(for: league))),
         ]
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-        return ESPNMapper.scoreboard(from: dto).games
+        return ESPNMapper.scoreboard(from: dto, league: league).games
     }
 
     func rankings() async throws -> [Poll] {
+        // `/nfl/rankings` is a 404 — the NFL has no poll and never will.
+        // An empty list is the honest answer; callers hide the section.
+        guard league == .collegeFootball else { return [] }
         let dto: RankingsResponseDTO = try await fetch(path: "/rankings", query: [])
         return ESPNMapper.polls(from: dto)
     }
 
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
+        // The NFL's standings response is already the whole league (AFC and
+        // NFC, 16 entries each), so it takes no group filter.
+        let query = league == .nfl ? []
+            : [URLQueryItem(name: "group", value: String(division.groupId))]
         let dto: StandingsResponseDTO = try await fetch(
-            base: Self.standingsBase, path: "/standings",
-            query: [URLQueryItem(name: "group", value: String(division.groupId))]
+            base: standingsBase, path: "/standings", query: query
         )
-        return ESPNMapper.conferences(from: dto)
+        return ESPNMapper.conferences(from: dto, league: league)
     }
 
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] {
-        var query = [URLQueryItem(name: "group", value: String(division.groupId))]
+        var query = league == .nfl ? []
+            : [URLQueryItem(name: "group", value: String(division.groupId))]
         // Verified live 2026-08-25: `season` scopes records AND membership,
         // so realignment years read correctly.
         if let year {
             query.append(URLQueryItem(name: "season", value: String(year)))
         }
         let dto: StandingsResponseDTO = try await fetch(
-            base: Self.standingsBase, path: "/standings", query: query
+            base: standingsBase, path: "/standings", query: query
         )
-        return ESPNMapper.conferenceStandings(from: dto)
+        return ESPNMapper.conferenceStandings(from: dto, league: league)
     }
 
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         if let year {
             return try await fetchSchedule(teamId: teamId, year: year)
         }
-        let current = CFBSeason.year()
+        let current = SeasonYear.year(for: league)
         let schedule = try await fetchSchedule(teamId: teamId, year: current)
         guard schedule.games.isEmpty else { return schedule }
         // Next season's schedule isn't published yet; show last season instead.
@@ -205,7 +230,7 @@ actor ESPNClient: ScoresProviding {
         let regular = try await regularFetch
         let postseason = await postseasonFetch
         return ESPNMapper.teamSchedule(
-            from: regular, extraEvents: postseason?.events?.elements ?? []
+            from: regular, extraEvents: postseason?.events?.elements ?? [], league: league
         )
     }
 
@@ -213,11 +238,11 @@ actor ESPNClient: ScoresProviding {
         let dto: SummaryResponseDTO = try await fetch(
             path: "/summary", query: [URLQueryItem(name: "event", value: eventId)]
         )
-        return ESPNMapper.gameSummary(from: dto)
+        return ESPNMapper.gameSummary(from: dto, league: league)
     }
 
     private func fetch<T: Decodable>(path: String, query: [URLQueryItem]) async throws -> T {
-        try await fetch(base: Self.base, path: path, query: query)
+        try await fetch(base: base, path: path, query: query)
     }
 
     private func fetch<T: Decodable>(base: String, path: String, query: [URLQueryItem]) async throws -> T {
@@ -239,13 +264,14 @@ actor ESPNClient: ScoresProviding {
 // MARK: - DTO → domain mapping
 
 nonisolated enum ESPNMapper {
-    static func scoreboard(from dto: ScoreboardDTO) -> Scoreboard {
+    static func scoreboard(from dto: ScoreboardDTO,
+                           league: League = .collegeFootball) -> Scoreboard {
         Scoreboard(
             seasonYear: dto.season?.year,
             seasonType: dto.season?.type,
             currentWeekNumber: dto.week?.number,
             weeks: weekSlots(from: dto),
-            games: (dto.events?.elements ?? []).compactMap(game(from:))
+            games: (dto.events?.elements ?? []).compactMap { game(from: $0, league: league) }
         )
     }
 
@@ -300,14 +326,14 @@ nonisolated enum ESPNMapper {
         }
     }
 
-    static func game(from event: EventDTO) -> Game? {
+    static func game(from event: EventDTO, league: League = .collegeFootball) -> Game? {
         guard let id = event.id,
               let competition = event.competitions?.first,
               let competitors = competition.competitors,
               let homeDTO = competitors.first(where: { $0.homeAway == "home" }),
               let awayDTO = competitors.first(where: { $0.homeAway == "away" }),
-              let home = competitor(from: homeDTO),
-              let away = competitor(from: awayDTO)
+              let home = competitor(from: homeDTO, league: league),
+              let away = competitor(from: awayDTO, league: league)
         else { return nil }
 
         return Game(
@@ -366,8 +392,9 @@ nonisolated enum ESPNMapper {
         }
     }
 
-    static func competitor(from dto: CompetitorDTO) -> Competitor? {
-        guard let team = team(from: dto.team) else { return nil }
+    static func competitor(from dto: CompetitorDTO,
+                           league: League = .collegeFootball) -> Competitor? {
+        guard let team = team(from: dto.team, league: league) else { return nil }
         let rank = dto.curatedRank?.current?.value
         return Competitor(
             team: team,
@@ -379,7 +406,7 @@ nonisolated enum ESPNMapper {
         )
     }
 
-    static func team(from dto: TeamDTO?) -> Team? {
+    static func team(from dto: TeamDTO?, league: League = .collegeFootball) -> Team? {
         guard let dto, let id = dto.id else { return nil }
         let logo = dto.logo ?? dto.logos?.first?.href
         return Team(
@@ -390,33 +417,37 @@ nonisolated enum ESPNMapper {
             displayName: dto.displayName,
             shortDisplayName: dto.shortDisplayName,
             logoURL: logo.flatMap(URL.init(string:)),
-            conferenceId: dto.conferenceId?.value
+            conferenceId: dto.conferenceId?.value,
+            league: league
         )
     }
 
-    static func conferences(from dto: StandingsResponseDTO) -> [ConferenceTeams] {
+    static func conferences(from dto: StandingsResponseDTO,
+                            league: League = .collegeFootball) -> [ConferenceTeams] {
         (dto.children ?? []).compactMap { group in
             let id = group.id?.value
             // Prefer our short names ("SEC") over ESPN's long ones
             // ("Southeastern Conference") when the id is known.
-            let name = Conference.tier(for: id) == .other
+            let name = Conference.tier(for: id, in: league) == .other
                 ? (group.shortName ?? group.name ?? "Conference")
-                : Conference.name(for: id)
+                : Conference.name(for: id, in: league)
             let teams = (group.standings?.entries?.elements ?? []).compactMap { entry -> Team? in
-                guard let mapped = team(from: entry.team) else { return nil }
+                guard let mapped = team(from: entry.team, league: league) else { return nil }
                 return Team(
                     id: mapped.id, location: mapped.location, name: mapped.name,
                     abbreviation: mapped.abbreviation, displayName: mapped.displayName,
                     shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
-                    conferenceId: id
+                    conferenceId: id, league: league
                 )
             }
             guard !teams.isEmpty else { return nil }
             return ConferenceTeams(id: id, name: name,
-                                   teams: teams.sorted { $0.location < $1.location })
+                                   teams: teams.sorted { $0.location < $1.location },
+                                   league: league)
         }
         .sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
+                            Conference.tier(for: rhs.id, in: league))
             return lt == rt ? lhs.name < rhs.name : lt < rt
         }
     }
@@ -428,14 +459,15 @@ nonisolated enum ESPNMapper {
     /// standings), payload order otherwise — and empty conferences are
     /// kept so the page can render "Standings TBA". Never sorted from
     /// records here: tiebreakers aren't derivable.
-    static func conferenceStandings(from dto: StandingsResponseDTO) -> [ConferenceStandings] {
+    static func conferenceStandings(from dto: StandingsResponseDTO,
+                                    league: League = .collegeFootball) -> [ConferenceStandings] {
         (dto.children ?? []).map { group in
             let id = group.id?.value
-            let name = Conference.tier(for: id) == .other
+            let name = Conference.tier(for: id, in: league) == .other
                 ? (group.shortName ?? group.name ?? "Conference")
-                : Conference.name(for: id)
+                : Conference.name(for: id, in: league)
             let entries = (group.standings?.entries?.elements ?? []).compactMap { entry -> ConferenceStanding? in
-                guard let mapped = team(from: entry.team) else { return nil }
+                guard let mapped = team(from: entry.team, league: league) else { return nil }
                 func stat(_ type: String) -> StandingsStatDTO? {
                     entry.stats?.first { $0.type == type }
                 }
@@ -444,25 +476,30 @@ nonisolated enum ESPNMapper {
                         id: mapped.id, location: mapped.location, name: mapped.name,
                         abbreviation: mapped.abbreviation, displayName: mapped.displayName,
                         shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
-                        conferenceId: id
+                        conferenceId: id, league: league
                     ),
-                    conferenceRecord: stat("vsconf")?.summary,
+                    // The NFL's in-group record is `divisionRecord`; college
+                    // football's is `vsconf`. Same column, different name.
+                    conferenceRecord: (stat("vsconf") ?? stat("divisionRecord"))?.summary,
                     overallRecord: stat("total")?.summary,
                     streak: stat("streak")?.displayValue,
                     playoffSeed: stat("playoffseed")?.value.map(Int.init)
                 )
             }
             return ConferenceStandings(id: id, name: name,
-                                       entries: ConferenceStandings.seedOrdered(entries))
+                                       entries: ConferenceStandings.seedOrdered(entries),
+                                       league: league)
         }
         .sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs.id), Conference.tier(for: rhs.id))
+            let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
+                            Conference.tier(for: rhs.id, in: league))
             return lt == rt ? lhs.name < rhs.name : lt < rt
         }
     }
 
     static func teamSchedule(
-        from dto: ScheduleResponseDTO, extraEvents: [ScheduleEventDTO] = []
+        from dto: ScheduleResponseDTO, extraEvents: [ScheduleEventDTO] = [],
+        league: League = .collegeFootball
     ) -> TeamSchedule {
         let selfTeam = dto.team.flatMap { scheduleTeam -> Team? in
             guard let id = scheduleTeam.id else { return nil }
@@ -475,10 +512,12 @@ nonisolated enum ESPNMapper {
                 displayName: scheduleTeam.displayName,
                 shortDisplayName: scheduleTeam.shortDisplayName,
                 logoURL: logo.flatMap(URL.init(string:)),
-                conferenceId: conferenceId(from: scheduleTeam.groups)
+                conferenceId: conferenceId(from: scheduleTeam.groups, league: league),
+                league: league
             )
         }
-        let games = ((dto.events?.elements ?? []) + extraEvents).compactMap(game(from:))
+        let games = ((dto.events?.elements ?? []) + extraEvents)
+            .compactMap { game(from: $0, league: league) }
         // recordSummary/standingSummary always describe ESPN's *current*
         // season — under a past season's games they'd be this year's
         // numbers, so they only survive when the seasons match. groups is
@@ -494,22 +533,40 @@ nonisolated enum ESPNMapper {
         )
     }
 
-    /// `groups` is the team's most specific group. When it IS the
-    /// conference, its parent is FBS (80) — never walk up. When it's a
-    /// division (isConference false/absent), the parent is the conference.
+    /// `groups` is the team's most specific group, and the two leagues nest
+    /// it differently.
+    ///
+    /// College football: when the group IS the conference, its parent is FBS
+    /// (80) — never walk up. When it's a division (isConference false or
+    /// absent), the parent is the conference.
+    ///
+    /// The NFL always ships the division with the conference as its parent
+    /// (verified live 2026-09-05: Seattle is `{id: "3", parent: {id: "7"}}`
+    /// — NFC West under the NFC) and always marks `isConference` false, so
+    /// walking up is always right. We keep the division id, which is the
+    /// more specific and more useful group; `Conference.parent(of:in:)`
+    /// recovers the conference.
+    ///
     /// A wrong pick degrades safely: an unknown id is "Other" tier, which
     /// hides the affordance and lets callers fall back.
-    static func conferenceId(from groups: TeamGroupsDTO?) -> Int? {
+    static func conferenceId(from groups: TeamGroupsDTO?,
+                             league: League = .collegeFootball) -> Int? {
         guard let groups else { return nil }
+        if league == .nfl {
+            let id = groups.id?.value
+            return Conference.isKnown(id, in: .nfl) ? id : groups.parent?.id?.value
+        }
         return groups.isConference == true ? groups.id?.value : groups.parent?.id?.value
     }
 
-    static func game(from event: ScheduleEventDTO) -> Game? {
+    static func game(from event: ScheduleEventDTO, league: League = .collegeFootball) -> Game? {
         guard let id = event.id,
               let competition = event.competitions?.first,
               let competitors = competition.competitors,
-              let home = competitors.first(where: { $0.homeAway == "home" }).flatMap(competitor(from:)),
-              let away = competitors.first(where: { $0.homeAway == "away" }).flatMap(competitor(from:))
+              let home = competitors.first(where: { $0.homeAway == "home" })
+                  .flatMap({ competitor(from: $0, league: league) }),
+              let away = competitors.first(where: { $0.homeAway == "away" })
+                  .flatMap({ competitor(from: $0, league: league) })
         else { return nil }
         return Game(
             id: id,
@@ -525,8 +582,9 @@ nonisolated enum ESPNMapper {
         )
     }
 
-    static func competitor(from dto: ScheduleCompetitorDTO) -> Competitor? {
-        guard let team = team(from: dto.team) else { return nil }
+    static func competitor(from dto: ScheduleCompetitorDTO,
+                           league: League = .collegeFootball) -> Competitor? {
+        guard let team = team(from: dto.team, league: league) else { return nil }
         let rank = dto.curatedRank?.current?.value
         let score = dto.score?.displayValue.flatMap(Int.init) ?? dto.score?.value.map(Int.init)
         return Competitor(
@@ -540,13 +598,14 @@ nonisolated enum ESPNMapper {
         )
     }
 
-    static func gameSummary(from dto: SummaryResponseDTO) -> GameSummary {
+    static func gameSummary(from dto: SummaryResponseDTO,
+                            league: League = .collegeFootball) -> GameSummary {
         let competition = dto.header?.competitions?.first
         let competitors = competition?.competitors ?? []
 
         func side(_ homeAway: String) -> GameSummary.Side? {
             guard let comp = competitors.first(where: { $0.homeAway == homeAway }),
-                  let team = team(from: comp.team) else { return nil }
+                  let team = team(from: comp.team, league: league) else { return nil }
             let rank = comp.rank?.value
             return GameSummary.Side(
                 team: team,

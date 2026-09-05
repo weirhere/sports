@@ -38,13 +38,13 @@ struct TeamBrowseRow: View {
             .buttonStyle(.plain)
             .contextMenu {
                 Button {
-                    following.toggle(team.id)
+                    following.toggle(team)
                 } label: {
-                    Label(following.isFollowing(team.id) ? "Unfollow \(team.location)" : "Follow \(team.location)",
-                          systemImage: following.isFollowing(team.id) ? "star.slash" : "star")
+                    Label(following.isFollowing(team) ? "Unfollow \(team.location)" : "Follow \(team.location)",
+                          systemImage: following.isFollowing(team) ? "star.slash" : "star")
                 }
             }
-            FollowButton(teamId: team.id)
+            FollowButton(team: team)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 5)

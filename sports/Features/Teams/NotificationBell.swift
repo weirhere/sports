@@ -42,7 +42,7 @@ struct NotificationBell: View {
         if notifications.remindersOn {
             await notifications.disable()
         } else {
-            await notifications.requestAndEnable(followedIds: following.teamIds)
+            await notifications.requestAndEnable(followedKeys: following.teamKeys)
         }
     }
 }

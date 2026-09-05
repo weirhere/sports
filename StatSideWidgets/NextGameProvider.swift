@@ -39,20 +39,25 @@ nonisolated struct NextGameProvider: TimelineProvider {
     private func currentEntry() async -> (NextGameEntry, refresh: Date) {
         let now = Date.now
         let defaults = AppGroup.defaults
-        let followedIds = Set(defaults.stringArray(forKey: AppGroup.followingKey) ?? [])
-        guard !followedIds.isEmpty else {
+        // League-qualified keys ("cfb:130"). The widget covers college
+        // football alone for now — an NFL follow is stored but not yet
+        // fetched here (M5) — so the guard asks whether any CFB team is
+        // followed, not whether anything is.
+        let followedKeys = Set(defaults.stringArray(forKey: AppGroup.followingKeysKey) ?? [])
+            .filter { $0.hasPrefix("\(League.collegeFootball.rawValue):") }
+        guard !followedKeys.isEmpty else {
             return (NextGameEntry(date: now, state: .noFollows), now.addingTimeInterval(60 * 60))
         }
 
         do {
-            let scoreboard = try await DataProvider.makeClient()
+            let scoreboard = try await DataProvider.makeClient(league: .collegeFootball)
                 .scoreboard(weekValue: nil, seasonType: nil, year: nil)
             // 4 fills the large family; medium trims to its own capacity.
             // One limit for every family: the snapshot below is a single
             // shared blob, and a per-family limit would let a medium reload
             // overwrite it with too few games for a placed large.
             let relevant = GameSelection.relevantGames(
-                in: scoreboard.games, followedIds: followedIds, limit: 4, now: now
+                in: scoreboard.games, followedKeys: followedKeys, limit: 4, now: now
             )
             guard !relevant.isEmpty else {
                 return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(60 * 60))

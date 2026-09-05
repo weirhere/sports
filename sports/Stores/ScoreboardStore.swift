@@ -16,13 +16,15 @@ enum ScoresGrouping: String {
 /// explanatory empty states mean a saved filter is never a mystery.
 enum ScoreFilter: Hashable {
     case top25
-    case conference(Int)
+    /// League-qualified: group id 8 is the SEC in college football and the
+    /// AFC in the NFL, so a bare id can't name a slate.
+    case conference(ConferenceID)
 
     /// UserDefaults spelling — "top25" or "conference-8".
     var token: String {
         switch self {
         case .top25: "top25"
-        case .conference(let id): "conference-\(id)"
+        case .conference(let id): "conference-\(id.token)"
         }
     }
 
@@ -34,7 +36,9 @@ enum ScoreFilter: Hashable {
         if token == "top25" {
             self = .top25
         } else if token.hasPrefix("conference-"),
-                  let id = Int(token.dropFirst("conference-".count)) {
+                  // A bare id is a pre-league token and reads as college
+                  // football; `ConferenceID.init(token:)` handles both.
+                  let id = ConferenceID(token: String(token.dropFirst("conference-".count))) {
             self = .conference(id)
         } else {
             return nil
@@ -52,11 +56,12 @@ enum ScoreFilter: Hashable {
     /// The header chip's label — the long conference names get their
     /// common short forms so a full chip row still fits the screen.
     var chipLabel: String {
-        switch self {
-        case .conference(12): "C-USA"
-        case .conference(17): "MWC"
-        case .conference(18): "Indep."
-        default: label
+        guard case .conference(let id) = self, id.league == .collegeFootball else { return label }
+        switch id.id {
+        case 12: return "C-USA"
+        case 17: return "MWC"
+        case 18: return "Indep."
+        default: return label
         }
     }
 
@@ -68,7 +73,7 @@ enum ScoreFilter: Hashable {
         case .top25:
             game.involvesRankedTeam
         case .conference(let id):
-            game.home.team.conferenceId == id || game.away.team.conferenceId == id
+            game.home.team.conference == id || game.away.team.conference == id
         }
     }
 }
@@ -90,9 +95,11 @@ struct GameSection: Identifiable, Hashable {
     /// Conference sections always show a mark (logo or fallback) so their
     /// titles align; Following shows a star, Top 25 a trophy.
     var isConference = false
-    /// ESPN's group id, set only on conference sections with a known
-    /// conference — it's what the header's standings link navigates with.
-    var conferenceId: Int? = nil
+    /// The league-qualified group, set only on conference sections with a
+    /// known conference — it's what the header's standings link navigates
+    /// with. Qualified because group id 8 is the SEC in college football
+    /// and the AFC in the NFL.
+    var conference: ConferenceID? = nil
 }
 
 @Observable
@@ -100,6 +107,10 @@ final class ScoreboardStore {
     private static let logger = Logger(subsystem: "com.andyryanweir.sports", category: "scoreboard")
 
     private let client: any ScoresProviding
+
+    /// The league this store answers for. One store per league; the Scores
+    /// header picks which one is on screen.
+    let league: League
 
     private(set) var weeks: [WeekSlot] = []
     private(set) var selectedWeek: WeekSlot?
@@ -145,7 +156,7 @@ final class ScoreboardStore {
     private struct SectionsKey: Hashable {
         let games: [Game]
         let followingIds: Set<String>
-        let followedConferenceIds: Set<Int>
+        let followedConferenceIds: Set<ConferenceID>
         let grouping: ScoresGrouping
         let liveOnly: Bool
         let filter: ScoreFilter?
@@ -163,8 +174,10 @@ final class ScoreboardStore {
     /// Non-nil while browsing a past season; forwarded on every fetch.
     @ObservationIgnored private var seasonOverride: Int?
 
-    init(client: any ScoresProviding) {
-        self.client = client
+    init(league: League = .collegeFootball,
+         client: (any ScoresProviding)? = nil) {
+        self.league = league
+        self.client = client ?? DataProvider.makeClient(league: league)
     }
 
     var hasLiveGames: Bool {
@@ -235,13 +248,17 @@ final class ScoreboardStore {
     /// when someone selected an FCS conference in the filter sheet or
     /// follows one. That "only when asked" is the whole of scope (b), and
     /// it's what keeps the 30s poll at one request for everyone else.
-    nonisolated static func divisions(filter: ScoreFilter?,
-                                      followedConferenceIds: Set<Int>) -> Set<Conference.Division> {
+    nonisolated static func divisions(
+        filter: ScoreFilter?, followedConferenceIds: Set<ConferenceID>
+    ) -> Set<Conference.Division> {
         var needed: Set<Conference.Division> = [.fbs]
-        if case .conference(let id) = filter, Conference.division(for: id) == .fcs {
+        if case .conference(let id) = filter,
+           Conference.division(for: id.id, in: id.league) == .fcs {
             needed.insert(.fcs)
         }
-        if followedConferenceIds.contains(where: { Conference.division(for: $0) == .fcs }) {
+        if followedConferenceIds.contains(where: {
+            Conference.division(for: $0.id, in: $0.league) == .fcs
+        }) {
             needed.insert(.fcs)
         }
         return needed
@@ -477,7 +494,7 @@ final class ScoreboardStore {
     /// collapse sections to matching games and hide the empties —
     /// "complete" means complete within the active filters.
     func sections(followingIds: Set<String>,
-                  followedConferenceIds: Set<Int> = [],
+                  followedConferenceIds: Set<ConferenceID> = [],
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
@@ -490,7 +507,7 @@ final class ScoreboardStore {
     /// renders a cached neighbor week through it (2026-08-31).
     func sections(from games: [Game],
                   followingIds: Set<String>,
-                  followedConferenceIds: Set<Int> = [],
+                  followedConferenceIds: Set<ConferenceID> = [],
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
@@ -515,9 +532,10 @@ final class ScoreboardStore {
         // Team follows or conference follows both claim a game; an FCS
         // visitor's nil conferenceId is carried in by its FBS host's side.
         let followed = visible.filter { game in
-            followingIds.contains(game.home.team.id) || followingIds.contains(game.away.team.id)
-                || game.home.team.conferenceId.map(followedConferenceIds.contains) ?? false
-                || game.away.team.conferenceId.map(followedConferenceIds.contains) ?? false
+            followingIds.contains(game.home.team.followKey)
+                || followingIds.contains(game.away.team.followKey)
+                || game.home.team.conference.map(followedConferenceIds.contains) ?? false
+                || game.away.team.conference.map(followedConferenceIds.contains) ?? false
         }
         if !followed.isEmpty {
             result.append(GameSection(id: GameSection.followingId, title: "Following",
@@ -542,7 +560,7 @@ final class ScoreboardStore {
     /// `visible` already chronological; every bucket preserves that order.
     private func rankedAndConferenceSections(from visible: [Game],
                                              followingIds: Set<String>,
-                                             followedConferenceIds: Set<Int>) -> [GameSection] {
+                                             followedConferenceIds: Set<ConferenceID>) -> [GameSection] {
         var result: [GameSection] = []
         let ranked = visible.filter(\.involvesRankedTeam)
         if !ranked.isEmpty {
@@ -560,11 +578,19 @@ final class ScoreboardStore {
         // knowledge: FCS is opt-in (scope (b)), so until someone asks for
         // it a Big Sky visitor at an FBS school stays in the host's
         // section rather than spawning a Big Sky one.
-        var byConference: [Int?: [Game]] = [:]
+        var byConference: [ConferenceID?: [Game]] = [:]
         for game in visible {
-            let known = Set([game.home.team.conferenceId, game.away.team.conferenceId]
-                .compactMap { id in
-                    Conference.division(for: id).map(divisions.contains) == true ? id : nil
+            let known = Set([game.home.team.conference, game.away.team.conference]
+                .compactMap { conference -> ConferenceID? in
+                    guard let conference else { return nil }
+                    // The NFL has no divisions to opt into, so every known
+                    // group qualifies; college football gates on the slate.
+                    if conference.league != .collegeFootball {
+                        return Conference.isKnown(conference.id, in: conference.league)
+                            ? conference : nil
+                    }
+                    return Conference.division(for: conference.id, in: conference.league)
+                        .map(divisions.contains) == true ? conference : nil
                 })
             if known.isEmpty {
                 byConference[nil, default: []].append(game)
@@ -578,15 +604,18 @@ final class ScoreboardStore {
         // explicitly followed conference; then P4 → G5 → Independents →
         // Other.
         let floatedConferenceIds = Set(visible.flatMap { [$0.home, $0.away] }
-            .filter { followingIds.contains($0.team.id) }
-            .compactMap(\.team.conferenceId))
+            .filter { followingIds.contains($0.team.followKey) }
+            .compactMap(\.team.conference))
             .union(followedConferenceIds)
         let orderedIds = byConference.keys.sorted { lhs, rhs in
             let (lf, rf) = (lhs.map(floatedConferenceIds.contains) ?? false,
                             rhs.map(floatedConferenceIds.contains) ?? false)
             if lf != rf { return lf }
-            let (lt, rt) = (Conference.tier(for: lhs), Conference.tier(for: rhs))
-            return lt == rt ? Conference.name(for: lhs) < Conference.name(for: rhs) : lt < rt
+            let (lt, rt) = (Conference.tier(for: lhs?.id, in: lhs?.league ?? league),
+                            Conference.tier(for: rhs?.id, in: rhs?.league ?? league))
+            return lt == rt
+                ? Conference.name(for: lhs) < Conference.name(for: rhs)
+                : lt < rt
         }
         for id in orderedIds {
             let name = Conference.name(for: id)
@@ -594,7 +623,7 @@ final class ScoreboardStore {
                                       games: byConference[id] ?? [],
                                       logoURL: Conference.logoURL(for: id),
                                       isConference: true,
-                                      conferenceId: id))
+                                      conference: id))
         }
         return result
     }

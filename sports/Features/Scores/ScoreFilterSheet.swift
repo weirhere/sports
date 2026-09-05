@@ -65,8 +65,10 @@ struct ScoreFilterSheet: View {
                             .frame(width: 24)
                     }
                     ForEach(Conference.orderedIds, id: \.self) { id in
-                        row(filter: .conference(id), label: Conference.name(for: id)) {
-                            ConferenceLogo(url: Conference.logoURL(for: id))
+                        let conference = ConferenceID(.collegeFootball, id)
+                        row(filter: .conference(conference),
+                            label: Conference.name(for: conference)) {
+                            ConferenceLogo(url: Conference.logoURL(for: conference))
                                 .frame(width: 24)
                         }
                     }
@@ -79,8 +81,10 @@ struct ScoreFilterSheet: View {
                 // already covered 250 teams.
                 Section {
                     ForEach(Conference.orderedIds(in: .fcs), id: \.self) { id in
-                        row(filter: .conference(id), label: Conference.name(for: id)) {
-                            ConferenceLogo(url: Conference.logoURL(for: id))
+                        let conference = ConferenceID(.collegeFootball, id)
+                        row(filter: .conference(conference),
+                            label: Conference.name(for: conference)) {
+                            ConferenceLogo(url: Conference.logoURL(for: conference))
                                 .frame(width: 24)
                         }
                     }
@@ -139,7 +143,7 @@ struct ScoreFilterSheet: View {
 
 #Preview {
     Color.bgPrimary.sheet(isPresented: .constant(true)) {
-        ScoreFilterSheet(current: .conference(8), grouping: .date,
+        ScoreFilterSheet(current: .conference(.cfb(8)), grouping: .date,
                          seasonYear: 2026,
                          seasons: Array(stride(from: 2026, through: 2014, by: -1)),
                          onSelect: { _ in }, onSetGrouping: { _ in },

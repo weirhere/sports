@@ -3,6 +3,10 @@ import Testing
 @testable import StatSide
 
 private struct StubProvider: ScoresProviding {
+    /// The stubs are college-football fixtures; the protocol needs a
+    /// league, and one is as good as the payloads they return.
+    nonisolated var league: League { .collegeFootball }
+
     let scoreboard: Scoreboard
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
@@ -26,6 +30,10 @@ private struct StubProvider: ScoresProviding {
 /// A provider whose slate depends on the divisions asked for, mirroring
 /// ESPN: group 80 alone, or the union with group 81's extra games.
 private struct DivisionProvider: ScoresProviding {
+    /// The stubs are college-football fixtures; the protocol needs a
+    /// league, and one is as good as the payloads they return.
+    nonisolated var league: League { .collegeFootball }
+
     let slots: [WeekSlot]
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
@@ -80,6 +88,10 @@ private struct DivisionProvider: ScoresProviding {
 /// A provider driven by a closure, so tests can key responses off the
 /// requested week/year — the week cache is invisible to a fixed stub.
 private struct ClosureProvider: ScoresProviding {
+    /// The stubs are college-football fixtures; the protocol needs a
+    /// league, and one is as good as the payloads they return.
+    nonisolated var league: League { .collegeFootball }
+
     let provide: @MainActor (Int?, Int?, Int?) throws -> Scoreboard
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
@@ -140,7 +152,7 @@ private func game(_ id: String, home: Team, away: Team,
         let store = await makeStore(games: [game("g1", home: sec, away: bigTen, homeRank: 3)])
 
         // SEC leads Big Ten here: the followed team's conference floats up.
-        let sections = store.sections(followingIds: ["1"])
+        let sections = store.sections(followingIds: ["cfb:1"])
         #expect(sections.map(\.id) == [GameSection.followingId, GameSection.top25Id, "conf-SEC", "conf-Big Ten"])
         #expect(sections.allSatisfy { $0.games.map(\.id) == ["g1"] })
     }
@@ -196,7 +208,7 @@ private func game(_ id: String, home: Team, away: Team,
         let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
                                                  away: team("2", conference: 20))])
         await store.select(divisions: [.fbs, .fcs])
-        let sections = store.sections(followingIds: [], followedConferenceIds: [20])
+        let sections = store.sections(followingIds: [], followedConferenceIds: [.cfb(20)])
         #expect(sections.first?.id == "following")
     }
 
@@ -216,7 +228,7 @@ private func game(_ id: String, home: Team, away: Team,
         ])
         // Following the SEC with zero team follows still produces a
         // Following section, containing only SEC games.
-        let sections = store.sections(followingIds: [], followedConferenceIds: [8])
+        let sections = store.sections(followingIds: [], followedConferenceIds: [.cfb(8)])
         let following = sections.first { $0.id == GameSection.followingId }
         #expect(following?.games.map(\.id) == ["sec"])
     }
@@ -226,7 +238,7 @@ private func game(_ id: String, home: Team, away: Team,
         // away side): following the SEC still claims the game.
         let store = await makeStore(games: [game("g1", home: team("1", conference: 8),
                                                  away: team("2", conference: 424242))])
-        let sections = store.sections(followingIds: [], followedConferenceIds: [8])
+        let sections = store.sections(followingIds: [], followedConferenceIds: [.cfb(8)])
         #expect(sections.first?.id == GameSection.followingId)
         #expect(sections.first?.games.map(\.id) == ["g1"])
     }
@@ -238,7 +250,7 @@ private func game(_ id: String, home: Team, away: Team,
         ])
         // Big Ten (power4) normally leads; following Mountain West floats
         // it above, mirroring the followed-team float.
-        let ids = store.sections(followingIds: [], followedConferenceIds: [17]).map(\.id)
+        let ids = store.sections(followingIds: [], followedConferenceIds: [.cfb(17)]).map(\.id)
         #expect(ids == [GameSection.followingId, "conf-Mountain West", "conf-Big Ten"])
     }
 
@@ -246,12 +258,12 @@ private func game(_ id: String, home: Team, away: Team,
         let sec = team("1", conference: 8)
         let store = await makeStore(games: [game("g1", home: sec,
                                                  away: team("2", conference: 5), homeRank: 3)])
-        let sections = store.sections(followingIds: ["1"])
-        let byId = Dictionary(uniqueKeysWithValues: sections.map { ($0.id, $0.conferenceId) })
+        let sections = store.sections(followingIds: ["cfb:1"])
+        let byId = Dictionary(uniqueKeysWithValues: sections.map { ($0.id, $0.conference) })
         #expect(byId[GameSection.followingId] == .some(nil))
         #expect(byId[GameSection.top25Id] == .some(nil))
-        #expect(byId["conf-SEC"] == 8)
-        #expect(byId["conf-Big Ten"] == 5)
+        #expect(byId["conf-SEC"] == .cfb(8))
+        #expect(byId["conf-Big Ten"] == .cfb(5))
     }
 
     @Test func liveToggleFiltersAndHidesEmptySections() async {
@@ -380,7 +392,7 @@ private func game(_ id: String, home: Team, away: Team,
             game("g1", home: team("1", conference: 8), away: team("2", conference: 8),
                  homeRank: 3, date: dayOne),
         ])
-        let sections = store.sections(followingIds: ["1"], grouping: .date)
+        let sections = store.sections(followingIds: ["cfb:1"], grouping: .date)
         #expect(sections.map(\.id) == [GameSection.followingId, dayId(for: dayOne), dayId(for: dayTwo)])
         #expect(sections[0].games.map(\.id) == ["g1"])
         #expect(sections[1].games.map(\.id) == ["g1"])
@@ -434,7 +446,7 @@ private func game(_ id: String, home: Team, away: Team,
             game("fcs", home: team("5", conference: 8), away: team("6", conference: nil)),
             game("acc", home: team("7", conference: 1), away: team("8", conference: 1)),
         ])
-        let sections = store.sections(followingIds: [], filter: .conference(8))
+        let sections = store.sections(followingIds: [], filter: .conference(.cfb(8)))
         #expect(sections.map(\.id) == ["conf-Big Ten", "conf-SEC"])
         #expect(sections[0].games.map(\.id) == ["cross"])
         #expect(Set(sections[1].games.map(\.id)) == ["sec", "cross", "fcs"])
@@ -459,12 +471,12 @@ private func game(_ id: String, home: Team, away: Team,
             game("secLive", home: team("3", conference: 8), away: team("4", conference: 8), live: true),
             game("secPre", home: team("5", conference: 8), away: team("6", conference: 8)),
         ])
-        let sections = store.sections(followingIds: ["1"], grouping: .date,
-                                      liveOnly: true, filter: .conference(8))
+        let sections = store.sections(followingIds: ["cfb:1"], grouping: .date,
+                                      liveOnly: true, filter: .conference(.cfb(8)))
         #expect(sections.count == 1)
         #expect(sections[0].games.map(\.id) == ["secLive"])
 
-        let restored = store.sections(followingIds: ["1"], grouping: .date, liveOnly: true)
+        let restored = store.sections(followingIds: ["cfb:1"], grouping: .date, liveOnly: true)
         #expect(restored.first?.id == GameSection.followingId)
     }
 
@@ -595,8 +607,8 @@ private func game(_ id: String, home: Team, away: Team,
         let games = [game("g1", home: team("1", conference: 8),
                           away: team("2", conference: 5), homeRank: 3)]
         let store = await makeStore(games: games)
-        #expect(store.sections(from: games, followingIds: ["1"])
-            == store.sections(followingIds: ["1"]))
+        #expect(store.sections(from: games, followingIds: ["cfb:1"])
+            == store.sections(followingIds: ["cfb:1"]))
     }
 
     @Test func repeatedSectionCallsServeUpdatedGameContent() async {

@@ -14,13 +14,13 @@ struct ConferenceListRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.md) {
-            if let id = conference.id {
-                NavigationLink(value: ConferenceDestination(conferenceId: id,
+            if let id = conference.conference {
+                NavigationLink(value: ConferenceDestination(conference: id,
                                                             name: conference.name)) {
                     rowContent
                 }
                 .buttonStyle(.plain)
-                ConferenceFollowStar(conferenceId: id, conferenceName: conference.name)
+                ConferenceFollowStar(conference: id, conferenceName: conference.name)
             } else {
                 // No id means no page and no follow — CFBD's unknown-name
                 // fallback. The row still lists the conference.
@@ -33,7 +33,7 @@ struct ConferenceListRow: View {
 
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
-            ConferenceLogo(url: Conference.logoURL(for: conference.id))
+            ConferenceLogo(url: Conference.logoURL(for: conference.conference))
             if isStacked {
                 VStack(alignment: .leading, spacing: 2) {
                     nameText

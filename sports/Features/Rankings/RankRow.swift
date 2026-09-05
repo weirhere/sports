@@ -25,15 +25,15 @@ struct RankRow: View {
         .padding(.vertical, 7)
         .contextMenu {
             Button {
-                following.toggle(ranked.team.id)
+                following.toggle(ranked.team)
             } label: {
-                Label(followActionTitle, systemImage: following.isFollowing(ranked.team.id) ? "star.slash" : "star")
+                Label(followActionTitle, systemImage: following.isFollowing(ranked.team) ? "star.slash" : "star")
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
         .accessibilityAction(named: followActionTitle) {
-            following.toggle(ranked.team.id)
+            following.toggle(ranked.team)
         }
     }
 
@@ -115,7 +115,7 @@ struct RankRow: View {
     }
 
     private var followActionTitle: String {
-        following.isFollowing(ranked.team.id) ? "Unfollow \(ranked.team.location)" : "Follow \(ranked.team.location)"
+        following.isFollowing(ranked.team) ? "Unfollow \(ranked.team.location)" : "Follow \(ranked.team.location)"
     }
 
     /// One spoken sentence: "Number 3, Georgia, 5 and 0, up 2".

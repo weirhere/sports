@@ -11,19 +11,23 @@ import Foundation
 /// A flipped switch with no key falls back to ESPN rather than serving a
 /// broken screen.
 nonisolated enum DataProvider {
-    static func makeClient(defaults: UserDefaults = .standard) -> any ScoresProviding {
+    static func makeClient(league: League = .collegeFootball,
+                           defaults: UserDefaults = .standard) -> any ScoresProviding {
         #if DEBUG
         // The live-detail regression tests' scripted backend — never
         // compiled into release builds, never touches the network.
         if defaults.string(forKey: "data.provider") == "fixture" {
-            return FixtureScoresClient()
+            return FixtureScoresClient(league: league)
         }
         #endif
-        if defaults.string(forKey: "data.provider") == "cfbd",
+        // CFBD is a college-football provider and has no NFL counterpart,
+        // so the NFL always talks to ESPN regardless of the switch.
+        if league == .collegeFootball,
+           defaults.string(forKey: "data.provider") == "cfbd",
            let key = cfbdKey(defaults: defaults) {
             return CFBDClient(apiKey: key)
         }
-        return ESPNClient()
+        return ESPNClient(league: league)
     }
 
     /// The scoreboard and game-detail poll cadence: 30 seconds, the

@@ -107,10 +107,10 @@ import Testing
         #expect(store.scoreFilter == nil)
 
         store.liveOnly = true
-        store.scoreFilter = .conference(8)
+        store.scoreFilter = .conference(.cfb(8))
         let reloaded = UIStateStore(defaults: defaults)
         #expect(reloaded.liveOnly == true)
-        #expect(reloaded.scoreFilter == .conference(8))
+        #expect(reloaded.scoreFilter == .conference(.cfb(8)))
 
         reloaded.scoreFilter = .top25
         #expect(UIStateStore(defaults: defaults).scoreFilter == .top25)

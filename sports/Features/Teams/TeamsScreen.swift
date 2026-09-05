@@ -20,7 +20,8 @@ struct TeamsScreen: View {
     /// browse-local. ACC still sorts first — the UI tests lean on that.
     private var conferences: [ConferenceTeams] {
         directory.conferences.sorted {
-            let lhs = Conference.tier(for: $0.id), rhs = Conference.tier(for: $1.id)
+            let lhs = Conference.tier(for: $0.id, in: $0.league)
+            let rhs = Conference.tier(for: $1.id, in: $1.league)
             if lhs != rhs { return lhs < rhs }
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
@@ -31,11 +32,11 @@ struct TeamsScreen: View {
     /// list would read as though the app's slate covered all of it — which
     /// under scope (b) it doesn't until you ask.
     private var fbsConferences: [ConferenceTeams] {
-        conferences.filter { Conference.division(for: $0.id) != .fcs }
+        conferences.filter { Conference.division(for: $0.id, in: $0.league) != .fcs }
     }
 
     private var fcsConferences: [ConferenceTeams] {
-        conferences.filter { Conference.division(for: $0.id) == .fcs }
+        conferences.filter { Conference.division(for: $0.id, in: $0.league) == .fcs }
     }
 
     var body: some View {
@@ -88,7 +89,7 @@ struct TeamsScreen: View {
         guard let pendingId = router.pendingConferenceId else { return }
         router.pendingConferenceId = nil
         searchText = ""
-        path = NavigationPath([ConferenceDestination(conferenceId: pendingId,
+        path = NavigationPath([ConferenceDestination(conference: pendingId,
                                                      name: Conference.name(for: pendingId))])
     }
 
@@ -126,9 +127,9 @@ struct TeamsScreen: View {
                             teamSection(title: conference.name,
                                         sectionId: sectionId(for: conference),
                                         teams: conference.teams,
-                                        logoURL: Conference.logoURL(for: conference.id),
+                                        logoURL: Conference.logoURL(for: conference.conference),
                                         isConference: true,
-                                        conferenceId: conference.id)
+                                        conference: conference.conference)
                         }
                         if !fcsConferences.isEmpty {
                             ListSectionHeading(title: "FCS conferences")
@@ -136,9 +137,9 @@ struct TeamsScreen: View {
                                 teamSection(title: conference.name,
                                             sectionId: sectionId(for: conference),
                                             teams: conference.teams,
-                                            logoURL: Conference.logoURL(for: conference.id),
+                                            logoURL: Conference.logoURL(for: conference.conference),
                                             isConference: true,
-                                            conferenceId: conference.id)
+                                            conference: conference.conference)
                             }
                         }
                     } else if !searchResults.isEmpty {
@@ -172,13 +173,13 @@ struct TeamsScreen: View {
 
     private func teamSection(title: String, sectionId: String, teams: [Team],
                              logoURL: URL? = nil, isConference: Bool = false,
-                             conferenceId: Int? = nil) -> some View {
+                             conference: ConferenceID? = nil) -> some View {
         let isExpanded = !uiState.isConferenceCollapsed(sectionId)
         // The header surface is the whole-width toggle; standings live in
         // its context menu + VoiceOver action (the trailing icon came off
         // in the P1 review — Scores headers keep theirs).
-        let openStandings: (() -> Void)? = conferenceId.map { id in
-            { path.append(ConferenceDestination(conferenceId: id, name: title)) }
+        let openStandings: (() -> Void)? = conference.map { id in
+            { path.append(ConferenceDestination(conference: id, name: title)) }
         }
         // A conference header splits into two surfaces (Andy's call,
         // 2026-08-25): mark + name push the conference page, the rest
@@ -276,12 +277,12 @@ struct TeamsScreen: View {
 
     private var followedTeams: [Team] {
         conferences.flatMap(\.teams)
-            .filter { following.isFollowing($0.id) }
+            .filter { following.isFollowing($0) }
             .sorted { $0.location.localizedCaseInsensitiveCompare($1.location) == .orderedAscending }
     }
 
     private var searchResults: [Team] {
         SearchResults.teams(matching: searchText, in: conferences,
-                            followingIds: following.teamIds)
+                            followingIds: following.teamKeys)
     }
 }

@@ -27,27 +27,27 @@ private func game(home: Team, away: Team) -> Game {
     @Test func conferenceFollowPersistsAcrossReinit() {
         let defaults = makeDefaults()
         let store = FollowingStore(defaults: defaults)
-        store.toggleConference(8)
-        #expect(store.isFollowingConference(8))
+        store.toggleConference(.cfb(8))
+        #expect(store.isFollowingConference(.cfb(8)))
 
         let reloaded = FollowingStore(defaults: defaults)
-        #expect(reloaded.isFollowingConference(8))
+        #expect(reloaded.isFollowingConference(.cfb(8)))
 
-        reloaded.toggleConference(8)
-        #expect(!reloaded.isFollowingConference(8))
-        #expect(!FollowingStore(defaults: defaults).isFollowingConference(8))
+        reloaded.toggleConference(.cfb(8))
+        #expect(!reloaded.isFollowingConference(.cfb(8)))
+        #expect(!FollowingStore(defaults: defaults).isFollowingConference(.cfb(8)))
     }
 
     @Test func conferenceFollowAloneCountsAsFollowingSomeone() {
         let store = FollowingStore(defaults: makeDefaults())
         #expect(!store.followsAnyone)
-        store.toggleConference(8)
+        store.toggleConference(.cfb(8))
         #expect(store.followsAnyone)
     }
 
     @Test func followsMatchesEitherSidesConference() {
         let store = FollowingStore(defaults: makeDefaults())
-        store.toggleConference(8)
+        store.toggleConference(.cfb(8))
 
         // SEC on the home side, on the away side, and absent.
         #expect(store.follows(game(home: team("1", conference: 8),
@@ -62,7 +62,7 @@ private func game(home: Team, away: Team) -> Game {
         // An FCS visitor has no conference id on our table; only the FBS
         // host's side can carry the game in.
         let store = FollowingStore(defaults: makeDefaults())
-        store.toggleConference(8)
+        store.toggleConference(.cfb(8))
         #expect(store.follows(game(home: team("1", conference: 8),
                                    away: team("2", conference: nil))))
         #expect(!store.follows(game(home: team("1", conference: nil),
@@ -71,12 +71,12 @@ private func game(home: Team, away: Team) -> Game {
 
     @Test func conferenceAndTeamFollowsAreIndependentSets() {
         let store = FollowingStore(defaults: makeDefaults())
-        store.toggle("61")
-        store.toggleConference(8)
-        #expect(store.isFollowing("61"))
-        #expect(store.isFollowingConference(8))
-        store.toggle("61")
-        #expect(!store.isFollowing("61"))
-        #expect(store.isFollowingConference(8))
+        store.toggle("61", in: .collegeFootball)
+        store.toggleConference(.cfb(8))
+        #expect(store.isFollowing("61", in: .collegeFootball))
+        #expect(store.isFollowingConference(.cfb(8)))
+        store.toggle("61", in: .collegeFootball)
+        #expect(!store.isFollowing("61", in: .collegeFootball))
+        #expect(store.isFollowingConference(.cfb(8)))
     }
 }

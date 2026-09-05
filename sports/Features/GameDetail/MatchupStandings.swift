@@ -89,9 +89,9 @@ struct MatchupStandings: View {
     private func row(_ entry: (conference: ConferenceStandings,
                                position: Int,
                                standing: ConferenceStanding)) -> some View {
-        if let conferenceId = entry.conference.id {
+        if let conference = entry.conference.conference {
             NavigationLink(value: ConferenceDestination(
-                conferenceId: conferenceId,
+                conference: conference,
                 name: entry.conference.name,
                 highlightTeamId: entry.standing.team.id
             )) {

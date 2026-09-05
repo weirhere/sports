@@ -9,12 +9,15 @@ struct NextGameIntent: AppIntent {
     static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let followedIds = Set(AppGroup.defaults.stringArray(forKey: AppGroup.followingKey) ?? [])
-        guard !followedIds.isEmpty else {
+        // League-qualified keys; college football only for now (M5 widens
+        // the intent to both leagues alongside the widget).
+        let followedKeys = Set(AppGroup.defaults.stringArray(forKey: AppGroup.followingKeysKey) ?? [])
+            .filter { $0.hasPrefix("\(League.collegeFootball.rawValue):") }
+        guard !followedKeys.isEmpty else {
             return .result(dialog: "You're not following any teams yet. Pick your teams in StatSide first.")
         }
 
-        let client = DataProvider.makeClient()
+        let client = DataProvider.makeClient(league: .collegeFootball)
         // A team's schedule knows which games exist; it does not know how
         // one is going. The payload carries no live score and no clock
         // once a game kicks off (the dashed-score bug, Andy 2026-08-29),
@@ -25,7 +28,8 @@ struct NextGameIntent: AppIntent {
         async let board: Scoreboard? = try? await client.scoreboard(
             weekValue: nil, seasonType: nil, year: nil)
         var gamesById: [String: Game] = [:]
-        for teamId in followedIds {
+        let prefix = "\(League.collegeFootball.rawValue):"
+        for teamId in followedKeys.map({ String($0.dropFirst(prefix.count)) }) {
             guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
             for game in schedule.games {
                 gamesById[game.id] = game

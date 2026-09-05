@@ -57,7 +57,7 @@ struct ScoreFilterChip: View {
     HStack {
         ScoreFilterChip(filter: nil, pastSeasonYear: nil, onTap: {})
         ScoreFilterChip(filter: .top25, pastSeasonYear: nil, onTap: {})
-        ScoreFilterChip(filter: .conference(8), pastSeasonYear: 2019, onTap: {})
+        ScoreFilterChip(filter: .conference(.cfb(8)), pastSeasonYear: 2019, onTap: {})
     }
     .padding(4)
     .background(Capsule().fill(Color.bgElevated))

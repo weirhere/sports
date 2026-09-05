@@ -22,23 +22,31 @@ nonisolated struct WeekSlot: Identifiable, Hashable, Sendable {
 
 nonisolated enum WeekLogic {
     /// The strip's default selection. ESPN's current week wins, except on
-    /// Sundays: Sunday is catch-up + poll day, so we pin to the week whose
-    /// Saturday just finished (the slot containing yesterday) even if ESPN
-    /// has already flipped forward. Rolls over Monday morning.
+    /// the league's catch-up days, when we pin to the week that just
+    /// finished (the slot containing the most recent game day) even if
+    /// ESPN has already flipped forward.
+    ///
+    /// College football's slate is Saturday, so Sunday is catch-up day —
+    /// it's also when the new poll drops in place — and the strip rolls
+    /// over Monday morning. The NFL's week runs Thursday → Monday, so
+    /// Monday night football is still *this* week and Tuesday is the dead
+    /// day; both pin back, and the strip rolls over Wednesday morning.
     static func defaultSelection(
         in slots: [WeekSlot],
         currentWeekNumber: Int?,
         seasonType: Int?,
+        league: League = .collegeFootball,
         today: Date = .now,
         calendar: Calendar = .current
     ) -> WeekSlot? {
         guard !slots.isEmpty else { return nil }
-        if calendar.component(.weekday, from: today) == 1,
-           let yesterday = calendar.date(byAdding: .day, value: -1, to: today) {
+        if league.completedWeekWeekdays.contains(calendar.component(.weekday, from: today)),
+           let yesterday = lastGameDay(before: today, in: league, calendar: calendar) {
             // The Bowls and CFP slots overlap for the whole playoff (Dec 18
             // → Jan 28 both sit inside Bowls' range), so several slots can
-            // contain yesterday. ESPN's current slot breaks the tie when it
-            // qualifies; first-containing keeps the September behavior,
+            // contain yesterday — the NFL's Wild Card and Divisional slots
+            // overlap the same way. ESPN's current slot breaks the tie when
+            // it qualifies; first-containing keeps the September behavior,
             // where ESPN's flipped-forward week never contains yesterday.
             let containing = slots.filter { $0.contains(yesterday) }
             if let type = seasonType, let number = currentWeekNumber,
@@ -60,5 +68,17 @@ nonisolated enum WeekLogic {
             return first
         }
         return slots.last
+    }
+
+    /// The most recent day that belongs to the week just finished. College
+    /// football looks back one day from Sunday to Saturday. The NFL looks
+    /// back to Monday, which means Tuesday looks back two days — Monday
+    /// night's game is the week's last.
+    private static func lastGameDay(
+        before today: Date, in league: League, calendar: Calendar
+    ) -> Date? {
+        let weekday = calendar.component(.weekday, from: today)
+        let step = league.completedWeekWeekdays.sorted().first.map { weekday - $0 + 1 } ?? 1
+        return calendar.date(byAdding: .day, value: -max(step, 1), to: today)
     }
 }

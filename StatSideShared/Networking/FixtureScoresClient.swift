@@ -14,6 +14,15 @@ import Foundation
 /// Activated by `-data.provider fixture` (DEBUG builds only, wired in
 /// `DataProvider`). Never touches the network.
 nonisolated final class FixtureScoresClient: ScoresProviding {
+    /// The scripted slate is a college-football Saturday; the initialiser
+    /// takes a league so `DataProvider` can hand one over uniformly, but
+    /// every fixture team is stamped college football.
+    nonisolated let league: League
+
+    init(league: League = .collegeFootball) {
+        self.league = league
+    }
+
     /// One timeline shared by every instance: the app makes separate
     /// clients for the scoreboard store and each detail screen, and they
     /// must all see the same evolving Saturday.

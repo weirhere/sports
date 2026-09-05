@@ -7,16 +7,17 @@ nonisolated enum GameSelection {
     /// kickoff first), then upcoming games (soonest first), then the most
     /// recent final. Postponed/canceled games rank last.
     static func relevantGames(
-        in games: [Game], followedIds: Set<String>, limit: Int, now: Date
+        in games: [Game], followedKeys: Set<String>, limit: Int, now: Date
     ) -> [Game] {
-        guard !followedIds.isEmpty else { return [] }
+        guard !followedKeys.isEmpty else { return [] }
         struct Ranked {
             let game: Game
             let priority: Int
             let order: TimeInterval
         }
         let followed = games.filter {
-            followedIds.contains($0.home.team.id) || followedIds.contains($0.away.team.id)
+            followedKeys.contains($0.home.team.followKey)
+                || followedKeys.contains($0.away.team.followKey)
         }
         let ranked = followed.map { game -> Ranked in
             let kickoff = game.date?.timeIntervalSince(now) ?? .greatestFiniteMagnitude

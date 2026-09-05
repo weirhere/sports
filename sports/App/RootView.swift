@@ -80,8 +80,8 @@ struct RootView: View {
         .onChange(of: selectedTab) { _, tab in
             if tab != .search { lastContentTab = tab }
         }
-        .onChange(of: following.teamIds) { oldIds, newIds in
-            Task { await notifications.resync(followedIds: newIds) }
+        .onChange(of: following.teamKeys) { oldIds, newIds in
+            Task { await notifications.resync(followedKeys: newIds) }
             // The contextual permission moment: right after the first-ever
             // follow, once, and never at launch.
             if oldIds.isEmpty, !newIds.isEmpty, !uiState.notificationsPrompted,
@@ -95,7 +95,7 @@ struct RootView: View {
                 scoreboard.startPollingIfNeeded()
                 Task {
                     await notifications.refreshAuthorization()
-                    await notifications.resync(followedIds: following.teamIds)
+                    await notifications.resync(followedKeys: following.teamKeys)
                 }
             } else {
                 scoreboard.stopPolling()
@@ -103,7 +103,7 @@ struct RootView: View {
         }
         .alert("Get kickoff reminders?", isPresented: $showReminderOffer) {
             Button("Enable") {
-                Task { await notifications.requestAndEnable(followedIds: following.teamIds) }
+                Task { await notifications.requestAndEnable(followedKeys: following.teamKeys) }
             }
             Button("Not Now", role: .cancel) {}
         } message: {

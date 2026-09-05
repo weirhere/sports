@@ -23,6 +23,13 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     let id: Int?
     let name: String
     let entries: [ConferenceStanding]
+    /// Which league's group-id space `id` belongs to. Defaulted so the
+    /// college-football call sites read unchanged.
+    var league: League = .collegeFootball
+
+    /// The unambiguous identity — group id 8 is the SEC here and the AFC
+    /// in the NFL.
+    var conference: ConferenceID? { id.map { ConferenceID(league, $0) } }
 
     /// ESPN's placement stat beats payload order when it's complete:
     /// past-season responses come back sorted by overall record (found
@@ -50,10 +57,10 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     /// the rest after. The input keeps its tier-then-name sort from the
     /// mappers; entries without an id can't be followed or pinned.
     static func pinned(_ list: [ConferenceStandings],
-                       followedIds: Set<Int>) -> [ConferenceStandings] {
+                       followedIds: Set<ConferenceID>) -> [ConferenceStandings] {
         let (followed, rest) = list.reduce(into: ([ConferenceStandings](), [ConferenceStandings]())) {
             partition, conference in
-            if conference.id.map(followedIds.contains) ?? false {
+            if conference.conference.map(followedIds.contains) ?? false {
                 partition.0.append(conference)
             } else {
                 partition.1.append(conference)

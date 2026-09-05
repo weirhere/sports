@@ -74,11 +74,11 @@ private func fixture(_ name: String) throws -> Data {
     }
 
     @Test func unknownConferenceFallsBackToOther() {
-        #expect(Conference.name(for: 9999) == "Other")
-        #expect(Conference.name(for: nil) == "Other")
-        #expect(Conference.tier(for: 9999) == .other)
-        #expect(Conference.name(for: 8) == "SEC")
-        #expect(Conference.tier(for: 8) == .power4)
+        #expect(Conference.name(for: 9999, in: .collegeFootball) == "Other")
+        #expect(Conference.name(for: nil, in: .collegeFootball) == "Other")
+        #expect(Conference.tier(for: 9999, in: .collegeFootball) == .other)
+        #expect(Conference.name(for: 8, in: .collegeFootball) == "SEC")
+        #expect(Conference.tier(for: 8, in: .collegeFootball) == .power4)
     }
 }
 
@@ -233,23 +233,23 @@ private func fixture(_ name: String) throws -> Data {
 
     @Test func titleGameCutGatesByFormatEra() {
         // One-table era: top two meet in the title game.
-        #expect(Conference.titleGameIsTopTwo(id: 8, year: 2024))    // SEC
-        #expect(Conference.titleGameIsTopTwo(id: 5, year: 2026))    // Big Ten
+        #expect(Conference.titleGameIsTopTwo(id: 8, year: 2024, in: .collegeFootball))    // SEC
+        #expect(Conference.titleGameIsTopTwo(id: 5, year: 2026, in: .collegeFootball))    // Big Ten
         // Divisional eras must never carry the top-two claim.
-        #expect(!Conference.titleGameIsTopTwo(id: 8, year: 2023))
+        #expect(!Conference.titleGameIsTopTwo(id: 8, year: 2023, in: .collegeFootball))
         // The Sun Belt is the divisional holdout — one-table from 2026.
-        #expect(!Conference.titleGameIsTopTwo(id: 37, year: 2024))
-        #expect(Conference.titleGameIsTopTwo(id: 37, year: 2026))
+        #expect(!Conference.titleGameIsTopTwo(id: 37, year: 2024, in: .collegeFootball))
+        #expect(Conference.titleGameIsTopTwo(id: 37, year: 2026, in: .collegeFootball))
         // No title game at all: Independents, unknown ids, nil.
-        #expect(!Conference.titleGameIsTopTwo(id: 18, year: 2026))
-        #expect(!Conference.titleGameIsTopTwo(id: 999, year: 2026))
-        #expect(!Conference.titleGameIsTopTwo(id: nil, year: 2026))
+        #expect(!Conference.titleGameIsTopTwo(id: 18, year: 2026, in: .collegeFootball))
+        #expect(!Conference.titleGameIsTopTwo(id: 999, year: 2026, in: .collegeFootball))
+        #expect(!Conference.titleGameIsTopTwo(id: nil, year: 2026, in: .collegeFootball))
     }
 
     @Test func pinnedFloatsFollowedKeepingRelativeOrder() {
         let list = [conference(1, "ACC"), conference(5, "Big Ten"),
                     conference(8, "SEC"), conference(17, "Mountain West")]
-        let pinned = ConferenceStandings.pinned(list, followedIds: [17, 5])
+        let pinned = ConferenceStandings.pinned(list, followedIds: [.cfb(17), .cfb(5)])
         // Followed keep their own relative order (Big Ten before Mountain
         // West), the rest keep theirs.
         #expect(pinned.map(\.name) == ["Big Ten", "Mountain West", "ACC", "SEC"])

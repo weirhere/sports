@@ -99,7 +99,7 @@ struct OnboardingScreen: View {
     private func conferenceSection(_ conference: ConferenceTeams) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: Spacing.sm) {
-                if let logoURL = Conference.logoURL(for: conference.id) {
+                if let logoURL = Conference.logoURL(for: conference.conference) {
                     ConferenceLogo(url: logoURL)
                 }
                 Text(conference.name)
@@ -127,9 +127,9 @@ struct OnboardingScreen: View {
     /// The whole row is the follow toggle — a bigger target than the star
     /// alone, which is what a first-launch moment wants.
     private func teamRow(_ team: Team) -> some View {
-        let isFollowing = following.isFollowing(team.id)
+        let isFollowing = following.isFollowing(team)
         return Button {
-            following.toggle(team.id)
+            following.toggle(team)
         } label: {
             HStack(spacing: Spacing.md) {
                 LogoImage(url: team.logoURL)

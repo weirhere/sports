@@ -82,9 +82,10 @@ nonisolated struct SearchResults: Equatable {
         return conferences.flatMap(\.teams)
             .compactMap { team -> (team: Team, followed: Bool, tier: Int, fcs: Bool)? in
                 guard let tier = matchTier(folded, team: team),
-                      seen.insert(team.id).inserted else { return nil }
-                return (team, followingIds.contains(team.id), tier,
-                        Conference.division(for: team.conferenceId) == .fcs)
+                      seen.insert(team.followKey).inserted else { return nil }
+                return (team, followingIds.contains(team.followKey), tier,
+                        Conference.division(for: team.conferenceId,
+                                            in: team.league) == .fcs)
             }
             .sorted { lhs, rhs in
                 if lhs.followed != rhs.followed { return lhs.followed }

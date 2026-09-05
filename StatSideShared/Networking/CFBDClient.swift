@@ -17,6 +17,10 @@ nonisolated enum CFBDError: Error {
 /// /games/media onto /games + the live /scoreboard, caching the slow-moving
 /// joins per season so a 30s poll re-fetches only games + live state.
 actor CFBDClient: ScoresProviding {
+    /// CollegeFootballData.com is exactly what its name says — there is no
+    /// NFL counterpart, so this client only ever answers for one league.
+    nonisolated let league: League = .collegeFootball
+
     private static let base = "https://api.collegefootballdata.com"
 
     private let session: URLSession

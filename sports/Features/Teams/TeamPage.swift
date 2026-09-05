@@ -79,6 +79,15 @@ struct TeamPage: View {
     ///
     /// The claim check lives in `ConferenceClaim` — a rule that has been
     /// wrong twice belongs somewhere a test can reach it.
+    /// The league this page belongs to — the pushed team's, which the
+    /// ESPN mapper stamped from the client that fetched it.
+    private var pageLeague: League { team.league }
+
+    /// The conference, qualified by league, for lookups and pushes.
+    private var resolvedConference: ConferenceID? {
+        resolvedConferenceId.map { ConferenceID(pageLeague, $0) }
+    }
+
     private var resolvedConferenceId: Int? {
         let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
@@ -124,7 +133,7 @@ struct TeamPage: View {
     /// instead of a permanent "Standings TBA". `.other` still hides the
     /// tab — an id we can't name has no table to show.
     private var showsStandingsTab: Bool {
-        Conference.division(for: resolvedConferenceId) != nil
+        Conference.division(for: resolvedConferenceId, in: pageLeague) != nil
     }
 
     var body: some View {
@@ -195,7 +204,7 @@ struct TeamPage: View {
             // season chip moved into the tab panes to make the room.
             ToolbarItemGroup(placement: .topBarTrailing) {
                 NotificationBell()
-                FollowPill(teamId: team.id)
+                FollowPill(team: team)
                 shareButton
             }
         }
@@ -266,9 +275,9 @@ struct TeamPage: View {
         // `groups={id}` scoreboard call either way (probed 2026-09-03:
         // Big Sky 2026 returns 96 events). An id we can't name still
         // renders as plain text — there's no page to send it to.
-        let label = resolvedConferenceId.map { Conference.name(for: $0) } ?? ""
-        if let id = resolvedConferenceId, Conference.division(for: id) != nil {
-            NavigationLink(value: ConferenceDestination(conferenceId: id,
+        let label = resolvedConference.map { Conference.name(for: $0) } ?? ""
+        if let id = resolvedConference, Conference.division(for: id.id, in: id.league) != nil {
+            NavigationLink(value: ConferenceDestination(conference: id,
                                                         name: Conference.name(for: id),
                                                         highlightTeamId: team.id)) {
                 HStack(spacing: Spacing.xs) {
@@ -417,8 +426,8 @@ struct TeamPage: View {
                     StandingsList(
                         entries: entries,
                         highlightTeamId: team.id,
-                        showsTitleGameCut: Conference.titleGameIsTopTwo(id: resolvedConferenceId,
-                                                                        year: standingsYear),
+                        showsTitleGameCut: Conference.titleGameIsTopTwo(
+                            id: resolvedConferenceId, year: standingsYear, in: pageLeague),
                         // Live claims are current-season only (ConferencePage's rule).
                         liveGames: standingsYear == currentSeasonYear
                             ? (liveBoard?.games.filter(\.isLive) ?? []) : []
@@ -506,10 +515,11 @@ struct TeamPage: View {
             // Nil for the current season keeps the shipped request shape;
             // an explicit past year is scoped with `season={year}`.
             let all = try await client.conferenceStandings(
-                year: year == CFBSeason.year() ? nil : year,
-                division: Conference.division(for: id) ?? .fbs)
+                year: year == SeasonYear.year(for: pageLeague) ? nil : year,
+                division: Conference.division(for: id, in: pageLeague) ?? .fbs)
             standingsByYear[year] = all.first { $0.id == id }
-                ?? ConferenceStandings(id: id, name: Conference.name(for: id), entries: [])
+                ?? ConferenceStandings(id: id, name: Conference.name(for: id, in: pageLeague),
+                                       entries: [], league: pageLeague)
             standingsFailedYears.remove(year)
         } catch {
             standingsFailedYears.insert(year)
