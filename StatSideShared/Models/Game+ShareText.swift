@@ -5,7 +5,12 @@ import Foundation
 /// render a preview. Game detail composes its own body from the fresher
 /// summary score — it signs off through here so the two can't drift.
 nonisolated enum ShareSignOff {
-    static let appStoreURL = "https://apps.apple.com/app/id6793266645"
+    /// The store link as a URL — the text sign-off and the share sheet's
+    /// link metadata point at the same place by construction. Literal, so
+    /// a parse failure would surface on the first share in any test run.
+    static let appStoreLink = URL(string: "https://apps.apple.com/app/id6793266645")!
+
+    static var appStoreURL: String { appStoreLink.absoluteString }
 
     static func appended(to body: String) -> String {
         "\(body) — via StatSide\n\(appStoreURL)"
@@ -43,7 +48,12 @@ nonisolated extension Date {
 nonisolated extension Game {
     /// What the share sheet carries. There's no per-game web page, so the
     /// text is the whole artifact — status-shaped like the row it came from.
-    var shareText: String {
+    var shareText: String { ShareSignOff.appended(to: shareBody) }
+
+    /// The share sentence without the sign-off — "Final: Georgia 24,
+    /// Tennessee 17". The link preview's title wants the score, not the
+    /// branding, and the store URL is already the link.
+    var shareBody: String {
         func scored(_ competitor: Competitor) -> String {
             "\(competitor.shareName) \(competitor.score.map(String.init) ?? "–")"
         }
@@ -67,6 +77,6 @@ nonisolated extension Game {
         case .other(let detail):
             body = "\(away.shareName) at \(home.shareName), \(detail ?? "status unavailable")"
         }
-        return ShareSignOff.appended(to: body)
+        return body
     }
 }
