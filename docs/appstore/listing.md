@@ -26,7 +26,42 @@ Primary: **Sports**. No secondary needed.
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
 
+### 1.4.0 (build 12)
+
+> • Box scores. Every game page now has a Box score tab — passing, rushing,
+>   receiving, and defense for both teams, live from the first drive and
+>   complete when the game ends.
+> • Scoring plays say who scored. The team's mark leads the row and the
+>   scoring side's number carries the weight, so you can read a drive without
+>   matching player names against the leaders.
+> • FCS, when you want it. Every FCS team has a page now, and they're in
+>   Teams and in search. Filter to an FCS conference — or follow one — and
+>   its games join your slate. Leave it alone and the slate stays FBS.
+> • Sharing a game carries the matchup card as the link preview, so the
+>   thread shows the game instead of a stock picture of the app.
+> • The Leaders card went two-sided, with player headshots on the outer
+>   edges — each player sits on their own team's side of the header.
+> • Live scores reach further: a conference's Games tab keeps updating while
+>   you watch it, and Siri stopped reading out a score it doesn't have.
+> • Team and conference pages got a cleaner header. It matches the cards now,
+>   with back, follow, and share on one row, and the season picker sits with
+>   the games it filters.
+> • Live and final games lead with one big score between the logos, and the
+>   venue is back on the game page.
+> • A game at the break reads "Half" instead of a stopped clock at 0:00.
+> • The widget's scores line up in one column, and "Following" stopped
+>   truncating in the team-page toolbar.
+> • Scores got lighter under the thumb — swiping between weeks and scrolling
+>   a full Saturday slate both cost less than they did.
+
 ### 1.3.1 (build 11)
+
+Note 2026-09-05: three bullets below shipped in **1.4.0**, not this build.
+The archive was cut at 11:13 on 8/31 from the same tree as these notes, and
+the cleaner entity-page header, the centered big score, and the "Half" label
+all merged that afternoon. They're repeated in 1.4.0's notes, where they're
+true. Left as written here because this section is release history — and as
+a reminder that notes written before the archive can outrun it.
 
 > • Team pages open on a new Overview tab: the next (or current) game up top,
 >   with the season's conference and overall records right under it.
