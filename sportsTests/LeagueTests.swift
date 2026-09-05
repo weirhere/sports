@@ -18,14 +18,6 @@ import Testing
         #expect(League(rawValue: "nfl") == .nfl)
     }
 
-    /// College football's slate is Saturday, so Sunday catches up. The NFL
-    /// week runs Thursday → Monday, so Monday night is still this week and
-    /// Tuesday is the dead day.
-    @Test func catchUpWeekdaysMatchEachLeaguesSlate() {
-        #expect(League.collegeFootball.completedWeekWeekdays == [1])
-        #expect(League.nfl.completedWeekWeekdays == [2, 3])
-    }
-
     /// College football ends in January; the NFL runs through the February
     /// Super Bowl.
     @Test func seasonRolloverFollowsEachLeaguesLastMonth() {

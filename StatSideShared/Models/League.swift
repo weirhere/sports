@@ -67,21 +67,6 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// Weekdays (`Calendar` numbering, 1 = Sunday) on which the week strip
-    /// stays pinned to the week that just finished rather than following
-    /// ESPN's flipped-forward current week.
-    ///
-    /// College football's slate is Saturday, so Sunday is catch-up day and
-    /// the new poll drops in place. The NFL's week runs Thursday → Monday,
-    /// so Monday night is still *this* week and Tuesday is the dead day —
-    /// both pin back, and the strip rolls over Wednesday morning.
-    var completedWeekWeekdays: Set<Int> {
-        switch self {
-        case .collegeFootball: [1]        // Sunday
-        case .nfl: [2, 3]                 // Monday, Tuesday
-        }
-    }
-
     /// The path component ESPN files this league's team marks under, e.g.
     /// `/i/teamlogos/ncaa/500/130.png` vs `/i/teamlogos/nfl/500/sea.png`.
     /// Both publish a `500-dark` twin (NFL verified live 2026-09-05).
