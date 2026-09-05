@@ -20,7 +20,7 @@ extension XCUIApplication {
             .firstMatch
     }
 
-    /// The Top 25 row leading the Rankings list. By identifier, not label —
+    /// The Top 25 row leading the Tables list. By identifier, not label —
     /// the Scores tab's "Top 25, N games" accordion header lives in the
     /// same element tree and label queries cross tab hierarchies.
     var top25Row: XCUIElement {
@@ -44,14 +44,14 @@ extension XCUIApplication {
 }
 
 extension XCTestCase {
-    /// Opens the Rankings tab and drills into the poll: tab → Top 25 row →
-    /// PollScreen's #1 row. The poll moved one level down when Rankings
+    /// Opens the Tables tab and drills into the poll: tab → Top 25 row →
+    /// PollScreen's #1 row. The poll moved one level down when the hub
     /// became the tables hub, so every "show me the poll" test goes
     /// through here.
     @MainActor
     @discardableResult
     func openRankingsPoll(in app: XCUIApplication) -> Bool {
-        guard openTab("Rankings", in: app, until: app.top25Row) else { return false }
+        guard openTab("Tables", in: app, until: app.top25Row) else { return false }
         app.top25Row.tap()
         return app.topRankedRow.waitForExistence(timeout: 15)
     }

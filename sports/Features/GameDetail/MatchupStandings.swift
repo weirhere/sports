@@ -52,7 +52,7 @@ struct MatchupStandings: View {
             // hidden at accessibility sizes, where rows stack their
             // records onto a labeled line.
             if !dynamicTypeSize.isAccessibilitySize {
-                StandingsColumnCaptions()
+                StandingsColumnCaptions(league: away.league)
             }
             let awaySlot = slot(for: away)
             let homeSlot = slot(for: home)

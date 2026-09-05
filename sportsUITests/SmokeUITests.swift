@@ -57,7 +57,7 @@ final class SmokeUITests: XCTestCase {
                         || scrollUntilExists(sec, in: app, revealing: .above, timeout: 2),
                       "Toggling back should restore conference sections")
 
-        // Rankings leads with the Top 25 row; the poll itself is one tap
+        // Tables leads with the Top 25 row; the poll itself is one tap
         // down. Which poll depends on the calendar — the AP preseason Top
         // 25 doesn't drop until mid-August.
         XCTAssertTrue(openRankingsPoll(in: app),

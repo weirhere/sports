@@ -1,33 +1,53 @@
 import SwiftUI
 
-/// The tables hub, FotMob-Leagues-shaped: a Following section first (the
-/// Top 25 row, then followed conferences), then the complete All
-/// conferences list — followed rows repeat there, since sections stay
-/// complete. The poll lives one tap down so the conferences aren't
-/// buried under 25 rank rows.
-struct RankingsScreen: View {
+/// The tables hub, FotMob-Leagues-shaped: a Following section first, then
+/// the complete list — followed rows repeat there, since sections stay
+/// complete.
+///
+/// Contextual, because the two leagues answer "who's good" differently.
+/// College football leads with the Top 25 row (the poll one tap down, so
+/// the conferences aren't buried under 25 rank rows) and lists its
+/// conferences. The NFL has no poll at all — `/nfl/rankings` is a 404 —
+/// so its hub is the AFC and the NFC, and a tab named "Rankings" would
+/// have been half a screen of dead space. Hence "Tables".
+struct TablesScreen: View {
     /// The FBS polls we show, in picker order. ESPN's response also carries
     /// FCS and DII/DIII polls — filtered out.
     private static let pollTypes = ["ap", "usa", "cfp"]
 
     @Environment(FollowingStore.self) private var following
+    @Environment(UIStateStore.self) private var uiState
+    @Environment(LeagueScoreboards.self) private var scoreboards
 
     @State private var polls: [Poll] = []
     @State private var conferences: [ConferenceStandings] = []
     @State private var isLoading = false
     @State private var lastError: String?
 
-    // Explicitly college football: the poll and the conference hub are
-    // both college-football-shaped, and `/nfl/rankings` is a 404. The
-    // league-aware Tables tab lands next (M3).
-    private let client: any ScoresProviding =
-        DataProvider.makeClient(league: .collegeFootball)
+    private var league: League { scoreboards.selectedLeague }
+
+    private var client: any ScoresProviding { DataProvider.makeClient(league: league) }
 
     var body: some View {
         NavigationStack {
-            content
+            VStack(spacing: 0) {
+                // The same scope control the Scores header carries: the
+                // league is one app-wide scope, so changing it here
+                // changes it there (Sofascore's sport row, which sits on
+                // every screen rather than one).
+                HStack {
+                    Spacer(minLength: 0)
+                    LeagueSelector(selected: league, onSelect: select(league:))
+                        .padding(4)
+                        .glassCapsule(fallback: Color.bgElevated)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.bottom, Spacing.sm)
+                content
+            }
                 .background(Color.bgPrimary)
-                .navigationTitle("Rankings")
+                .navigationTitle("Tables")
                 .navigationBarTitleDisplayMode(.inline)
                 // TeamPage is pushed view-based here, but its standing line
                 // and a standings row's team both push values — register
@@ -43,11 +63,19 @@ struct RankingsScreen: View {
                     GameDetailScreen(game: game)
                 }
         }
-        .task { await load() }
+        .task(id: league) { await load() }
     }
 
+    private func select(league: League) {
+        scoreboards.select(league)
+        uiState.league = league
+    }
+
+    /// Empty for the NFL, which has no poll — the section simply isn't
+    /// there, rather than being there and empty.
     private var displayedPolls: [Poll] {
-        Self.pollTypes.compactMap { type in polls.first { $0.type == type } }
+        guard league == .collegeFootball else { return [] }
+        return Self.pollTypes.compactMap { type in polls.first { $0.type == type } }
     }
 
     /// The Following section's conference rows. The Top 25 row leads the
@@ -84,7 +112,7 @@ struct RankingsScreen: View {
                             .cardSurface()
                     }
                     if !conferences.isEmpty {
-                        ListSectionHeading(title: "All conferences")
+                        ListSectionHeading(title: allSectionTitle)
                         ForEach(conferences, id: \.allRowId) { conference in
                             ConferenceListRow(conference: conference)
                                 .padding(.vertical, Spacing.xs)
@@ -102,7 +130,7 @@ struct RankingsScreen: View {
             Spacer()
         } else {
             Spacer()
-            Text(lastError ?? "No rankings right now")
+            Text(lastError ?? emptyMessage)
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)
             Button("Retry") {
@@ -114,9 +142,23 @@ struct RankingsScreen: View {
         }
     }
 
+    /// The NFL's two groups are conferences; college football's list is
+    /// conferences too, but the word does different work in each.
+    private var allSectionTitle: String {
+        league == .nfl ? "Conferences" : "All conferences"
+    }
+
+    private var emptyMessage: String {
+        league == .nfl ? "No standings right now" : "No rankings right now"
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        // Clear first: a league switch must not leave the previous one's
+        // tables on screen while the new fetch is in flight.
+        polls = []
+        conferences = []
         // The two fetches fail independently: no poll is a screen-level
         // error only when there are no conferences either; a standings miss
         // just hides the CONFERENCES card under a healthy Top 25 row.
@@ -126,7 +168,7 @@ struct RankingsScreen: View {
             polls = try await pollsFetch
             lastError = nil
         } catch {
-            lastError = "Couldn't load rankings."
+            lastError = "Couldn't load tables."
         }
         conferences = (try? await standingsFetch) ?? []
     }

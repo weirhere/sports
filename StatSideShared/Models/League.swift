@@ -84,6 +84,18 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// What a standings table calls its in-group record column. ESPN's NFL
+    /// standings carry `divisionRecord` and no conference record at all, so
+    /// the column says what it actually holds.
+    static func inGroupRecordCaption(_ league: League) -> String {
+        league == .nfl ? "DIV" : "CONF"
+    }
+
+    /// The spoken form, for the row's VoiceOver sentence.
+    static func inGroupRecordSpoken(_ league: League) -> String {
+        league == .nfl ? "in division" : "in conference"
+    }
+
     /// Where conference marks live. College football has its own
     /// `ncaa_conf` bucket; the NFL files AFC/NFC beside the team marks
     /// (`nfl_conf` 404s — probed live 2026-09-05).

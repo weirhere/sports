@@ -38,7 +38,7 @@ struct StandingsList: View {
         // At accessibility sizes the rows stack their records onto a
         // labeled line, so the captions would caption nothing.
         if !dynamicTypeSize.isAccessibilitySize {
-            StandingsColumnCaptions()
+            StandingsColumnCaptions(league: entries.first?.team.league ?? .collegeFootball)
         }
         ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
             NavigationLink(value: standing.team) {

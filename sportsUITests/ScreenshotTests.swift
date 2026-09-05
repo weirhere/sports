@@ -48,7 +48,7 @@ final class ScreenshotTests: XCTestCase {
         snapshot(app, "\(prefix)-game-detail")
         app.navigationBars.buttons.firstMatch.tap()
 
-        // Rankings. The tab tap follows a navigation pop, so it needs the
+        // Tables. The tab tap follows a navigation pop, so it needs the
         // retry — see openTab.
         XCTAssertTrue(openRankingsPoll(in: app),
                       "The Top 25 row should push a poll with a ranked #1")
