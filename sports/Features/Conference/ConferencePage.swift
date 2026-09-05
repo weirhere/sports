@@ -323,7 +323,14 @@ struct ConferencePage: View {
                 year: year == SeasonYear.year(for: destination.league) ? nil : year,
                 division: Conference.division(for: destination.conferenceId,
                                               in: destination.league) ?? .fbs)
-            standingsByYear[year] = all.first { $0.conference == destination.conference }
+            // A divisional season splits one conference into two or four
+            // tables (the 2019 AAC's East and West). Take the conference's
+            // own table when ESPN ships one, otherwise merge its divisions
+            // in payload order so the page has a table instead of "TBA".
+            let mine = all.filter { $0.belongs(to: destination.conference) }
+            standingsByYear[year] = mine.first { $0.parentId == nil }
+                ?? mine.merged(as: destination.conferenceId, name: destination.name,
+                               league: destination.league)
                 ?? ConferenceStandings(id: destination.conferenceId,
                                        name: destination.name, entries: [],
                                        league: destination.league)

@@ -151,7 +151,20 @@ struct TeamPage: View {
     /// instead of a permanent "Standings TBA". `.other` still hides the
     /// tab — an id we can't name has no table to show.
     private var showsStandingsTab: Bool {
-        Conference.division(for: resolvedConferenceId, in: pageLeague) != nil
+        // College football gates on the division registry; the NFL knows
+        // all 32 of its teams, so any id its table answers for has a table.
+        pageLeague == .collegeFootball
+            ? Conference.division(for: resolvedConferenceId, in: pageLeague) != nil
+            : Conference.isKnown(standingsGroupId, in: pageLeague)
+    }
+
+    /// Which table this team's standings live in. An NFL team's own group
+    /// is its division (NFC West), but ESPN's standings response is keyed
+    /// by conference, and a fan reads playoff seeding at that level anyway
+    /// — so the division resolves up to its parent.
+    private var standingsGroupId: Int? {
+        guard let id = resolvedConferenceId else { return nil }
+        return Conference.parent(of: id, in: pageLeague) ?? id
     }
 
     var body: some View {
@@ -521,7 +534,8 @@ struct TeamPage: View {
     }
 
     private func loadStandings(force: Bool = false) async {
-        guard let id = resolvedConferenceId else { return }
+        // The NFL's table is keyed by conference, so a division resolves up.
+        guard let id = standingsGroupId else { return }
         let year = standingsYear
         // The id re-check also covers a conference that resolved differently
         // once the schedule payload landed.
@@ -535,7 +549,11 @@ struct TeamPage: View {
             let all = try await client.conferenceStandings(
                 year: year == SeasonYear.year(for: pageLeague) ? nil : year,
                 division: Conference.division(for: id, in: pageLeague) ?? .fbs)
-            standingsByYear[year] = all.first { $0.id == id }
+            let target = ConferenceID(pageLeague, id)
+            let mine = all.filter { $0.belongs(to: target) }
+            standingsByYear[year] = mine.first { $0.parentId == nil }
+                ?? mine.merged(as: id, name: Conference.name(for: id, in: pageLeague),
+                               league: pageLeague)
                 ?? ConferenceStandings(id: id, name: Conference.name(for: id, in: pageLeague),
                                        entries: [], league: pageLeague)
             standingsFailedYears.remove(year)

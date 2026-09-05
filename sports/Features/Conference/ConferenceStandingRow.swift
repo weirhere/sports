@@ -126,7 +126,7 @@ struct ConferenceStandingRow: View {
         case nil: break
         }
         if let conference = standing.conferenceRecord {
-            parts.append("\(spoken(conference)) in conference")
+            parts.append("\(spoken(conference)) \(League.inGroupRecordSpoken(standing.team.league))")
         }
         if let overall = standing.overallRecord {
             parts.append("\(spoken(overall)) overall")

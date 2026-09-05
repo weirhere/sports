@@ -191,6 +191,12 @@ nonisolated struct StandingsGroupDTO: Decodable {
     let name: String?
     let shortName: String?
     let standings: StandingsListDTO?
+    /// Divisional payloads nest a level deeper: a conference carries no
+    /// entries of its own and hangs its divisions here. College football
+    /// did this in its divisional era (the 2019 AAC's East and West), and
+    /// the NFL does it whenever `level=3` is asked for. Unread until now,
+    /// which is why a divisional season rendered "Standings TBA".
+    let children: [StandingsGroupDTO]?
 }
 
 nonisolated struct StandingsListDTO: Decodable {

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     enum Tab {
-        case scores, rankings, teams, search
+        case scores, tables, teams, search
     }
 
     @State private var following = FollowingStore()
@@ -30,8 +30,12 @@ struct RootView: View {
             SwiftUI.Tab("Scores", systemImage: "football", value: Tab.scores) {
                 ScoresScreen()
             }
-            SwiftUI.Tab("Rankings", systemImage: "list.number", value: Tab.rankings) {
-                RankingsScreen()
+            // "Tables", not "Rankings": the NFL has no poll, so half the
+            // time the tab would be named after a thing the league on
+            // screen doesn't have. FotMob and Sofascore both call this
+            // Leagues; Tables says what's inside it.
+            SwiftUI.Tab("Tables", systemImage: "list.number", value: Tab.tables) {
+                TablesScreen()
             }
             SwiftUI.Tab("Teams", systemImage: "shield.lefthalf.filled", value: Tab.teams) {
                 TeamsScreen()

@@ -139,21 +139,21 @@ final class ConferenceUITests: XCTestCase {
     }
 
     @MainActor
-    func testRankingsListsTop25RowAndConferences() throws {
+    func testTablesListsTop25RowAndConferences() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES"]
         app.launch()
 
         // The root is the list: Top 25 row first, conferences right below.
-        XCTAssertTrue(openTab("Rankings", in: app, until: app.top25Row),
-                      "Rankings should lead with the Top 25 row")
+        XCTAssertTrue(openTab("Tables", in: app, until: app.top25Row),
+                      "Tables should lead with the Top 25 row")
 
         // An ACC row exists year-round (the list renders offseason, teasers
         // or not); its label is either bare "ACC" or "ACC, led by …".
         let accRow = app.descendants(matching: .any).matching(NSPredicate(
             format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
         XCTAssertTrue(scrollUntilExists(accRow, in: app, maxSwipes: 4, timeout: 5),
-                      "Rankings should list the ACC near the root")
+                      "Tables should list the ACC near the root")
         // The pushed page's landmark is the follow pill, not the nav bar:
         // ConferencePage went `.navigationTitle("")` with the hero template
         // (172155d), so the bar is never identified "ACC" anymore. The tap
@@ -183,7 +183,7 @@ final class ConferenceUITests: XCTestCase {
                       "Back should pop the conference page")
         XCTAssertTrue(scrollUntilExists(app.top25Row, in: app,
                                         revealing: .above, timeout: 5),
-                      "Popping back should land on the Rankings list")
+                      "Popping back should land on the Tables list")
         app.top25Row.tap()
         XCTAssertTrue(app.topRankedRow.waitForExistence(timeout: 15),
                       "The Top 25 row should push a poll with a ranked #1")

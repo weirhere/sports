@@ -17,9 +17,21 @@ private func fixture(_ name: String) throws -> Data {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("standings-live"))
         let conferences = ESPNMapper.conferences(from: dto)
 
-        // 11 FBS conferences in the fixture; Sun Belt had zero entries when
-        // captured (ESPN offseason quirk), so 10 non-empty survive.
-        #expect(conferences.count == 10)
+        // All 11 FBS conferences in the fixture, Sun Belt included.
+        //
+        // It used to be 10, on the theory that the Sun Belt's zero entries
+        // were an ESPN offseason quirk. They were not: the conference is
+        // divisional and hangs all 14 teams under East and West children
+        // the mapper never read, so `guard !teams.isEmpty` dropped it —
+        // which is why the whole Sun Belt was missing from browse, search
+        // and onboarding (BACKLOG E7, found 2026-09-03).
+        #expect(conferences.count == 11)
+
+        let sunBelt = try #require(conferences.first { $0.name == "Sun Belt" })
+        #expect(sunBelt.teams.count == 14)
+        #expect(sunBelt.teams.allSatisfy { $0.conferenceId == 37 })
+        // Folded into one alphabetical roster, not two halves.
+        #expect(sunBelt.teams.map(\.location) == sunBelt.teams.map(\.location).sorted())
 
         let sec = try #require(conferences.first { $0.name == "SEC" })
         #expect(sec.teams.count == 16)

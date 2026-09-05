@@ -425,6 +425,37 @@ nonisolated enum ESPNMapper {
         )
     }
 
+    /// Flattens ESPN's standings tree to the groups that actually carry a
+    /// table, each paired with the conference it hangs under.
+    ///
+    /// A conference with entries is one group. A conference with none but
+    /// with children is *divisional* — the 2019 AAC's East and West, the
+    /// Sun Belt's to this day, or any `level=3` request — and yields its
+    /// divisions, because standings order is per-division and folding them
+    /// into one table would invent a cross-division ranking out of records,
+    /// which is exactly the tiebreaker guesswork the standings contract
+    /// forbids. A group with neither is kept, so an empty conference can
+    /// still say "Standings TBA".
+    static func standingsGroups(
+        in dto: StandingsResponseDTO
+    ) -> [(group: StandingsGroupDTO, parentId: Int?)] {
+        (dto.children ?? []).flatMap { group -> [(StandingsGroupDTO, Int?)] in
+            let entries = group.standings?.entries?.elements ?? []
+            let children = group.children ?? []
+            guard entries.isEmpty, !children.isEmpty else { return [(group, nil)] }
+            return children.map { ($0, group.id?.value) }
+        }
+    }
+
+    /// The browse roster takes the opposite view of a divisional conference
+    /// from the standings above: membership has no order to lose, so the
+    /// divisions fold back into their conference and the Sun Belt is one
+    /// 14-team list rather than two halves nobody asked for.
+    ///
+    /// This is what was hiding the whole Sun Belt from browse, search and
+    /// onboarding (BACKLOG E7): the conference ships zero entries of its
+    /// own and hangs all 14 teams under East and West, so the mapper's
+    /// `guard !teams.isEmpty` dropped it outright.
     static func conferences(from dto: StandingsResponseDTO,
                             league: League = .collegeFootball) -> [ConferenceTeams] {
         (dto.children ?? []).compactMap { group in
@@ -434,7 +465,13 @@ nonisolated enum ESPNMapper {
             let name = Conference.tier(for: id, in: league) == .other
                 ? (group.shortName ?? group.name ?? "Conference")
                 : Conference.name(for: id, in: league)
-            let teams = (group.standings?.entries?.elements ?? []).compactMap { entry -> Team? in
+            // The conference's own entries when it has them, its divisions'
+            // otherwise.
+            let ownEntries = group.standings?.entries?.elements ?? []
+            let entries = ownEntries.isEmpty
+                ? (group.children ?? []).flatMap { $0.standings?.entries?.elements ?? [] }
+                : ownEntries
+            let teams = entries.compactMap { entry -> Team? in
                 guard let mapped = team(from: entry.team, league: league) else { return nil }
                 return Team(
                     id: mapped.id, location: mapped.location, name: mapped.name,
@@ -464,7 +501,7 @@ nonisolated enum ESPNMapper {
     /// records here: tiebreakers aren't derivable.
     static func conferenceStandings(from dto: StandingsResponseDTO,
                                     league: League = .collegeFootball) -> [ConferenceStandings] {
-        (dto.children ?? []).map { group in
+        standingsGroups(in: dto).map { group, parentId in
             let id = group.id?.value
             let name = Conference.tier(for: id, in: league) == .other
                 ? (group.shortName ?? group.name ?? "Conference")
@@ -491,7 +528,7 @@ nonisolated enum ESPNMapper {
             }
             return ConferenceStandings(id: id, name: name,
                                        entries: ConferenceStandings.seedOrdered(entries),
-                                       league: league)
+                                       league: league, parentId: parentId)
         }
         .sorted { lhs, rhs in
             let (lt, rt) = (Conference.tier(for: lhs.id, in: league),

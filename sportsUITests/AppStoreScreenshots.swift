@@ -85,7 +85,7 @@ final class AppStoreScreenshots: XCTestCase {
         }
         app.navigationBars.buttons.firstMatch.tap()
 
-        // Rankings.
+        // Tables.
         XCTAssertTrue(openRankingsPoll(in: app),
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "04-rankings")
