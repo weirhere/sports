@@ -31,6 +31,7 @@ final class ConferenceLiveMergeUITests: XCTestCase {
             // UIStateStore reads the key once at init; "none" parses to
             // no filter.
             "-ui.scoreFilter", "none",
+            "-ui.league", "cfb",
             "-ui.scoresGrouping", "conference",
             "-data.provider", "fixture",
             "-poll.interval", "0.5",

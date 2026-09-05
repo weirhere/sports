@@ -161,6 +161,7 @@ final class ScoreboardStore {
         let liveOnly: Bool
         let filter: ScoreFilter?
         let divisions: Set<Conference.Division>
+        let extraFollowingGames: [Game]
     }
 
     /// The season on screen.
@@ -178,6 +179,15 @@ final class ScoreboardStore {
          client: (any ScoresProviding)? = nil) {
         self.league = league
         self.client = client ?? DataProvider.makeClient(league: league)
+    }
+
+    /// Whether the strip is on the current season's rollover-default week
+    /// — the "now" slot. Cross-league Following only fills in here: past
+    /// weeks are time navigation inside one league, and the two calendars
+    /// have no honest mapping between them.
+    var isOnCurrentWeek: Bool {
+        guard let currentWeekSlot else { return selectedWeek == nil }
+        return selectedWeek?.id == currentWeekSlot.id && seasonYear == currentSeasonYear
     }
 
     var hasLiveGames: Bool {
@@ -497,26 +507,36 @@ final class ScoreboardStore {
                   followedConferenceIds: Set<ConferenceID> = [],
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
-                  filter: ScoreFilter? = nil) -> [GameSection] {
+                  filter: ScoreFilter? = nil,
+                  extraFollowingGames: [Game] = []) -> [GameSection] {
         sections(from: games, followingIds: followingIds,
                  followedConferenceIds: followedConferenceIds,
-                 grouping: grouping, liveOnly: liveOnly, filter: filter)
+                 grouping: grouping, liveOnly: liveOnly, filter: filter,
+                 extraFollowingGames: extraFollowingGames)
     }
 
     /// The same pipeline over any game list — the swipe's preview pane
     /// renders a cached neighbor week through it (2026-08-31).
+    /// `extraFollowingGames` are followed games from the *other* leagues.
+    /// They join the Following section and nothing else — "my games"
+    /// shouldn't care which sport they belong to, but the Top 25, the
+    /// conference stack and the day sections all belong to this league's
+    /// slate. Filters apply to them the same way, except the conference
+    /// filter, which is a college-football-shaped question that another
+    /// league can't answer.
     func sections(from games: [Game],
                   followingIds: Set<String>,
                   followedConferenceIds: Set<ConferenceID> = [],
                   grouping: ScoresGrouping = .conference,
                   liveOnly: Bool = false,
-                  filter: ScoreFilter? = nil) -> [GameSection] {
+                  filter: ScoreFilter? = nil,
+                  extraFollowingGames: [Game] = []) -> [GameSection] {
         // `divisions` is in the key because the bucketing loop reads it:
         // the same games opted into FCS produce different sections.
         let key = SectionsKey(games: games, followingIds: followingIds,
                               followedConferenceIds: followedConferenceIds,
                               grouping: grouping, liveOnly: liveOnly, filter: filter,
-                              divisions: divisions)
+                              divisions: divisions, extraFollowingGames: extraFollowingGames)
         if let memoized = sectionsMemo[key] { return memoized }
 
         var visible = liveOnly ? games.filter(\.isLive) : games
@@ -531,11 +551,23 @@ final class ScoreboardStore {
 
         // Team follows or conference follows both claim a game; an FCS
         // visitor's nil conferenceId is carried in by its FBS host's side.
-        let followed = visible.filter { game in
+        func isFollowed(_ game: Game) -> Bool {
             followingIds.contains(game.home.team.followKey)
                 || followingIds.contains(game.away.team.followKey)
                 || game.home.team.conference.map(followedConferenceIds.contains) ?? false
                 || game.away.team.conference.map(followedConferenceIds.contains) ?? false
+        }
+        var followed = visible.filter(isFollowed)
+        // Other leagues' followed games join here and nowhere else. Live
+        // composes; the conference filter deliberately doesn't, since
+        // "SEC" has no meaning in another league's slate — narrowing to a
+        // conference is a college-football question, and it would silently
+        // empty the section otherwise.
+        if !extraFollowingGames.isEmpty {
+            var elsewhere = extraFollowingGames.filter(isFollowed)
+            if liveOnly { elsewhere = elsewhere.filter(\.isLive) }
+            if case .top25 = filter { elsewhere = elsewhere.filter(\.involvesRankedTeam) }
+            followed = chronological(followed + elsewhere)
         }
         if !followed.isEmpty {
             result.append(GameSection(id: GameSection.followingId, title: "Following",

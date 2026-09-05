@@ -17,7 +17,9 @@ final class TeamDirectoryStore {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
-    init(client: any ScoresProviding = DataProvider.makeClient()) {
+    // College football only for now — the NFL directory joins browse and
+    // search in M4, where the two leagues need their own headings anyway.
+    init(client: any ScoresProviding = DataProvider.makeClient(league: .collegeFootball)) {
         self.client = client
     }
 

@@ -417,7 +417,10 @@ nonisolated enum ESPNMapper {
             displayName: dto.displayName,
             shortDisplayName: dto.shortDisplayName,
             logoURL: logo.flatMap(URL.init(string:)),
-            conferenceId: dto.conferenceId?.value,
+            // The NFL scoreboard ships no conferenceId, so the registry
+            // supplies the division; college football carries its own.
+            conferenceId: dto.conferenceId?.value
+                ?? Conference.division(forTeamId: id, in: league),
             league: league
         )
     }

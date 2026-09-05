@@ -16,7 +16,11 @@ final class ConferenceUITests: XCTestCase {
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.scoresGrouping", "conference",
                                 "-ui.liveOnly", "NO",
-                                "-ui.scoreFilter", ""]
+                                "-ui.scoreFilter", "",
+                                // The cold-launch auto-pick opens on
+                                // whichever league is live, so every
+                                // live-ESPN suite pins one or it drifts.
+                                "-ui.league", "cfb"]
         app.launch()
 
         // Teams tab: the first conference group's header reaches standings

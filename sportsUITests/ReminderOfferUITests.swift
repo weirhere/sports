@@ -22,7 +22,14 @@ final class ReminderOfferUITests: XCTestCase {
         // not appear and the first assert fails.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.notificationsPrompted", "NO",
-                                "-following.teamIds", "()"]
+                                // The suite queries game rows on Teams; the
+                                // auto-pick would otherwise open on
+                                // whichever league happens to be live.
+                                "-ui.league", "cfb",
+                                // Empty the league-qualified follow set —
+                                // the pre-league key stopped being read
+                                // when the namespacing migration landed.
+                                "-following.teamKeys", "()"]
         app.launch()
 
         app.tabBars.buttons["Teams"].tap()

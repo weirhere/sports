@@ -17,7 +17,11 @@ struct RankingsScreen: View {
     @State private var isLoading = false
     @State private var lastError: String?
 
-    private let client: any ScoresProviding = DataProvider.makeClient()
+    // Explicitly college football: the poll and the conference hub are
+    // both college-football-shaped, and `/nfl/rankings` is a 404. The
+    // league-aware Tables tab lands next (M3).
+    private let client: any ScoresProviding =
+        DataProvider.makeClient(league: .collegeFootball)
 
     var body: some View {
         NavigationStack {

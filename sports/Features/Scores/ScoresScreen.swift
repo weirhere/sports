@@ -1,8 +1,9 @@
 import SwiftUI
 import os
 
-/// The product: one screen answering "what's the state of college football
-/// right now" in one thumb, one scroll. Week strip → section stack.
+/// The product: one screen answering "what's the state of the league you
+/// follow right now" in one thumb, one scroll. League scope → week strip →
+/// section stack.
 struct ScoresScreen: View {
     /// Forensics for the self-popping live detail (BACKLOG E5, found
     /// 2026-08-29): a pop through the path binding logs a count change; a
@@ -12,9 +13,12 @@ struct ScoresScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
-    // Owned by RootView so the search cover shares the loaded week and
-    // polling follows the scene, not this tab.
-    @Environment(ScoreboardStore.self) private var store
+    // Owned by RootView so the search cover shares the loaded weeks and
+    // polling follows the scene, not this tab. One store per league; the
+    // header picks which one is on screen.
+    @Environment(LeagueScoreboards.self) private var scoreboards
+
+    private var store: ScoreboardStore { scoreboards.selected }
 
     // NavigationPath, not [Game]: the stack pushes Team (game detail's
     // header links) and ConferenceDestination (section headers' standings
@@ -43,9 +47,11 @@ struct ScoresScreen: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 ScoresHeader(
+                    league: scoreboards.selectedLeague,
                     liveOnly: uiState.liveOnly,
                     scoreFilter: uiState.scoreFilter,
                     pastSeasonYear: pastSeasonYear,
+                    onSelectLeague: { select(league: $0) },
                     onToggleLive: { toggleLive() },
                     onTapFilter: { showsFilterSheet = true }
                 )
@@ -104,6 +110,7 @@ struct ScoresScreen: View {
         }
         .sheet(isPresented: $showsFilterSheet) {
             ScoreFilterSheet(
+                league: scoreboards.selectedLeague,
                 current: uiState.scoreFilter,
                 grouping: uiState.scoresGrouping,
                 seasonYear: store.seasonYear,
@@ -152,7 +159,35 @@ struct ScoresScreen: View {
                        followedConferenceIds: following.conferenceIds,
                        grouping: uiState.scoresGrouping,
                        liveOnly: uiState.liveOnly,
-                       filter: uiState.scoreFilter)
+                       filter: uiState.scoreFilter,
+                       extraFollowingGames: followedGamesElsewhere)
+    }
+
+    /// Followed games from the leagues that aren't on screen. Following is
+    /// the one section that stays cross-league — "my games" shouldn't care
+    /// which sport they belong to.
+    private var followedGamesElsewhere: [Game] {
+        scoreboards.followedGamesElsewhere(than: scoreboards.selectedLeague,
+                                           following: following)
+    }
+
+    /// Switching leagues re-scopes the whole screen: week strip, sections,
+    /// filter and season all belong to the league. The slide direction
+    /// follows the selector's own order, left to right.
+    private func select(league: League) {
+        guard league != scoreboards.selectedLeague else { return }
+        let forward = (League.allCases.firstIndex(of: league) ?? 0)
+            > (League.allCases.firstIndex(of: scoreboards.selectedLeague) ?? 0)
+        // Commit the edge before the switch — setting both together makes
+        // the outgoing pane resolve `.push` against the stale edge and
+        // slide the wrong way (the week-swipe lesson, 2026-08-31).
+        withTransaction(Transaction()) {
+            weekSlideEdge = forward ? .trailing : .leading
+            weekSlideAnimation = .easeOut(duration: 0.22)
+        }
+        scoreboards.select(league)
+        uiState.league = league
+        dragOffset = 0
     }
 
     /// The selected season when browsing the past — what the funnel chip

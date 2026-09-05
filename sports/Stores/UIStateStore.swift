@@ -57,6 +57,15 @@ final class UIStateStore {
         }
     }
 
+    /// The league the Scores screen is scoped to. Persisted like the other
+    /// view choices; the cold-launch auto-pick may override it once when
+    /// exactly one league has games in progress (see `LeagueScoreboards`),
+    /// and writes its pick back here so the choice sticks.
+    var league: League {
+        didSet { defaults.set(league.rawValue, forKey: Self.leagueKey) }
+    }
+
+    private static let leagueKey = "ui.league"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
@@ -74,6 +83,8 @@ final class UIStateStore {
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         scoresGrouping = defaults.string(forKey: Self.groupingKey)
             .flatMap(ScoresGrouping.init(rawValue:)) ?? .date
+        league = defaults.string(forKey: Self.leagueKey)
+            .flatMap(League.init(rawValue:)) ?? .collegeFootball
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
         liveOnly = defaults.bool(forKey: Self.liveOnlyKey)
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)

@@ -12,7 +12,7 @@ struct SearchScreen: View {
 
     @Environment(Router.self) private var router
     @Environment(TeamDirectoryStore.self) private var directory
-    @Environment(ScoreboardStore.self) private var scoreboard
+    @Environment(LeagueScoreboards.self) private var scoreboards
     @Environment(FollowingStore.self) private var following
 
     @State private var searchText = ""
@@ -20,7 +20,7 @@ struct SearchScreen: View {
     private var results: SearchResults {
         SearchResults.compute(query: searchText,
                               conferences: directory.conferences,
-                              games: scoreboard.games,
+                              games: scoreboards.all.flatMap(\.games),
                               followingIds: following.teamKeys)
     }
 
