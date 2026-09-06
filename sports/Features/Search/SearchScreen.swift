@@ -67,8 +67,7 @@ struct SearchScreen: View {
                             // 2026-09-06). A query matching both at once
                             // would corrupt the layout outright.
                             ForEach(results.teams, id: \.followKey) { team in
-                                SearchTeamRow(team: team,
-                                              leagueTag: results.spansLeagues ? team.league : nil)
+                                SearchTeamRow(team: team, leagueTag: team.league)
                                 { select(team) }
                             }
                         }

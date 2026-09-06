@@ -63,6 +63,9 @@ release-notes history now.
 >   conferences and then FCS ones. It's all college football.
 > • Conference standings mark the championship cut, so you can see at a glance
 >   which teams are playing for the title.
+> • Search says which league a team plays in. Every result carries it now,
+>   not just the searches that turn up both — one "Cleveland Browns" tells
+>   you nothing about which football you found.
 > • Day chips carry their month, and yesterday and tomorrow are named the way
 >   you'd name them.
 > • Fixes: searching "Browns" no longer opens UAB, the AP/Coaches poll picker
