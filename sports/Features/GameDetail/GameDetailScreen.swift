@@ -86,7 +86,10 @@ struct GameDetailScreen: View {
                 .background(Color.bgCard)
                 if let summary {
                     Group {
-                        switch availableTabs.contains(tab) ? tab : .summary {
+                        // A tab whose data went away between polls falls
+                        // back rather than rendering an empty pane.
+                        let shown: Tab = availableTabs.contains(tab) ? tab : .summary
+                        switch shown {
                         case .boxScore:
                             BoxScoreList(summary: summary)
                                 .padding(Spacing.sm)

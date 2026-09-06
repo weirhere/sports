@@ -71,7 +71,7 @@ struct LiveSituationCard: View {
     private var field: some View {
         VStack(spacing: Spacing.xs) {
             GeometryReader { geo in
-                let fraction = situation.fieldPosition ?? 0
+                let fraction = CGFloat(situation.fieldPosition ?? 0)
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.divider)
