@@ -105,16 +105,13 @@ final class ConferenceUITests: XCTestCase {
         // on, and the promise under test is that a conference follow
         // counts as following someone.
         //
-        // The conference-accordion assertion this replaces retired with
-        // the conference sections themselves (2026-09-05) — the breakdown
-        // by conference lives on Tables now.
-        let followingHeader = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@", "Following,")).firstMatch
-        let leagueHeader = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
-            "College Football,", "NFL,")).firstMatch
+        // Deliberately not asserting the conference's own section either:
+        // since 2026-09-06 a followed conference hoists its section to the
+        // top of the page, but only on a day it is actually playing, and
+        // the suite runs on whatever day it runs on.
+        let followingHeader = app.scoresSection("Following")
         XCTAssertTrue(followingHeader.waitForExistence(timeout: 15)
-                        || leagueHeader.waitForExistence(timeout: 5),
+                        || app.anyScoresSection.waitForExistence(timeout: 5),
                       "Scores should render its day's sections")
     }
 

@@ -18,6 +18,10 @@ import SwiftUI
 /// 32-team table and then the AFC and the NFC, with no poll row rather
 /// than an empty one. Hence "Tables".
 ///
+/// Following is one card per followed table, draggable (Andy, 2026-09-06):
+/// the Teams tab's shape, and the order is the order those same tables lead
+/// the Scores page in, one tab over. See `FollowedTablesList`.
+///
 /// FCS is inside College Football's card, not beside it (Andy,
 /// 2026-09-06): the hub's accordions are leagues, and FCS is a division of
 /// one, so a card of its own read as a third league. Its 14 conferences
@@ -122,21 +126,27 @@ struct TablesScreen: View {
         return rows
     }
 
-    /// The leagues whose poll is followed and actually loaded — the
-    /// Following section's poll rows, which lead it the way the poll leads
-    /// its league's accordion.
-    private var followedPolls: [League] {
-        League.allCases.filter {
-            following.isFollowingPoll(in: $0) && !displayedPolls(for: $0).isEmpty
-        }
-    }
-
-    /// The Following section's rows, across every league — a followed
-    /// league table sits among the conferences it contains, the way a
-    /// followed conference sits beside a followed team's.
-    private var followedConferences: [ConferenceStandings] {
-        League.allCases.flatMap(tables(in:)).filter { conference in
-            conference.conference.map(following.isFollowingConference) ?? false
+    /// The Following section's rows, in the user's own order (Andy,
+    /// 2026-09-06) — polls and conferences interleaved, since both are
+    /// tables and the order is what the Scores screen reads to decide
+    /// which sections lead its page.
+    ///
+    /// Resolved against what actually loaded: a followed table whose fetch
+    /// came back empty has no row here, exactly as it has no accordion
+    /// below. Nothing errors over a missing one.
+    private var followedRows: [FollowedTableRow] {
+        let loaded = League.allCases.flatMap(tables(in:))
+        return following.orderedTables.compactMap { table -> FollowedTableRow? in
+            switch table {
+            case .poll(let league):
+                let polls = displayedPolls(for: league)
+                return polls.isEmpty ? nil
+                    : FollowedTableRow(table: table, content: .poll(polls, league))
+            case .conference(let id):
+                guard let standings = loaded.first(where: { $0.conference == id })
+                else { return nil }
+                return FollowedTableRow(table: table, content: .conference(standings))
+            }
         }
     }
 
@@ -148,22 +158,16 @@ struct TablesScreen: View {
                 // list — followed rows repeat inside their league, sections
                 // stay complete, never deduplicated.
                 LazyVStack(spacing: Spacing.sm) {
-                    if !followedPolls.isEmpty || !followedConferences.isEmpty {
+                    let followed = followedRows
+                    if !followed.isEmpty {
                         ListSectionHeading(title: "Following")
-                        VStack(spacing: 0) {
-                            ForEach(followedPolls) { league in
-                                Top25Row(polls: displayedPolls(for: league), league: league)
-                            }
-                            // Section-prefixed ids: a followed conference
-                            // appears in both sections, and duplicate
-                            // identities inside one LazyVStack corrupt its
-                            // layout (blank card-sized gaps).
-                            ForEach(followedConferences, id: \.followingRowId) { conference in
-                                ConferenceListRow(conference: conference)
-                            }
-                        }
-                        .padding(.vertical, Spacing.xs)
-                        .cardSurface()
+                        // The list owns its own cards' identities, which
+                        // are the follow tokens — distinct from the ids
+                        // the same conferences use inside their league's
+                        // accordion below, since duplicate identities in
+                        // one LazyVStack corrupt its layout (blank
+                        // card-sized gaps).
+                        FollowedTablesList(rows: followed)
                     }
                     ListSectionHeading(title: "Leagues")
                     ForEach(groups) { group in
@@ -196,6 +200,13 @@ struct TablesScreen: View {
     /// over its rows, collapse state persisted like every other accordion
     /// in the app. A league arrives open — absence of a stored collapse
     /// means expanded, so a new league needs no migration.
+    ///
+    /// The header stands a followed card's height (Andy, 2026-09-06), not
+    /// the 12pt padding alone its content asks for — the hub is a stack of
+    /// cards, and two sizes of card in one stack reads as an accident. This
+    /// is the hub's own header, not the Scores accordion's: `SectionAccordion`
+    /// is a different view, and its rows are games, which set their own
+    /// height.
     private func groupSection(_ group: TableGroup) -> some View {
         let sectionId = group.id
         let isExpanded = !uiState.isConferenceCollapsed(sectionId)
@@ -220,6 +231,9 @@ struct TablesScreen: View {
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
+                // minHeight, never a fixed height: at accessibility text
+                // sizes the title outgrows the card and must be allowed to.
+                .frame(minHeight: Self.headerHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -243,6 +257,11 @@ struct TablesScreen: View {
         .padding(.bottom, isExpanded ? Spacing.xs : 0)
         .cardSurface()
     }
+
+    /// What a followed table's card measures, and so what a league header
+    /// does: the follow star's 34pt tap target, inside the row's 7pt and
+    /// the card's 4pt.
+    private static let headerHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
 
     /// League-qualified and namespaced: the collapse state is persisted
     /// alongside every conference accordion's, so the key has to be unique
@@ -311,16 +330,6 @@ private enum TableRow: Identifiable {
         case .poll: "poll"
         case .conference(let conference): conference.id.map(String.init) ?? conference.name
         }
-    }
-}
-
-private extension ConferenceStandings {
-    /// The hub shows a followed conference in both the Following section
-    /// and its league's accordion; this gives the Following appearance a
-    /// distinct ForEach identity, league-qualified because group id 8 is
-    /// the SEC and the AFC.
-    var followingRowId: String {
-        "following-\(league.rawValue)-\(id.map(String.init) ?? name)"
     }
 }
 

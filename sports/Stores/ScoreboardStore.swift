@@ -91,18 +91,36 @@ enum ScoreFilter: Hashable {
 /// whose promise it satisfies — sections are complete, never deduplicated.
 struct GameSection: Identifiable, Hashable {
     static let followingId = "following"
-    /// League sections use ids like "league-cfb"; the prefix routes their
+    /// League sections use ids like "league-nfl"; the prefix routes their
     /// expansion state to the defaults-open set in `UIStateStore`.
     static let leaguePrefix = "league-"
+    /// Conference sections use ids like "conf-cfb-8" — the `FollowedTable`
+    /// token, so a section and the table it belongs to spell themselves
+    /// the same way. Same defaults-open routing.
+    static let conferencePrefix = "conf-"
+    /// A poll section — "poll-cfb". Only ever on screen while its poll is
+    /// followed, since nothing else puts the Top 25 on Scores.
+    static let pollPrefix = "poll-"
+    /// Games no known conference in the fetched divisions can claim.
+    static let otherPrefix = "other-"
 
     static func id(for league: League) -> String { "\(leaguePrefix)\(league.rawValue)" }
 
     let id: String
     let title: String
     let games: [Game]
-    /// The league this section speaks for — set on league sections, nil on
-    /// Following, which spans them all.
+    /// The league this section speaks for — set on every league,
+    /// conference and poll section, nil only on Following, which spans
+    /// them all.
     var league: League? = nil
+    /// The mark beside the title. The one nil section is Following,
+    /// which falls back to its star.
+    var logoURL: URL? = nil
+    /// The followable table this section *is*, where it is one. It is what
+    /// hoists the section under Following when that table is followed, and
+    /// what keeps a hoisted table from also appearing twice in the stack
+    /// below (Andy, 2026-09-06).
+    var table: FollowedTable? = nil
     /// True when this section's games come from more than one league —
     /// only Following ever can. Its rows then tag their league, since the
     /// section's own scope no longer answers for them.

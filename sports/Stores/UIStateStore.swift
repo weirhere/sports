@@ -18,10 +18,10 @@ final class UIStateStore {
     private(set) var collapsedConferences: Set<String>
 
     /// Scores sections that start open and are remembered when closed —
-    /// the league accordions since 2026-09-05, the day sections before
-    /// them (same key, same inverse semantics as `collapsedConferences`).
-    /// A league whose games you never want to see is a choice worth
-    /// keeping; a league you have never touched should be showing.
+    /// the league and conference accordions, the day sections before them
+    /// (same key, same inverse semantics as `collapsedConferences`). A
+    /// section whose games you never want to see is a choice worth
+    /// keeping; one you have never touched should be showing.
     private(set) var collapsedDays: Set<String>
 
     /// Whether the Scores follow-prompt card was dismissed. Stored (not a
@@ -80,12 +80,17 @@ final class UIStateStore {
         return expandedSections.contains(sectionId)
     }
 
-    /// League sections start open — the screen is a day's slate, and a
-    /// collapsed-by-default league would hide the whole point of the page.
-    /// Following keeps the opt-in `expandedSections` semantics it has had
-    /// since launch, where it is seeded open on first run.
+    /// Every Scores section except Following starts open — the screen is a
+    /// day's slate, and a collapsed-by-default section would hide the whole
+    /// point of the page. That covers the league accordions, the
+    /// conference stack that came back under them (2026-09-06), the poll,
+    /// and the "Other" bucket. Following keeps the opt-in
+    /// `expandedSections` semantics it has had since launch, where it is
+    /// seeded open on first run.
     private static func defaultsOpen(_ sectionId: String) -> Bool {
-        sectionId.hasPrefix(GameSection.leaguePrefix)
+        [GameSection.leaguePrefix, GameSection.conferencePrefix,
+         GameSection.pollPrefix, GameSection.otherPrefix]
+            .contains { sectionId.hasPrefix($0) }
     }
 
     func toggle(_ sectionId: String) {

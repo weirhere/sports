@@ -48,7 +48,8 @@ struct AccessoryGameView: View {
                 Text("\(game.away.abbreviation) vs \(game.home.abbreviation)")
                     .font(.headline)
             }
-            Text(game.statusLine)
+            // One line to spend here, so the day and time rejoin.
+            Text([game.statusLine, game.statusDetail].compactMap(\.self).joined(separator: " "))
                 .font(.caption2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,14 +115,26 @@ struct WidgetTeamRow: View {
     }
 }
 
+/// The app's game-row score, exactly (Andy, 2026-09-06): 13 medium, 13
+/// semibold live, and a losing side that gives up its *colour* rather than
+/// its weight. The widget used to spend the 17pt `score` tokens the game
+/// detail header uses, which made a 60pt card's numbers shout over the
+/// team names beside them.
 struct WidgetScoreText: View {
     let line: WidgetTeamLine
     let emphasize: Bool
 
     var body: some View {
         Text(line.score.map(String.init) ?? "–")
-            .font(line.muted ? .scoreMuted : (emphasize ? .scoreLive : .score))
+            .font(scoreFont)
             .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
+    }
+
+    private var scoreFont: Font {
+        // Live spends weight, per the budget — semibold at the row scale.
+        // A muted loser keeps the base weight; only the ink changes.
+        if emphasize, !line.muted { return .rowNameEmphasis.monospacedDigit() }
+        return .rowName.monospacedDigit()
     }
 }
 

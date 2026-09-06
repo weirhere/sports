@@ -10,7 +10,8 @@ import Observation
 /// shared calendar instead of taking turns behind a selector.
 ///
 /// Each `ScoreboardStore` owns its league's games; this owns the day, the
-/// season, and the assembly of the two into sections.
+/// season, and the assembly of the two into sections — see `sections` for
+/// the shape those take.
 @Observable
 @MainActor
 final class LeagueScoreboards {
@@ -133,6 +134,19 @@ final class LeagueScoreboards {
         Calendar.current.isDateInToday(selectedDay) && seasonYear == currentSeasonYear
     }
 
+    /// Whether the way back to today has anywhere to go — false when we are
+    /// already there, and false in the offseason, where today is outside
+    /// every league's span and `selectToday()` would land the strip on a
+    /// day it cannot show. The span is the *current* season's, not the
+    /// selected one's: jumping home switches season first.
+    var canJumpToToday: Bool {
+        guard !isOnToday else { return false }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let span = SeasonSpan.days(year: currentSeasonYear, calendar: calendar)
+        return today >= calendar.startOfDay(for: span.lowerBound) && today <= span.upperBound
+    }
+
     // MARK: - Loading
 
     /// First load: the day the app opened on, plus a snap forward if
@@ -246,64 +260,159 @@ final class LeagueScoreboards {
 
     // MARK: - Sections
 
-    /// The selected day, as the screen renders it: Following pinned first,
-    /// then one accordion per league.
+    /// The selected day, as the screen renders it: Following, then the
+    /// tables you follow, then the day's whole slate.
     ///
-    /// Following stays cross-league — "my games" shouldn't care which sport
-    /// they belong to — and a followed game appears in both it and its
-    /// league's section, because sections are complete, never deduplicated.
-    /// It orders by state rather than by clock: live at the top, finals at
-    /// the bottom (see `byState`).
+    /// **Following is your teams.** A followed conference used to pour its
+    /// whole slate in here; since 2026-09-06 it doesn't (Andy) — a Big Ten
+    /// follow is ~8 games on a Saturday, which buries the three you
+    /// actually care about. A followed table earns a section of its own
+    /// directly beneath Following instead, in the order you dragged them
+    /// into on the tables hub.
+    ///
+    /// **College football breaks down by conference; the NFL doesn't**
+    /// (Andy, 2026-09-06, superseding the one-accordion-per-league shape).
+    /// A single "College Football" accordion is 60 rows on a Saturday with
+    /// no way in; its conferences are the way fans already carve it up.
+    /// The NFL's 16 games in one section is the whole slate at a glance,
+    /// and splitting it by division would be four rows a section.
+    ///
+    /// Sections stay complete, never deduplicated: a game is in Following,
+    /// in a followed table's section, and in its conference's. The one
+    /// thing that never doubles is a section with itself — a followed
+    /// conference *moves* up the page rather than being cloned, which is
+    /// what `table` identifies.
     ///
     /// Live composes with everything — it is a state, not a scope. The
-    /// slate filter is a scope, so it narrows the league sections and
-    /// leaves Following alone: narrowing "my games" to the SEC would
-    /// silently empty the section for a Michigan fan, which is exactly the
-    /// mystery state the labeled chip exists to avoid. A filter also hides
-    /// the leagues it can't speak for outright rather than emptying them —
+    /// slate filter is a scope, so it narrows the stack and leaves
+    /// Following alone: narrowing "my games" to the SEC would silently
+    /// empty the section for a Michigan fan, which is exactly the mystery
+    /// state the labeled chip exists to avoid. A filter also hides the
+    /// leagues it can't speak for outright rather than emptying them —
     /// "SEC" is not a question the NFL's slate can answer.
     func sections(day: Date? = nil,
                   followingIds: Set<String>,
-                  followedConferenceIds: Set<ConferenceID> = [],
+                  followedTables: [FollowedTable] = [],
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
         let day = day ?? selectedDay
-        var result: [GameSection] = []
         var following: [Game] = []
+        // Per league, the games the stack is allowed to show. Following is
+        // claimed before the filter narrows anything, so a followed team
+        // stays visible while the slate below is scoped.
+        var visible: [League: [Game]] = [:]
 
-        func isFollowed(_ game: Game) -> Bool {
-            followingIds.contains(game.home.team.followKey)
-                || followingIds.contains(game.away.team.followKey)
-                || game.home.team.conference.map(followedConferenceIds.contains) ?? false
-                || game.away.team.conference.map(followedConferenceIds.contains) ?? false
-        }
-
-        var leagueSections: [GameSection] = []
         for league in League.allCases {
             var games = store(for: league).games(on: day)
             if liveOnly { games = games.filter(\.isLive) }
-            // Followed games are claimed before the filter narrows the
-            // league's own section, so a followed team stays visible under
-            // Following while its league's list is scoped to one conference.
-            following += games.filter(isFollowed)
+            following += games.filter { game in
+                followingIds.contains(game.home.team.followKey)
+                    || followingIds.contains(game.away.team.followKey)
+            }
             if let filter {
                 guard filter.league == nil || filter.league == league else { continue }
                 games = games.filter(filter.matches)
             }
-            guard !games.isEmpty else { continue }
-            leagueSections.append(GameSection(id: GameSection.id(for: league),
-                                              title: league.displayName,
-                                              games: games,
-                                              league: league))
+            visible[league] = games
         }
 
+        // The full slate, in its resting order.
+        var stack = conferenceSections(from: visible[.collegeFootball] ?? [])
+        if let nfl = visible[.nfl], !nfl.isEmpty {
+            stack.append(GameSection(id: GameSection.id(for: .nfl),
+                                     title: League.nfl.displayName,
+                                     games: nfl,
+                                     league: .nfl,
+                                     logoURL: League.nfl.logoURL,
+                                     // The whole league standing as one
+                                     // table — following the NFL on the
+                                     // hub hoists this very section.
+                                     table: Conference.leagueWideId(in: .nfl)
+                                         .map { FollowedTable.conference(ConferenceID(.nfl, $0)) }))
+        }
+
+        // Followed tables lead the stack, in the user's order. One already
+        // in it moves; one that isn't (a poll, an NFL conference) is built
+        // here and added.
+        var hoisted: [GameSection] = []
+        var hoistedIds: Set<String> = []
+        for table in followedTables {
+            // A filter that can't speak for this table's league hides it,
+            // the same way it hides that league's own sections.
+            if let scope = filter?.league, scope != table.league { continue }
+            if let existing = stack.first(where: { $0.table == table }) {
+                guard hoistedIds.insert(existing.id).inserted else { continue }
+                hoisted.append(existing)
+                continue
+            }
+            let games = (visible[table.league] ?? []).filter(table.matches)
+            guard !games.isEmpty else { continue }
+            let section = GameSection(id: table.token, title: table.name, games: games,
+                                      league: table.league, logoURL: table.logoURL,
+                                      table: table)
+            guard hoistedIds.insert(section.id).inserted else { continue }
+            hoisted.append(section)
+        }
+
+        var result: [GameSection] = []
         if !following.isEmpty {
             let leagues = Set(following.map(\.home.team.league))
             result.append(GameSection(id: GameSection.followingId, title: "Following",
                                       games: byState(following),
                                       spansLeagues: leagues.count > 1))
         }
-        return result + leagueSections
+        return result + hoisted + stack.filter { !hoistedIds.contains($0.id) }
+    }
+
+    /// College football's slate, one section per conference — the way fans
+    /// carve up a Saturday, and the app's shape until the day axis briefly
+    /// flattened it (Andy, 2026-09-06, restoring it).
+    ///
+    /// A cross-conference game lands in both sections. "Other" is a last
+    /// resort for games no section can claim: an FCS visitor at an FBS
+    /// school stays in the host's conference only, or Week 1's ~48 FCS
+    /// matchups would pile up in Other as duplicates.
+    ///
+    /// The buckets follow the *slate's* divisions, not the registry's
+    /// knowledge: FCS is opt-in, so until someone follows an FCS
+    /// conference a Big Sky visitor stays in its host's section rather
+    /// than spawning a Big Sky one.
+    private func conferenceSections(from games: [Game]) -> [GameSection] {
+        guard !games.isEmpty else { return [] }
+        let divisions = store(for: .collegeFootball).divisions
+        var byConference: [ConferenceID?: [Game]] = [:]
+        for game in games {
+            let claimed = Set([game.home.team.conference, game.away.team.conference]
+                .compactMap { conference -> ConferenceID? in
+                    guard let conference else { return nil }
+                    return Conference.division(for: conference.id, in: conference.league)
+                        .map(divisions.contains) == true ? conference : nil
+                })
+            if claimed.isEmpty {
+                byConference[nil, default: []].append(game)
+            } else {
+                for id in claimed {
+                    byConference[id, default: []].append(game)
+                }
+            }
+        }
+        // P4 → G5 → Independents → FCS → Other, alphabetical within a tier.
+        let ordered = byConference.keys.sorted { lhs, rhs in
+            let (lt, rt) = (Conference.tier(for: lhs?.id, in: .collegeFootball),
+                            Conference.tier(for: rhs?.id, in: .collegeFootball))
+            return lt == rt
+                ? Conference.name(for: lhs) < Conference.name(for: rhs)
+                : lt < rt
+        }
+        return ordered.map { id in
+            GameSection(id: id.map { GameSection.conferencePrefix + $0.token }
+                            ?? (GameSection.otherPrefix + League.collegeFootball.rawValue),
+                        title: Conference.name(for: id),
+                        games: byConference[id] ?? [],
+                        league: .collegeFootball,
+                        logoURL: Conference.logoURL(for: id),
+                        table: id.map(FollowedTable.conference))
+        }
     }
 
     /// Following's order: what's happening now, then what's about to, then

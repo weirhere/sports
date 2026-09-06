@@ -1,10 +1,18 @@
 import SwiftUI
 
-/// The Schedule card's contents on a team page: header, game rows, and the
-/// loading/error/empty states. The season chip moved to the hero header in
-/// the P1 review, so this section is purely the list.
+/// One phase of a team's season, as its own card's contents: header, game
+/// rows, and the loading/error/empty states. The season chip moved to the
+/// hero header in the P1 review, so this section is purely the list.
+///
+/// A card per phase (Andy, 2026-09-06): the NFL's preseason games belong on
+/// the page — a fan checking in mid-August has nothing else to look at —
+/// but they are exhibition football, and burying them in one undifferentiated
+/// "Schedule" would have them read as games that counted. Splitting them out
+/// is also what lets the regular-season card keep the bye week, which only
+/// makes sense against real weeks.
 struct TeamScheduleSection: View {
     let teamId: String
+    let title: String
     let games: [Game]
     let isLoading: Bool
     let showsError: Bool
@@ -15,7 +23,7 @@ struct TeamScheduleSection: View {
     let onRetry: () -> Void
 
     var body: some View {
-        CardHeader(title: "Schedule")
+        CardHeader(title: title)
         if !games.isEmpty {
             ForEach(games) { game in
                 // Rows push game detail (Andy, 2026-08-25); the Teams and
@@ -69,5 +77,44 @@ struct TeamScheduleSection: View {
         .padding(Spacing.lg)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Week \(byeWeek ?? 0), bye week")
+    }
+}
+
+
+/// Which part of the season a game belongs to — the team page's card split.
+///
+/// ESPN's own 1/2/3, named. A game with no season type at all (CFBD carries
+/// none) counts as regular season: that is where those games have always
+/// been shown, and guessing anything else would move them for no reason.
+nonisolated enum SeasonPhase: Int, CaseIterable, Identifiable {
+    case preseason = 1, regular, postseason
+
+    var id: Int { rawValue }
+
+    /// The card's header. "Regular Season" rather than "Schedule" (Andy,
+    /// 2026-09-06) — once the preseason has a card of its own, the old name
+    /// no longer says which games are in this one.
+    var title: String {
+        switch self {
+        case .preseason: "Preseason"
+        case .regular: "Regular Season"
+        case .postseason: "Postseason"
+        }
+    }
+
+    static func of(_ game: Game) -> SeasonPhase {
+        SeasonPhase(rawValue: game.seasonType ?? 2) ?? .regular
+    }
+}
+
+extension Array where Element == Game {
+    /// This team's games split by phase, in season order, dropping any
+    /// phase it has no games in — a college team with no preseason and no
+    /// bowl still shows exactly one card, the way it always did.
+    func bySeasonPhase() -> [(phase: SeasonPhase, games: [Game])] {
+        SeasonPhase.allCases.compactMap { phase in
+            let games = filter { SeasonPhase.of($0) == phase }
+            return games.isEmpty ? nil : (phase, games)
+        }
     }
 }

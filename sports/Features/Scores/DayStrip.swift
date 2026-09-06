@@ -10,69 +10,33 @@ import SwiftUI
 struct DayStrip: View {
     let days: [DaySlot]
     let selectedId: String?
-    /// Shown as a leading jump-home chip whenever the strip has wandered
-    /// off it. A season is ~200 chips wide, so finding today again by
-    /// dragging is not a plan.
-    let today: Date
     let onSelect: (Date) -> Void
 
-    private var todayId: String { DayFormat.id(for: today) }
-    private var showsTodayJump: Bool {
-        selectedId != todayId && days.contains { $0.id == todayId }
-    }
-
+    /// The strip is only the days. The way back to today is a floating
+    /// button over the slate, not a chip pinned here (Andy, 2026-09-06) —
+    /// so the strip runs its full width on every day, not just today.
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Spacing.xs) {
-                        ForEach(days) { day in
-                            chip(for: day)
-                        }
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.vertical, Spacing.sm)
-                }
-                .onAppear {
-                    if let selectedId {
-                        proxy.scrollTo(selectedId, anchor: .center)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.xs) {
+                    ForEach(days) { day in
+                        chip(for: day)
                     }
                 }
-                .onChange(of: selectedId) { _, newValue in
-                    if let newValue {
-                        withAnimation { proxy.scrollTo(newValue, anchor: .center) }
-                    }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+            }
+            .onAppear {
+                if let selectedId {
+                    proxy.scrollTo(selectedId, anchor: .center)
                 }
             }
-            if showsTodayJump {
-                todayJump
+            .onChange(of: selectedId) { _, newValue in
+                if let newValue {
+                    withAnimation { proxy.scrollTo(newValue, anchor: .center) }
+                }
             }
         }
-    }
-
-    /// Pinned to the strip's trailing edge rather than riding inside it: a
-    /// season is ~200 chips wide, and a jump-home button that scrolls away
-    /// with the content is a jump-home button you can never find.
-    ///
-    /// Never "selected" — it is a shortcut back, not a date of its own —
-    /// and it disappears the moment it would be redundant, which is what
-    /// gives the strip its full width on the day that matters most.
-    private var todayJump: some View {
-        Button {
-            onSelect(today)
-        } label: {
-            Text("Today")
-                .font(.chip)
-                .fixedSize()
-                .foregroundStyle(Color.textPrimary)
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 6)
-                .glassCapsule(fallback: Color.bgElevated)
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, Spacing.sm)
-        .accessibilityLabel("Jump to today")
-        .accessibilityIdentifier("day-strip-today")
     }
 
     @ViewBuilder
@@ -81,8 +45,12 @@ struct DayStrip: View {
         Button {
             onSelect(day.date)
         } label: {
+            // fixedSize: the labels are words now, not two glyphs, and a
+            // chip that truncates to "Tomorr…" is worse than a wider strip.
             let label = Text(compactLabel(day.date))
                 .font(.chip)
+                .lineLimit(1)
+                .fixedSize()
                 .foregroundStyle(isSelected ? Color.bgPrimary : Color.textSecondary)
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 6)
@@ -97,29 +65,38 @@ struct DayStrip: View {
             }
         }
         .buttonStyle(.plain)
-        // The chip is two glyphs wide; the spoken label is the whole date,
-        // and "Today" and "Tomorrow" keep their meaning rather than being
-        // read as a bare weekday.
+        // The chip abbreviates its month and weekday; the spoken label is
+        // the whole date, and the named days keep their names.
         .accessibilityLabel(spokenLabel(day.date))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .id(day.id)
     }
 
-    /// "Today" / "Sat 6" — the strip is contiguous, so the day number needs
-    /// no month beside it.
+    /// "Yesterday" / "Today" / "Tomorrow" / "Sun, Sep 27" (Andy,
+    /// 2026-09-06).
+    ///
+    /// The three named days are how anyone actually refers to them, and
+    /// they are the three the strip lands on most. Every other chip carries
+    /// its month: the strip spans a whole season, so a bare "Sat 5" is
+    /// ambiguous the moment you drag past the fortnight either side of
+    /// today — and a season crosses a year boundary. Built through the
+    /// localized formatter, like every other date string in the app, so
+    /// the order follows the reader's calendar rather than ours.
     private func compactLabel(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "Today" }
-        let day = calendar.component(.day, from: date)
-        return "\(date.formatted(.dateTime.weekday(.abbreviated))) \(day)"
+        if let named = namedDay(date) { return named }
+        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 
-    private func spokenLabel(_ date: Date) -> String {
+    private func namedDay(_ date: Date) -> String? {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Today" }
         if calendar.isDateInTomorrow(date) { return "Tomorrow" }
         if calendar.isDateInYesterday(date) { return "Yesterday" }
-        return date.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        return nil
+    }
+
+    private func spokenLabel(_ date: Date) -> String {
+        namedDay(date) ?? date.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 }
 
@@ -128,12 +105,8 @@ struct DayStrip: View {
     let days = (-4...4).compactMap { calendar.date(byAdding: .day, value: $0, to: .now) }
         .map { DaySlot($0) }
     return VStack(spacing: Spacing.lg) {
-        DayStrip(days: days, selectedId: DayFormat.id(for: .now),
-                 today: .now, onSelect: { _ in })
-        // Scrolled off today: the jump-home chip claims the trailing edge.
-        DayStrip(days: days,
-                 selectedId: days.first?.id,
-                 today: .now, onSelect: { _ in })
+        DayStrip(days: days, selectedId: DayFormat.id(for: .now), onSelect: { _ in })
+        DayStrip(days: days, selectedId: days.first?.id, onSelect: { _ in })
     }
     .background(Color.bgPrimary)
 }

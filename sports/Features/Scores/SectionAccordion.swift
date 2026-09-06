@@ -22,28 +22,60 @@ struct SectionAccordion: View {
         .clipped()
     }
 
-    /// The whole row toggles. The two-surface conference header retired
-    /// with the conference sections themselves on 2026-09-05 — the
-    /// breakdown by conference lives on Tables now, and a league header
-    /// has nowhere else to go.
+    /// A header that names a real table splits into two surfaces (Andy's
+    /// call, 2026-08-25, back with the conference stack on 2026-09-06):
+    /// the mark + name push that table's page, everything after them
+    /// toggles. Following, the poll and "Other" keep the whole row as the
+    /// toggle — there is nowhere for their name to go.
     private var headerRow: some View {
-            toggleButton {
-                HStack(spacing: Spacing.sm) {
+        HStack(spacing: 0) {
+            if let destination = tableDestination {
+                NavigationLink(value: destination) {
                     identity
-                    countAndChevron
+                        .padding(.leading, Spacing.lg)
+                        .padding(.vertical, Spacing.md)
+                        .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                // Named for what the tap does, not what it says — and it
+                // is the UI tests' hook for this path.
+                .accessibilityLabel("\(section.title) standings")
+                toggleButton {
+                    countAndChevron
+                        .padding(.leading, Spacing.sm)
+                        .padding(.trailing, Spacing.lg)
+                        .padding(.vertical, Spacing.md)
+                        .contentShape(Rectangle())
+                }
+            } else {
+                toggleButton {
+                    HStack(spacing: Spacing.sm) {
+                        identity
+                        countAndChevron
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.md)
+                    .contentShape(Rectangle())
+                }
             }
-            .background(Color.bgHeader)
+        }
+        .background(Color.bgHeader)
     }
 
-    /// The mark + name. A league header wears its league's badge, the way
-    /// the conference headers wore theirs before the day axis retired them
-    /// (Andy, 2026-09-06) — both leagues have a real one, so neither reads
-    /// as a missing asset. Following keeps the star instead: it is a
-    /// promise about you, not a competition with a logo.
+    /// The page this section's name opens, where it has one. "Other" and
+    /// an id the registry doesn't know deliberately get none — a page
+    /// that can't name itself isn't a destination.
+    private var tableDestination: ConferenceDestination? {
+        guard case .conference(let id) = section.table,
+              Conference.isKnown(id.id, in: id.league) else { return nil }
+        return ConferenceDestination(conference: id, name: section.title)
+    }
+
+    /// The mark + name. Every section carries its own — a conference's
+    /// shield, the NFL's, the poll's league mark — and `ConferenceLogo` falls
+    /// back to the football glyph where ESPN ships no asset, so the titles
+    /// all start at the same x either way. Following keeps the star: it is
+    /// a promise about you, not a competition with a logo.
     private var identity: some View {
         HStack(spacing: Spacing.sm) {
             if let symbol = headerSymbol {
@@ -53,8 +85,8 @@ struct SectionAccordion: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.textSecondary)
                     .frame(width: 18, height: 18)
-            } else if let league = section.league {
-                ConferenceLogo(url: league.logoURL)
+            } else {
+                ConferenceLogo(url: section.logoURL)
             }
             Text(section.title)
                 .font(.sectionHeader)
@@ -62,16 +94,17 @@ struct SectionAccordion: View {
         }
     }
 
-    @ViewBuilder
     private var countAndChevron: some View {
-        Text("\(section.games.count)")
-            .font(.meta)
-            .foregroundStyle(.textSecondary)
-        Spacer()
-        Image(systemName: "chevron.down")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.textSecondary)
-            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+        HStack(spacing: Spacing.sm) {
+            Text("\(section.games.count)")
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+            Spacer()
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.textSecondary)
+                .rotationEffect(.degrees(isExpanded ? 180 : 0))
+        }
     }
 
     private func toggleButton(@ViewBuilder content: () -> some View) -> some View {
@@ -147,9 +180,11 @@ struct SectionAccordion: View {
         following.isFollowing(team) ? "Unfollow \(team.location)" : "Follow \(team.location)"
     }
 
-    /// Header glyph for the sections with no mark of their own. star.fill
+    /// Header glyph for the one section with no mark of its own. star.fill
     /// echoes the follow toggle on team pages, and sits in the same 18pt
-    /// footprint a league mark does so every title starts at the same x.
+    /// footprint a conference mark does, so every title starts at the same
+    /// x. The poll used to take a trophy here; it wears its league's mark
+    /// now (Andy, 2026-09-06), which `section.logoURL` carries.
     private var headerSymbol: String? {
         section.id == GameSection.followingId ? "star.fill" : nil
     }

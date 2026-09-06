@@ -17,40 +17,37 @@ final class SmokeUITests: XCTestCase {
                                 "-ui.scoreFilter", ""]
         app.launch()
 
-        // Scores loads a real slate as one accordion per league. At least
-        // one of them has to be there — which one depends on the day, so
-        // the assertion names neither: a September Saturday is college
-        // football only, a September Sunday is the NFL only.
-        //
-        // Deliberately not asserting on the day: whichever day the app
-        // opens on, the leagues are its sections.
-        let anyLeague = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
-            "College Football,", "NFL,")).firstMatch
+        // Scores loads a real slate as a stack of accordions. Which ones
+        // depends on the day and the follow set — a September Saturday is
+        // college football's conferences, a Sunday is the NFL's single
+        // section — so the assertion names none of them and matches on the
+        // identifier every Scores section shares.
+        let anyLeague = app.anyScoresSection
         XCTAssertTrue(anyLeague.waitForExistence(timeout: 20),
-                      "Scores should show at least one league accordion")
+                      "Scores should show at least one section accordion")
         snapshot(app, "scores-day")
 
         // The accordion collapses and reopens, and the state is the user's
-        // to keep — league sections start open and remember being closed.
+        // to keep — every section but Following starts open and remembers
+        // being closed.
         let wasExpanded = anyLeague.value as? String == "expanded"
         anyLeague.tap()
         XCTAssertNotEqual(anyLeague.value as? String,
                           wasExpanded ? "expanded" : "collapsed",
-                          "Tapping a league header should toggle it")
+                          "Tapping a section header should toggle it")
         anyLeague.tap()
 
         // The day strip walks the season. Yesterday always exists inside
-        // it, and the Today chip is the way back — it only appears once
-        // the strip has wandered off today.
-        let today = app.buttons["day-strip-today"]
-        XCTAssertFalse(today.exists, "The Today chip should be hidden on today")
+        // it, and the floating Today button is the way back — it only
+        // appears once the strip has wandered off today.
+        let today = app.buttons["scores-today-jump"]
+        XCTAssertFalse(today.exists, "The Today button should be hidden on today")
         app.swipeLeft()
         XCTAssertTrue(today.waitForExistence(timeout: 10),
                       "Swiping to another day should offer the way back")
         today.tap()
-        // XCUIElement has no wait-for-absence, and the chip disappearing
-        // *is* the assertion — the strip only offers it off today.
+        // XCUIElement has no wait-for-absence, and the button disappearing
+        // *is* the assertion — the screen only offers it off today.
         let goneExpectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"), object: today)
         XCTAssertEqual(XCTWaiter().wait(for: [goneExpectation], timeout: 10), .completed,

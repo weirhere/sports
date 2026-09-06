@@ -54,14 +54,12 @@ final class FCSOptInUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Filtered to Missouri Valley"].waitForExistence(timeout: 10),
                       "the FCS conference was never actually selected")
 
-        // The filter narrows the league accordion rather than spawning a
-        // conference one (2026-09-05: the conference breakdown moved to
-        // Tables), so the proof is the league section still being there
-        // with the FCS slate inside it. League sections start open.
-        let league = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@", "College Football,")).firstMatch
+        // The conference stack came back on 2026-09-06, so the FCS slate
+        // arrives as its own section rather than inside a league one.
+        // Sections start open; a stored collapse still has to be undone.
+        let league = app.scoresSection("Missouri Valley")
         XCTAssertTrue(league.waitForExistence(timeout: 10),
-                      "opting into FCS left no college football section")
+                      "opting into FCS left no Missouri Valley section")
         if league.value as? String == "collapsed" {
             league.tap()
         }

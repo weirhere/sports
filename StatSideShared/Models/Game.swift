@@ -14,6 +14,10 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// Week numbers restart in the postseason, so grouping a season's
     /// slate by week needs this to keep a title game out of "Week 1".
     var seasonType: Int? = nil
+    /// ESPN's name for this particular game, where it has one: the bowl,
+    /// or the playoff round. Only postseason games carry it, and college
+    /// football's postseason is unreadable without it.
+    var headline: String? = nil
     let status: GameStatus
     let home: Competitor
     let away: Competitor

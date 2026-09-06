@@ -52,8 +52,8 @@ final class AppStoreScreenshots: XCTestCase {
                           "\(day) should be reachable in the strip")
         }
 
-        // Scores: expand nothing — Following and the league accordions are
-        // open by default, which is the hero shot. Wait for a row that has
+        // Scores: expand nothing — Following and the slate's accordions
+        // are open by default, which is the hero shot. Wait for a row that has
         // a score on it, so the slate isn't a screen of kickoff times.
         //
         // SCREENSHOT_PREGAME waives that, for the one frame that has to

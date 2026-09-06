@@ -12,6 +12,10 @@ final class FollowingStore {
     private(set) var conferenceIds: Set<ConferenceID>
     /// Leagues whose poll (college football's Top 25) is followed.
     private(set) var pollLeagues: Set<League>
+    /// `FollowedTable` tokens in the order the user dragged them into on
+    /// the tables hub. Read through `orderedTables`, which drops what is
+    /// no longer followed and appends what has never been dragged.
+    private(set) var tableOrder: [String]
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = AppGroup.defaults) {
@@ -25,6 +29,72 @@ final class FollowingStore {
             (defaults.stringArray(forKey: AppGroup.followingPollLeaguesKey) ?? [])
                 .compactMap(League.init(rawValue:))
         )
+        tableOrder = defaults.stringArray(forKey: AppGroup.followingTableOrderKey) ?? []
+    }
+
+    // MARK: - Followed tables
+
+    /// Every followed table, unordered — the two standings-shaped follow
+    /// sets read as one thing.
+    var followedTables: Set<FollowedTable> {
+        Set(pollLeagues.map(FollowedTable.poll))
+            .union(conferenceIds.map(FollowedTable.conference))
+    }
+
+    /// The followed tables in the user's order.
+    ///
+    /// The stored order leads, filtered to what is still followed; a table
+    /// followed but never dragged joins at the end in
+    /// `FollowedTable.defaultOrder`. That is what makes the drag optional:
+    /// a user who never touches it still gets a stable, sensible list, and
+    /// a new follow never displaces a deliberate arrangement.
+    var orderedTables: [FollowedTable] {
+        let followed = followedTables
+        var seen: Set<FollowedTable> = []
+        var result: [FollowedTable] = []
+        for token in tableOrder {
+            guard let table = FollowedTable(token: token),
+                  followed.contains(table), seen.insert(table).inserted else { continue }
+            result.append(table)
+        }
+        result += followed.subtracting(seen).sorted(by: FollowedTable.defaultOrder)
+        return result
+    }
+
+    /// Reorder: put `table` where `other` currently sits. A no-op when
+    /// either isn't followed, so a stray text drop from outside the list
+    /// can't rewrite the order.
+    ///
+    /// Persists the full *resolved* order, never the partial stored one,
+    /// so the first drag also pins down everything that was still riding
+    /// the default.
+    func move(_ table: FollowedTable, onto other: FollowedTable) {
+        guard table != other else { return }
+        var tables = orderedTables
+        guard let from = tables.firstIndex(of: table),
+              let to = tables.firstIndex(of: other) else { return }
+        tables.remove(at: from)
+        tables.insert(table, at: to)
+        setOrder(tables)
+    }
+
+    private func setOrder(_ tables: [FollowedTable]) {
+        tableOrder = tables.map(\.token)
+        defaults.set(tableOrder, forKey: AppGroup.followingTableOrderKey)
+    }
+
+    /// Keeps the order in step with the sets. A new follow lands at the
+    /// end — the list is a priority order, and quietly promoting a table
+    /// nobody placed there would scramble one.
+    private func rememberOrder(of table: FollowedTable, followed: Bool) {
+        if followed {
+            guard !tableOrder.contains(table.token) else { return }
+            setOrder(orderedTables)
+        } else {
+            guard tableOrder.contains(table.token) else { return }
+            tableOrder.removeAll { $0 == table.token }
+            defaults.set(tableOrder, forKey: AppGroup.followingTableOrderKey)
+        }
     }
 
     /// Deliberately poll-blind: this gates the game-shaped surfaces (the
@@ -90,6 +160,8 @@ final class FollowingStore {
         }
         defaults.set(conferenceIds.map(\.token).sorted(),
                      forKey: AppGroup.followingConferenceTokensKey)
+        rememberOrder(of: .conference(conference),
+                      followed: conferenceIds.contains(conference))
         // No widget reload: the widget is team-follow-driven in v1, so a
         // reload here would spend its budget to change nothing.
     }
@@ -106,6 +178,7 @@ final class FollowingStore {
         }
         defaults.set(pollLeagues.map(\.rawValue).sorted(),
                      forKey: AppGroup.followingPollLeaguesKey)
+        rememberOrder(of: .poll(league), followed: pollLeagues.contains(league))
         // No widget reload, for the conference set's reason: the widget is
         // team-follow-driven, so a reload here would change nothing.
     }
