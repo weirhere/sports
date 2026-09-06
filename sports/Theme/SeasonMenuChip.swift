@@ -34,6 +34,12 @@ struct SeasonMenuChip: View {
         }
         .disabled(seasons.isEmpty)
         .accessibilityLabel("Season, \(String(current))")
+        // A stable handle for the screenshot flow, which has to reach the
+        // chip wherever it rides — the Scores strip, a hero toolbar, or a
+        // tab pane. Matching the spoken label instead would break every
+        // time the wording moves.
+        .accessibilityIdentifier("season-chip")
+        .accessibilityValue(String(current))
     }
 
     @ViewBuilder

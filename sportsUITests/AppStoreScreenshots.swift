@@ -26,15 +26,21 @@ final class AppStoreScreenshots: XCTestCase {
                                 // with content (argument-domain array syntax).
                                 // League-qualified since the namespacing
                                 // migration — a bare id reads as nobody.
+                                //
+                                // Overridable, because the teams worth
+                                // seeding depend on the day being shot: a
+                                // both-leagues frame needs a follow in each
+                                // league that actually played that day.
                                 "-following.teamKeys",
-                                "(cfb:61, cfb:130, cfb:251)"]
+                                ProcessInfo.processInfo.environment["SCREENSHOT_FOLLOWS"]
+                                    ?? "(cfb:61, cfb:130, cfb:251)"]
         app.launch()
 
         let env = ProcessInfo.processInfo.environment
-        if let year = env["SCREENSHOT_SEASON"].flatMap(Int.init) {
-            XCTAssertTrue(selectSeason(year, in: app),
-                          "Season menu should switch to \(year)")
-        }
+        // No SCREENSHOT_SEASON any more: Scores carries no season control
+        // since the view-options sheet retired — the day strip is bounded
+        // by the current season and season selection lives on Tables. Any
+        // day of this season is reachable by name; a past season is not.
         if let day = env["SCREENSHOT_DAY"] {
             // Chips are addressed by their spoken label ("Saturday,
             // November 8"); the strip's HStack isn't lazy, so every day
@@ -49,11 +55,28 @@ final class AppStoreScreenshots: XCTestCase {
         // Scores: expand nothing — Following and the league accordions are
         // open by default, which is the hero shot. Wait for a row that has
         // a score on it, so the slate isn't a screen of kickoff times.
+        //
+        // SCREENSHOT_PREGAME waives that, for the one frame that has to
+        // show a day nobody has played yet: before the NFL's opening week
+        // there is no played NFL game anywhere Scores can reach, and a
+        // slate of kickoff times is the honest picture of that Sunday.
         let played = app.scrollViews.buttons.matching(NSPredicate(
             format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", " left", "final"))
-        XCTAssertTrue(played.firstMatch.waitForExistence(timeout: 20),
-                      "The day should show games with scores")
+        if env["SCREENSHOT_PREGAME"] == nil {
+            XCTAssertTrue(played.firstMatch.waitForExistence(timeout: 20),
+                          "The day should show games with scores")
+        } else {
+            let anyRow = app.scrollViews.buttons.matching(NSPredicate(
+                format: "label CONTAINS[c] %@", " at ")).firstMatch
+            XCTAssertTrue(anyRow.waitForExistence(timeout: 20),
+                          "The day should show its slate")
+        }
         snapshot(app, "01-scores")
+
+        // Pre-game mode shoots the slate and stops. Everything below needs
+        // a played game — a box score, a line score, leaders — and a day
+        // nobody has played has none of it.
+        if env["SCREENSHOT_PREGAME"] != nil { return }
 
         // Game detail, off a completed game where there is one. The live
         // treatment is already the Scores shot's job; what the detail and box

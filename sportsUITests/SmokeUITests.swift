@@ -87,7 +87,7 @@ final class SmokeUITests: XCTestCase {
         // openTab, not a bare tab tap: a tap issued while the team-page
         // push is still settling gets swallowed, and the hunt below then
         // swipes the team page instead of the scores list.
-        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresFilterChip),
+        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresLiveChip),
                       "Scores should render its header")
         let followingHeader = app.buttons.matching(NSPredicate(
             format: "label BEGINSWITH %@", "Following,")).firstMatch

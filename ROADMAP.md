@@ -2,7 +2,7 @@
 
 ## North star
 
-The fastest, calmest way to follow college football on a Saturday. One screen tells you the state of the sport; your teams are always at the top; nothing gets between you and the score.
+The fastest, calmest way to follow football on a weekend — college football on Saturday, the NFL on Sunday. One screen tells you the state of the day; your teams are always at the top, whichever league they play in; nothing gets between you and the score.
 
 ## The clock we're building against
 
@@ -39,7 +39,7 @@ Whatever the Saturdays reveal: polling behavior under 50 concurrent games, row l
 
 - **Widgets / Live Activities** — probably the killer feature for this app (lock-screen live score for your team), but only after the in-app row design is proven.
 - **Notifications** (kickoff, close game, final) — needs a backend or Live Activity push story; big lift.
-- **Other sports** (CBB is the natural second: same schools, same follows, same conference model, and it fills December–March).
+- **Other sports.** ~~CBB is the natural second~~ — the NFL was, and shipped at 2.0 (2026-09-05). CBB was the assumption for a year and turned out to be the harder one: it plays ~10 games a night for four months, which forces a date-scroller, while the NFL is week-shaped like college football and shares the same ESPN response shapes. What actually made it work was the league axis (`League`, `ConferenceID`, namespaced follows) — a third sport arrives through that, and would be judged on whether its calendar fits a day strip.
 - **FCS and lower divisions.** *(Scoped 2026-09-01 as BACKLOG E8 — 14 conferences, 116 teams, all reachable via ESPN group 81; the epic is written, the go/no-go is its first item. Still not scheduled.)*
 - **News/media content** — FotMob has it; we may never want it. Scores-first identity is the differentiator.
 - **Any monetization or App Store release** — forces the data-licensing question (ESPN's API is not licensable; CFBD or a paid provider would be the path).
