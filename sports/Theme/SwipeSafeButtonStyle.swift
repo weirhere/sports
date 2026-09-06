@@ -31,7 +31,8 @@ struct SwipeSafeButtonStyle: PrimitiveButtonStyle {
     }
 }
 
-extension PrimitiveButtonStyle where Self == SwipeSafeButtonStyle {
-    /// `.plain`, minus the touch-up that a horizontal swipe could ride out.
-    static var swipeSafe: SwipeSafeButtonStyle { SwipeSafeButtonStyle() }
-}
+// Deliberately no `.swipeSafe` shorthand. `buttonStyle(_:)` is overloaded
+// across ButtonStyle and PrimitiveButtonStyle, so a leading-dot member adds
+// overload resolution to whatever expression it lands in — which was enough
+// to blow the type-checker's budget on the accordion's row builder under
+// load. Naming the type costs nothing and keeps the build honest.
