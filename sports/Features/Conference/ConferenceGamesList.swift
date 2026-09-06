@@ -50,24 +50,50 @@ nonisolated enum ConferenceSlate {
         let games: [Game]
     }
 
-    /// Regular-season weeks ascending, then a dateless bucket, then the
-    /// postseason — whose week numbers restart at 1 and must never land a
-    /// title game in "Week 1". Games sort chronologically within a group.
+    /// The preseason first, then regular-season weeks ascending, then a
+    /// dateless bucket, then the postseason — whose week numbers restart
+    /// at 1 and must never land a title game in "Week 1". Games sort
+    /// chronologically within a group.
+    ///
+    /// The preseason is split off for the same reason the postseason is
+    /// (Andy, 2026-09-06): its weeks restart too, so the Hall of Fame Game
+    /// and the NFL's opening Thursday were sharing a card headed "Week 1".
     static func groups(from games: [Game]) -> [WeekGroup] {
         let sorted = games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        var preseason: [Int: [Game]] = [:]
+        var preseasonUndated: [Game] = []
         var regular: [Int: [Game]] = [:]
         var postseason: [Game] = []
         var undated: [Game] = []
         for game in sorted {
-            if game.seasonType == 3 {
+            switch game.seasonType {
+            case 3:
                 postseason.append(game)
-            } else if let week = game.weekNumber {
-                regular[week, default: []].append(game)
-            } else {
-                undated.append(game)
+            case 1:
+                if let week = game.weekNumber {
+                    preseason[week, default: []].append(game)
+                } else {
+                    preseasonUndated.append(game)
+                }
+            default:
+                if let week = game.weekNumber {
+                    regular[week, default: []].append(game)
+                } else {
+                    undated.append(game)
+                }
             }
         }
-        var result = regular.keys.sorted().map { week in
+        var result = preseason.keys.sorted().map { week -> WeekGroup in
+            let weekGames = preseason[week] ?? []
+            return WeekGroup(id: "preseason-\(week)",
+                             title: preseasonTitle(week: week, league: league(of: weekGames)),
+                             games: weekGames)
+        }
+        if !preseasonUndated.isEmpty {
+            result.append(WeekGroup(id: "preseason-other", title: "Preseason",
+                                    games: preseasonUndated))
+        }
+        result += regular.keys.sorted().map { week in
             WeekGroup(id: "week-\(week)", title: "Week \(week)", games: regular[week] ?? [])
         }
         if !undated.isEmpty {
@@ -77,6 +103,25 @@ nonisolated enum ConferenceSlate {
             result.append(WeekGroup(id: "week-postseason", title: "Postseason", games: postseason))
         }
         return result
+    }
+
+    /// What a preseason card is headed by.
+    ///
+    /// ESPN numbers the preseason from the Hall of Fame Game: that game is
+    /// week 1 and the three preseason weekends are 2, 3 and 4, which is why
+    /// the label is the week number minus its opener. A league that
+    /// numbers its preseason from 1 keeps its own numbers — only the NFL
+    /// plays a Hall of Fame Game.
+    static func preseasonTitle(week: Int?, league: League) -> String {
+        guard let week else { return "Preseason" }
+        guard league == .nfl else { return "Preseason Week \(week)" }
+        return week <= 1 ? "Hall of Fame Game" : "Preseason Week \(week - 1)"
+    }
+
+    /// Whose preseason a card belongs to. Read off the games themselves —
+    /// a conference page's slate is one league's by construction.
+    private static func league(of games: [Game]) -> League {
+        games.first?.home.team.league ?? .collegeFootball
     }
 
     /// The slate narrowed to one team's games, home or away. A nil id is

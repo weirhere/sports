@@ -20,11 +20,17 @@ nonisolated extension ConferenceSlate {
         case none
     }
 
-    /// Which card a game files under by week: its regular-season week, the
-    /// postseason (whose week numbers restart and must never land a title
-    /// game in "Week 1"), or the dateless bucket.
+    /// Which card a game files under by week: its preseason week, its
+    /// regular-season week, the postseason (whose week numbers restart and
+    /// must never land a title game in "Week 1"), or the dateless bucket.
+    /// The preseason's numbers restart the same way, so it gets its own
+    /// namespace rather than sharing the regular season's.
     static func weekId(for game: Game) -> String {
         if game.seasonType == 3 { return "week-postseason" }
+        if game.seasonType == 1 {
+            guard let week = game.weekNumber else { return "preseason-other" }
+            return "preseason-\(week)"
+        }
         if let week = game.weekNumber { return "week-\(week)" }
         return "week-other"
     }
