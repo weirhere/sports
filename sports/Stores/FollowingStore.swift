@@ -41,10 +41,8 @@ final class FollowingStore {
     /// means: search then ranks on the match itself.
     var preferredLeague: League? {
         var counts: [League: Int] = [:]
-        for key in teamKeys {
-            guard let raw = key.split(separator: ":", maxSplits: 1).first,
-                  let league = League(rawValue: String(raw)) else { continue }
-            counts[league, default: 0] += 1
+        for key in teamKeys.followKeys {
+            counts[key.league, default: 0] += 1
         }
         for conference in conferenceIds {
             counts[conference.league, default: 0] += 1
@@ -115,10 +113,7 @@ final class FollowingStore {
     /// Every followed team id within one league, unqualified — what the
     /// per-league fetchers (schedules, reminders) want.
     func teamIds(in league: League) -> Set<String> {
-        let prefix = "\(league.rawValue):"
-        return Set(teamKeys.compactMap { key in
-            key.hasPrefix(prefix) ? String(key.dropFirst(prefix.count)) : nil
-        })
+        teamKeys.followedTeamIds(in: league)
     }
 
     /// A game is followed through either team, or through any group either
