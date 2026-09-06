@@ -88,9 +88,33 @@ final class SmokeUITests: XCTestCase {
                       "Scores should render its header")
         let followingHeader = app.buttons.matching(NSPredicate(
             format: "label BEGINSWITH %@", "Following,")).firstMatch
-        XCTAssertTrue(scrollUntilExists(followingHeader, in: app,
-                                        revealing: .above, timeout: 10),
-                      "Following section should appear once a team is followed")
+
+        // Following holds *this day's* followed games (2026-09-06), so the
+        // section only exists on a day the followed team plays — and a
+        // college team plays once a week. Asserting it on whatever day the
+        // test happens to run is a calendar fact, and a false one every
+        // Sunday: Georgia plays Saturdays.
+        //
+        // So walk back a day at a time until it turns up. The drag starts
+        // well clear of the left edge — a rightward swipe that begins near
+        // it is the system's back gesture, not a day step.
+        var foundFollowing = false
+        for step in 0...7 {
+            if scrollUntilExists(followingHeader, in: app,
+                                 revealing: .above, timeout: step == 0 ? 10 : 3) {
+                foundFollowing = true
+                break
+            }
+            let y = app.frame.height * 0.5
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: app.frame.width * 0.35, dy: y))
+                .press(forDuration: 0.1,
+                       thenDragTo: origin.withOffset(
+                        CGVector(dx: app.frame.width * 0.92, dy: y)),
+                       withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(foundFollowing,
+                      "Following should appear on a day the followed team plays")
         // The collapse at the top of this test (or a persisted user tap)
         // leaves the section closed, and a collapsed section's rows don't
         // exist as elements — expand it before hunting the game row.

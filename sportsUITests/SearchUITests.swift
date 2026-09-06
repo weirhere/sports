@@ -31,7 +31,10 @@ final class SearchUITests: XCTestCase {
         field.tap()
         field.typeText("Georgia Bulldogs")
 
-        let result = app.buttons["Georgia Bulldogs"].firstMatch
+        // Prefix, not equality: a result row's label carries the league
+        // ("Georgia Bulldogs, CFB") on every result since 2026-09-06.
+        let result = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Georgia Bulldogs")).firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 10),
                       "Search should surface Georgia in team results")
         result.tap()
@@ -60,7 +63,9 @@ final class SearchUITests: XCTestCase {
         field.tap()
         field.typeText("Mountain West")
 
-        let result = app.buttons["Mountain West"].firstMatch
+        // Prefix: the row speaks its size too — "Mountain West, 12 teams".
+        let result = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Mountain West")).firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 10),
                       "Search should surface the Mountain West in conference results")
         result.tap()

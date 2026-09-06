@@ -36,7 +36,7 @@ struct SectionAccordion: View {
                         .padding(.vertical, Spacing.md)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.swipeSafe)
                 // Named for what the tap does, not what it says — and it
                 // is the UI tests' hook for this path.
                 .accessibilityLabel("\(section.title) standings")
@@ -111,7 +111,9 @@ struct SectionAccordion: View {
         Button(action: onToggle) {
             content()
         }
-        .buttonStyle(.plain)
+        // The header sits on the day-swipe pane too, so it takes the same
+        // style as the rows: a swipe across it must not toggle the section.
+        .buttonStyle(.swipeSafe)
         .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
         .accessibilityValue(isExpanded ? "expanded" : "collapsed")
         .accessibilityAddTraits(.isHeader)
@@ -138,7 +140,9 @@ struct SectionAccordion: View {
                                 leagueTag: section.spansLeagues
                                     ? game.home.team.league : nil)
                     }
-                    .buttonStyle(.plain)
+                    // Not `.plain`: a full-width row is wider than any
+                    // swipe, so the day swipe used to end on this link.
+                    .buttonStyle(.swipeSafe)
                     .contextMenu {
                         followMenuButton(for: game.away.team)
                         followMenuButton(for: game.home.team)

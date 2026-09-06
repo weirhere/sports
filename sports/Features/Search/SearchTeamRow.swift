@@ -5,10 +5,13 @@ import SwiftUI
 /// the same rails widget taps ride.
 struct SearchTeamRow: View {
     let team: Team
-    /// Set where the result list spans leagues. Searching "Miami" returns
-    /// the Hurricanes and the Dolphins; "Cincinnati" the Bearcats and the
-    /// Bengals — 12 NFL locations and 24 of its 32 nicknames have a college
-    /// twin, so the tag is what makes the list answerable at a glance.
+    /// Every result carries it, not just the lists that span leagues
+    /// (Andy, 2026-09-06, from FotMob — its rows name the competition under
+    /// every club). Searching "Miami" returns the Hurricanes and the
+    /// Dolphins; "Cincinnati" the Bearcats and the Bengals — 12 NFL
+    /// locations and 24 of its 32 nicknames have a college twin. But a
+    /// single result is exactly when you can't tell from the list which one
+    /// you got, so the one-team case is where the tag earns the most.
     var leagueTag: League? = nil
     let onSelect: () -> Void
 
