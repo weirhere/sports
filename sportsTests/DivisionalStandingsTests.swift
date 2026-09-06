@@ -162,6 +162,36 @@ import Testing
         #expect(standings.foldingDivisions().map(\.id) == [37, 18])
     }
 
+    /// The tables hub hands the fold both college-football divisions at
+    /// once (Andy, 2026-09-06: FCS lives inside College Football's
+    /// accordion, not beside it), and the tier rule is what keeps them
+    /// apart — FBS conferences first, the 14 FCS ones below, no header
+    /// saying so. The two arrive on separate requests; only the list is
+    /// merged.
+    @Test func theFoldSortsFCSBelowFBSInOneList() throws {
+        let fbs = """
+        {"children": [
+          {"id": "37", "name": "Sun Belt Conference", "shortName": "Sun Belt",
+           "standings": {"entries": [\(entry("2026", "Marshall", conf: "1-0", overall: "2-1"))]}},
+          {"id": "8", "name": "Southeastern Conference", "shortName": "SEC",
+           "standings": {"entries": [\(entry("61", "Georgia", conf: "5-0", overall: "7-0"))]}}]}
+        """
+        let fcs = """
+        {"children": [
+          {"id": "20", "name": "Big Sky Conference", "shortName": "Big Sky",
+           "standings": {"entries": [\(entry("13", "Montana", conf: "2-0", overall: "4-0"))]}}]}
+        """
+        // FCS first, since the two fetches race and either can land first —
+        // the fold, not the arrival order, is what sorts them.
+        let union = ESPNMapper.conferenceStandings(from: try response(fcs))
+            + ESPNMapper.conferenceStandings(from: try response(fbs))
+        #expect(union.map(\.id) == [20, 8, 37])
+
+        // Power 4, then Group of 5, then FCS — the `.fcs` rung sits below
+        // `.independent`, so the divisions never interleave.
+        #expect(union.foldingDivisions().map(\.id) == [8, 37, 20])
+    }
+
     /// An empty conference with no children still yields an empty table, so
     /// the page can say "Standings TBA" rather than erroring.
     @Test func anEmptyConferenceStillYieldsATable() throws {
