@@ -135,14 +135,9 @@ final class NotificationScheduler {
         }
 
         var gamesById: [String: Game] = [:]
-        for key in followedKeys {
-            let parts = key.split(separator: ":", maxSplits: 1)
-            // A bare id predates the league axis and means college football.
-            let league = parts.count == 2 ? League(rawValue: String(parts[0])) : .collegeFootball
-            guard let league else { continue }
-            let teamId = parts.count == 2 ? String(parts[1]) : key
-            guard let schedule = try? await makeClient(league).teamSchedule(teamId: teamId)
-            else { continue }
+        for key in followedKeys.followKeys {
+            guard let schedule = try? await makeClient(key.league)
+                .teamSchedule(teamId: key.teamId) else { continue }
             for game in schedule.games {
                 // Dedupe by game id: both-teams-followed games get one
                 // reminder. TBD kickoffs (nil date, or a placeholder date

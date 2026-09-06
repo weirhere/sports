@@ -6,6 +6,11 @@ import WidgetKit
 /// Fetches ESPN directly: the widget's promise is a live score at 3:30 on
 /// Saturday without the app having been opened, and WidgetKit's daily
 /// reload budget keeps the request volume polite (~50/day worst case).
+///
+/// One request per league you actually follow — so a college-football-only
+/// user still spends exactly one, and only somebody following both pays
+/// for two. That is what keeps the second league off the politeness
+/// budget for everyone who didn't ask for it.
 /// `nonisolated` because the target defaults to MainActor and provider
 /// callbacks should not hop.
 nonisolated struct NextGameProvider: TimelineProvider {
@@ -39,25 +44,29 @@ nonisolated struct NextGameProvider: TimelineProvider {
     private func currentEntry() async -> (NextGameEntry, refresh: Date) {
         let now = Date.now
         let defaults = AppGroup.defaults
-        // League-qualified keys ("cfb:130"). The widget covers college
-        // football alone for now — an NFL follow is stored but not yet
-        // fetched here (M5) — so the guard asks whether any CFB team is
-        // followed, not whether anything is.
+        // League-qualified keys ("cfb:130", "nfl:26").
         let followedKeys = Set(defaults.stringArray(forKey: AppGroup.followingKeysKey) ?? [])
-            .filter { $0.hasPrefix("\(League.collegeFootball.rawValue):") }
-        guard !followedKeys.isEmpty else {
+        let leagues = followedKeys.followedLeagues
+        guard !leagues.isEmpty else {
             return (NextGameEntry(date: now, state: .noFollows), now.addingTimeInterval(60 * 60))
         }
 
-        do {
-            let scoreboard = try await DataProvider.makeClient(league: .collegeFootball)
-                .scoreboard(weekValue: nil, seasonType: nil, year: nil)
+        let boards = await Self.currentGames(in: leagues)
+        // A partial outage is not an outage: one league answering is enough
+        // to render, and only losing every league falls back to the stale
+        // snapshot. Otherwise an NFL hiccup would blank a Saturday.
+        if boards.contains(where: { $0 != nil }) {
+            let games = boards.compactMap(\.self).flatMap { $0 }
             // 4 fills the large family; medium trims to its own capacity.
             // One limit for every family: the snapshot below is a single
             // shared blob, and a per-family limit would let a medium reload
             // overwrite it with too few games for a placed large.
+            //
+            // The pick is cross-league and purely chronological, which is
+            // the right answer for "my games": a Sunday NFL kickoff can
+            // outrank a Saturday that has already finished.
             let relevant = GameSelection.relevantGames(
-                in: scoreboard.games, followedKeys: followedKeys, limit: 4, now: now
+                in: games, followedKeys: followedKeys, limit: 4, now: now
             )
             guard !relevant.isEmpty else {
                 return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(60 * 60))
@@ -77,8 +86,8 @@ nonisolated struct NextGameProvider: TimelineProvider {
             }
             let entry = NextGameEntry(date: now, state: .games(widgetGames, stale: false))
             return (entry, GameSelection.nextRefresh(after: now, games: relevant))
-        } catch {
-            Self.logger.error("Widget fetch failed: \(error, privacy: .public)")
+        } else {
+            Self.logger.error("Widget fetch failed for every followed league")
             // Last-good beats blank: re-serve the snapshot marked stale and
             // retry on a short leash.
             if let snapshot = WidgetSnapshot.load(from: defaults) {
@@ -107,6 +116,21 @@ nonisolated struct NextGameProvider: TimelineProvider {
                         now.addingTimeInterval(15 * 60))
             }
             return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(15 * 60))
+        }
+    }
+
+    /// Each league's current slate, in flight together. `nil` marks a league
+    /// that failed, so the caller can tell "nobody plays" from "nobody
+    /// answered" — the two look identical in a flattened list of games.
+    private static func currentGames(in leagues: [League]) async -> [[Game]?] {
+        await withTaskGroup(of: [Game]?.self) { group in
+            for league in leagues {
+                group.addTask {
+                    try? await DataProvider.makeClient(league: league)
+                        .scoreboard(weekValue: nil, seasonType: nil, year: nil).games
+                }
+            }
+            return await group.reduce(into: [[Game]?]()) { $0.append($1) }
         }
     }
 }

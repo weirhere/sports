@@ -20,7 +20,7 @@ nonisolated struct Team: Identifiable, Hashable, Sendable {
     /// The unambiguous follow key. ESPN team ids collide across leagues —
     /// 26 is UCLA in college football and the Seahawks in the NFL — so the
     /// follow set stores this, never the bare id.
-    var followKey: String { "\(league.rawValue):\(id)" }
+    var followKey: String { FollowKey(league: league, teamId: id).rawValue }
 
     /// This team's conference, qualified by league.
     var conference: ConferenceID? {
