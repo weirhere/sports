@@ -139,7 +139,7 @@ private struct DirectoryStub: ScoresProviding {
         try await scoreboard(weekValue: nil, seasonType: nil, year: nil,
                              divisions: divisions)
     }
-    func rankings() async throws -> [Poll] { [] }
+    func rankings(year: Int?) async throws -> [Poll] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] { [] }

@@ -22,6 +22,18 @@ private func game(_ id: String, week: Int?, seasonType: Int? = nil,
          broadcast: nil)
 }
 
+private func matchup(_ id: String, home: String, away: String,
+                     week: Int? = 1, daysFromEpoch: Int = 0) -> Game {
+    Game(id: id, date: Date(timeIntervalSince1970: TimeInterval(daysFromEpoch) * 86_400),
+         name: nil, shortName: nil, weekNumber: week, seasonType: nil,
+         status: .pre(detail: nil),
+         home: Competitor(team: team(home), score: nil, record: nil,
+                          rank: nil, isHome: true, winner: nil),
+         away: Competitor(team: team(away), score: nil, record: nil,
+                          rank: nil, isHome: false, winner: nil),
+         broadcast: nil)
+}
+
 @MainActor
 @Suite struct ConferenceSlateTests {
     @Test func weeksOrderAscendingAndPostseasonTrailsDespiteWeekOne() {
@@ -47,4 +59,41 @@ private func game(_ id: String, week: Int?, seasonType: Int? = nil,
         #expect(groups.map(\.id) == ["week-3", "week-other", "week-postseason"])
     }
 
+    // The Games tab's team filter: one team's games, home or away.
+
+    @Test func teamFilterKeepsBothHomeAndAwayGames() {
+        let slate = [
+            matchup("home", home: "gsu", away: "ncat"),
+            matchup("away", home: "wvu", away: "gsu", week: 2),
+            matchup("neither", home: "jmu", away: "liberty", week: 2),
+        ]
+        let filtered = ConferenceSlate.games(slate, forTeamId: "gsu")
+        #expect(filtered.map(\.id) == ["home", "away"])
+    }
+
+    @Test func nilTeamFilterIsTheWholeSlate() {
+        let slate = [matchup("a", home: "gsu", away: "ncat"),
+                     matchup("b", home: "jmu", away: "liberty")]
+        #expect(ConferenceSlate.games(slate, forTeamId: nil).map(\.id) == ["a", "b"])
+    }
+
+    @Test func teamWithNoGamesFiltersToNothing() {
+        // What the narrowed-empty state renders against: an empty result,
+        // not the unfiltered slate.
+        let slate = [matchup("a", home: "gsu", away: "ncat")]
+        #expect(ConferenceSlate.games(slate, forTeamId: "jmu").isEmpty)
+    }
+
+    @Test func filteredSlateStillGroupsByWeek() {
+        // The filter runs before the grouping, so a filtered season keeps
+        // its week cards and drops the weeks the team didn't play.
+        let slate = [
+            matchup("w1", home: "gsu", away: "ncat", week: 1, daysFromEpoch: 1),
+            matchup("w2", home: "jmu", away: "liberty", week: 2, daysFromEpoch: 8),
+            matchup("w3", home: "wvu", away: "gsu", week: 3, daysFromEpoch: 15),
+        ]
+        let groups = ConferenceSlate.groups(
+            from: ConferenceSlate.games(slate, forTeamId: "gsu"))
+        #expect(groups.map(\.id) == ["week-1", "week-3"])
+    }
 }

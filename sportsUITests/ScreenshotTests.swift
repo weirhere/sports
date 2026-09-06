@@ -54,20 +54,16 @@ final class ScreenshotTests: XCTestCase {
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "\(prefix)-rankings")
 
-        // Teams browse, then a team page via search.
-        XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
-                      "Teams browse should load")
+        // Teams: the follow list, then a team page via the search tab.
+        XCTAssertTrue(openTab("Teams", in: app, until: app.buttons["Add teams"]),
+                      "Teams should load")
         snapshot(app, "\(prefix)-teams")
-        let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.tap()
-        search.typeText("Georgia Bulldogs")
-        let row = app.staticTexts["Georgia"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
-        _ = app.buttons.matching(NSPredicate(
-            format: "label IN %@", ["Follow", "Following"])).firstMatch
-            .waitForExistence(timeout: 10)
+        XCTAssertTrue(openAddTeamsSheet(in: app),
+                      "Teams should offer the Add teams sheet")
+        snapshot(app, "\(prefix)-teams-add")
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(openTeamPage("Georgia Bulldogs", in: app),
+                      "Search should land on the Georgia team page")
         snapshot(app, "\(prefix)-team-page")
     }
 

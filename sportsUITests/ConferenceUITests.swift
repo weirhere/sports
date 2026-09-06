@@ -1,8 +1,7 @@
 import XCTest
 
-/// Live-network walk of the conference standings flow: the Teams header's
-/// context menu pushes ConferencePage (the trailing standings icon came
-/// off browse headers in the P1 review), the follow pill toggles, and the
+/// Live-network walk of the conference standings flow: the tables hub's
+/// conference row pushes ConferencePage, the follow pill toggles, and the
 /// Scores headers keep their standings button.
 ///
 /// Live-data rules apply (see CLAUDE.md): standings are a calendar fact —
@@ -18,33 +17,19 @@ final class ConferenceUITests: XCTestCase {
                                 "-ui.scoreFilter", ""]
         app.launch()
 
-        // Teams tab: the first conference group's header reaches standings
-        // through its context menu. ACC, not SEC — the browse list is a
-        // LazyVStack, so a section below the fold doesn't exist as an
-        // element yet, and ACC sorts first under tier-then-name (the
-        // existing smoke test leans on it the same way). The landmark is
-        // the search field rather than an "ACC" text, and the header
-        // predicate pins " teams", so a match can't be some other screen's
-        // ACC — cheap insurance that has outlived the Scores conference
-        // accordion it was written against.
-        XCTAssertTrue(openTab("Teams", in: app, until: app.searchFields.firstMatch),
-                      "Teams should show its search field")
-        let accHeader = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@ AND label ENDSWITH %@",
-            "ACC,", " teams")).firstMatch
-        XCTAssertTrue(accHeader.waitForExistence(timeout: 15),
-                      "The ACC header toggle should exist")
-        // The press is retried: a directory re-render mid-press invalidates
-        // the element snapshot and the menu never opens.
-        let standingsItem = app.buttons["View ACC standings"].firstMatch
-        for _ in 0..<3 where !standingsItem.exists {
-            guard accHeader.waitForExistence(timeout: 5) else { break }
-            accHeader.press(forDuration: 1.0)
-            _ = standingsItem.waitForExistence(timeout: 3)
-        }
-        XCTAssertTrue(standingsItem.exists,
-                      "The ACC header's context menu should offer standings")
-        standingsItem.tap()
+        // The tables hub is the way into a conference page now: the Teams
+        // tab lists the teams you follow rather than the directory, so its
+        // conference accordions (and their standings context menu) are
+        // gone. ACC, not SEC — the hub's college-football accordion lists
+        // conferences tier-then-name, so ACC is the first row under the
+        // Top 25 one and is realized even in a LazyVStack.
+        XCTAssertTrue(openTab("Tables", in: app, until: app.top25Row),
+                      "Tables should load its hub")
+        let accRow = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC,")).firstMatch
+        XCTAssertTrue(scrollUntilExists(accRow, in: app, timeout: 15),
+                      "The hub should list the ACC")
+        accRow.tap()
 
         // ConferencePage: hero, follow pill, and standings-or-TBA. The name
         // lives in the hero (TeamPage template), so the pill marks the
@@ -55,7 +40,7 @@ final class ConferenceUITests: XCTestCase {
             format: "label == %@ OR label == %@",
             "Follow conference", "Following conference")).firstMatch
         XCTAssertTrue(conferencePill.waitForExistence(timeout: 10),
-                      "The standings item should push the ACC page")
+                      "The hub row should push the ACC page")
         // The page lands on its Games tab (2026-08-29) — the table is one
         // tab over, behind the hero's Standings chip.
         let standingsTab = app.buttons["Standings"].firstMatch

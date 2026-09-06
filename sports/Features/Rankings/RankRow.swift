@@ -4,6 +4,12 @@ import SwiftUI
 /// Movement is the one place besides live state that spends color: green up,
 /// red down. Arrows carry the meaning too, so color is never the only signal.
 ///
+/// The columns are `ConferenceStandingRow`'s, to the point — same place
+/// gutter, same logo, same 10pt rows, same trailing record column under the
+/// same captions (Andy, 2026-09-05: the poll table mirrors every other
+/// league and conference table). Only the last column differs, because
+/// movement is the thing a poll has and a standings table doesn't.
+///
 /// At accessibility text sizes the meta (votes, record, movement) drops to a
 /// second line instead of squeezing the name down to an ellipsis.
 struct RankRow: View {
@@ -11,8 +17,9 @@ struct RankRow: View {
 
     @Environment(FollowingStore.self) private var following
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 22
-    @ScaledMetric(relativeTo: .body) private var rankWidth: CGFloat = 26
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var rankWidth: CGFloat = 16
+    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
     @ScaledMetric(relativeTo: .caption) private var movementWidth: CGFloat = 40
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
@@ -22,7 +29,7 @@ struct RankRow: View {
             if isStacked { stackedBody } else { compactBody }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 7)
+        .padding(.vertical, 10)
         .contextMenu {
             Button {
                 following.toggle(ranked.team)
@@ -38,12 +45,13 @@ struct RankRow: View {
     }
 
     private var compactBody: some View {
-        HStack(spacing: Spacing.sm) {
+        HStack(spacing: Spacing.md) {
             rankNumber
             teamLogo
             teamName
+                .layoutPriority(1)
             votesLabel
-            Spacer()
+            Spacer(minLength: Spacing.sm)
             recordLabel
             movementLabel
                 .frame(minWidth: movementWidth, alignment: .trailing)
@@ -52,7 +60,7 @@ struct RankRow: View {
 
     private var stackedBody: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.md) {
                 rankNumber
                 teamLogo
                 teamName
@@ -70,10 +78,12 @@ struct RankRow: View {
 
     // MARK: - Parts
 
+    /// The standings table's place column, exactly: weight-emphasized
+    /// meta, right-aligned so 1 and 25 share an edge.
     private var rankNumber: some View {
         Text("\(ranked.current)")
-            .font(.score)
-            .foregroundStyle(.textPrimary)
+            .font(.metaEmphasis)
+            .foregroundStyle(.textSecondary)
             // The compact list right-aligns ranks into a gutter so 1 and 25
             // share an edge. Stacked rows have no gutter to align to — the
             // meta line below starts flush left, so the rank does too.
@@ -104,14 +114,15 @@ struct RankRow: View {
         }
     }
 
-    @ViewBuilder
+    /// The standings tables' record column — same font, same width, so
+    /// the numbers line up whichever table you came from. Dashed when the
+    /// poll carries no record (a preseason CFP table), never blank.
     private var recordLabel: some View {
-        if let record = ranked.record {
-            Text(record)
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
-        }
+        Text(ranked.record ?? "–")
+            .font(.teamName.monospacedDigit())
+            .foregroundStyle(ranked.record == nil ? .textSecondary : .textPrimary)
+            .lineLimit(1)
+            .frame(minWidth: isStacked ? nil : recordWidth, alignment: .trailing)
     }
 
     private var followActionTitle: String {

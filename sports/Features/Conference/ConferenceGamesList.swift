@@ -6,11 +6,19 @@ import SwiftUI
 /// registers a `Game` destination).
 struct ConferenceGamesList: View {
     let games: [Game]
+    /// What the cards are headed by. Weeks is the season's own clock and
+    /// stays the default; the Top 25's toggles can ask for days instead,
+    /// or for one unheaded card (Andy, 2026-09-05).
+    var grouping: ConferenceSlate.Grouping = .week
 
     var body: some View {
-        ForEach(ConferenceSlate.groups(from: games)) { group in
+        ForEach(ConferenceSlate.groups(from: games, by: grouping)) { group in
             VStack(spacing: 0) {
-                CardHeader(title: group.title)
+                // An unheaded card is the ungrouped list's whole point —
+                // nothing is being grouped, so nothing labels it.
+                if !group.title.isEmpty {
+                    CardHeader(title: group.title)
+                }
                 VStack(spacing: 0) {
                     ForEach(Array(group.games.enumerated()), id: \.element.id) { index, game in
                         NavigationLink(value: game) {
@@ -24,7 +32,7 @@ struct ConferenceGamesList: View {
                         }
                     }
                 }
-                .padding(.top, Spacing.xs)
+                .padding(.top, group.title.isEmpty ? 0 : Spacing.xs)
             }
             .padding(.bottom, Spacing.xs)
             .cardSurface()
@@ -69,5 +77,13 @@ nonisolated enum ConferenceSlate {
             result.append(WeekGroup(id: "week-postseason", title: "Postseason", games: postseason))
         }
         return result
+    }
+
+    /// The slate narrowed to one team's games, home or away. A nil id is
+    /// the whole slate — "All teams" is the absence of a filter, not a
+    /// value the caller has to special-case.
+    static func games(_ games: [Game], forTeamId id: String?) -> [Game] {
+        guard let id else { return games }
+        return games.filter { $0.home.team.id == id || $0.away.team.id == id }
     }
 }

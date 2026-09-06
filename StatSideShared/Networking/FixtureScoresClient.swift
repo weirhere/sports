@@ -107,7 +107,7 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         try await scoreboard(weekValue: nil, seasonType: nil, year: nil, divisions: divisions)
     }
 
-    func rankings() async throws -> [Poll] { [] }
+    func rankings(year: Int?) async throws -> [Poll] { [] }
 
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
 

@@ -177,24 +177,30 @@ import Testing
 }
 
 @Suite struct StandingsRecordLabelTests {
-    /// ESPN's NFL standings carry `divisionRecord` and no conference record
-    /// at all, so the column says what it actually holds.
+    /// The in-group column is the conference record in both leagues.
+    ///
+    /// It was captioned "DIV" for the NFL until 2026-09-05, on the belief
+    /// that ESPN shipped only a division record there. It ships both, and
+    /// the mapper reads `vsconf`.
     @Test func theInGroupColumnNamesWhatItHolds() {
         #expect(League.inGroupRecordCaption(.collegeFootball) == "CONF")
-        #expect(League.inGroupRecordCaption(.nfl) == "DIV")
+        #expect(League.inGroupRecordCaption(.nfl) == "CONF")
         #expect(League.inGroupRecordSpoken(.collegeFootball) == "in conference")
-        #expect(League.inGroupRecordSpoken(.nfl) == "in division")
+        #expect(League.inGroupRecordSpoken(.nfl) == "in conference")
     }
 
-    /// The NFL's `divisionRecord` reaches the same column college
-    /// football's `vsconf` does.
-    @Test func theNFLDivisionRecordFillsTheInGroupColumn() throws {
+    /// The NFL's `vsconf` reaches the same column college football's does,
+    /// and the division record beside it — spelled `divisionrecord`, which
+    /// is not what the retired fallback asked for — stays out of it.
+    @Test func theNFLConferenceRecordFillsTheInGroupColumn() throws {
         let json = """
         {"children": [
           {"id": "8", "name": "American Football Conference",
            "standings": {"entries": [
              {"team": {"id": "2", "location": "Buffalo"},
-              "stats": [{"type": "divisionRecord", "summary": "2-0"},
+              "stats": [{"type": "vsconf", "summary": "2-0"},
+                        {"type": "divisionrecord", "summary": "0-0"},
+                        {"type": "winpercent", "value": 1.0},
                         {"type": "total", "summary": "3-0"}]}]}}]}
         """
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: Data(json.utf8))
@@ -203,6 +209,7 @@ import Testing
 
         #expect(buffalo.conferenceRecord == "2-0")
         #expect(buffalo.overallRecord == "3-0")
+        #expect(buffalo.winPercent == 1.0)
         #expect(standings.first?.name == "AFC")
     }
 }

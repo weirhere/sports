@@ -3,7 +3,7 @@ import SwiftUI
 /// Horizontal day selector — the Scores screen's unit of time since both
 /// leagues started sharing the page (Andy, 2026-09-05).
 ///
-/// Past days sit left, future right, bounded by the selected season. A day
+/// Past days sit left, future right, bounded by the season. A day
 /// is the only unit college football and the NFL agree on: their weeks are
 /// different date ranges, and college football's single "Bowls" slot
 /// swallows four NFL playoff rounds whole.
@@ -70,7 +70,7 @@ struct DayStrip: View {
                 .glassCapsule(fallback: Color.bgElevated)
         }
         .buttonStyle(.plain)
-        .padding(.trailing, Spacing.md)
+        .padding(.trailing, Spacing.sm)
         .accessibilityLabel("Jump to today")
         .accessibilityIdentifier("day-strip-today")
     }
@@ -130,6 +130,7 @@ struct DayStrip: View {
     return VStack(spacing: Spacing.lg) {
         DayStrip(days: days, selectedId: DayFormat.id(for: .now),
                  today: .now, onSelect: { _ in })
+        // Scrolled off today: the jump-home chip claims the trailing edge.
         DayStrip(days: days,
                  selectedId: days.first?.id,
                  today: .now, onSelect: { _ in })

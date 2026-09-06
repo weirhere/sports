@@ -26,7 +26,7 @@ private struct LeagueStub: ScoresProviding {
                           })
     }
 
-    func rankings() async throws -> [Poll] { [] }
+    func rankings(year: Int?) async throws -> [Poll] { [] }
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }
@@ -287,6 +287,32 @@ private func makeFollowing(_ teams: [Team] = [],
         let sections = scoreboards.sections(followingIds: following.teamKeys)
         #expect(sections.first?.games.map(\.id) == ["early", "late"])
         #expect(sections.last?.games.map(\.id) == ["early", "late"])
+    }
+
+    @Test func followingLeadsWithLiveAndTrailsWithFinals() async {
+        let calendar = Calendar.current
+        let noon = today()
+        let morning = calendar.date(byAdding: .hour, value: -4, to: noon) ?? noon
+        let evening = calendar.date(byAdding: .hour, value: 7, to: noon) ?? noon
+        let mine = team("1", in: .collegeFootball)
+        func finished(_ id: String, at date: Date) -> Game {
+            var base = game(id, home: mine, away: team("x\(id)", in: .collegeFootball), at: date)
+            base = Game(id: base.id, date: base.date, name: nil, shortName: nil, weekNumber: 1,
+                        status: .final(detail: nil), home: base.home, away: base.away,
+                        broadcast: nil)
+            return base
+        }
+        let scoreboards = await makeScoreboards(
+            cfb: [finished("final-early", at: morning),
+                  game("upcoming", home: mine, away: team("2", in: .collegeFootball), at: evening),
+                  finished("final-late", at: noon),
+                  game("live", home: mine, away: team("3", in: .collegeFootball),
+                       live: true, at: noon)])
+        let following = makeFollowing([mine])
+
+        let sections = scoreboards.sections(followingIds: following.teamKeys)
+        #expect(sections.first?.games.map(\.id)
+                == ["live", "upcoming", "final-early", "final-late"])
     }
 
     // MARK: - The day axis

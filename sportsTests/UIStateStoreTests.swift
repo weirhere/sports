@@ -110,14 +110,24 @@ import Testing
         #expect(store.scoreFilter == nil)
 
         store.liveOnly = true
-        store.scoreFilter = .conference(.cfb(8))
+        store.scoreFilter = .top25
         let reloaded = UIStateStore(defaults: defaults)
         #expect(reloaded.liveOnly == true)
-        #expect(reloaded.scoreFilter == .conference(.cfb(8)))
+        #expect(reloaded.scoreFilter == .top25)
 
-        reloaded.scoreFilter = .top25
-        #expect(UIStateStore(defaults: defaults).scoreFilter == .top25)
         reloaded.scoreFilter = nil
+        #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
+    }
+
+    /// A conference filter written before the view-options sheet retired
+    /// comes back as the full slate: Top 25 is the only filter with a
+    /// control now, so a restored conference slate would narrow the screen
+    /// with nothing on it able to say so or clear it.
+    @Test func aStoredConferenceFilterDoesNotComeBack() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        store.scoreFilter = .conference(.cfb(8))
+
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
     }
 }

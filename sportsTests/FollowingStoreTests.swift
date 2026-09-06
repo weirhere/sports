@@ -45,6 +45,31 @@ private func game(home: Team, away: Team) -> Game {
         #expect(store.followsAnyone)
     }
 
+    /// The poll is a third follow set, keyed by league: the NFL has no
+    /// poll today, and a league that grows one needs no migration.
+    @Test func pollFollowPersistsAcrossReinitAndIsPerLeague() {
+        let defaults = makeDefaults()
+        let store = FollowingStore(defaults: defaults)
+        store.togglePoll(in: .collegeFootball)
+        #expect(store.isFollowingPoll(in: .collegeFootball))
+        #expect(!store.isFollowingPoll(in: .nfl))
+
+        let reloaded = FollowingStore(defaults: defaults)
+        #expect(reloaded.isFollowingPoll(in: .collegeFootball))
+        reloaded.togglePoll(in: .collegeFootball)
+        #expect(!FollowingStore(defaults: defaults).isFollowingPoll(in: .collegeFootball))
+    }
+
+    /// …and it stays out of `followsAnyone`, which gates the game-shaped
+    /// surfaces: a followed poll carries no games, so counting it would
+    /// promise a Following section with nothing in it.
+    @Test func aFollowedPollIsNotFollowingSomeone() {
+        let store = FollowingStore(defaults: makeDefaults())
+        store.togglePoll(in: .collegeFootball)
+        #expect(!store.followsAnyone)
+        #expect(store.preferredLeague == nil)
+    }
+
     @Test func followsMatchesEitherSidesConference() {
         let store = FollowingStore(defaults: makeDefaults())
         store.toggleConference(.cfb(8))

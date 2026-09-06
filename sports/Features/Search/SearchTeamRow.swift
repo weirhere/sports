@@ -37,7 +37,7 @@ struct SearchTeamRow: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, 7)
             .contentShape(Rectangle())
-            // Inside the label, like TeamBrowseRow: flattening outside the
+            // Inside the label, like TeamFollowRow: flattening outside the
             // Button would strip its button trait from the merged element.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spokenLabel)

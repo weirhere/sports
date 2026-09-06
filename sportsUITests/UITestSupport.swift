@@ -41,6 +41,13 @@ extension XCUIApplication {
         descendants(matching: .any)
             .matching(identifier: "scores-filter-chip").firstMatch
     }
+
+    /// A followed team's card on the Teams tab. The card speaks its name
+    /// and the group it plays in ("Georgia Bulldogs, SEC"), so the match
+    /// is a prefix — the sheet's rows carry the bare name.
+    func teamCard(_ name: String) -> XCUIElement {
+        buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+    }
 }
 
 extension XCTestCase {
@@ -54,6 +61,77 @@ extension XCTestCase {
         guard openTab("Tables", in: app, until: app.top25Row) else { return false }
         app.top25Row.tap()
         return app.topRankedRow.waitForExistence(timeout: 15)
+    }
+
+    /// Opens the Add teams sheet from the Teams tab.
+    ///
+    /// The Teams tab is the list of teams you follow (2026-09-05), so
+    /// joining one goes through this sheet rather than the browse
+    /// accordions that used to live on the tab. The sheet's field carries
+    /// its own identifier — the app-wide search tab has one too, and
+    /// `searchFields.firstMatch` would be ambiguous whenever both are in
+    /// the hierarchy.
+    @MainActor
+    @discardableResult
+    func openAddTeamsSheet(in app: XCUIApplication) -> Bool {
+        let add = app.buttons["Add teams"].firstMatch
+        guard openTab("Teams", in: app, until: add) else { return false }
+        // Retried like every other tap here: a directory re-render lands
+        // mid-tap and the sheet never opens.
+        for _ in 0..<3 {
+            guard add.waitForExistence(timeout: 5) else { break }
+            add.tap()
+            if app.searchFields["search.addTeams"].waitForExistence(timeout: 5) { return true }
+        }
+        return false
+    }
+
+    /// Follows a team through the Add teams sheet: opens the sheet,
+    /// searches for the team by name, follows it, and returns once its
+    /// card is on the Teams tab. A no-op follow if a previous run already
+    /// followed it (follows persist on the simulator).
+    ///
+    /// `name` is the team's full display name, which is both what search
+    /// matches and what the row's accessibility label says.
+    @MainActor
+    @discardableResult
+    func followTeam(_ name: String, in app: XCUIApplication) -> Bool {
+        guard openAddTeamsSheet(in: app) else { return false }
+        let field = app.searchFields["search.addTeams"]
+        field.tap()
+        field.typeText(name)
+        let row = app.buttons[name].firstMatch
+        guard row.waitForExistence(timeout: 10) else { return false }
+        // One tap, confirmed on the tab behind rather than in the sheet.
+        // A retry loop would tap into nothing: the first follow of all
+        // raises the kickoff-reminder offer, and SwiftUI closes the sheet
+        // to present it (both are anchored to the same view), taking the
+        // row's element with it.
+        if row.value as? String != "following" { row.tap() }
+        // Still up whenever nothing interrupted — leave it the way a user
+        // would.
+        let done = app.buttons["Done"].firstMatch
+        if done.waitForExistence(timeout: 2) { done.tap() }
+        return app.teamCard(name).waitForExistence(timeout: 10)
+    }
+
+    /// Lands on a team's page through the app-wide search tab — the route
+    /// to a team page for a team you don't already follow, now that the
+    /// Teams tab lists follows rather than the whole directory.
+    @MainActor
+    @discardableResult
+    func openTeamPage(_ name: String, in app: XCUIApplication) -> Bool {
+        let field = app.searchFields["search.appWide"]
+        guard openTab("Search", in: app, until: field) else { return false }
+        field.tap()
+        field.typeText(name)
+        let result = app.buttons[name].firstMatch
+        guard result.waitForExistence(timeout: 10) else { return false }
+        result.tap()
+        // The Router intent switches to the Teams tab and pushes the page;
+        // Follow may already read Following from a prior run.
+        return app.buttons["Follow"].firstMatch.waitForExistence(timeout: 10)
+            || app.buttons["Following"].firstMatch.waitForExistence(timeout: 5)
     }
 
     /// Which way an off-screen element is expected to lie.

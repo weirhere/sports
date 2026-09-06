@@ -77,22 +77,29 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// What a standings table calls its in-group record column. ESPN's NFL
-    /// standings carry `divisionRecord` and no conference record at all, so
-    /// the column says what it actually holds.
-    static func inGroupRecordCaption(_ league: League) -> String {
-        league == .nfl ? "DIV" : "CONF"
-    }
+    /// What a standings table calls its in-group record column — the
+    /// conference record in both leagues.
+    ///
+    /// This said "DIV" for the NFL until 2026-09-05, on the belief that
+    /// ESPN's NFL standings carried only a division record. They carry
+    /// both, and the mapper has always read `vsconf`: the lookup beside it
+    /// asked for `divisionRecord` where the payload spells the stat
+    /// `divisionrecord`, so it never matched and every NFL table has been
+    /// showing a conference record under a division caption. The caption
+    /// moved to match the number rather than the other way around, because
+    /// the league table (all 32 teams) has a conference record to show and
+    /// no division one worth a column.
+    static func inGroupRecordCaption(_ league: League) -> String { "CONF" }
+
+    /// Whether the league ranks its teams. College football has the AP,
+    /// Coaches and CFP polls; `/nfl/rankings` is a 404 and always will be.
+    var hasPoll: Bool { self == .collegeFootball }
 
     /// The long form, for a card row rather than a table column.
-    static func inGroupRecordLabel(_ league: League) -> String {
-        league == .nfl ? "Division" : "Conference"
-    }
+    static func inGroupRecordLabel(_ league: League) -> String { "Conference" }
 
     /// The spoken form, for the row's VoiceOver sentence.
-    static func inGroupRecordSpoken(_ league: League) -> String {
-        league == .nfl ? "in division" : "in conference"
-    }
+    static func inGroupRecordSpoken(_ league: League) -> String { "in conference" }
 
     /// Where conference marks live. College football has its own
     /// `ncaa_conf` bucket; the NFL files AFC/NFC beside the team marks

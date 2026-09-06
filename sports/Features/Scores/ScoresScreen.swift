@@ -41,20 +41,14 @@ struct ScoresScreen: View {
     @State private var dragOffset: CGFloat = 0
     @State private var dragAxis: DragAxis?
     @State private var paneWidth: CGFloat = 393
-    @State private var showsFilterSheet = false
 
     private enum DragAxis { case horizontal, vertical }
 
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                ScoresHeader(
-                    liveOnly: uiState.liveOnly,
-                    scoreFilter: uiState.scoreFilter,
-                    pastSeasonYear: pastSeasonYear,
-                    onToggleLive: { toggleLive() },
-                    onTapFilter: { showsFilterSheet = true }
-                )
+                ScoresHeader(liveOnly: uiState.liveOnly,
+                             onToggleLive: { toggleLive() })
                 DayStrip(days: scoreboards.days(),
                          selectedId: DayFormat.id(for: scoreboards.selectedDay),
                          today: .now) { day in
@@ -109,20 +103,6 @@ struct ScoresScreen: View {
                 TeamPage(team: team)
             }
         }
-        .sheet(isPresented: $showsFilterSheet) {
-            ScoreFilterSheet(
-                current: uiState.scoreFilter,
-                seasonYear: scoreboards.seasonYear,
-                seasons: scoreboards.availableSeasons,
-                onSelect: { selection in
-                    withAnimation { uiState.scoreFilter = selection }
-                },
-                onSelectSeason: { year in
-                    daySlideAnimation = nil
-                    Task { await scoreboards.select(season: year) }
-                }
-            )
-        }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this
         // mostly matters after the tab's view is torn down and recreated.
@@ -134,9 +114,10 @@ struct ScoresScreen: View {
             Self.logger.info("scores path depth \(old) -> \(new)")
         }
         // The slate's divisions follow the user's choices: FBS always, FCS
-        // only while an FCS conference is filtered to or followed (E8 scope
-        // (b)). `select(divisions:)` refetches and no-ops when nothing
-        // changed — so this fires freely.
+        // only while an FCS conference is followed (E8 scope (b) — the
+        // filter half of the rule left with the slate filter itself).
+        // `select(divisions:)` refetches and no-ops when nothing changed —
+        // so this fires freely.
         .task(id: neededDivisions) { await scoreboards.select(divisions: neededDivisions) }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: scoreboards.selectedDay) { _, _ in
@@ -146,21 +127,14 @@ struct ScoresScreen: View {
     }
 
     private var neededDivisions: Set<Conference.Division> {
-        ScoreboardStore.divisions(filter: uiState.scoreFilter,
+        ScoreboardStore.divisions(filter: nil,
                                   followedConferenceIds: following.conferenceIds)
     }
 
     private var sections: [GameSection] {
         scoreboards.sections(followingIds: following.teamKeys,
                              followedConferenceIds: following.conferenceIds,
-                             liveOnly: uiState.liveOnly,
-                             filter: uiState.scoreFilter)
-    }
-
-    /// The selected season when browsing the past — what the funnel chip
-    /// surfaces so a 2019 slate is never mistaken for this week.
-    private var pastSeasonYear: Int? {
-        scoreboards.seasonYear == scoreboards.currentSeasonYear ? nil : scoreboards.seasonYear
+                             liveOnly: uiState.liveOnly)
     }
 
     /// Turning the Live filter on goes to where live games are — today
@@ -304,8 +278,7 @@ struct ScoresScreen: View {
         let sections = scoreboards.sections(day: target,
                                             followingIds: following.teamKeys,
                                             followedConferenceIds: following.conferenceIds,
-                                            liveOnly: uiState.liveOnly,
-                                            filter: uiState.scoreFilter)
+                                            liveOnly: uiState.liveOnly)
         Group {
             if sections.isEmpty {
                 VStack(spacing: Spacing.md) {
@@ -370,19 +343,14 @@ struct ScoresScreen: View {
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
-                } else if uiState.liveOnly || uiState.scoreFilter != nil {
+                } else if uiState.liveOnly {
                     // The narrowed-slate empty state: name what's hiding
-                    // the games, and offer the whole slate back. One
-                    // button clears both filters — that's what its label
-                    // promises.
-                    Text(narrowedEmptyMessage)
+                    // the games, and offer the whole slate back.
+                    Text("No live games right now")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                     Button("Show all games") {
-                        withAnimation {
-                            uiState.scoreFilter = nil
-                            uiState.liveOnly = false
-                        }
+                        withAnimation { uiState.liveOnly = false }
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
@@ -406,16 +374,5 @@ struct ScoresScreen: View {
         if calendar.isDateInToday(day) { return "No games today" }
         if calendar.isDateInTomorrow(day) { return "No games tomorrow" }
         return "No games on \(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))"
-    }
-
-    /// What the narrowed-slate empty state says: live and the slate filter
-    /// compose into one sentence.
-    private var narrowedEmptyMessage: String {
-        switch (uiState.liveOnly, uiState.scoreFilter) {
-        case (true, let filter?): "No live \(filter.label) games right now"
-        case (true, nil): "No live games right now"
-        case (false, let filter?): "No \(filter.label) games this day"
-        case (false, nil): ""
-        }
     }
 }
