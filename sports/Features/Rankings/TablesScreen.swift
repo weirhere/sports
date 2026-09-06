@@ -72,11 +72,16 @@ struct TablesScreen: View {
         League.allCases.flatMap { league -> [TableGroup] in
             var groups = [TableGroup(id: Self.sectionId(for: league),
                                      title: league.displayName,
+                                     logoURL: league.logoURL,
                                      startsExpanded: true,
                                      rows: rows(for: league))]
             if league == .collegeFootball {
+                // FCS is a division, not a league, and ESPN publishes no
+                // mark for it — the fallback glyph keeps its title on the
+                // same x as the badged rows above it.
                 groups.append(TableGroup(id: Self.fcsSectionId,
                                          title: "FCS",
+                                         logoURL: nil,
                                          startsExpanded: false,
                                          rows: fcsStandings.foldingDivisions()
                                              .map(TableRow.conference)))
@@ -223,6 +228,7 @@ struct TablesScreen: View {
                 }
             } label: {
                 HStack(spacing: Spacing.sm) {
+                    ConferenceLogo(url: group.logoURL)
                     Text(group.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -349,6 +355,9 @@ private extension ConferenceStandings {
 private struct TableGroup: Identifiable {
     let id: String
     let title: String
+    /// The badge beside the title — the league's own mark. nil falls back
+    /// to the football glyph every conference header already uses.
+    let logoURL: URL?
     /// Whether the card arrives open. Leagues do; FCS doesn't, because it
     /// is opt-in and fourteen rows the app never promised to cover.
     let startsExpanded: Bool
