@@ -95,9 +95,9 @@ final class ConferenceUITests: XCTestCase {
         XCTAssertTrue(tapUntilDismissed(back, dismissing: follow),
                       "Back should pop the conference page")
         // The funnel chip marks the Scores header — the season chip moved
-        // inside the filter sheet (2026-08-29), so it's no longer visible
-        // at rest.
-        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresFilterChip),
+        // gone entirely with the view-options sheet (2026-09-06); the
+        // season chip on the day strip is the stable marker now.
+        XCTAssertTrue(openTab("Scores", in: app, until: app.scoresLiveChip),
                       "Scores should render its header")
         // Following a conference is what puts its whole slate into the
         // Scores Following section. Asserting the section exists, not what

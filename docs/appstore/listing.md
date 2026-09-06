@@ -5,17 +5,24 @@ Fields marked ✏️ are Andy's-voice drafts — edit freely; nothing here is lo
 
 ## App name (30 chars max, must be unique on the store)
 
-1. `StatSide` (8) — if available, take it. (iTunes Search API showed no app
-   named StatSide as of 2026-07-21 — likely free, confirmed only when App
-   Store Connect accepts it.)
-2. `StatSide — CFB Scores` (21) — fallback
-3. `StatSide: College Football` (26) — fallback
+1. `StatSide` (8) — taken at 1.0, keep it.
+2. `StatSide — Football Scores` (25) — fallback
 
-## Subtitle (30 chars max)
+The 1.0 fallbacks named college football (`StatSide — CFB Scores`,
+`StatSide: College Football`). They stopped being fallbacks at 2.0, when the
+NFL joined — a name that names one league is worse than no fallback.
 
-`College football, at a glance` (29)
+## Subtitle (30 chars max) ✏️
 
-Alternate: `Fast college football scores` (28)
+`CFB and NFL, at a glance` (24)
+
+Alternates:
+- `Football scores, at a glance` (28) — broader, loses the two leagues
+- `College football and the NFL` (28) — names them, drops the promise
+
+Rewritten for 2.0. "College football, at a glance" (29) was the 1.x line and
+is now half the app. "CFB" is jargon in a store subtitle, but it is the
+jargon this audience searches with, and it buys the room to name both.
 
 ## Category
 
@@ -25,6 +32,26 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.0 (build 13)
+
+> • The NFL is here. Follow your NFL teams alongside your college ones —
+>   they share the Following section, the widget, and your kickoff reminders.
+> • Scores is a day at a time now. College football and the NFL each get
+>   their own section on the day you're looking at, so a Saturday and a
+>   Sunday both read the way they actually happen. Swipe for the next day,
+>   or jump back with Today.
+> • Tables covers both: the Top 25 and every college conference, the AFC and
+>   NFC and their divisions, and the whole NFL in one table.
+> • Teams is your list now. It holds the teams you follow; Add teams opens
+>   the whole directory — both leagues — with the popular ones up front.
+> • Search tells them apart. Two Cincinnatis, two Miamis: results say which
+>   league each one is.
+> • The FCS has its own card in Tables, so following a conference there is
+>   one tap from the hub.
+> • Bye weeks show up on NFL team schedules instead of a silent gap between
+>   two week numbers.
+> • The whole Sun Belt was missing from Teams and search. It's back — all 14.
 
 ### 1.4.0 (build 12)
 
@@ -115,43 +142,41 @@ up, fold the still-true bullets into 1.3.1 and drop that one.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Saturdays move fast. Follow your teams, filter to what's live, and get a
-> reminder 30 minutes before kickoff. Scores, rankings, and no ads in the way. (148)
+> Saturday and Sunday, in one place. Follow your college and NFL teams, see
+> what's live, and get a reminder 30 minutes before kickoff. No ads. (140)
 
-Rewritten 2026-09-01: the previous line was preseason copy ("Kickoff is
-coming... ready for Week 1") and Week 1 finished Aug 29. This field is
-editable without review, so it should never be the stale one.
+Rewritten 2026-09-06 for 2.0: the 1.x line said "Saturdays move fast", which
+is half the week now. This field is editable without review, so it should
+never be the stale one.
 
 ## Description (4000 chars max) ✏️
 
-> StatSide is college football, at a glance. One screen answers "what's
-> happening in college football right now" — no ads, no interstitials,
-> nothing between you and the scores.
+> StatSide is college football and the NFL, at a glance. One screen answers
+> "what's happening right now" — no ads, no interstitials, nothing between
+> you and the scores.
 >
-> BUILT FOR SATURDAYS
-> • Your teams first: follow any FBS team and their games lead the page
-> • Top 25 games in their own section, always complete
-> • Every conference in collapsible sections that remember how you left them
+> BUILT FOR SATURDAYS AND SUNDAYS
+> • Your teams first: follow any team in either league and their games lead
+>   the page, together
+> • One day at a time, both leagues stacked — college football and the NFL,
+>   each in its own section
 > • Live games get a pulsing dot, a possession marker, and heavier type on the score
 > • One tap filters to live games only
 >
 > YOUR TEAMS, EVERYWHERE
-> • A Home Screen and Lock Screen widget with your teams' live score or next kickoff
+> • A Home Screen and Lock Screen widget with your teams' live score or next
+>   kickoff, from either league
 > • Kickoff reminders 30 minutes before your teams play
 > • Ask Siri "What's my next game?" — or share a score straight from any game
 > • Long-press any game to follow a team or share the score
 >
-> A WEEK, NOT A DATE
-> College football thinks in weeks — so does StatSide. Flip through Week 0
-> to championship week, the bowls, and the Playoff. Sunday keeps the
-> completed week on screen until the new polls drop.
->
-> RANKINGS AND DETAILS
+> TABLES FOR BOTH
 > • AP Top 25 and Coaches Poll, with movement arrows
-> • Game pages: line score, scoring plays, drive log, team stats, leaders
-> • Team pages: the record, the full season schedule, and where they stand
-> • Conference pages: full standings and every game of the season
-> • Search any team, conference, or game in this week's slate
+> • Every FBS conference, the FCS, and the AFC and NFC — standings and each
+>   team's season
+> • Game pages: line score, box score, scoring plays, drive log, team stats, leaders
+> • Team pages: the record, the full season schedule, bye weeks and all
+> • Search any team, conference, or game — across both leagues
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
@@ -159,16 +184,29 @@ editable without review, so it should never be the stale one.
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
-> Free. Fast. One sport, done right.
+> Free. Fast. Two leagues, done right.
 >
-> StatSide is an independent app and is not affiliated with or endorsed by
-> the NCAA or any conference or school.
+> StatSide is an independent app and is not affiliated with or endorsed by the
+> NFL, the NCAA, or any conference, team or school.
+
+Rewritten for 2.0. Three things in the 1.x copy stopped being true:
+
+- **"A WEEK, NOT A DATE"** described the week strip, which retired on
+  2026-09-05. A week can only be honest about one league — college football's
+  Week 2 and the NFL's are different date ranges — so Scores is a day now.
+  The section had to go, not be reworded.
+- **"follow any FBS team"** and **"One sport, done right"** both named one
+  league.
+- The disclaimer named only the NCAA.
 
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
-`college football,cfb,scores,live,rankings,top 25,ncaaf,schedule,sec,big ten,playoff` (83)
+`college football,scores,live,rankings,top 25,ncaaf,schedule,sec,big ten,playoff,afc,nfc` (87)
 
-Don't repeat words already in the name/subtitle — they're indexed automatically.
+Don't repeat words already in the name/subtitle — they're indexed
+automatically. That is why `cfb` and `nfl` are *not* here at 2.0: both moved
+into the subtitle, so repeating them would spend characters on nothing.
+`afc`/`nfc` took the freed room.
 
 ## URLs
 
@@ -208,10 +246,49 @@ frames built from them — device on a black stage, one headline apiece:
 - `docs/appstore/screenshots-marketing-1284x2778/` — the 6.5" slot, eight PNGs
 - `docs/appstore/screenshots-marketing-1320x2868/` — the same eight at 6.9"
 
-Reshot 2026-09-05 for 1.4.0 against a live Week 1 Saturday. The set went from
-seven frames to eight: box scores got their own (`06-boxscore`), which pushed
-quiet and the closer to 07 and 08. Both sizes render from the same
+Reshot 2026-09-06 for 2.0 against a live Saturday. Still eight frames; what
+changed is the app under them — the day strip, the league accordions, Tables,
+and Teams-as-a-follow-list. Both sizes render from the same
 `docs/social/src/as-*.html` sources — see that README for the `?69` flag.
+
+**Masters renumbered at 2.0.** The automated set is `01-scores`,
+`02-game-detail`, `03-box-score`, `04-rankings`, `05-teams`, `06-team-page`
+— what `AppStoreScreenshots` shoots, in the order it shoots them. Two more
+are captured by hand or by a second run:
+
+| File | How |
+|---|---|
+| `07-widget.png` | Manual — springboard is outside the UI test's reach |
+| `08-nfl-sunday.png` | A second run with `SCREENSHOT_DAY` + `SCREENSHOT_PREGAME` |
+
+`08-nfl-sunday` exists because the hero can only be one day, and a Saturday
+is college football alone. The 04 frame ("Saturday. Then Sunday.") carries
+the NFL, shot on an upcoming Sunday.
+
+**Two things about shooting the NFL before its season starts.** There is no
+played NFL game anywhere Scores can reach — the strip is bounded by the
+current season and Scores has no season control since the view-options sheet
+retired — so that frame is a slate of kickoff times, which is the honest
+picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
+scores" assertion and stops after the slate, since everything below it needs
+a played game. Reshoot it once the season is under way and it will carry real
+scores.
+
+**Warm the logo cache first.** A capture run against a fresh install shoots
+before the team marks have downloaded, and every logo lands as an empty grey
+disc — which is fatal, since logos-in-colour is the app's whole visual
+signature. Run the suite twice and keep the second set.
+
+The env knobs, all `TEST_RUNNER_`-prefixed on the xcodebuild command line:
+
+- `SCREENSHOT_DAY` — a day chip's spoken label, e.g. `"Sunday, September 13"`
+- `SCREENSHOT_FOLLOWS` — argument-domain array, e.g. `"(cfb:130, nfl:26)"`;
+  the teams worth seeding depend on the day being shot
+- `SCREENSHOT_PREGAME` — allow a day nobody has played yet
+
+`07-widget.png` is still the 1.4.0 capture and shows college football only.
+The widget carries both leagues since 2.0, so it wants a reshoot — it is not
+one of the eight uploaded frames, so it does not block a submission.
 
 ## App Privacy (nutrition label)
 
@@ -236,15 +313,16 @@ Rewritten 2026-08-04 for the 4.2.2 resubmission. Leads with what the user
 does and the native surface area; never self-describes as displaying
 aggregated content.
 
-> StatSide is a fully native SwiftUI app built around following your college
-> football teams. Follow a team (Teams tab) and the app personalizes around
-> it: a Following section leads the scores page, your team's conference
-> floats up, and you can turn on kickoff reminders — local notifications 30
-> minutes before each of your teams' games, scheduled on-device.
+> StatSide is a fully native SwiftUI app built around following your football
+> teams, in college football and the NFL. Follow a team (Teams tab) and the
+> app personalizes around it: a Following section leads the scores page with
+> your teams from both leagues together, and you can turn on kickoff
+> reminders — local notifications 30 minutes before each of your teams'
+> games, scheduled on-device.
 >
 > Native functionality in this build:
 > • Home Screen and Lock Screen widget (WidgetKit) showing your teams' live
->   score or next kickoff, with deep links into the app
+>   score or next kickoff across both leagues, with deep links into the app
 > • Local kickoff notifications with deep links to the game
 > • Siri Shortcut / App Intent: "What's my next game?"
 > • Live scores that update in place every 30 seconds while games are on,
@@ -253,11 +331,13 @@ aggregated content.
 >   VoiceOver support, light/dark mode
 > • No web views anywhere; every screen is native SwiftUI
 >
-> To demo in the offseason: follow any team from the Teams tab, then enable
-> the bell on its team page (kickoff reminders), add the StatSide widget to
-> the Home Screen, and use the season picker (top right of Scores) to browse
-> the completed season with full live-style data. No login required. The app
-> collects no data (App Privacy: Data Not Collected).
+> To demo: follow any team from the Teams tab (Add teams → either league),
+> then enable the bell on its team page (kickoff reminders) and add the
+> StatSide widget to the Home Screen. The day strip on Scores walks any day
+> of the season, and the season picker beside it reaches past seasons with
+> full live-style data — useful in the offseason, when the current day can be
+> quiet. No login required. The app collects no data (App Privacy: Data Not
+> Collected).
 
 ## 4.2.2 resubmission (build 6) — Resolution Center reply ✏️
 

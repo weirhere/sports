@@ -32,14 +32,9 @@ final class ScreenshotTests: XCTestCase {
                       "An expanded league should reveal game rows")
         snapshot(app, "\(prefix)-scores")
 
-        // The filter sheet, which now carries the season and the slate.
-        let funnel = app.scoresFilterChip
-        if funnel.waitForExistence(timeout: 10) {
-            funnel.tap()
-            _ = app.staticTexts["Slate"].waitForExistence(timeout: 5)
-            snapshot(app, "\(prefix)-scores-filter")
-            dismissFilterSheet(in: app)
-        }
+        // The view-options sheet retired on 2026-09-06 — Live and Top 25
+        // are header chips and the season rides the day strip, so there is
+        // no sheet left to shoot.
 
         // Game detail off the expanded league section.
         XCTAssertTrue(gameLink.waitForExistence(timeout: 5))

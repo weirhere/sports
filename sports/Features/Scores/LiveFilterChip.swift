@@ -35,6 +35,7 @@ struct LiveFilterChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Live games only")
+        .accessibilityIdentifier("scores-live-chip")
         .accessibilityAddTraits(liveOnly ? .isSelected : [])
     }
 }
