@@ -57,6 +57,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// offering decades nobody browses.
     var seasonFloor: Int { 2014 }
 
+    /// The calendar month a season's first game can fall in. College
+    /// football opens in August (Week 0's last weekend); the NFL opens in
+    /// late July with the Hall of Fame Game, which an August floor cut off
+    /// the front of the season entirely (Andy, 2026-09-06).
+    var seasonOpensIn: Int {
+        switch self {
+        case .collegeFootball: 8
+        case .nfl: 7
+        }
+    }
+
     /// The last calendar month that still belongs to the *previous* season.
     /// College football ends in January (bowls/CFP); the NFL runs through
     /// the February Super Bowl.

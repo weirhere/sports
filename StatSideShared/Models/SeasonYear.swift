@@ -30,13 +30,16 @@ nonisolated enum CFBSeason {
 /// plain scoreboard request, but a `dates=` request — the only one the day
 /// axis makes — returns none at all, and no calendar exists for a past
 /// season anyway (verified live 2026-09-05). A season's span is a rule, not
-/// a lookup: it opens in August and closes when the league's rollover month
-/// does, which is January for college football and February for the NFL.
+/// a lookup: it opens when the league's first game can — August for college
+/// football, July for the NFL's Hall of Fame Game — and closes when the
+/// league's rollover month does, January for college football and February
+/// for the NFL.
 nonisolated enum SeasonSpan {
     /// One league's season, as local days.
     static func days(of league: League, year: Int,
                      calendar: Calendar = .current) -> ClosedRange<Date> {
-        let start = calendar.date(from: DateComponents(year: year, month: 8, day: 1))
+        let start = calendar.date(from: DateComponents(year: year,
+                                                       month: league.seasonOpensIn, day: 1))
             ?? Date(timeIntervalSince1970: 0)
         // The first of the month after the rollover month, minus a day —
         // February's length is never spelled out, so leap years are free.

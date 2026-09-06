@@ -27,6 +27,87 @@ private func game(_ id: String, week: Int?, seasonType: Int? = nil,
                 broadcast: nil)
 }
 
+/// An NFL game — the preseason cards are league-specific, since only the
+/// NFL opens its preseason with a Hall of Fame Game.
+private func nflGame(_ id: String, week: Int?, seasonType: Int?,
+                     day: DateComponents, calendar: Calendar = .current) -> Game {
+    var parts = day
+    parts.hour = 12
+    let side = Team(id: "2", location: "Buffalo", name: nil, abbreviation: nil,
+                    displayName: nil, shortDisplayName: nil, logoURL: nil,
+                    conferenceId: 4, league: .nfl)
+    let other = Team(id: "17", location: "New England", name: nil, abbreviation: nil,
+                     displayName: nil, shortDisplayName: nil, logoURL: nil,
+                     conferenceId: 4, league: .nfl)
+    return Game(id: id, date: calendar.date(from: parts), name: nil, shortName: nil,
+                weekNumber: week, seasonType: seasonType, status: .pre(detail: nil),
+                home: Competitor(team: side, score: nil, record: nil,
+                                 rank: nil, isHome: true, winner: nil),
+                away: Competitor(team: other, score: nil, record: nil,
+                                 rank: nil, isHome: false, winner: nil),
+                broadcast: nil)
+}
+
+/// The preseason's week numbers restart just like the postseason's, so a
+/// Hall of Fame Game and an opening Thursday were sharing a card headed
+/// "Week 1" (Andy, 2026-09-06).
+@MainActor
+@Suite struct PreseasonGroupingTests {
+    private let slate = [
+        nflGame("hof", week: 1, seasonType: 1,
+                day: DateComponents(year: 2026, month: 7, day: 30)),
+        nflGame("pre1", week: 2, seasonType: 1,
+                day: DateComponents(year: 2026, month: 8, day: 8)),
+        nflGame("pre3", week: 4, seasonType: 1,
+                day: DateComponents(year: 2026, month: 8, day: 22)),
+        nflGame("wk1", week: 1, seasonType: 2,
+                day: DateComponents(year: 2026, month: 9, day: 10)),
+        nflGame("sb", week: 5, seasonType: 3,
+                day: DateComponents(year: 2027, month: 2, day: 14)),
+    ]
+
+    @Test func thePreseasonLeadsAndNeverSharesTheRegularSeasonsWeeks() {
+        let groups = ConferenceSlate.groups(from: slate, by: .week)
+
+        #expect(groups.map(\.id)
+                == ["preseason-1", "preseason-2", "preseason-4", "week-1", "week-postseason"])
+        #expect(groups.first { $0.id == "week-1" }?.games.map(\.id) == ["wk1"])
+    }
+
+    /// ESPN numbers the preseason from the Hall of Fame Game, so the cards
+    /// read the way a fan says them: the opener by name, then weeks 1–3.
+    @Test func preseasonCardsAreNamedTheWayFansCountThem() {
+        let groups = ConferenceSlate.groups(from: slate, by: .week)
+
+        #expect(Array(groups.map(\.title).prefix(3))
+                == ["Hall of Fame Game", "Preseason Week 1", "Preseason Week 3"])
+    }
+
+    /// The grouping's ids stay a pure function of one game — the invariant
+    /// the week cards have always kept.
+    @Test func everyPreseasonCardIsTheOneWeekIdNames() {
+        for group in ConferenceSlate.groups(from: slate, by: .week) {
+            #expect(group.games.allSatisfy { ConferenceSlate.weekId(for: $0) == group.id })
+        }
+    }
+
+    /// College football plays no Hall of Fame Game, so a preseason week
+    /// there keeps its own number.
+    @Test func anotherLeaguesPreseasonKeepsItsOwnNumbers() {
+        #expect(ConferenceSlate.preseasonTitle(week: 1, league: .collegeFootball)
+                == "Preseason Week 1")
+        #expect(ConferenceSlate.preseasonTitle(week: nil, league: .nfl) == "Preseason")
+    }
+
+    /// Day grouping is untouched: a preseason game is a day like any other.
+    @Test func dayGroupingIgnoresTheSeasonTypeEntirely() {
+        let groups = ConferenceSlate.groups(from: slate, by: .day)
+
+        #expect(groups.first?.games.map(\.id) == ["hof"])
+        #expect(groups.count == 5)
+    }
+}
+
 @MainActor
 @Suite struct SlateFilterTests {
     private let slate = [

@@ -57,6 +57,11 @@ nonisolated protocol ScoresProviding: Sendable {
     /// membership included (realignment years read correctly).
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings]
+    /// The league's divisional tables — the NFL's eight, AFC East through
+    /// NFC West, each carrying the conference it hangs under. A second
+    /// request, made only when a page is actually showing divisions.
+    /// `year` selects a season; nil means the current one.
+    func divisionStandings(year: Int?) async throws -> [ConferenceStandings]
     /// One team's schedule. `year` selects a season; nil means the current
     /// one, with the provider free to fall back to last season while the
     /// next is unpublished. An explicit year returns exactly that season —
@@ -81,6 +86,11 @@ nonisolated extension ScoresProviding {
     func seasonGames(year: Int?) async throws -> [Game] {
         try await conferenceGames(conferenceId: Conference.fbsGroupId, year: year)
     }
+
+    /// A league that nests nothing under its conferences has no divisional
+    /// tables, and neither does a backend that can't ask for them. Empty
+    /// rather than an error: the page hides the scope, it doesn't fail.
+    func divisionStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
 
     /// The season in progress.
     func rankings() async throws -> [Poll] {
@@ -426,6 +436,27 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.conferenceStandings(from: dto, league: league)
     }
 
+    /// The eight NFL divisions, from the same endpoint at `level=3` — the
+    /// depth the ids in `Conference` were read off in the first place. The
+    /// shipped request stops at the conferences (AFC 16, NFC 16), so a
+    /// division table can only come from a second call, and it's made only
+    /// when a page is actually showing divisions.
+    ///
+    /// College football asks for nothing: its conferences nest only in a
+    /// divisional era, and `conferenceStandings` already returns those
+    /// divisions from the shipped response.
+    func divisionStandings(year: Int?) async throws -> [ConferenceStandings] {
+        guard league == .nfl else { return [] }
+        var query = [URLQueryItem(name: "level", value: "3")]
+        if let year {
+            query.append(URLQueryItem(name: "season", value: String(year)))
+        }
+        let dto: StandingsResponseDTO = try await fetch(
+            base: standingsBase, path: "/standings", query: query
+        )
+        return ESPNMapper.divisionStandings(from: dto, league: league)
+    }
+
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
         if let year {
             return try await fetchSchedule(teamId: teamId, year: year)
@@ -672,6 +703,26 @@ nonisolated enum ESPNMapper {
         }
     }
 
+    /// Every group in the tree that carries a table, paired with the id of
+    /// the group it hangs under. Where `standingsGroups` chooses one depth
+    /// or the other, this keeps them all — the reading a `level=3` response
+    /// needs, since ESPN can ship the conferences' own tables alongside
+    /// their divisions'.
+    static func allStandingsGroups(
+        in dto: StandingsResponseDTO
+    ) -> [(group: StandingsGroupDTO, parentId: Int?)] {
+        func walk(_ groups: [StandingsGroupDTO],
+                  parentId: Int?) -> [(group: StandingsGroupDTO, parentId: Int?)] {
+            groups.flatMap { group -> [(group: StandingsGroupDTO, parentId: Int?)] in
+                let entries = group.standings?.entries?.elements ?? []
+                let mine: [(group: StandingsGroupDTO, parentId: Int?)] =
+                    entries.isEmpty ? [] : [(group: group, parentId: parentId)]
+                return mine + walk(group.children ?? [], parentId: group.id?.value)
+            }
+        }
+        return walk(dto.children ?? [], parentId: nil)
+    }
+
     /// The browse roster takes the opposite view of a divisional conference
     /// from the standings above: membership has no order to lose, so the
     /// divisions fold back into their conference and the Sun Belt is one
@@ -726,44 +777,75 @@ nonisolated enum ESPNMapper {
     /// records here: tiebreakers aren't derivable.
     static func conferenceStandings(from dto: StandingsResponseDTO,
                                     league: League = .collegeFootball) -> [ConferenceStandings] {
-        standingsGroups(in: dto).map { group, parentId in
-            let id = group.id?.value
-            let name = Conference.tier(for: id, in: league) == .other
-                ? (group.shortName ?? group.name ?? "Conference")
-                : Conference.name(for: id, in: league)
-            let entries = (group.standings?.entries?.elements ?? []).compactMap { entry -> ConferenceStanding? in
-                guard let mapped = team(from: entry.team, league: league) else { return nil }
-                func stat(_ type: String) -> StandingsStatDTO? {
-                    entry.stats?.first { $0.type == type }
-                }
-                return ConferenceStanding(
-                    team: Team(
-                        id: mapped.id, location: mapped.location, name: mapped.name,
-                        abbreviation: mapped.abbreviation, displayName: mapped.displayName,
-                        shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
-                        conferenceId: id, league: league
-                    ),
-                    // Both leagues ship `vsconf`. The NFL also ships a
-                    // division record, spelled `divisionrecord` — the
-                    // camel-cased fallback that used to sit here never
-                    // matched a payload, so the column has always held the
-                    // conference record and now says so.
-                    conferenceRecord: stat("vsconf")?.summary,
-                    overallRecord: stat("total")?.summary,
-                    streak: stat("streak")?.displayValue,
-                    playoffSeed: stat("playoffseed")?.value.map(Int.init),
-                    winPercent: stat("winpercent")?.value
-                )
+        standingsGroups(in: dto)
+            .map { standings(from: $0.group, parentId: $0.parentId, league: league) }
+            .sorted { lhs, rhs in
+                let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
+                                Conference.tier(for: rhs.id, in: league))
+                return lt == rt ? lhs.name < rhs.name : lt < rt
             }
-            return ConferenceStandings(id: id, name: name,
-                                       entries: ConferenceStandings.seedOrdered(entries),
-                                       league: league, parentId: parentId)
+    }
+
+    /// The divisional tables out of a `level=3` response — the NFL's eight
+    /// (Andy, 2026-09-06). Deliberately not `standingsGroups`: that one
+    /// collapses a parent *or* its children by whether the parent carries
+    /// entries, and a deeper response can legitimately carry both. This
+    /// walks the whole tree and keeps the groups the registry knows as
+    /// divisions, so it reads a response the same way whether or not the
+    /// conferences above them ship tables of their own.
+    ///
+    /// Parentage comes from our own registry first — those ids are
+    /// hardcoded because the NFL scoreboard ships no group at all, so they
+    /// are the surer of the two — and from the payload's nesting when the
+    /// registry has never seen the id, so a realignment costs a page its
+    /// division's *name*, never the division. A group with no parent at
+    /// either source is dropped: that one is a conference, not a division.
+    static func divisionStandings(from dto: StandingsResponseDTO,
+                                  league: League = .collegeFootball) -> [ConferenceStandings] {
+        allStandingsGroups(in: dto).compactMap { group, payloadParent in
+            let id = group.id?.value
+            guard let parent = Conference.parent(of: id, in: league) ?? payloadParent,
+                  parent != id else { return nil }
+            return standings(from: group, parentId: parent, league: league)
         }
-        .sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
-                            Conference.tier(for: rhs.id, in: league))
-            return lt == rt ? lhs.name < rhs.name : lt < rt
+        .sorted { $0.name < $1.name }
+    }
+
+    /// One group's table. Shared so a conference, a division, and a
+    /// `level=3` response all read their entries the same way.
+    private static func standings(from group: StandingsGroupDTO, parentId: Int?,
+                                  league: League) -> ConferenceStandings {
+        let id = group.id?.value
+        let name = Conference.tier(for: id, in: league) == .other
+            ? (group.shortName ?? group.name ?? "Conference")
+            : Conference.name(for: id, in: league)
+        let entries = (group.standings?.entries?.elements ?? []).compactMap { entry -> ConferenceStanding? in
+            guard let mapped = team(from: entry.team, league: league) else { return nil }
+            func stat(_ type: String) -> StandingsStatDTO? {
+                entry.stats?.first { $0.type == type }
+            }
+            return ConferenceStanding(
+                team: Team(
+                    id: mapped.id, location: mapped.location, name: mapped.name,
+                    abbreviation: mapped.abbreviation, displayName: mapped.displayName,
+                    shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
+                    conferenceId: id, league: league
+                ),
+                // Both leagues ship `vsconf`. The NFL also ships a
+                // division record, spelled `divisionrecord` — the
+                // camel-cased fallback that used to sit here never
+                // matched a payload, so the column has always held the
+                // conference record and now says so.
+                conferenceRecord: stat("vsconf")?.summary,
+                overallRecord: stat("total")?.summary,
+                streak: stat("streak")?.displayValue,
+                playoffSeed: stat("playoffseed")?.value.map(Int.init),
+                winPercent: stat("winpercent")?.value
+            )
         }
+        return ConferenceStandings(id: id, name: name,
+                                   entries: ConferenceStandings.seedOrdered(entries),
+                                   league: league, parentId: parentId)
     }
 
     static func teamSchedule(

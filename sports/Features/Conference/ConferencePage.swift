@@ -24,10 +24,15 @@ struct ConferencePage: View {
 
     /// Seasons fetched this visit, keyed by year — flipping back to a seen
     /// season costs nothing (TeamPage's caching pattern).
-    /// The season's standings tables — one for a conference that ships
-    /// its own, one per division for a divisional one (the Sun Belt,
-    /// the 2019 AAC), which the page renders as separate tables.
+    /// The season's standings as the provider ordered them — every table
+    /// the response carried, not just this page's. What the page draws
+    /// from them is `tables(for:)`'s job: a scope is a view of one fetch,
+    /// never a second one (Andy, 2026-09-06).
     @State private var standingsByYear: [Int: [ConferenceStandings]] = [:]
+    /// The divisional tables — the NFL's eight — fetched only once a scope
+    /// asks for them. ESPN's shipped standings response stops at the
+    /// conferences, so this is the one scope that costs a request.
+    @State private var divisionsByYear: [Int: [ConferenceStandings]] = [:]
     @State private var gamesByYear: [Int: [Game]] = [:]
     @State private var selectedYear = CFBSeason.year()
     /// The Games tab's team filter — a member's team id, nil for the whole
@@ -40,8 +45,14 @@ struct ConferencePage: View {
     /// and stays the default; Date is the other answer, and both off is
     /// one chronological card (Andy, 2026-09-05).
     @State private var grouping: ConferenceSlate.Grouping = .week
+    /// How wide the Standings tab tables its teams — the whole league, its
+    /// conferences, or its divisions (Andy, 2026-09-06). Session-scoped
+    /// like the season chip and the team filter beside it.
+    @State private var scope: StandingsScope
     @State private var loadingYears: Set<Int> = []
     @State private var failedYears: Set<Int> = []
+    @State private var divisionLoadingYears: Set<Int> = []
+    @State private var divisionFailedYears: Set<Int> = []
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
     @State private var tab: Tab
@@ -83,18 +94,84 @@ struct ConferencePage: View {
         // Standings lead (Andy, 2026-08-31) — which is also where a
         // standings-anchored push (a team's "3rd in SEC" line) lands.
         _tab = State(initialValue: .standings)
+        // The widest view of the page's own level: the league's table on
+        // the league page, its 16 on a conference page.
+        _scope = State(initialValue: StandingsScope.default(for: destination.conference))
+    }
+
+    /// The scopes this page can offer, from where it sits in its league's
+    /// hierarchy. Empty everywhere college football goes — its conferences
+    /// nest nothing — which is what hides the control.
+    private var availableScopes: [StandingsScope] {
+        StandingsScope.scopes(for: destination.conference)
     }
 
     /// The tables with something in them. A division that ships no entries
     /// yet isn't a card saying nothing.
     private var standingsTables: [ConferenceStandings] {
-        (standingsByYear[selectedYear] ?? []).filter { !$0.entries.isEmpty }
+        tables(for: scope).filter { !$0.entries.isEmpty }
+    }
+
+    /// The season's tables read at one scope. Every scope but Division is
+    /// a different arrangement of the one response the page already has.
+    private func tables(for scope: StandingsScope) -> [ConferenceStandings] {
+        let all = standingsByYear[selectedYear] ?? []
+        switch scope {
+        case .league:
+            // The merged 32 — built from the conference tables rather than
+            // fetched, exactly as the Tables hub's league row is.
+            return topLevelTables(in: all).leagueTable(in: destination.league).map { [$0] } ?? []
+        case .conference:
+            guard !isLeagueWide else {
+                // The league's own page has no conference of its own, so
+                // it takes its league's, in browse order (AFC, then NFC).
+                let tables = topLevelTables(in: all)
+                return Conference.topLevelIds(in: destination.league).compactMap { id in
+                    tables.first { $0.id == id }
+                }
+            }
+            // A divisional season splits one conference into two or four
+            // tables (the Sun Belt's East and West, the 2019 AAC's). The
+            // conference's own table when ESPN ships one, its divisions
+            // otherwise — kept apart, because each division's order is the
+            // only ranking the payload actually makes.
+            let mine = all.filter { $0.belongs(to: destination.conference) }
+            let own = mine.filter { $0.parentId == nil }
+            return own.isEmpty ? mine : own
+        case .division:
+            let divisions = divisionsByYear[selectedYear] ?? []
+            return isLeagueWide
+                ? divisions
+                : divisions.filter { $0.parentId == destination.conferenceId }
+        }
+    }
+
+    /// The response's conference-level tables, whichever shape it came in:
+    /// ESPN ships the NFL's two with their own entries today, and a
+    /// payload that hung them under divisions instead would fold back into
+    /// the same two rather than leaving the league page with nothing.
+    private func topLevelTables(in all: [ConferenceStandings]) -> [ConferenceStandings] {
+        let own = all.filter { $0.parentId == nil }
+        return own.isEmpty ? all.foldingDivisions() : own
     }
 
     /// Every table's teams: a divisional conference's hero count is the
-    /// conference's, not one division's.
+    /// conference's, not one division's. Counted at conference scope
+    /// whatever the page is showing — the answer is the page's, and the
+    /// subtitle shouldn't blink while a division fetch is in flight.
     private var teamCount: Int {
-        standingsTables.reduce(0) { $0 + $1.entries.count }
+        let conference = tables(for: .conference)
+        // A page whose own level the shipped response doesn't carry — one
+        // of the NFL's divisions — counts what it is actually showing.
+        let counted = conference.isEmpty ? standingsTables : conference
+        return counted.reduce(0) { $0 + $1.entries.count }
+    }
+
+    /// Whether each table names itself. Divisions always do, and so does
+    /// any scope that draws more than one card — an unheaded pair of
+    /// tables is two rankings with no way to tell which is which.
+    private var showsTableHeaders: Bool {
+        isDivisional || standingsTables.count > 1
     }
 
     /// Whether those tables are the conference's divisions rather than the
@@ -103,8 +180,16 @@ struct ConferencePage: View {
     private var isDivisional: Bool {
         standingsTables.contains { $0.parentId != nil }
     }
-    private var isLoading: Bool { loadingYears.contains(selectedYear) }
-    private var showsError: Bool { failedYears.contains(selectedYear) }
+    private var isLoading: Bool {
+        scope == .division
+            ? divisionLoadingYears.contains(selectedYear)
+            : loadingYears.contains(selectedYear)
+    }
+    private var showsError: Bool {
+        scope == .division
+            ? divisionFailedYears.contains(selectedYear)
+            : failedYears.contains(selectedYear)
+    }
     private var gamesLoading: Bool { gamesLoadingYears.contains(selectedYear) }
     private var gamesError: Bool { gamesFailedYears.contains(selectedYear) }
 
@@ -349,6 +434,17 @@ struct ConferencePage: View {
                             teams: filterableTeams,
                             teamSelection: activeTeamFilter,
                             onSelectTeam: { teamFilter = $0 })
+        } else if availableScopes.count > 1 {
+            // The Standings tab's own control: how wide the table is
+            // (Andy, 2026-09-06). Only the NFL's pages have one — college
+            // football's conferences nest nothing to scope down to.
+            HStack(spacing: Spacing.sm) {
+                StandingsScopeChip(scopes: availableScopes, selection: scope,
+                                   isNarrowed: scope != StandingsScope.default(
+                                       for: destination.conference),
+                                   onSelect: { select(scope: $0) })
+                Spacer(minLength: 0)
+            }
         }
     }
 
@@ -358,6 +454,16 @@ struct ConferencePage: View {
         withAnimation(.default) {
             grouping = grouping == value ? .none : value
         }
+    }
+
+    /// Switching scope re-reads the same season. Division is the only one
+    /// that can need a fetch, and it asks for it here rather than on every
+    /// appearance — a page nobody scopes down pays for nothing.
+    private func select(scope value: StandingsScope) {
+        guard value != scope else { return }
+        withAnimation(.default) { scope = value }
+        guard value == .division else { return }
+        Task { await loadDivisions(year: selectedYear) }
     }
 
     /// Chip taps and content swipes share the one direction rule. The edge
@@ -420,7 +526,7 @@ struct ConferencePage: View {
                 // ESPN never ranked against each other (Andy, 2026-09-05).
                 ForEach(standingsTables, id: \.name) { table in
                     VStack(spacing: 0) {
-                        if isDivisional {
+                        if showsTableHeaders {
                             CardHeader(title: table.divisionName(under: destination.name))
                         }
                         StandingsList(
@@ -446,7 +552,9 @@ struct ConferencePage: View {
                     .padding(.vertical, Spacing.xl)
             } else if showsError {
                 StatusMessage(text: "Couldn't load standings.",
-                              retry: { Task { await loadStandings(year: selectedYear, force: true) } })
+                              retry: { Task { await loadStandings(scope: scope,
+                                                                  year: selectedYear,
+                                                                  force: true) } })
                     .cardSurface()
             } else {
                 // ESPN's offseason standings can come back empty (Sun Belt
@@ -470,7 +578,28 @@ struct ConferencePage: View {
     private func load(year: Int, force: Bool = false) async {
         async let standingsLoad: Void = loadStandings(year: year, force: force)
         async let gamesLoad: Void = loadGames(year: year, force: force)
-        _ = await (standingsLoad, gamesLoad)
+        // A page that opens on divisions — one of the NFL's eight — needs
+        // the deeper response before it can draw anything.
+        async let divisionLoad: Void = loadDivisionsIfShowing(year: year, force: force)
+        _ = await (standingsLoad, gamesLoad, divisionLoad)
+    }
+
+    /// The divisional fetch, but only for a page actually showing
+    /// divisions — every other scope reads the shipped response.
+    private func loadDivisionsIfShowing(year: Int, force: Bool) async {
+        guard scope == .division else { return }
+        await loadDivisions(year: year, force: force)
+    }
+
+    /// Whichever fetch backs a scope. Only Division has one of its own;
+    /// every other scope reads the shipped standings response.
+    private func loadStandings(scope: StandingsScope, year: Int,
+                               force: Bool = false) async {
+        if scope == .division {
+            await loadDivisions(year: year, force: force)
+        } else {
+            await loadStandings(year: year, force: force)
+        }
     }
 
     private func loadStandings(year: Int, force: Bool = false) async {
@@ -481,28 +610,32 @@ struct ConferencePage: View {
         do {
             // Nil for the current season keeps the shipped request shape;
             // an explicit past year is scoped with `season={year}`.
-            let all = try await client.conferenceStandings(
+            // Stored whole: the page reads its own tables out of the
+            // response per scope, and re-scoping must never re-fetch.
+            standingsByYear[year] = try await client.conferenceStandings(
                 year: year == SeasonYear.year(for: destination.league) ? nil : year,
                 division: Conference.division(for: destination.conferenceId,
                                               in: destination.league) ?? .fbs)
-            if isLeagueWide {
-                // The league's own page tables every team at once, built
-                // from the same conference response — no table in it
-                // "belongs to" the league by id.
-                standingsByYear[year] = all.leagueTable(in: destination.league).map { [$0] } ?? []
-            } else {
-                // A divisional season splits one conference into two or four
-                // tables (the Sun Belt's East and West, the 2019 AAC's). The
-                // conference's own table when ESPN ships one, its divisions
-                // otherwise — kept apart, because each division's order is the
-                // only ranking the payload actually makes.
-                let mine = all.filter { $0.belongs(to: destination.conference) }
-                let own = mine.filter { $0.parentId == nil }
-                standingsByYear[year] = own.isEmpty ? mine : own
-            }
             failedYears.remove(year)
         } catch {
             failedYears.insert(year)
+        }
+    }
+
+    /// The divisional tables, the one scope that costs a second request
+    /// (Andy, 2026-09-06). Cached per year like the rest, so flipping
+    /// scopes and seasons back and forth stays free after the first look.
+    private func loadDivisions(year: Int, force: Bool = false) async {
+        guard divisionsByYear[year] == nil || force else { return }
+        guard !divisionLoadingYears.contains(year) else { return }
+        divisionLoadingYears.insert(year)
+        defer { divisionLoadingYears.remove(year) }
+        do {
+            divisionsByYear[year] = try await client.divisionStandings(
+                year: year == SeasonYear.year(for: destination.league) ? nil : year)
+            divisionFailedYears.remove(year)
+        } catch {
+            divisionFailedYears.insert(year)
         }
     }
 

@@ -396,20 +396,30 @@ private func makeFollowing(_ teams: [Team] = [],
 }
 
 @Suite struct SeasonSpanTests {
-    @Test func aSeasonOpensInAugustAndClosesAfterTheSuperBowl() {
+    @Test func aSeasonOpensWithTheHallOfFameGameAndClosesAfterTheSuperBowl() {
         let calendar = Calendar.current
         let span = SeasonSpan.days(year: 2026)
         #expect(calendar.component(.year, from: span.lowerBound) == 2026)
-        #expect(calendar.component(.month, from: span.lowerBound) == 8)
-        // The NFL's February closes the app's season; college football's
-        // January would have cut the Super Bowl off.
+        // The NFL's July opens the app's season — the Hall of Fame Game is
+        // the first football of the year, and an August floor cut it off
+        // (Andy, 2026-09-06).
+        #expect(calendar.component(.month, from: span.lowerBound) == 7)
+        // The NFL's February closes it; college football's January would
+        // have cut the Super Bowl off.
         #expect(calendar.component(.year, from: span.upperBound) == 2027)
         #expect(calendar.component(.month, from: span.upperBound) == 2)
     }
 
-    @Test func collegeFootballClosesInJanuary() {
+    @Test func collegeFootballOpensInAugustAndClosesInJanuary() {
         let span = SeasonSpan.days(of: .collegeFootball, year: 2026)
+        #expect(Calendar.current.component(.month, from: span.lowerBound) == 8)
         #expect(Calendar.current.component(.month, from: span.upperBound) == 1)
+    }
+
+    @Test func theNFLSeasonOpensInJuly() {
+        let span = SeasonSpan.days(of: .nfl, year: 2026)
+        #expect(Calendar.current.component(.month, from: span.lowerBound) == 7)
+        #expect(Calendar.current.component(.month, from: span.upperBound) == 2)
     }
 
     @Test func aRolloverMonthBelongsToThePreviousSeason() {
