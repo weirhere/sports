@@ -25,6 +25,15 @@ import Testing
         #expect(url.darkTeamLogoVariant != nil)
     }
 
+    /// League marks derive nothing on purpose, even though the NFL's
+    /// scoreboard payload does declare a `leagues/500-dark/` twin: a
+    /// section-header badge sits on `ConferenceLogo`'s light backing disc
+    /// in dark mode, and a dark-mode shield's light ink would disappear
+    /// into it. The disc is the header's dark-mode answer, not the twin.
+    @Test func leagueMarksDoNotDerive() {
+        #expect(League.allCases.allSatisfy { $0.logoURL?.darkTeamLogoVariant == nil })
+    }
+
     @Test func conferenceMarksDoNotDerive() {
         let url = URL(string: "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big_ten.png")!
         #expect(url.darkTeamLogoVariant == nil)

@@ -39,9 +39,11 @@ struct SectionAccordion: View {
             .background(Color.bgHeader)
     }
 
-    /// The mark + name. League headers are name-only — ESPN publishes no
-    /// college-football league mark, and the Tables hub sets the same
-    /// language for its league accordions.
+    /// The mark + name. A league header wears its league's badge, the way
+    /// the conference headers wore theirs before the day axis retired them
+    /// (Andy, 2026-09-06) — both leagues have a real one, so neither reads
+    /// as a missing asset. Following keeps the star instead: it is a
+    /// promise about you, not a competition with a logo.
     private var identity: some View {
         HStack(spacing: Spacing.sm) {
             if let symbol = headerSymbol {
@@ -51,6 +53,8 @@ struct SectionAccordion: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.textSecondary)
                     .frame(width: 18, height: 18)
+            } else if let league = section.league {
+                ConferenceLogo(url: league.logoURL)
             }
             Text(section.title)
                 .font(.sectionHeader)

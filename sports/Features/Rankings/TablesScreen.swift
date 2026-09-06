@@ -69,6 +69,7 @@ struct TablesScreen: View {
         League.allCases
             .map { TableGroup(id: Self.sectionId(for: $0),
                               title: $0.displayName,
+                              logoURL: $0.logoURL,
                               rows: rows(for: $0)) }
             .filter { !$0.rows.isEmpty }
     }
@@ -204,6 +205,7 @@ struct TablesScreen: View {
                 withAnimation { uiState.toggleConference(sectionId) }
             } label: {
                 HStack(spacing: Spacing.sm) {
+                    ConferenceLogo(url: group.logoURL)
                     Text(group.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -327,6 +329,10 @@ private extension ConferenceStandings {
 private struct TableGroup: Identifiable {
     let id: String
     let title: String
+    /// The badge beside the title — the league's own mark. Optional so a
+    /// future card without one falls back to the football glyph every
+    /// conference header already uses.
+    let logoURL: URL?
     let rows: [TableRow]
 
     /// `tables-league-cfb` — the UI tests' handle.

@@ -113,6 +113,27 @@ import Testing
     }
 }
 
+@Suite struct LeagueMarkTests {
+    /// Both leagues wear a real badge on their Scores and Tables
+    /// accordions — the URLs ESPN's own scoreboard declares for them in
+    /// `leagues[].logos[]`. The NFL's sits beside the team marks; college
+    /// football's is filed under `redesign/`, which is why the
+    /// `leagues/500/` probe concluded it had none.
+    @Test func everyLeagueHasAMark() {
+        #expect(League.nfl.logoURL?.absoluteString
+                == "https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png")
+        #expect(League.collegeFootball.logoURL?.absoluteString
+                == "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-football-college.png")
+        #expect(League.allCases.allSatisfy { $0.logoURL != nil })
+    }
+
+    /// The NFL's league-wide standings row wears the shield, not the
+    /// fallback glyph — the one conference id that resolves to it.
+    @Test func theLeagueWideRowWearsTheShield() {
+        #expect(Conference.logoURL(for: .nfl(9)) == League.nfl.logoURL)
+    }
+}
+
 @Suite struct DarkLogoVariantLeagueTests {
     /// Both leagues publish a 500-dark twin (NFL verified live 2026-09-05).
     @Test func bothLeaguesDeriveTheirDarkMark() {
