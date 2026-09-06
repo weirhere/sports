@@ -43,7 +43,8 @@ struct GameInfoRows: View {
                 if let broadcast = game.broadcast {
                     infoRow("tv", broadcast)
                 }
-                if Self.hasVenueContent(summary) {
+                if game.date != nil || game.broadcast != nil,
+                   Self.hasVenueContent(summary) {
                     zoneDivider
                 }
             }
@@ -135,11 +136,9 @@ struct GameInfoRows: View {
             if let surface {
                 pairRow("Surface", surface)
             }
-        } else if summary.venueCapacity != nil || surface != nil {
+        } else if let capacity = summary.venueCapacity {
             HStack(spacing: Spacing.md) {
-                if let capacity = summary.venueCapacity {
-                    metric("Capacity", capacity.formatted())
-                }
+                metric("Capacity", capacity.formatted())
                 Spacer(minLength: Spacing.sm)
                 if let surface {
                     metric("Surface", surface)
@@ -148,6 +147,12 @@ struct GameInfoRows: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, 7)
             .accessibilityElement(children: .combine)
+        } else if let surface {
+            // Alone, the surface is just another leading-aligned row —
+            // the Spacer above only exists to split a *pair* across the
+            // card, and with nothing on its left it would push this one
+            // to the trailing edge, out of line with everything else.
+            pairRow("Surface", surface)
         }
     }
 
