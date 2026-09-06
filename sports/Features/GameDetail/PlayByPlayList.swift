@@ -1,0 +1,265 @@
+import SwiftUI
+
+/// The Plays tab: every possession, newest first, each one expanding into
+/// its plays — ESPN's Play-by-Play and FotMob's Commentary answering the
+/// same question. Newest first because the question a play list gets asked
+/// is "what just happened", live or final.
+///
+/// Collapsed, a drive row is exactly the row the Drives card carried
+/// before it moved here (2026-09-06): mark, result, "5 plays, 20 yards,
+/// 2:39". The card is the app's density language, not a card per drive —
+/// a full game is 22 possessions.
+struct PlayByPlayList: View {
+    let summary: GameSummary
+    /// Scoring-only narrows every drive to the plays that put points up,
+    /// and drops the drives that put none.
+    let scoringOnly: Bool
+
+    @State private var expanded: Set<String> = []
+    /// The current drive opens itself once, on arrival. Kept as an id
+    /// rather than a Bool so a new possession re-opens and a drive the
+    /// user collapsed by hand stays collapsed.
+    @State private var autoExpandedDrive: String?
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var clockWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 16
+
+    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
+    /// The current drive leads, then finished possessions in reverse. A
+    /// live game's newest football is at the top of the tab either way.
+    private var drives: [Drive] {
+        let current = summary.currentDrive
+        let previous = summary.drives.reversed()
+            // ESPN can ship the possession that just ended as both the
+            // current drive and the newest previous one; two rows under
+            // one id is a ForEach the list can't render.
+            .filter { $0.id != current?.id }
+            .filter { !scoringOnly || !$0.scoringPlays.isEmpty }
+        guard let current else { return Array(previous) }
+        // Scoring-only has nothing to say about a drive still in progress.
+        return (scoringOnly && current.scoringPlays.isEmpty ? [] : [current]) + previous
+    }
+
+    var body: some View {
+        // Resolved once: the list is derived, and re-deriving it per row
+        // to answer "did the quarter change" is 22 passes over 22 drives.
+        let list = drives
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(list.enumerated()), id: \.element.id) { index, drive in
+                if index == 0 || list[index - 1].period != drive.period {
+                    Text(PeriodLabel.text(drive.period))
+                        .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.top, index == 0 ? Spacing.sm : Spacing.lg)
+                        .padding(.bottom, Spacing.xs)
+                }
+                driveRow(drive)
+                if isExpanded(drive) {
+                    playList(drive)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, Spacing.sm)
+        .task(id: summary.currentDrive?.id) {
+            guard let id = summary.currentDrive?.id, autoExpandedDrive != id else { return }
+            autoExpandedDrive = id
+            expanded.insert(id)
+        }
+    }
+
+    /// Scoring-only is its own answer — every drive shown has a score in
+    /// it, so they all stand open and the chevrons come off.
+    private func isExpanded(_ drive: Drive) -> Bool {
+        scoringOnly || expanded.contains(drive.id)
+    }
+
+    private func plays(_ drive: Drive) -> [Play] {
+        scoringOnly ? drive.scoringPlays : drive.plays
+    }
+
+    // MARK: - Drive header
+
+    @ViewBuilder
+    private func driveRow(_ drive: Drive) -> some View {
+        let canExpand = !scoringOnly && !drive.plays.isEmpty
+        Button {
+            guard canExpand else { return }
+            if expanded.contains(drive.id) { expanded.remove(drive.id) } else { expanded.insert(drive.id) }
+        } label: {
+            HStack(spacing: Spacing.md) {
+                LogoImage(url: summary.team(withId: drive.teamId)?.logoURL)
+                    .frame(width: logoSize, height: logoSize)
+                Text(drive.result ?? "—")
+                    .font(drive.isScore ? .metaEmphasis : .meta)
+                    .foregroundStyle(.textPrimary)
+                Spacer(minLength: Spacing.sm)
+                if let line = drive.summary {
+                    Text(line)
+                        .font(.meta.monospacedDigit())
+                        .foregroundStyle(.textSecondary)
+                }
+                if canExpand {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.textSecondary)
+                        .rotationEffect(.degrees(expanded.contains(drive.id) ? 180 : 0))
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        // The Scores pane's rule: a full-width surface is wider than any
+        // swipe, so `.plain` would fire on the way out of a tab swipe.
+        // Named, not `.swipeSafe` — the shorthand is deliberately absent.
+        .buttonStyle(SwipeSafeButtonStyle())
+        // Not `.disabled`: a drive ESPN shipped no plays for isn't a
+        // dimmed control, it's a row with nothing behind it. The action
+        // guards itself and the trait simply doesn't claim a button.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary(for: drive))
+        .accessibilityAddTraits(canExpand ? .isButton : [])
+        .accessibilityValue(canExpand ? (expanded.contains(drive.id) ? "expanded" : "collapsed") : "")
+    }
+
+    // MARK: - Plays
+
+    private func playList(_ drive: Drive) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(plays(drive)) { play in
+                playRow(play)
+            }
+        }
+        // A hairline down the leading edge ties the plays to the drive
+        // above them without a second card or an indent nobody can see.
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color.divider)
+                .frame(width: 1)
+                .padding(.leading, Spacing.lg + logoSize / 2)
+        }
+        .padding(.bottom, Spacing.xs)
+    }
+
+    /// The clock sits in the gutter the scoring list uses; the down line
+    /// heads the play, and the narration follows it. At accessibility
+    /// sizes the gutter can't survive beside the text, so it stacks.
+    @ViewBuilder
+    private func playRow(_ play: Play) -> some View {
+        let content = Group {
+            if isStacked {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: Spacing.sm) {
+                        clockText(play)
+                        downText(play)
+                        Spacer(minLength: Spacing.sm)
+                        scoreText(play)
+                    }
+                    playText(play)
+                }
+            } else {
+                HStack(alignment: .top, spacing: Spacing.sm) {
+                    clockText(play)
+                        .frame(minWidth: clockWidth, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                            downText(play)
+                            Spacer(minLength: Spacing.sm)
+                            scoreText(play)
+                        }
+                        playText(play)
+                    }
+                }
+            }
+        }
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Indented past the drive's mark so the plays read as its
+            // children, clearing the hairline.
+            .padding(.leading, Spacing.lg + logoSize + Spacing.md)
+            .padding(.trailing, Spacing.lg)
+            .padding(.vertical, 5)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilitySummary(for: play))
+    }
+
+    @ViewBuilder
+    private func clockText(_ play: Play) -> some View {
+        if let clock = play.clock {
+            Text(clock)
+                .font(.meta.monospacedDigit())
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// "1st & 10 at IU 5", falling back to the play's own type when ESPN
+    /// gives no down — kickoffs, extra points, and the like.
+    @ViewBuilder
+    private func downText(_ play: Play) -> some View {
+        if let line = play.downDistanceText ?? play.typeText {
+            Text(line)
+                .font(.metaEmphasis)
+                .foregroundStyle(.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func playText(_ play: Play) -> some View {
+        Text(play.text ?? "")
+            .font(.meta)
+            .foregroundStyle(play.isScoringPlay ? .textPrimary : .textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Only scoring plays carry the running score — every other row would
+    /// repeat the number above it. Weight marks the side that scored, the
+    /// scoring list's rule, so the budget stays at three colors. A play
+    /// the mapper couldn't attribute emphasizes neither number.
+    @ViewBuilder
+    private func scoreText(_ play: Play) -> some View {
+        if play.isScoringPlay, let away = play.awayScore, let home = play.homeScore {
+            (number(away, emphasized: play.scoringSide == .away)
+             + Text("–").font(.meta).foregroundStyle(Color.textSecondary)
+             + number(home, emphasized: play.scoringSide == .home))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private func number(_ value: Int, emphasized: Bool) -> Text {
+        Text("\(value)")
+            .font((emphasized ? Font.metaEmphasis : .meta).monospacedDigit())
+            .foregroundStyle(emphasized ? Color.textPrimary : Color.textSecondary)
+    }
+
+    /// One spoken sentence: "Miami, punt, 5 plays, 20 yards, 2:39".
+    /// Internal, not private, so the label shape is unit-testable.
+    func accessibilitySummary(for drive: Drive) -> String {
+        var parts: [String] = []
+        if let location = summary.team(withId: drive.teamId)?.location { parts.append(location) }
+        if let result = drive.result { parts.append(result.lowercased()) }
+        if let line = drive.summary { parts.append(line) }
+        return parts.joined(separator: ", ")
+    }
+
+    /// "1st & 10 at IU 5, 12:16, Shotgun #15 F.Mendoza pass complete…" —
+    /// the down first, because it's the context the narration assumes.
+    func accessibilitySummary(for play: Play) -> String {
+        var parts: [String] = []
+        if let line = play.downDistanceText ?? play.typeText { parts.append(line) }
+        if let clock = play.clock { parts.append(clock) }
+        if let text = play.text, !text.isEmpty { parts.append(text) }
+        if play.isScoringPlay, let away = play.awayScore, let home = play.homeScore {
+            let awayName = summary.away?.team.location ?? "Away"
+            let homeName = summary.home?.team.location ?? "Home"
+            parts.append("\(awayName) \(away), \(homeName) \(home)")
+        }
+        return parts.joined(separator: ", ")
+    }
+}
