@@ -9,33 +9,26 @@ struct NextGameIntent: AppIntent {
     static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        // League-qualified keys; college football only for now (M5 widens
-        // the intent to both leagues alongside the widget).
+        // League-qualified keys ("cfb:130", "nfl:26").
         let followedKeys = Set(AppGroup.defaults.stringArray(forKey: AppGroup.followingKeysKey) ?? [])
-            .filter { $0.hasPrefix("\(League.collegeFootball.rawValue):") }
-        guard !followedKeys.isEmpty else {
+        let leagues = followedKeys.followedLeagues
+        guard !leagues.isEmpty else {
             return .result(dialog: "You're not following any teams yet. Pick your teams in StatSide first.")
         }
 
-        let client = DataProvider.makeClient(league: .collegeFootball)
-        // A team's schedule knows which games exist; it does not know how
-        // one is going. The payload carries no live score and no clock
-        // once a game kicks off (the dashed-score bug, Andy 2026-08-29),
-        // so an answer built from it alone had to invent a score — and
-        // said "0, 0" out loud, mid-drive. The scoreboard is the app's one
-        // live source, fetched here alongside the schedules and merged the
-        // same way TeamPage and ConferencePage merge it.
-        async let board: Scoreboard? = try? await client.scoreboard(
-            weekValue: nil, seasonType: nil, year: nil)
-        var gamesById: [String: Game] = [:]
-        let prefix = "\(League.collegeFootball.rawValue):"
-        for teamId in followedKeys.map({ String($0.dropFirst(prefix.count)) }) {
-            guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
-            for game in schedule.games {
-                gamesById[game.id] = game
+        // Every followed league at once, and only the ones followed — the
+        // answer spans both ("my teams" doesn't care which sport), but a
+        // college-football-only user still makes college-football-only
+        // requests.
+        let games = await withTaskGroup(of: [Game].self) { group in
+            for league in leagues {
+                group.addTask {
+                    await Self.games(in: league,
+                                     teamIds: followedKeys.followedTeamIds(in: league))
+                }
             }
+            return await group.reduce(into: [Game]()) { $0 += $1 }
         }
-        let games = Game.merging(Array(gamesById.values), withLive: await board?.games ?? [])
 
         // Earliest kickoff among the live ones — a Dictionary's values have
         // no order, so "the first live game" was a different game run to
@@ -58,6 +51,31 @@ struct NextGameIntent: AppIntent {
             return .result(dialog: "No upcoming games for your teams right now.")
         }
         return .result(dialog: IntentDialog(stringLiteral: Self.nextLine(for: next)))
+    }
+
+    /// One league's followed games, live scores merged in.
+    ///
+    /// A team's schedule knows which games exist; it does not know how one
+    /// is going. The payload carries no live score and no clock once a game
+    /// kicks off (the dashed-score bug, Andy 2026-08-29), so an answer built
+    /// from it alone had to invent a score — and said "0, 0" out loud,
+    /// mid-drive. The scoreboard is the app's one live source, fetched
+    /// alongside the schedules and merged the same way TeamPage and
+    /// ConferencePage merge it.
+    private static func games(in league: League, teamIds: Set<String>) async -> [Game] {
+        let client = DataProvider.makeClient(league: league)
+        async let board: Scoreboard? = try? await client.scoreboard(
+            weekValue: nil, seasonType: nil, year: nil)
+        var gamesById: [String: Game] = [:]
+        for teamId in teamIds {
+            guard let schedule = try? await client.teamSchedule(teamId: teamId) else { continue }
+            for game in schedule.games {
+                // Dedupe by id: two followed teams playing each other is
+                // one game, not two.
+                gamesById[game.id] = game
+            }
+        }
+        return Game.merging(Array(gamesById.values), withLive: await board?.games ?? [])
     }
 
     static func nextLine(for game: Game) -> String {

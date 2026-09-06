@@ -18,6 +18,11 @@ final class WidgetUITests: XCTestCase {
         // run already followed Georgia.
         XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
                       "The Add teams sheet should follow Georgia")
+        // And one from the other league: the widget's promise is "my
+        // games", so a followed NFL team has to reach the home screen the
+        // same way a college one does.
+        XCTAssertTrue(followTeam("Seattle Seahawks", in: app),
+                      "The Add teams sheet should follow the Seahawks")
         // The reminder offer may ride the sheet's dismissal on a fresh
         // install; it isn't this suite's subject.
         let offer = app.alerts["Get kickoff reminders?"]
@@ -26,6 +31,8 @@ final class WidgetUITests: XCTestCase {
         }
         XCTAssertTrue(app.teamCard("Georgia Bulldogs").waitForExistence(timeout: 10),
                       "The follow should leave a card on the Teams tab")
+        XCTAssertTrue(app.teamCard("Seattle Seahawks").waitForExistence(timeout: 10),
+                      "Both leagues' follows should leave cards")
 
         // To the Home Screen; enter jiggle mode.
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
@@ -68,15 +75,21 @@ final class WidgetUITests: XCTestCase {
         addButton?.tap()
         XCUIDevice.shared.press(.home)
 
-        // The provider fetches the scoreboard, then renders team lines.
-        // The gallery's first page is the medium family now; both system
-        // sizes carry the ★ Following header, and "UGA" is Georgia's
-        // abbreviation in a game row.
+        // The provider fetches each followed league's scoreboard, then
+        // renders team lines. The gallery's first page is the medium family
+        // now; both system sizes carry the ★ Following header, and "UGA"
+        // is Georgia's abbreviation in a game row.
         XCTAssertTrue(springboard.staticTexts["Following"].firstMatch.waitForExistence(timeout: 30),
                       "Widget should render the Following header")
         let rendered = springboard.staticTexts["UGA"].firstMatch
         XCTAssertTrue(rendered.waitForExistence(timeout: 30),
                       "Widget should render the followed team's game")
+        // The cross-league promise, at the surface that has to keep it: a
+        // college game and an NFL game share the widget, and neither
+        // crowds the other out. Both teams are followed and the provider's
+        // limit is four, so both fit by construction.
+        XCTAssertTrue(springboard.staticTexts["SEA"].firstMatch.waitForExistence(timeout: 30),
+                      "Widget should render the followed NFL team's game too")
 
         // Tap-through: widgetURL → statside://game/{id} → game lands in-app.
         rendered.tap()
