@@ -18,13 +18,13 @@ import SwiftUI
 /// 32-team table and then the AFC and the NFC, with no poll row rather
 /// than an empty one. Hence "Tables".
 ///
-/// FCS gets a card of its own rather than 14 more rows inside College
-/// Football's. It is a separate competition — its own group on ESPN, its
-/// own playoff — and it is opt-in (E8 scope (b)), so it arrives collapsed:
-/// one discoverable row with a count, not fourteen the app never promised
-/// to cover. Following a conference here is what puts group 81 on the
-/// Scores slate, which is the path that went missing when the view-options
-/// sheet retired.
+/// FCS is inside College Football's card, not beside it (Andy,
+/// 2026-09-06): the hub's accordions are leagues, and FCS is a division of
+/// one, so a card of its own read as a third league. Its 14 conferences
+/// sort below the 11 FBS ones on the tier rule that already orders the
+/// list — `.fcs` sits under `.independent` — so they arrive grouped
+/// without a second header saying so. Following one is still what puts
+/// group 81 on the Scores slate.
 struct TablesScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
@@ -65,25 +65,13 @@ struct TablesScreen: View {
     /// Every card the hub shows, in order, skipping any whose fetch came
     /// back empty — a group that didn't load isn't there at all, rather
     /// than being there and empty.
-    ///
-    /// FCS follows College Football, since it is the other half of the
-    /// same sport, and precedes the NFL.
     private var groups: [TableGroup] {
-        League.allCases.flatMap { league -> [TableGroup] in
-            var groups = [TableGroup(id: Self.sectionId(for: league),
-                                     title: league.displayName,
-                                     startsExpanded: true,
-                                     rows: rows(for: league))]
-            if league == .collegeFootball {
-                groups.append(TableGroup(id: Self.fcsSectionId,
-                                         title: "FCS",
-                                         startsExpanded: false,
-                                         rows: fcsStandings.foldingDivisions()
-                                             .map(TableRow.conference)))
-            }
-            return groups
-        }
-        .filter { !$0.rows.isEmpty }
+        League.allCases
+            .map { TableGroup(id: Self.sectionId(for: $0),
+                              title: $0.displayName,
+                              logoURL: $0.logoURL,
+                              rows: rows(for: $0)) }
+            .filter { !$0.rows.isEmpty }
     }
 
     /// Empty for the NFL, which has no poll.
@@ -97,8 +85,16 @@ struct TablesScreen: View {
     /// Divisions folded into their conference: the hub names conferences,
     /// so the Sun Belt is one row here even though its standings are two
     /// tables (the page that tables them still gets both).
+    ///
+    /// College football's two divisions fold together here — the fetches
+    /// stay separate (they are separate requests, and either can fail
+    /// alone), the list doesn't. Folding the union in one pass is what
+    /// sorts FBS above FCS: `foldingDivisions()` re-applies the tier rule
+    /// across everything it is handed.
     private func conferences(in league: League) -> [ConferenceStandings] {
-        (standings[league] ?? []).foldingDivisions()
+        var fetched = standings[league] ?? []
+        if league == .collegeFootball { fetched += fcsStandings }
+        return fetched.foldingDivisions()
     }
 
     /// The league's own table, where it has one — the NFL's 32 teams in a
@@ -139,10 +135,9 @@ struct TablesScreen: View {
     /// league table sits among the conferences it contains, the way a
     /// followed conference sits beside a followed team's.
     private var followedConferences: [ConferenceStandings] {
-        (League.allCases.flatMap(tables(in:)) + fcsStandings.foldingDivisions())
-            .filter { conference in
-                conference.conference.map(following.isFollowingConference) ?? false
-            }
+        League.allCases.flatMap(tables(in:)).filter { conference in
+            conference.conference.map(following.isFollowingConference) ?? false
+        }
     }
 
     @ViewBuilder
@@ -199,30 +194,18 @@ struct TablesScreen: View {
 
     /// One group's accordion, the Teams-browse card: a bgHeader toggle row
     /// over its rows, collapse state persisted like every other accordion
-    /// in the app.
-    ///
-    /// Two expansion mechanisms, because the two defaults differ. A league
-    /// arrives open and `collapsedConferences` records the exception; FCS
-    /// arrives closed, and `expandedSections` — whose absence already means
-    /// collapsed — records that exception instead. Same persistence, read
-    /// from the end that makes the default free.
+    /// in the app. A league arrives open — absence of a stored collapse
+    /// means expanded, so a new league needs no migration.
     private func groupSection(_ group: TableGroup) -> some View {
         let sectionId = group.id
-        let isExpanded = group.startsExpanded
-            ? !uiState.isConferenceCollapsed(sectionId)
-            : uiState.isExpanded(sectionId)
+        let isExpanded = !uiState.isConferenceCollapsed(sectionId)
         let rows = group.rows
         return VStack(spacing: 0) {
             Button {
-                withAnimation {
-                    if group.startsExpanded {
-                        uiState.toggleConference(sectionId)
-                    } else {
-                        uiState.toggle(sectionId)
-                    }
-                }
+                withAnimation { uiState.toggleConference(sectionId) }
             } label: {
                 HStack(spacing: Spacing.sm) {
+                    ConferenceLogo(url: group.logoURL)
                     Text(group.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -268,10 +251,6 @@ struct TablesScreen: View {
         "tables.league.\(league.rawValue)"
     }
 
-    /// Namespaced under the same prefix, so the two mechanisms can't
-    /// collide with each other or with a Scores day id.
-    private static let fcsSectionId = "tables.division.fcs"
-
     private func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -286,7 +265,8 @@ struct TablesScreen: View {
         async let pollsFetch = DataProvider.makeClient(league: .collegeFootball).rankings()
         async let standingsFetch = Self.allStandings()
         // College football's other division, its own request. A miss drops
-        // the FCS card and nothing else.
+        // the FCS rows and nothing else — the card is the league's, and its
+        // FBS half arrived on a different request.
         async let fcsFetch = try? await DataProvider.makeClient(league: .collegeFootball)
             .conferenceStandings(year: nil, division: .fcs)
         do {
@@ -344,16 +324,17 @@ private extension ConferenceStandings {
     }
 }
 
-/// One accordion card on the hub — a league, or college football's FCS
-/// half, which is a competition of its own but not a `League`.
+/// One accordion card on the hub — one league, with every table it offers
+/// inside it.
 private struct TableGroup: Identifiable {
     let id: String
     let title: String
-    /// Whether the card arrives open. Leagues do; FCS doesn't, because it
-    /// is opt-in and fourteen rows the app never promised to cover.
-    let startsExpanded: Bool
+    /// The badge beside the title — the league's own mark. Optional so a
+    /// future card without one falls back to the football glyph every
+    /// conference header already uses.
+    let logoURL: URL?
     let rows: [TableRow]
 
-    /// `tables-league-cfb`, `tables-division-fcs` — the UI tests' handle.
+    /// `tables-league-cfb` — the UI tests' handle.
     var identifier: String { id.replacingOccurrences(of: ".", with: "-") }
 }

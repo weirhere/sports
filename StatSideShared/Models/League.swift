@@ -39,17 +39,32 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// The league's own mark, where one exists.
+    /// The league's own mark — the one ESPN's own scoreboard declares for
+    /// it, in `leagues[].logos[]`.
     ///
-    /// Only the NFL's does: `leagues/500/nfl.png` is real, and every
-    /// college-football spelling 404s (`college-football`, `ncaa`,
-    /// `ncaaf`, `cfb`, `ncaa_football` — all probed live 2026-09-05).
-    /// Which is why the Scores league headers are name-only, the same
-    /// language the Tables hub uses: one league wearing a badge and the
-    /// other wearing a hole reads as a missing asset, not a hierarchy.
+    /// The NFL's sits in the `leagues/` bucket beside the team marks;
+    /// college football's does not, which is what the 2026-09-05 probe
+    /// concluded from (`college-football`, `ncaa`, `ncaaf`, `cfb`,
+    /// `ncaa_football` all 404 there). ESPN files it under `redesign/`
+    /// instead, and ships it on every NCAAF scoreboard response — so both
+    /// leagues wear a real badge and the name-only header rule that hole
+    /// forced is retired (Andy, 2026-09-06).
+    ///
+    /// Static rather than decoded: the mark is a property of the league,
+    /// not of a day's slate, so a header paints it on the first frame
+    /// instead of after a fetch. A moved file degrades to the football
+    /// glyph, exactly like an unknown conference id.
+    ///
+    /// Neither URL derives a dark twin — the NFL's payload does declare
+    /// one, but a header badge rides `ConferenceLogo`'s light backing disc
+    /// in dark mode, where a light-inked shield would vanish.
     var logoURL: URL? {
-        guard self == .nfl else { return nil }
-        return URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
+        switch self {
+        case .nfl:
+            URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
+        case .collegeFootball:
+            URL(string: "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-football-college.png")
+        }
     }
 
     /// How far back the season picker goes. College football floors at the
