@@ -21,7 +21,13 @@ private func game(_ id: String, in league: League, home: String, away: String,
 /// What the widget and the Siri intent both ask for: "my games", regardless
 /// of which sport they belong to.
 @Suite struct CrossLeagueWidgetTests {
-    private let now = Date(timeIntervalSince1970: 1_760_000_000)
+    /// 6pm on a fixed day, so every offset below lands where the assertion
+    /// expects it in any time zone the tests run in — the selection rules
+    /// read the local calendar.
+    private let now = Calendar.current.date(
+        bySettingHour: 18, minute: 0, second: 0,
+        of: Date(timeIntervalSince1970: 1_760_000_000)
+    ) ?? Date(timeIntervalSince1970: 1_760_000_000)
 
     /// The pick is chronological across leagues, so a Sunday NFL kickoff can
     /// outrank a college Saturday that has already finished.
