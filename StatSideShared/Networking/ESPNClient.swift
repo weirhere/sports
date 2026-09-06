@@ -159,6 +159,14 @@ actor ESPNClient: ScoresProviding {
     /// The `/teams` directory, resolved once per client (see `teamDirectory`).
     private var teamsById: [String: Team]?
 
+    /// Stadium capacities by venue id, asked once each per client — a
+    /// nil value is a resolved "no number for this one". Unlike the team
+    /// directory, this caches failures too: the caller is the game
+    /// detail's 30s poll loop, so an un-cached miss would re-ask twice a
+    /// minute for as long as the page is open, and the cost of giving up
+    /// is one absent line on one card.
+    private var venueCapacities: [String: Int?] = [:]
+
     init(league: League = .collegeFootball, session: URLSession = .shared) {
         self.league = league
         self.session = session
@@ -496,7 +504,27 @@ actor ESPNClient: ScoresProviding {
         let dto: SummaryResponseDTO = try await fetch(
             path: "/summary", query: [URLQueryItem(name: "event", value: eventId)]
         )
-        return ESPNMapper.gameSummary(from: dto, league: league)
+        var summary = ESPNMapper.gameSummary(from: dto, league: league)
+        // The site API's venue object stops at name, address, surface —
+        // capacity only exists on the core API's venue resource, so the
+        // "how full was it" half of the info card costs one extra
+        // request, cached per venue and never blocking the summary.
+        if summary.venueCapacity == nil, let venueId = dto.gameInfo?.venue?.id {
+            summary.venueCapacity = await venueCapacity(venueId: venueId)
+        }
+        return summary
+    }
+
+    /// One core-API venue lookup, memoized. A miss is a quiet nil: the
+    /// capacity line degrades away exactly like every other optional
+    /// field on this card.
+    private func venueCapacity(venueId: String) async -> Int? {
+        if let cached = venueCapacities[venueId] { return cached }
+        let dto: CoreVenueDTO? = try? await fetch(
+            base: coreBase, path: "/venues/\(venueId)", query: []
+        )
+        venueCapacities[venueId] = dto?.capacity
+        return dto?.capacity
     }
 
     private func fetch<T: Decodable>(path: String, query: [URLQueryItem]) async throws -> T {

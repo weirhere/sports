@@ -487,10 +487,21 @@ nonisolated struct GameInfoDTO: Decodable {
 }
 
 nonisolated struct VenueDTO: Decodable {
+    /// The core API's key for the venue — the site API's own venue object
+    /// carries no capacity (verified across both leagues' captured
+    /// summary and scoreboard payloads), so the id is how the number gets
+    /// fetched.
+    let id: String?
     let fullName: String?
     let address: VenueAddressDTO?
     let capacity: Int?
     let grass: Bool?
+}
+
+/// The core API's venue resource, which is where `capacity` actually
+/// lives. Only the one field is read.
+nonisolated struct CoreVenueDTO: Decodable {
+    let capacity: Int?
 }
 
 nonisolated struct VenueAddressDTO: Decodable {
