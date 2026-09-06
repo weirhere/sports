@@ -499,6 +499,79 @@ nonisolated struct RankingDTO: Decodable {
     let ranks: LossyArray<RankDTO>?
 }
 
+// MARK: - Historical rankings (sports.core.api)
+//
+// A second shape for the same idea. The core API is the only ESPN surface
+// with a season/week axis for rankings, and it pays for that by shipping
+// everything as a `$ref`: a rank names its team by URL, not inline.
+
+/// A core-API collection page. Only `count` is read — the app addresses
+/// the documents it wants by id rather than walking the refs.
+nonisolated struct CoreCollectionDTO: Decodable {
+    let count: Int?
+}
+
+/// A `{"$ref": "…"}` pointer.
+nonisolated struct CoreRefDTO: Decodable {
+    let ref: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ref = "$ref"
+    }
+
+    /// The team id out of a `…/seasons/2019/teams/99?lang=en` ref.
+    var teamId: String? {
+        guard let ref, let tail = ref.components(separatedBy: "/teams/").last else { return nil }
+        let id = tail.prefix { $0.isNumber }
+        return id.isEmpty ? nil : String(id)
+    }
+}
+
+nonisolated struct CoreRankingDTO: Decodable {
+    let id: String?
+    let name: String?
+    let shortName: String?
+    let type: String?
+    let headline: String?
+    let shortHeadline: String?
+    let ranks: LossyArray<CoreRankDTO>?
+}
+
+nonisolated struct CoreRankDTO: Decodable {
+    let current: Int?
+    let previous: Int?
+    let points: Double?
+    let firstPlaceVotes: Int?
+    let record: CoreRecordDTO?
+    let team: CoreRefDTO?
+}
+
+nonisolated struct CoreRecordDTO: Decodable {
+    let summary: String?
+}
+
+// MARK: - Team directory
+// The one request that names every team ESPN knows (760 of them, FCS
+// included). It carries no conference data — that's what the standings
+// endpoint is for — but names, abbreviations and logos are all the
+// ref-shaped rankings need.
+
+nonisolated struct TeamsResponseDTO: Decodable {
+    let sports: [SportDTO]?
+
+    nonisolated struct SportDTO: Decodable {
+        let leagues: [LeagueDTO]?
+    }
+
+    nonisolated struct LeagueDTO: Decodable {
+        let teams: [Entry]?
+    }
+
+    nonisolated struct Entry: Decodable {
+        let team: TeamDTO?
+    }
+}
+
 nonisolated struct RankDTO: Decodable {
     let current: Int?
     let previous: Int?

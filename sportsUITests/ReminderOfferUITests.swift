@@ -22,29 +22,19 @@ final class ReminderOfferUITests: XCTestCase {
         // not appear and the first assert fails.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
                                 "-ui.notificationsPrompted", "NO",
-                                // The suite queries game rows on Teams; the
-                                // auto-pick would otherwise open on
                                 // Empty the league-qualified follow set —
                                 // the pre-league key stopped being read
                                 // when the namespacing migration landed.
                                 "-following.teamKeys", "()"]
         app.launch()
 
-        app.tabBars.buttons["Teams"].tap()
-        XCTAssertTrue(app.staticTexts["ACC"].waitForExistence(timeout: 15),
-                      "Teams browse should load")
-        let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.tap()
-        search.typeText("Georgia Bulldogs")
-        let row = app.staticTexts["Georgia"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
-
-        let follow = app.buttons["Follow"].firstMatch
-        XCTAssertTrue(follow.waitForExistence(timeout: 10),
-                      "Fresh launch state should show an unfollowed team")
-        follow.tap()
+        // Teams lists the teams you follow now, so the first follow comes
+        // from the Add teams sheet. The offer rides the sheet's dismissal
+        // rather than the tap itself — a SwiftUI alert can't present over
+        // a sheet anchored to the same view, so it waits for the sheet to
+        // go (which is what onboarding's first follow always did too).
+        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+                      "The Add teams sheet should follow Georgia")
 
         // The one-time offer rides the first follow.
         let offer = app.alerts["Get kickoff reminders?"]
@@ -61,6 +51,12 @@ final class ReminderOfferUITests: XCTestCase {
         if allow.waitForExistence(timeout: 5) {
             tapUntilDismissed(allow, dismissing: allow, via: app)
         }
+
+        // The bell lives on the team page, one tap from the followed card.
+        let card = app.teamCard("Georgia Bulldogs")
+        XCTAssertTrue(card.waitForExistence(timeout: 10),
+                      "The follow should leave a card on the Teams tab")
+        card.tap()
 
         let bellOn = app.buttons["Kickoff reminders on"]
         XCTAssertTrue(bellOn.waitForExistence(timeout: 10),

@@ -64,7 +64,12 @@ nonisolated enum Conference {
     /// tab, the standings cut line). The NFL rungs work the same way —
     /// they exist so `.other` keeps meaning "unknown".
     enum Tier: Int, Comparable, Sendable {
-        case power4 = 0, group5, independent, fcs, nflConference, nflDivision, other
+        case power4 = 0, group5, independent, fcs
+        /// A whole league standing as one table — the NFL's 32-team board.
+        /// Above the conference rung so it leads its league's list: the
+        /// league is what the conferences are parts of.
+        case league
+        case nflConference, nflDivision, other
 
         static func < (lhs: Tier, rhs: Tier) -> Bool { lhs.rawValue < rhs.rawValue }
     }
@@ -127,6 +132,26 @@ nonisolated enum Conference {
         7: "NFC",
     ]
 
+    /// The league itself as a group. ESPN's NFL standings response is
+    /// rooted at group 9 ("National Football League"), and asking for it
+    /// at `level=1` returns all 32 teams in one table — which is the row
+    /// Andy asked for on the Tables hub: the whole NFL, not just its two
+    /// conferences. We don't make that request (the conference tables we
+    /// already fetch merge into the same 32 rows), but the id is ESPN's
+    /// and is what the page and the follow token are keyed on.
+    ///
+    /// College football has no counterpart: group 80 is FBS, its root
+    /// ships no entries, and a 130-team table isn't a thing anyone reads —
+    /// the poll answers "who's good" there.
+    private static let nflLeagueNames: [Int: String] = [
+        9: "NFL",
+    ]
+
+    /// The group id standing for a whole league, where the league has one.
+    static func leagueWideId(in league: League) -> Int? {
+        league == .nfl ? 9 : nil
+    }
+
     /// The eight divisions, read live from the same endpoint at `level=3`,
     /// each mapped to its parent conference.
     private static let nflDivisionParents: [Int: Int] = [
@@ -176,7 +201,9 @@ nonisolated enum Conference {
     }
 
     private static let nflNames: [Int: String] =
-        nflConferenceNames.merging(nflDivisionNames) { conf, _ in conf }
+        nflConferenceNames
+            .merging(nflDivisionNames) { conf, _ in conf }
+            .merging(nflLeagueNames) { existing, _ in existing }
 
     private static func names(in league: League) -> [Int: String] {
         switch league {
@@ -278,6 +305,9 @@ nonisolated enum Conference {
         // conference's — an AFC East header showing the AFC shield reads
         // better than the generic fallback glyph.
         guard let id else { return nil }
+        // The league's shield is filed under `leagues/`, not beside the
+        // conference marks (`nfl/500/nfl.png` 404s — probed 2026-09-05).
+        if id == leagueWideId(in: league) { return league.logoURL }
         guard let slug = logoSlugs(in: league)[id] else {
             return parent(of: id, in: league).flatMap { logoURL(for: $0, in: league) }
         }
@@ -312,6 +342,7 @@ nonisolated enum Conference {
         guard let id, names(in: league)[id] != nil else { return .other }
         switch league {
         case .nfl:
+            if nflLeagueNames[id] != nil { return .league }
             return nflConferenceNames[id] != nil ? .nflConference : .nflDivision
         case .collegeFootball:
             if fcsNames[id] != nil { return .fcs }
@@ -319,6 +350,25 @@ nonisolated enum Conference {
             if id == 18 { return .independent }
             return .group5
         }
+    }
+
+    /// Every group a team in `conference` belongs to, most specific first:
+    /// its division, that division's conference, and the league itself.
+    /// College football nests nothing, so its chain is the conference
+    /// alone.
+    ///
+    /// This is what makes a conference follow match a game: the NFL
+    /// scoreboard gives a team its *division* id, so "I follow the AFC"
+    /// only means anything if the walk-up happens somewhere.
+    static func chain(for conference: ConferenceID) -> [ConferenceID] {
+        var chain = [conference]
+        if let parent = parent(of: conference.id, in: conference.league) {
+            chain.append(ConferenceID(conference.league, parent))
+        }
+        if let wide = leagueWideId(in: conference.league), wide != conference.id {
+            chain.append(ConferenceID(conference.league, wide))
+        }
+        return chain
     }
 
     /// The conference an NFL division sits under, or nil for anything else.

@@ -18,6 +18,12 @@ nonisolated enum AppGroup {
     static let followingKeysKey = "following.teamKeys"
     static let followingConferenceTokensKey = "following.conferenceTokens"
 
+    /// Leagues whose poll is followed, as league tokens (`"cfb"`). A poll
+    /// belongs to a league rather than being one thing, so this is a set
+    /// and not a flag — the NFL has no poll today, and a league that grows
+    /// one needs no migration.
+    static let followingPollLeaguesKey = "following.pollLeagues"
+
     static let snapshotKey = "widget.snapshot"
     private static let migrationKey = "migration.followingToGroup.done"
     private static let leagueMigrationKey = "migration.leagueNamespacing.done"

@@ -10,6 +10,8 @@ final class FollowingStore {
     /// second league existed. Migrated once from the pre-league set.
     private(set) var teamKeys: Set<String>
     private(set) var conferenceIds: Set<ConferenceID>
+    /// Leagues whose poll (college football's Top 25) is followed.
+    private(set) var pollLeagues: Set<League>
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = AppGroup.defaults) {
@@ -19,8 +21,16 @@ final class FollowingStore {
             (defaults.stringArray(forKey: AppGroup.followingConferenceTokensKey) ?? [])
                 .compactMap(ConferenceID.init(token:))
         )
+        pollLeagues = Set(
+            (defaults.stringArray(forKey: AppGroup.followingPollLeaguesKey) ?? [])
+                .compactMap(League.init(rawValue:))
+        )
     }
 
+    /// Deliberately poll-blind: this gates the game-shaped surfaces (the
+    /// Scores Following section, the reminder offer), and a followed poll
+    /// carries no games — counting it would promise a Following section
+    /// with nothing in it.
     var followsAnyone: Bool { !teamKeys.isEmpty || !conferenceIds.isEmpty }
 
     /// The league the user follows most, for search's ranking tiebreak.
@@ -86,6 +96,22 @@ final class FollowingStore {
         // reload here would spend its budget to change nothing.
     }
 
+    func isFollowingPoll(in league: League) -> Bool {
+        pollLeagues.contains(league)
+    }
+
+    func togglePoll(in league: League) {
+        if pollLeagues.contains(league) {
+            pollLeagues.remove(league)
+        } else {
+            pollLeagues.insert(league)
+        }
+        defaults.set(pollLeagues.map(\.rawValue).sorted(),
+                     forKey: AppGroup.followingPollLeaguesKey)
+        // No widget reload, for the conference set's reason: the widget is
+        // team-follow-driven, so a reload here would change nothing.
+    }
+
     /// Every followed team id within one league, unqualified — what the
     /// per-league fetchers (schedules, reminders) want.
     func teamIds(in league: League) -> Set<String> {
@@ -95,13 +121,25 @@ final class FollowingStore {
         })
     }
 
-    /// A game is followed through either team or either side's conference.
+    /// A game is followed through either team, or through any group either
+    /// side sits inside — its conference, and in the NFL the division's
+    /// conference and the league above that.
+    ///
+    /// The walk-up is what makes an NFL conference follow mean anything:
+    /// ESPN's NFL scoreboard gives a team its *division* id, so matching
+    /// on the id alone never saw a followed AFC, NFC, or NFL.
+    ///
     /// An FCS visitor's nil conferenceId simply doesn't match — its FBS
     /// host's side carries the game into Following.
     func follows(_ game: Game) -> Bool {
         teamKeys.contains(game.home.team.followKey)
             || teamKeys.contains(game.away.team.followKey)
-            || game.home.team.conference.map(conferenceIds.contains) ?? false
-            || game.away.team.conference.map(conferenceIds.contains) ?? false
+            || followsConference(of: game.home.team)
+            || followsConference(of: game.away.team)
+    }
+
+    private func followsConference(of team: Team) -> Bool {
+        guard let conference = team.conference else { return false }
+        return Conference.chain(for: conference).contains(where: conferenceIds.contains)
     }
 }

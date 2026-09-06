@@ -29,16 +29,17 @@ enum ScoreFilter: Hashable {
     /// is a nonisolated context, so the default MainActor isolation has
     /// to come off.
     nonisolated init?(token: String) {
-        if token == "top25" {
-            self = .top25
-        } else if token.hasPrefix("conference-"),
-                  // A bare id is a pre-league token and reads as college
-                  // football; `ConferenceID.init(token:)` handles both.
-                  let id = ConferenceID(token: String(token.dropFirst("conference-".count))) {
-            self = .conference(id)
-        } else {
+        guard token == "top25" else {
+            // A saved "conference-cfb-8" is deliberately *not* restored.
+            // The view-options sheet retired on 2026-09-05 and Top 25 is
+            // the only filter with a control, so a restored conference
+            // filter would narrow the slate with nothing on screen able to
+            // show or clear it — the unlabelled mystery state the July
+            // "chips don't filter" objection was about. It degrades to the
+            // full slate, which is the honest default.
             return nil
         }
+        self = .top25
     }
 
     /// The league this filter can say anything about — nil for Top 25,

@@ -6,8 +6,13 @@ import SwiftUI
 /// pages and the schedule card; the caller adds `.cardSurface()` where the
 /// message stands alone (never around a bare spinner, which hugs into a
 /// floating pill).
+///
+/// The button's label is overridable for the other reason a pane has
+/// nothing to show: a filter narrowed it, and the way out is "Show all
+/// teams", not "Retry".
 struct StatusMessage: View {
     let text: String
+    var actionTitle = "Retry"
     var retry: (() -> Void)?
 
     var body: some View {
@@ -16,7 +21,7 @@ struct StatusMessage: View {
                 .font(.teamName)
                 .foregroundStyle(.textSecondary)
             if let retry {
-                Button("Retry", action: retry)
+                Button(actionTitle, action: retry)
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
             }

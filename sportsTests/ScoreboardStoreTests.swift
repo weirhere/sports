@@ -43,7 +43,7 @@ private final class DayProvider: ScoresProviding, @unchecked Sendable {
                           })
     }
 
-    func rankings() async throws -> [Poll] { [] }
+    func rankings(year: Int?) async throws -> [Poll] { [] }
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] { [] }
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] { [] }

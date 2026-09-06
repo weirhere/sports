@@ -1,7 +1,8 @@
 import XCTest
 
 /// Live-network smoke test: every tab renders real data, and following a
-/// team from browse makes the Following section appear on Scores.
+/// team from the Add teams sheet makes the Following section appear on
+/// Scores.
 final class SmokeUITests: XCTestCase {
     @MainActor
     func testTabsAndFollowFlow() throws {
@@ -62,26 +63,21 @@ final class SmokeUITests: XCTestCase {
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "rankings")
 
-        // Teams browse + search + follow. The landmark is the search field:
-        // an "ACC" text exists on the Scores tab too (conference grouping),
-        // so it can't prove the tab switch landed.
-        XCTAssertTrue(openTab("Teams", in: app, until: app.searchFields.firstMatch),
-                      "Teams should show its search field")
-        let search = app.searchFields.firstMatch
-        search.tap()
-        search.typeText("Georgia Bulldogs")
-        let row = app.staticTexts["Georgia"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Search should surface Georgia")
-        row.tap()
+        // Teams: the tab lists the teams you follow, and joining one goes
+        // through the Add teams sheet (2026-09-05). Tolerates an
+        // already-followed Georgia from a previous run — follows persist
+        // on the simulator.
+        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+                      "The Add teams sheet should follow Georgia")
+        let card = app.teamCard("Georgia Bulldogs")
+        XCTAssertTrue(card.waitForExistence(timeout: 10),
+                      "A followed team should get a card of its own")
+        snapshot(app, "teams")
 
-        // Team page: follow (tolerate an already-followed state from a
-        // previous run — follows persist on the simulator).
-        let follow = app.buttons["Follow"].firstMatch
-        if follow.waitForExistence(timeout: 10) {
-            follow.tap()
-        }
-        XCTAssertTrue(app.buttons["Following"].firstMatch.waitForExistence(timeout: 5),
-                      "Follow should flip to Following")
+        // The card pushes the team page.
+        card.tap()
+        XCTAssertTrue(app.buttons["Following"].firstMatch.waitForExistence(timeout: 10),
+                      "The card should push the followed team's page")
         snapshot(app, "team-page")
 
         // Scores now leads with the Following section — but the list kept

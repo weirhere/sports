@@ -5,42 +5,46 @@ import SwiftUI
 struct Top25Row: View {
     /// The FBS polls, filtered and in picker order; pushed on to PollScreen.
     let polls: [Poll]
+    /// Whose poll this is — the follow star's id, and the page's.
+    var league: League = .collegeFootball
 
     var body: some View {
-        NavigationLink {
-            PollScreen(polls: polls)
-        } label: {
-            HStack(spacing: Spacing.md) {
-                // Same trophy and footprint as the Scores section header,
-                // so the mark column lines up with the conference logos.
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.textSecondary)
-                    .frame(width: 18, height: 18)
-                Text("Top 25")
-                    .font(.teamName)
-                    .foregroundStyle(.textPrimary)
-                if let teaser {
-                    Text(teaser)
-                        .font(.meta)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: Spacing.sm)
+        HStack(spacing: Spacing.md) {
+            NavigationLink {
+                PollScreen(polls: polls, league: league)
+            } label: {
+                rowContent
             }
-            // Conference rows stand 34 tall from their follow star's tap
-            // target; without a star this row would render shorter, so it
-            // matches the height explicitly and the hub's cards read as one
-            // uniform list.
-            .frame(minHeight: 34)
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, 7)
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilitySummary)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("rankings-top25-row")
+            PollFollowStar(league: league)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("rankings-top25-row")
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 7)
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: Spacing.md) {
+            // Same trophy and footprint as the Scores section header, so
+            // the mark column lines up with the conference logos.
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.textSecondary)
+                .frame(width: 18, height: 18)
+            Text("Top 25")
+                .font(.teamName)
+                .foregroundStyle(.textPrimary)
+            if let teaser {
+                Text(teaser)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: Spacing.sm)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
     }
 
     /// "#1 Ohio State" from the first displayed poll (AP when present).

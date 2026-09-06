@@ -85,22 +85,14 @@ final class AppStoreScreenshots: XCTestCase {
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "04-rankings")
 
-        // Teams browse.
-        XCTAssertTrue(openTab("Teams", in: app, until: app.staticTexts["ACC"]),
-                      "Teams browse should load")
+        // Teams: the seeded follows, one card each.
+        XCTAssertTrue(openTab("Teams", in: app, until: app.buttons["Add teams"]),
+                      "Teams should load")
         snapshot(app, "05-teams")
 
-        // A team page, via search.
-        let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.tap()
-        search.typeText("Georgia Bulldogs")
-        let row = app.staticTexts["Georgia"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
-        _ = app.buttons.matching(NSPredicate(
-            format: "label IN %@", ["Follow", "Following"])).firstMatch
-            .waitForExistence(timeout: 10)
+        // A team page, via the app-wide search tab.
+        XCTAssertTrue(openTeamPage("Georgia Bulldogs", in: app),
+                      "Search should land on the Georgia team page")
         snapshot(app, "06-team-page")
     }
 

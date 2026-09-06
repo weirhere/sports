@@ -13,24 +13,19 @@ final class WidgetUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES"]
         app.launch()
-        app.tabBars.buttons["Teams"].tap()
-        XCTAssertTrue(app.staticTexts["ACC"].waitForExistence(timeout: 15))
-        let search = app.searchFields.firstMatch
-        search.tap()
-        search.typeText("Georgia Bulldogs")
-        let row = app.staticTexts["Georgia"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
-        // Follow if not already followed from a previous run.
-        let follow = app.buttons["Follow"].firstMatch
-        if follow.waitForExistence(timeout: 5) {
-            follow.tap()
-            let offer = app.alerts["Get kickoff reminders?"]
-            if offer.waitForExistence(timeout: 3) {
-                offer.buttons["Not Now"].tap()
-            }
+        // The Add teams sheet is where a follow starts now (the Teams tab
+        // lists follows rather than the directory). A no-op if a previous
+        // run already followed Georgia.
+        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+                      "The Add teams sheet should follow Georgia")
+        // The reminder offer may ride the sheet's dismissal on a fresh
+        // install; it isn't this suite's subject.
+        let offer = app.alerts["Get kickoff reminders?"]
+        if offer.waitForExistence(timeout: 3) {
+            tapUntilDismissed(offer.buttons["Not Now"], dismissing: offer, via: app)
         }
-        XCTAssertTrue(app.buttons["Following"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.teamCard("Georgia Bulldogs").waitForExistence(timeout: 10),
+                      "The follow should leave a card on the Teams tab")
 
         // To the Home Screen; enter jiggle mode.
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")

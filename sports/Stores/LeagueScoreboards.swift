@@ -252,6 +252,8 @@ final class LeagueScoreboards {
     /// Following stays cross-league — "my games" shouldn't care which sport
     /// they belong to — and a followed game appears in both it and its
     /// league's section, because sections are complete, never deduplicated.
+    /// It orders by state rather than by clock: live at the top, finals at
+    /// the bottom (see `byState`).
     ///
     /// Live composes with everything — it is a state, not a scope. The
     /// slate filter is a scope, so it narrows the league sections and
@@ -298,20 +300,38 @@ final class LeagueScoreboards {
         if !following.isEmpty {
             let leagues = Set(following.map(\.home.team.league))
             result.append(GameSection(id: GameSection.followingId, title: "Following",
-                                      games: chronological(following),
+                                      games: byState(following),
                                       spansLeagues: leagues.count > 1))
         }
         return result + leagueSections
     }
 
-    private func chronological(_ games: [Game]) -> [Game] {
+    /// Following's order: what's happening now, then what's about to, then
+    /// what already did. The section is a Saturday's worth of one fan's
+    /// games at once, so a final has nothing left to say while a live game
+    /// changes every play — chronological alone buried the live row under
+    /// the morning's results. Within a state the clock still orders them.
+    private func byState(_ games: [Game]) -> [Game] {
         games.sorted {
+            let (a, b) = (Self.stateRank($0.status), Self.stateRank($1.status))
+            if a != b { return a < b }
             switch ($0.date, $1.date) {
-            case let (a?, b?) where a != b: a < b
-            case (nil, _?): false
-            case (_?, nil): true
-            default: $0.id < $1.id
+            case let (x?, y?) where x != y: return x < y
+            case (nil, _?): return false
+            case (_?, nil): return true
+            default: return $0.id < $1.id
             }
+        }
+    }
+
+    /// Live first, then upcoming, then finals, then the postponed and
+    /// canceled — a row with nothing to watch and no result sits last.
+    private static func stateRank(_ status: GameStatus) -> Int {
+        switch status {
+        case .live: 0
+        case .pre: 1
+        case .final: 2
+        case .other: 3
         }
     }
 }

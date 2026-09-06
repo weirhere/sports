@@ -1,38 +1,29 @@
 import SwiftUI
 
-/// The chrome row above the day strip: StatSide wordmark left; the live
-/// filter and view-options funnel right. Grouping and season moved into
-/// `ScoreFilterSheet` (2026-08-29) when four chips outgrew the row — the
-/// funnel chip carries any non-default state. The live chip is permanent
-/// (Andy, same day): a stable home beats appearing mid-Saturday, and an
-/// empty live day explains itself instead of hiding the toggle.
+/// The chrome row above the day strip: StatSide wordmark left, the Live
+/// toggle right. The chip is permanent (Andy, 2026-08-29): a stable home
+/// beats appearing mid-Saturday, and an empty live day explains itself
+/// instead of hiding the toggle.
 ///
 /// The league selector left on 2026-09-05, when the leagues stopped taking
-/// turns and became accordions on the day's slate. Nothing scopes the
-/// screen any more, so the capsule holds filters only.
+/// turns and became accordions on the day's slate; the view-options funnel
+/// went with it, and its last survivor — the Top 25 chip — followed the
+/// same day. Live is the day's only scope now: "which ranked teams play"
+/// is a question the Tables tab's poll already answers.
 struct ScoresHeader: View {
     let liveOnly: Bool
-    let scoreFilter: ScoreFilter?
-    /// The selected season when browsing the past, nil on the current one.
-    let pastSeasonYear: Int?
     let onToggleLive: () -> Void
-    let onTapFilter: () -> Void
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
             wordmark
             Spacer(minLength: 0)
-            // One grouped capsule for both controls — FotMob's tap-target
-            // language (Andy, 2026-08-29): the Live pill leads, the funnel
-            // rides where FotMob keeps its calendar. Segments paint their
-            // own fill only when active; the group carries the chrome.
-            HStack(spacing: 2) {
-                LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
-                ScoreFilterChip(filter: scoreFilter, pastSeasonYear: pastSeasonYear,
-                                onTap: onTapFilter)
-            }
-            .padding(4)
-            .glassCapsule(fallback: Color.bgElevated)
+            // The chip keeps FotMob's grouped-capsule chrome (Andy,
+            // 2026-08-29) even alone: the capsule carries the tap target,
+            // the pill paints its own fill only when active.
+            LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
+                .padding(4)
+                .glassCapsule(fallback: Color.bgElevated)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.sm)
@@ -52,12 +43,8 @@ struct ScoresHeader: View {
 
 #Preview {
     VStack(spacing: Spacing.lg) {
-        ScoresHeader(liveOnly: false, scoreFilter: nil,
-                     pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
-        ScoresHeader(liveOnly: true, scoreFilter: .conference(.cfb(8)),
-                     pastSeasonYear: nil, onToggleLive: {}, onTapFilter: {})
-        ScoresHeader(liveOnly: false, scoreFilter: nil,
-                     pastSeasonYear: 2019, onToggleLive: {}, onTapFilter: {})
+        ScoresHeader(liveOnly: false, onToggleLive: {})
+        ScoresHeader(liveOnly: true, onToggleLive: {})
     }
     .background(Color.bgPrimary)
 }

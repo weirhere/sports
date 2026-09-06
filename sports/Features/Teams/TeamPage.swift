@@ -56,7 +56,10 @@ struct TeamPage: View {
     /// The Standings tab's tables, keyed by year like the schedules —
     /// ConferencePage's caching pattern. The tab gained past seasons when
     /// the season chip moved into the panes (Andy, 2026-08-31).
-    @State private var standingsByYear: [Int: ConferenceStandings] = [:]
+    /// The season's standings tables — one for a conference that ships
+    /// its own, one per division for a divisional one (ConferencePage's
+    /// shape: the divisions stay apart).
+    @State private var standingsByYear: [Int: [ConferenceStandings]] = [:]
     @State private var standingsLoadingYears: Set<Int> = []
     @State private var standingsFailedYears: Set<Int> = []
 
@@ -169,36 +172,43 @@ struct TeamPage: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                hero
-                Group {
-                    switch tab {
-                    case .overview: overviewContent
-                    case .games: gamesContent
-                    case .standings: standingsContent
-                    }
-                }
-                // geometryGroup pins every child (row logos included) to
-                // the pane while it slides — without it, subtrees resolve
-                // their own positions and marks sat still as cards moved.
-                .geometryGroup()
-                .id(tab)
-                .transition(.push(from: tabSlideEdge))
-                // The week swipe's sibling (Andy, 2026-08-29): a horizontal
-                // swipe on the content walks the tabs; the tab buttons
-                // stay, so nothing is swipe-gated. Simultaneous with a
-                // dominance check so vertical scrolling never tab-flips.
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 20)
-                        .onEnded { value in
-                            let dx = value.translation.width
-                            guard abs(dx) > 50,
-                                  abs(dx) > abs(value.translation.height) * 1.5,
-                                  let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1)),
-                                  target != .standings || showsStandingsTab else { return }
-                            select(tab: target)
+            // Lazy only for the pinning — two children, and the section's
+            // content is the whole pane in one subtree, so nothing inside
+            // it is actually deferred.
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                heroIdentity
+                Section {
+                    Group {
+                        switch tab {
+                        case .overview: overviewContent
+                        case .games: gamesContent
+                        case .standings: standingsContent
                         }
-                )
+                    }
+                    // geometryGroup pins every child (row logos included) to
+                    // the pane while it slides — without it, subtrees resolve
+                    // their own positions and marks sat still as cards moved.
+                    .geometryGroup()
+                    .id(tab)
+                    .transition(.push(from: tabSlideEdge))
+                    // The week swipe's sibling (Andy, 2026-08-29): a horizontal
+                    // swipe on the content walks the tabs; the tab buttons
+                    // stay, so nothing is swipe-gated. Simultaneous with a
+                    // dominance check so vertical scrolling never tab-flips.
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                let dx = value.translation.width
+                                guard abs(dx) > 50,
+                                      abs(dx) > abs(value.translation.height) * 1.5,
+                                      let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1)),
+                                      target != .standings || showsStandingsTab else { return }
+                                select(tab: target)
+                            }
+                    )
+                } header: {
+                    pinnedControls
+                }
             }
         }
         // Once the hero's own title scrolls under the bar, the bar takes
@@ -234,6 +244,7 @@ struct TeamPage: View {
             // follow, and share ride beside the system back button. The
             // season chip moved into the tab panes to make the room.
             ToolbarItemGroup(placement: .topBarTrailing) {
+                seasonChip
                 NotificationBell()
                 FollowPill(team: team)
                 shareButton
@@ -259,7 +270,10 @@ struct TeamPage: View {
 
     // MARK: - Hero
 
-    private var hero: some View {
+    /// Just the identity now — the tab row moved into `pinnedControls`
+    /// so it can stick (Andy, 2026-09-05). This block is what scrolls
+    /// away and hands the nav bar its title.
+    private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
                 logoMark
@@ -275,18 +289,43 @@ struct TeamPage: View {
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.md)
-
-            // Overview and Games always exist, so the row always renders;
-            // only Standings is conference-gated.
-            tabRow
-                .padding(.horizontal, Spacing.lg)
-                .padding(.top, Spacing.sm)
+            // The gap the tab row's own top padding used to make.
+            .padding(.bottom, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The strip above — through the bar and the top bounce — is
         // heroTopBand's job: an in-content extension never escaped the
         // ScrollView's clip (2026-08-31).
         .background(Color.bgCard)
+    }
+
+    /// The sticky header: the tab row and the chip that scopes the pane
+    /// under it, pinned once the identity scrolls away (Andy, 2026-09-05).
+    /// A season's schedule is a long scroll, and switching tab or year
+    /// shouldn't cost a trip back to the top. Both strips paint their own
+    /// surface — a pinned header content can slide under has to be opaque.
+    private var pinnedControls: some View {
+        VStack(spacing: 0) {
+            // Overview and Games always exist, so the row always renders;
+            // only Standings is conference-gated.
+            tabRow
+                .padding(.horizontal, Spacing.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // The paint reaches above the strip's own frame: a pinned
+                // header settles a few points under the bar, and the
+                // scrolling hero shows through that seam. Exactly the
+                // identity block's own bottom gap, so at rest the overhang
+                // lands on empty bgCard and can never cover the subtitle —
+                // whatever the text size does to it.
+                .background(Color.bgCard.padding(.top, -Spacing.sm))
+            // The gap that used to be the pane's own top padding, so
+            // pinned cards never touch the tab row. The season chip left
+            // this row for the toolbar (Andy, 2026-09-05).
+            Color.clear
+                .frame(height: Spacing.sm)
+                .frame(maxWidth: .infinity)
+                .background(Color.bgRecessed)
+        }
     }
 
     /// Bare mark on the card-color header — dark mode reads the `500-dark`
@@ -354,27 +393,41 @@ struct TeamPage: View {
 
     /// The chip's year before the first schedule load pins it.
     private var standingsYear: Int { selectedYear ?? CFBSeason.year() }
-    private var selectedStandings: ConferenceStandings? { standingsByYear[standingsYear] }
+    /// The tables with something in them — one, or a division each.
+    private var selectedStandings: [ConferenceStandings] {
+        (standingsByYear[standingsYear] ?? []).filter { !$0.entries.isEmpty }
+    }
+
+    /// Whether those tables are divisions rather than the conference —
+    /// the payload's answer, the only one that can't go stale.
+    private var standingsAreDivisional: Bool {
+        selectedStandings.contains { $0.parentId != nil }
+    }
     private var standingsLoading: Bool { standingsLoadingYears.contains(standingsYear) }
     private var standingsFailed: Bool { standingsFailedYears.contains(standingsYear) }
 
     /// The team's own row in its conference table — the record card's
     /// source while the season is current, whatever year the chip shows.
     private var ownStanding: ConferenceStanding? {
-        currentSeasonYear.flatMap { standingsByYear[$0] }?
-            .entries.first { $0.team.id == team.id }
+        guard let year = currentSeasonYear else { return nil }
+        return (standingsByYear[year] ?? []).lazy
+            .compactMap { $0.entries.first { $0.team.id == team.id } }
+            .first
     }
 
-    /// The season picker rides the pane, not the hero — the toolbar row
-    /// holds bell/follow/share and had no room (Andy, 2026-08-31).
+    /// The season picker rides the toolbar row (Andy, 2026-09-05,
+    /// superseding the 2026-08-31 move into the panes) — it scopes the
+    /// schedule and the standings alike, so it sits with the page's
+    /// identity rather than above one pane's cards.
+    ///
+    /// Overview is the exception it has always been: its record card is
+    /// pinned to the current season, so there is nothing there for a year
+    /// to scope, and a control that does nothing is worse than no control.
     @ViewBuilder
-    private var seasonRow: some View {
-        if let selectedYear {
-            HStack {
-                Spacer()
-                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
-                               onSelect: { select(year: $0) })
-            }
+    private var seasonChip: some View {
+        if let selectedYear, tab != .overview {
+            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                           style: .bar, onSelect: { select(year: $0) })
         }
     }
 
@@ -423,12 +476,14 @@ struct TeamPage: View {
                 }
             }
         }
-        .padding(Spacing.sm)
+        // No top padding: the pinned header carries it, so the gap is
+        // the same whether the header is riding along or stuck.
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
     }
 
     private var gamesContent: some View {
         VStack(spacing: Spacing.sm) {
-            seasonRow
             if let nextGame {
                 NextGameCard(game: nextGame)
                     .cardSurface()
@@ -446,28 +501,41 @@ struct TeamPage: View {
             .padding(.bottom, Spacing.xs)
             .cardSurface()
         }
-        .padding(Spacing.sm)
+        // No top padding: the pinned header carries it, so the gap is
+        // the same whether the header is riding along or stuck.
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
     }
 
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29, matching ConferencePage).
     private var standingsContent: some View {
         VStack(spacing: Spacing.sm) {
-            seasonRow
-            if let entries = selectedStandings?.entries, !entries.isEmpty {
-                VStack(spacing: 0) {
-                    StandingsList(
-                        entries: entries,
-                        highlightTeamId: team.id,
-                        showsTitleGameCut: Conference.titleGameIsTopTwo(
-                            id: resolvedConferenceId, year: standingsYear, in: pageLeague),
-                        // Live claims are current-season only (ConferencePage's rule).
-                        liveGames: standingsYear == currentSeasonYear
-                            ? (liveBoard?.boardGames.filter(\.isLive) ?? []) : []
-                    )
+            if !selectedStandings.isEmpty {
+                // One card per table, divisions headed by their own name —
+                // ConferencePage's rule, so a Sun Belt team's tab and the
+                // conference it links to say the same thing.
+                ForEach(selectedStandings, id: \.name) { table in
+                    VStack(spacing: 0) {
+                        if standingsAreDivisional {
+                            CardHeader(title: table.divisionName(
+                                under: Conference.name(for: resolvedConferenceId, in: pageLeague)))
+                        }
+                        StandingsList(
+                            entries: table.entries,
+                            highlightTeamId: team.id,
+                            // A division's top two are not the conference's.
+                            showsTitleGameCut: !standingsAreDivisional
+                                && Conference.titleGameIsTopTwo(
+                                    id: resolvedConferenceId, year: standingsYear, in: pageLeague),
+                            // Live claims are current-season only (ConferencePage's rule).
+                            liveGames: standingsYear == currentSeasonYear
+                                ? (liveBoard?.boardGames.filter(\.isLive) ?? []) : []
+                        )
+                    }
+                    .padding(.bottom, Spacing.xs)
+                    .cardSurface()
                 }
-                .padding(.bottom, Spacing.xs)
-                .cardSurface()
             } else if standingsLoading {
                 // A lone spinner gets no card — a surface around it hugs
                 // into a floating pill (Andy, 2026-08-31).
@@ -483,7 +551,10 @@ struct TeamPage: View {
                     .cardSurface()
             }
         }
-        .padding(Spacing.sm)
+        // No top padding: the pinned header carries it, so the gap is
+        // the same whether the header is riding along or stuck.
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
         // Re-fires on year flips while the tab is up; first visit to a
         // year fetches lazily, a seen year is a cache hit.
         .task(id: standingsYear) { await loadStandings() }
@@ -541,7 +612,10 @@ struct TeamPage: View {
         let year = standingsYear
         // The id re-check also covers a conference that resolved differently
         // once the schedule payload landed.
-        guard force || standingsByYear[year]?.id != id else { return }
+        // Keyed by "does what we cached still belong to this conference" —
+        // a divisional cache holds division ids, never the conference's.
+        guard force || standingsByYear[year]?
+            .contains(where: { $0.belongs(to: ConferenceID(pageLeague, id)) }) != true else { return }
         guard !standingsLoadingYears.contains(year) else { return }
         standingsLoadingYears.insert(year)
         defer { standingsLoadingYears.remove(year) }
@@ -553,11 +627,17 @@ struct TeamPage: View {
                 division: Conference.division(for: id, in: pageLeague) ?? .fbs)
             let target = ConferenceID(pageLeague, id)
             let mine = all.filter { $0.belongs(to: target) }
-            standingsByYear[year] = mine.first { $0.parentId == nil }
-                ?? mine.merged(as: id, name: Conference.name(for: id, in: pageLeague),
-                               league: pageLeague)
-                ?? ConferenceStandings(id: id, name: Conference.name(for: id, in: pageLeague),
-                                       entries: [], league: pageLeague)
+            // The conference's own table when ESPN ships one, its divisions
+            // otherwise — kept apart, like ConferencePage. Nothing at all
+            // still caches an empty table under the conference's id, so the
+            // guard above sees a fetched season and the tab says "TBA"
+            // instead of refetching on every visit.
+            let own = mine.filter { $0.parentId == nil }
+            let tables = own.isEmpty ? mine : own
+            standingsByYear[year] = tables.isEmpty
+                ? [ConferenceStandings(id: id, name: Conference.name(for: id, in: pageLeague),
+                                       entries: [], league: pageLeague)]
+                : tables
             standingsFailedYears.remove(year)
         } catch {
             standingsFailedYears.insert(year)

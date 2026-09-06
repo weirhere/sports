@@ -1,67 +1,42 @@
 import SwiftUI
 
-/// Browse and search every team, grouped by conference (from the standings
-/// API — the one source that knows membership), FBS conferences first and
-/// FCS under their own heading (E8).
+/// The teams you follow, one card each.
+///
+/// It used to be the whole directory in accordions — every conference, every
+/// team, ~250 rows deep (Andy, 2026-09-05: "the teams page doesn't need to
+/// really surface all the teams grouped in accordions"). Browsing by
+/// conference is what the Tables hub is for, and finding one team by name is
+/// what search is for; what this tab is for is the handful of teams that are
+/// yours. Adding one is a sheet away.
 struct TeamsScreen: View {
     @Environment(FollowingStore.self) private var following
-    @Environment(UIStateStore.self) private var uiState
     @Environment(Router.self) private var router
     @Environment(TeamDirectoryStore.self) private var directory
-    /// Optional so previews without the environment still render; search
-    /// ranking just loses its in-scope tiebreak.
 
-    @State private var searchText = ""
-    // Heterogeneous: browse rows push Team, group headers push
+    // Heterogeneous: team cards push Team, a search intent pushes
     // ConferenceDestination — a typed path can't hold both.
     @State private var path = NavigationPath()
+    @State private var isAddingTeams = false
 
-    /// Browse order per the P1 review: tier → name (the Rankings mapper's
-    /// order), under one "All conferences" heading. The directory keeps its
-    /// alphabetical contract for search and onboarding; the reorder is
-    /// browse-local. ACC still sorts first — the UI tests lean on that.
-    private var conferences: [ConferenceTeams] {
-        directory.conferences.sorted {
-            let lhs = Conference.tier(for: $0.id, in: $0.league)
-            let rhs = Conference.tier(for: $1.id, in: $1.league)
-            if lhs != rhs { return lhs < rhs }
-            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-        }
-    }
-
-    /// Split by division under their own headings (E8). The directory
-    /// doubled to ~250 teams, and one undifferentiated "All conferences"
-    /// list would read as though the app's slate covered all of it — which
-    /// under scope (b) it doesn't until you ask.
-    private var fbsConferences: [ConferenceTeams] {
-        conferences.filter {
-            $0.league == .collegeFootball
-                && Conference.division(for: $0.id, in: $0.league) != .fcs
-        }
-    }
-
-    private var fcsConferences: [ConferenceTeams] {
-        conferences.filter {
-            $0.league == .collegeFootball
-                && Conference.division(for: $0.id, in: $0.league) == .fcs
-        }
-    }
-
-    /// The NFL's two conferences, in AFC-then-NFC order rather than the
-    /// alphabetical one browse gives college football — that's the order
-    /// the league itself is always listed in.
-    private var nflConferences: [ConferenceTeams] {
-        Conference.topLevelIds(in: .nfl).compactMap { id in
-            conferences.first { $0.league == .nfl && $0.id == id }
-        }
-    }
+    @ScaledMetric(relativeTo: .body) private var addIconSize: CGFloat = 40
 
     var body: some View {
         NavigationStack(path: $path) {
             content
-                .background(Color.bgPrimary)
+                .background(Color.bgRecessed)
                 .navigationTitle("Teams")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            isAddingTeams = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .tint(.textPrimary)
+                        .accessibilityLabel("Add teams")
+                    }
+                }
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                 }
@@ -87,13 +62,16 @@ struct TeamsScreen: View {
             resolvePendingTeam()
             resolvePendingConference()
         }
+        .sheet(isPresented: $isAddingTeams) {
+            AddTeamsSheet()
+        }
     }
 
-    /// Lands a deep-linked team once the browse data is loaded; an unknown
-    /// id degrades to landing on the Teams tab.
+    /// Lands a deep-linked team once the directory is loaded; an unknown id
+    /// degrades to landing on the Teams tab.
     private func resolvePendingTeam() {
         guard let pendingId = router.pendingTeamId,
-              let team = conferences.flatMap(\.teams).first(where: { $0.id == pendingId }) else { return }
+              let team = directory.allTeams.first(where: { $0.id == pendingId }) else { return }
         router.pendingTeamId = nil
         path = NavigationPath([team])
     }
@@ -101,229 +79,90 @@ struct TeamsScreen: View {
     /// Lands a search result's conference on its standings page — the
     /// dedicated destination the search seam was left open for. No data
     /// dependency: the page fetches its own standings, so an intent
-    /// resolves immediately even before the browse list has loaded.
+    /// resolves immediately even before the directory has loaded.
     private func resolvePendingConference() {
         guard let pendingId = router.pendingConferenceId else { return }
         router.pendingConferenceId = nil
-        searchText = ""
         path = NavigationPath([ConferenceDestination(conference: pendingId,
                                                      name: Conference.name(for: pendingId))])
     }
 
     @ViewBuilder
     private var content: some View {
-        if conferences.isEmpty {
-            VStack(spacing: Spacing.md) {
-                Spacer()
-                if directory.isLoading {
-                    ProgressView()
-                } else {
-                    Text(directory.lastError ?? "No teams")
-                        .font(.teamName)
-                        .foregroundStyle(.textSecondary)
-                    Button("Retry") {
-                        Task { await directory.load() }
-                    }
-                    .font(.teamNameEmphasis)
-                    .foregroundStyle(.textPrimary)
-                }
-                Spacer()
-            }
+        // A follow can't be rendered as a card until the directory says who
+        // it is, so the load state stands in for the whole screen — the
+        // empty state must never be shown to someone who follows teams.
+        if directory.conferences.isEmpty {
+            TeamDirectoryPlaceholder()
         } else {
             ScrollView {
                 LazyVStack(spacing: Spacing.sm) {
-                    if searchText.isEmpty {
-                        if !followedTeams.isEmpty {
-                            teamSection(title: "Following",
-                                        sectionId: Self.followingSectionId,
-                                        teams: followedTeams)
-                                .id(Self.followingSectionId)
-                        }
-                        // The league is the outermost level of browse now.
-                        // College football leads: it is what the app is for,
-                        // and it is the longer list.
-                        ListSectionHeading(title: "FBS conferences")
-                        ForEach(fbsConferences, id: \.rowId) { conference in
-                            teamSection(title: conference.name,
-                                        sectionId: sectionId(for: conference),
-                                        teams: conference.teams,
-                                        logoURL: Conference.logoURL(for: conference.conference),
-                                        isConference: true,
-                                        conference: conference.conference)
-                        }
-                        // The NFL sits above the FCS tail: FCS is the
-                        // opt-in long list (E8 scope (b)), the NFL is a
-                        // first-class league.
-                        if !nflConferences.isEmpty {
-                            ListSectionHeading(title: "NFL")
-                            ForEach(nflConferences, id: \.rowId) { conference in
-                                teamSection(title: conference.name,
-                                            sectionId: sectionId(for: conference),
-                                            teams: conference.teams,
-                                            logoURL: Conference.logoURL(for: conference.conference),
-                                            isConference: true,
-                                            conference: conference.conference)
-                            }
-                        }
-                        if !fcsConferences.isEmpty {
-                            ListSectionHeading(title: "FCS conferences")
-                            ForEach(fcsConferences, id: \.rowId) { conference in
-                                teamSection(title: conference.name,
-                                            sectionId: sectionId(for: conference),
-                                            teams: conference.teams,
-                                            logoURL: Conference.logoURL(for: conference.conference),
-                                            isConference: true,
-                                            conference: conference.conference)
-                            }
-                        }
-                    } else if !searchResults.isEmpty {
-                        VStack(spacing: 0) {
-                            let spansLeagues = Set(searchResults.map(\.league)).count > 1
-                            ForEach(searchResults) { team in
-                                TeamBrowseRow(team: team,
-                                              leagueTag: spansLeagues ? team.league : nil)
-                            }
-                        }
-                        .padding(.vertical, Spacing.xs)
-                        .cardSurface()
+                    if followedTeams.isEmpty {
+                        emptyState
                     } else {
-                        Text("No teams match “\(searchText.trimmingCharacters(in: .whitespaces))”")
-                            .font(.teamName)
-                            .foregroundStyle(.textSecondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, Spacing.xl)
+                        // Keyed on the follow key, never the bare id: UCLA
+                        // and the Seahawks are both team 26, and duplicate
+                        // identities inside one LazyVStack corrupt its
+                        // layout into blank card-sized gaps.
+                        ForEach(followedTeams, id: \.followKey) { team in
+                            FollowedTeamCard(team: team)
+                        }
                     }
+                    addTeamsCard
                 }
                 .padding(Spacing.sm)
             }
-            .background(Color.bgRecessed)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                SearchField(text: $searchText, prompt: "Find a team")
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.xs)
-                    .padding(.bottom, Spacing.sm)
-                    .background(Color.bgRecessed)
-            }
         }
     }
 
-    private func teamSection(title: String, sectionId: String, teams: [Team],
-                             logoURL: URL? = nil, isConference: Bool = false,
-                             conference: ConferenceID? = nil) -> some View {
-        let isExpanded = !uiState.isConferenceCollapsed(sectionId)
-        // The header surface is the whole-width toggle; standings live in
-        // its context menu + VoiceOver action (the trailing icon came off
-        // in the P1 review — Scores headers keep theirs).
-        let openStandings: (() -> Void)? = conference.map { id in
-            { path.append(ConferenceDestination(conference: id, name: title)) }
-        }
-        // A conference header splits into two surfaces (Andy's call,
-        // 2026-08-25): mark + name push the conference page, the rest
-        // toggles. The Following group keeps the whole row as its toggle.
-        let identity = HStack(spacing: Spacing.sm) {
-            if isConference {
-                ConferenceLogo(url: logoURL)
-            }
-            Text(title)
-                .font(.sectionHeader)
+    private var emptyState: some View {
+        VStack(spacing: Spacing.xs) {
+            Text("No teams yet")
+                .font(.teamNameEmphasis)
                 .foregroundStyle(.textPrimary)
-        }
-        let toggle = { (content: AnyView) in
-            Button {
-                withAnimation { uiState.toggleConference(sectionId) }
-            } label: {
-                content
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(title), \(teams.count) \(teams.count == 1 ? "team" : "teams")")
-            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
-            .accessibilityAddTraits(.isHeader)
-            .contextMenu {
-                if let openStandings {
-                    Button {
-                        openStandings()
-                    } label: {
-                        Label("View \(title) standings", systemImage: "list.number")
-                    }
-                }
-            }
-            .accessibilityActions {
-                if let openStandings {
-                    Button("View \(title) standings", action: openStandings)
-                }
-            }
-        }
-        let countAndChevron = HStack(spacing: Spacing.sm) {
-            Text("\(teams.count)")
+            Text("Your teams lead the Scores screen, the widget, and your kickoff reminders.")
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
-            Spacer()
-            Image(systemName: "chevron.down")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.textSecondary)
-                .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                .multilineTextAlignment(.center)
         }
-        return VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                if let openStandings {
-                    Button(action: openStandings) {
-                        identity
-                            .padding(.leading, Spacing.lg)
-                            .padding(.vertical, Spacing.md)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(title) standings")
-                    toggle(AnyView(
-                        countAndChevron
-                            .padding(.leading, Spacing.sm)
-                            .padding(.trailing, Spacing.lg)
-                            .padding(.vertical, Spacing.md)
-                            .contentShape(Rectangle())
-                    ))
-                } else {
-                    toggle(AnyView(
-                        HStack(spacing: Spacing.sm) {
-                            identity
-                            countAndChevron
-                        }
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.vertical, Spacing.md)
-                        .contentShape(Rectangle())
-                    ))
-                }
-            }
-            .background(Color.bgHeader)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.top, Spacing.xl)
+        .padding(.bottom, Spacing.sm)
+    }
 
-            if isExpanded {
-                ForEach(teams) { team in
-                    TeamBrowseRow(team: team)
-                }
+    /// The second door to the sheet, and the only one that reads as an
+    /// invitation — the toolbar plus is the one that's always in reach.
+    private var addTeamsCard: some View {
+        Button {
+            isAddingTeams = true
+        } label: {
+            HStack(spacing: Spacing.md) {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.textPrimary)
+                    .frame(width: addIconSize, height: addIconSize)
+                    .background(Circle().fill(Color.bgElevated))
+                Text("Add teams")
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
+                Spacer(minLength: Spacing.sm)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
             }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.md)
+            .contentShape(Rectangle())
         }
-        .padding(.bottom, isExpanded ? Spacing.xs : 0)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add teams")
         .cardSurface()
     }
 
-    private static let followingSectionId = "teams.following"
-
-    /// League-qualified, because the collapse state is persisted and group
-    /// id 8 is the SEC *and* the AFC — a bare id would have collapsed both
-    /// cards with one tap. Existing college-football state resets once,
-    /// which costs nothing: absence means expanded.
-    private func sectionId(for conference: ConferenceTeams) -> String {
-        "teams.conf.\(conference.conference?.token ?? "other")"
-    }
-
     private var followedTeams: [Team] {
-        conferences.flatMap(\.teams)
+        directory.allTeams
             .filter { following.isFollowing($0) }
             .sorted { $0.location.localizedCaseInsensitiveCompare($1.location) == .orderedAscending }
-    }
-
-    private var searchResults: [Team] {
-        SearchResults.teams(matching: searchText, in: conferences,
-                            followingIds: following.teamKeys,
-                            preferredLeague: following.preferredLeague)
     }
 }

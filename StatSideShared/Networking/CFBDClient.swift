@@ -176,8 +176,11 @@ actor CFBDClient: ScoresProviding {
         )
     }
 
-    func rankings() async throws -> [Poll] {
-        let season = CFBSeason.year()
+    func rankings(year: Int?) async throws -> [Poll] {
+        // CFBD's endpoints are year-scoped natively, so a past season is
+        // the same request with a different year — and its poll weeks
+        // already include the season's final vote.
+        let season = year ?? CFBSeason.year()
         let weeks: LossyArray<CFBDPollWeekDTO> = try await fetch(
             "/rankings", query: [URLQueryItem(name: "year", value: String(season))]
         )

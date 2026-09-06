@@ -11,6 +11,9 @@ nonisolated struct ConferenceStanding: Identifiable, Hashable, Sendable {
     /// ESPN's `playoffSeed` — the tiebreaker-aware standings position.
     /// 1-based when ESPN knows it; nil (or ESPN's 0) when it doesn't.
     var playoffSeed: Int? = nil
+    /// ESPN's `winpercent`, 0...1 — its own number, ties already counted.
+    /// The league table orders on it; nothing else reads it.
+    var winPercent: Double? = nil
 
     var id: String { team.id }
 }
@@ -26,6 +29,44 @@ nonisolated extension Array where Element == ConferenceStandings {
         return ConferenceStandings(id: id, name: name,
                                    entries: flatMap(\.entries), league: league,
                                    spansDivisions: count > 1)
+    }
+
+    /// The whole league as one table: every top-level table's entries in
+    /// one list, ranked by ESPN's win percentage.
+    ///
+    /// Built from the conference tables we already fetched rather than
+    /// from `standings?level=1`, which costs a request to answer worse:
+    /// its current-season order is this same win-percentage ranking, but
+    /// its past-season order is a stale seed interleave that puts 14-2
+    /// Baltimore ninth (probed live 2026-09-05).
+    ///
+    /// Ordering here doesn't breach the never-sort-standings rule — that
+    /// rule protects orders that encode tiebreakers, and the NFL ranks
+    /// nothing across its conferences. Win percentage is the only ordering
+    /// a league table has, and it is exactly what ESPN's own league view
+    /// shows. Ties keep the conference tables' order rather than inventing
+    /// a winner between them.
+    ///
+    /// Nil unless every one of the league's top-level groups came back: a
+    /// table calling itself the NFL with one conference missing would be
+    /// a lie the row can't qualify.
+    func leagueTable(in league: League) -> ConferenceStandings? {
+        guard let id = Conference.leagueWideId(in: league) else { return nil }
+        let tables = filter { $0.league == league && $0.parentId == nil }
+        let present = Set(tables.compactMap(\.id))
+        guard Set(Conference.topLevelIds(in: league)).isSubset(of: present) else { return nil }
+        let entries = tables.flatMap(\.entries)
+        guard !entries.isEmpty else { return nil }
+        return ConferenceStandings(
+            id: id, name: Conference.name(for: id, in: league),
+            entries: entries.enumerated()
+                .sorted { lhs, rhs in
+                    let (l, r) = (lhs.element.winPercent, rhs.element.winPercent)
+                    guard let l, let r, l != r else { return lhs.offset < rhs.offset }
+                    return l > r
+                }
+                .map(\.element),
+            league: league)
     }
 
     /// One row per conference, divisions folded into their parent — the Sun
