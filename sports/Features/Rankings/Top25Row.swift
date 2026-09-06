@@ -25,12 +25,13 @@ struct Top25Row: View {
 
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
-            // Same trophy and footprint as the Scores section header, so
-            // the mark column lines up with the conference logos.
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.textSecondary)
-                .frame(width: 18, height: 18)
+            // The league's own mark, not a trophy (Andy, 2026-09-06): the
+            // row is named "Top 25", which says nothing about *whose* top
+            // 25 — fine while college football is the only league that
+            // polls, and confusing the moment a second one does. Same
+            // `ConferenceLogo` footprint as every other row's mark, so the
+            // column still lines up.
+            ConferenceLogo(url: league.logoURL)
             Text("Top 25")
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)

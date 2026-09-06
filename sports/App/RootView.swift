@@ -74,8 +74,8 @@ struct RootView: View {
         .onChange(of: router.pendingGameId) { _, id in
             if id != nil { selectedTab = .scores }
         }
-        .onChange(of: router.pendingTeamId) { _, id in
-            if id != nil { selectedTab = .teams }
+        .onChange(of: router.pendingTeam) { _, team in
+            if team != nil { selectedTab = .teams }
         }
         .onChange(of: router.pendingConferenceId) { _, id in
             if id != nil { selectedTab = .teams }

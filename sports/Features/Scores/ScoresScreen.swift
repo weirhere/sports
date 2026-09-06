@@ -28,6 +28,7 @@ struct ScoresScreen: View {
     // team page) too, and a typed path can't hold them all.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
     // day change so the slide matches the strip's spatial order.
@@ -44,14 +45,17 @@ struct ScoresScreen: View {
 
     private enum DragAxis { case horizontal, vertical }
 
+    /// Height of the floating Today button plus its breathing room.
+    private static let jumpClearance: CGFloat = 44
+
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 ScoresHeader(liveOnly: uiState.liveOnly,
-                             onToggleLive: { toggleLive() })
+                             onToggleLive: { toggleLive() },
+                             onOpenCalendar: { showsCalendar = true })
                 DayStrip(days: scoreboards.days(),
-                         selectedId: DayFormat.id(for: scoreboards.selectedDay),
-                         today: .now) { day in
+                         selectedId: DayFormat.id(for: scoreboards.selectedDay)) { day in
                     select(day: day)
                 }
                 Divider().overlay(Color.divider)
@@ -92,6 +96,11 @@ struct ScoresScreen: View {
                 .simultaneousGesture(daySwipeGesture)
             }
             .background(Color.bgPrimary)
+            .overlay(alignment: .bottom) {
+                if scoreboards.canJumpToToday { todayJump }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.85),
+                       value: scoreboards.canJumpToToday)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
@@ -119,6 +128,12 @@ struct ScoresScreen: View {
         // `select(divisions:)` refetches and no-ops when nothing changed —
         // so this fires freely.
         .task(id: neededDivisions) { await scoreboards.select(divisions: neededDivisions) }
+        .sheet(isPresented: $showsCalendar) {
+            DayCalendarSheet(days: scoreboards.days(),
+                             selected: scoreboards.selectedDay) { day in
+                select(day: day)
+            }
+        }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: scoreboards.selectedDay) { _, _ in
             dragOffset = 0
@@ -146,6 +161,41 @@ struct ScoresScreen: View {
         guard uiState.liveOnly, !scoreboards.isOnToday else { return }
         daySlideAnimation = nil
         Task { await scoreboards.selectToday() }
+    }
+
+    /// The way back to today: centred over the slate, just above the tab
+    /// bar (Andy, 2026-09-06). It used to be a chip pinned to the day
+    /// strip's trailing edge, which cost the strip its last ~70pt on every
+    /// day but today — a floating button costs it nothing and sits where
+    /// the thumb already is.
+    ///
+    /// Inverted, alone in the app's chrome: dark on light, light on dark —
+    /// `textPrimary` ground under `bgPrimary` ink, the same pairing the
+    /// selected day chip wears. It is the one control on the page that
+    /// *changes* the day rather than describing it, and it only exists
+    /// while it has somewhere to go, so it can afford to be the loudest
+    /// thing on screen.
+    private var todayJump: some View {
+        Button {
+            select(day: .now)
+        } label: {
+            Text("Today")
+                .font(.chip)
+                .fixedSize()
+                .foregroundStyle(Color.bgPrimary)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+                .glassCapsuleInteractive(tint: Color.textPrimary,
+                                         fallback: Color.textPrimary)
+        }
+        .buttonStyle(.plain)
+        // Floating over scrolling content, so it carries its own separation
+        // on the 18.0 floor where there is no glass to do it.
+        .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+        .padding(.bottom, Spacing.md)
+        .transition(.scale(scale: 0.85).combined(with: .opacity))
+        .accessibilityLabel("Jump to today")
+        .accessibilityIdentifier("scores-today-jump")
     }
 
     /// Every user day change funnels through here so chip taps and swipes
@@ -241,6 +291,9 @@ struct ScoresScreen: View {
                     }
                 }
                 .padding(Spacing.sm)
+                // The jump floats over this scroll view, so the last card
+                // needs room to clear it rather than sitting underneath.
+                .padding(.bottom, scoreboards.canJumpToToday ? Self.jumpClearance : 0)
             }
             .background(Color.bgRecessed)
             .refreshable {

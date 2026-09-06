@@ -134,6 +134,19 @@ final class LeagueScoreboards {
         Calendar.current.isDateInToday(selectedDay) && seasonYear == currentSeasonYear
     }
 
+    /// Whether the way back to today has anywhere to go — false when we are
+    /// already there, and false in the offseason, where today is outside
+    /// every league's span and `selectToday()` would land the strip on a
+    /// day it cannot show. The span is the *current* season's, not the
+    /// selected one's: jumping home switches season first.
+    var canJumpToToday: Bool {
+        guard !isOnToday else { return false }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let span = SeasonSpan.days(year: currentSeasonYear, calendar: calendar)
+        return today >= calendar.startOfDay(for: span.lowerBound) && today <= span.upperBound
+    }
+
     // MARK: - Loading
 
     /// First load: the day the app opened on, plus a snap forward if

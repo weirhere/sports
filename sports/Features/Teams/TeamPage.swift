@@ -488,23 +488,46 @@ struct TeamPage: View {
                 NextGameCard(game: nextGame)
                     .cardSurface()
             }
-            VStack(spacing: 0) {
-                TeamScheduleSection(
-                    teamId: team.id,
-                    games: Game.merging(schedule?.games ?? [], withLive: liveBoard?.boardGames ?? []),
-                    isLoading: isLoadingSelected,
-                    showsError: showsErrorForSelected,
-                    byeWeek: schedule?.byeWeek,
-                    onRetry: { Task { await retry() } }
-                )
+            // A card per phase of the season (Andy, 2026-09-06). The
+            // phases the team has no games in produce no card, so a college
+            // page with neither a preseason nor a bowl is one card, as
+            // before — and the loading/error/empty states still need a card
+            // of their own when there are no games to split at all.
+            let scheduleGames = Game.merging(schedule?.games ?? [],
+                                             withLive: liveBoard?.boardGames ?? [])
+            let phases = scheduleGames.bySeasonPhase()
+            if phases.isEmpty {
+                scheduleCard(title: "Schedule", games: [], byeWeek: nil)
+            } else {
+                ForEach(phases, id: \.phase) { phase, games in
+                    // The bye is a regular-season fact: it sits between two
+                    // real weeks, and there is no such thing as a preseason
+                    // bye to slot.
+                    scheduleCard(title: phase.title, games: games,
+                                 byeWeek: phase == .regular ? schedule?.byeWeek : nil)
+                }
             }
-            .padding(.bottom, Spacing.xs)
-            .cardSurface()
         }
         // No top padding: the pinned header carries it, so the gap is
         // the same whether the header is riding along or stuck.
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
+    }
+
+    private func scheduleCard(title: String, games: [Game], byeWeek: Int?) -> some View {
+        VStack(spacing: 0) {
+            TeamScheduleSection(
+                teamId: team.id,
+                title: title,
+                games: games,
+                isLoading: isLoadingSelected,
+                showsError: showsErrorForSelected,
+                byeWeek: byeWeek,
+                onRetry: { Task { await retry() } }
+            )
+        }
+        .padding(.bottom, Spacing.xs)
+        .cardSurface()
     }
 
     // No CardHeader here: the Standings tab already names the card

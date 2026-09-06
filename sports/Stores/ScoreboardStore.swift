@@ -113,9 +113,8 @@ struct GameSection: Identifiable, Hashable {
     /// conference and poll section, nil only on Following, which spans
     /// them all.
     var league: League? = nil
-    /// The mark beside the title. Nil sections fall back to a glyph (a
-    /// star for Following, a trophy for the poll) or the league's own
-    /// badge.
+    /// The mark beside the title. The one nil section is Following,
+    /// which falls back to its star.
     var logoURL: URL? = nil
     /// The followable table this section *is*, where it is one. It is what
     /// hoists the section under Following when that table is followed, and

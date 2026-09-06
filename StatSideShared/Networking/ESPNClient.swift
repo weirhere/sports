@@ -471,23 +471,25 @@ actor ESPNClient: ScoresProviding {
     private func fetchSchedule(teamId: String, year: Int) async throws -> TeamSchedule {
         // A bare /schedule request inherits ESPN's "current" season type, which
         // is the empty preseason from February until kickoff — so ask for the
-        // season explicitly. Regular season and postseason are separate requests.
+        // season explicitly. Each phase is its own request (verified live
+        // 2026-09-06: `seasontype=1` returns the NFL's three preseason games
+        // with `seasonType.type: 1`).
+        //
+        // The regular season is the one that must succeed; the other two
+        // degrade to no games rather than failing the page — a team with no
+        // preseason and no bowl is the normal case, not an error.
         let path = "/teams/\(teamId)/schedule"
-        let regularQuery = [
-            URLQueryItem(name: "season", value: String(year)),
-            URLQueryItem(name: "seasontype", value: "2"),
-        ]
-        let postseasonQuery = [
-            URLQueryItem(name: "season", value: String(year)),
-            URLQueryItem(name: "seasontype", value: "3"),
-        ]
-        async let regularFetch: ScheduleResponseDTO = fetch(path: path, query: regularQuery)
-        async let postseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: postseasonQuery)
+        func query(_ seasonType: Int) -> [URLQueryItem] {
+            [URLQueryItem(name: "season", value: String(year)),
+             URLQueryItem(name: "seasontype", value: String(seasonType))]
+        }
+        async let preseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: query(1))
+        async let regularFetch: ScheduleResponseDTO = fetch(path: path, query: query(2))
+        async let postseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: query(3))
         let regular = try await regularFetch
-        let postseason = await postseasonFetch
-        return ESPNMapper.teamSchedule(
-            from: regular, extraEvents: postseason?.events?.elements ?? [], league: league
-        )
+        let extras = (await preseasonFetch?.events?.elements ?? [])
+            + (await postseasonFetch?.events?.elements ?? [])
+        return ESPNMapper.teamSchedule(from: regular, extraEvents: extras, league: league)
     }
 
     func gameSummary(eventId: String) async throws -> GameSummary {
@@ -600,6 +602,7 @@ nonisolated enum ESPNMapper {
             shortName: event.shortName,
             weekNumber: event.week?.number,
             seasonType: event.season?.type,
+            headline: competition.notes?.first?.headline,
             status: status(from: event.status, situation: competition.situation),
             home: home,
             away: away,
@@ -927,6 +930,7 @@ nonisolated enum ESPNMapper {
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,
+            seasonType: event.seasonType?.type,
             status: status(from: competition.status, situation: nil),
             home: home,
             away: away,

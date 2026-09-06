@@ -18,9 +18,9 @@ import SwiftUI
 /// 32-team table and then the AFC and the NFC, with no poll row rather
 /// than an empty one. Hence "Tables".
 ///
-/// The Following card is draggable (Andy, 2026-09-06): its order is the
-/// order those same tables lead the Scores page in, one tab over. See
-/// `FollowedTablesCard`.
+/// Following is one card per followed table, draggable (Andy, 2026-09-06):
+/// the Teams tab's shape, and the order is the order those same tables lead
+/// the Scores page in, one tab over. See `FollowedTablesList`.
 ///
 /// FCS is inside College Football's card, not beside it (Andy,
 /// 2026-09-06): the hub's accordions are leagues, and FCS is a division of
@@ -161,13 +161,13 @@ struct TablesScreen: View {
                     let followed = followedRows
                     if !followed.isEmpty {
                         ListSectionHeading(title: "Following")
-                        // The card owns its own rows' identities, which
+                        // The list owns its own cards' identities, which
                         // are the follow tokens — distinct from the ids
                         // the same conferences use inside their league's
                         // accordion below, since duplicate identities in
                         // one LazyVStack corrupt its layout (blank
                         // card-sized gaps).
-                        FollowedTablesCard(rows: followed)
+                        FollowedTablesList(rows: followed)
                     }
                     ListSectionHeading(title: "Leagues")
                     ForEach(groups) { group in
@@ -200,6 +200,13 @@ struct TablesScreen: View {
     /// over its rows, collapse state persisted like every other accordion
     /// in the app. A league arrives open — absence of a stored collapse
     /// means expanded, so a new league needs no migration.
+    ///
+    /// The header stands a followed card's height (Andy, 2026-09-06), not
+    /// the 12pt padding alone its content asks for — the hub is a stack of
+    /// cards, and two sizes of card in one stack reads as an accident. This
+    /// is the hub's own header, not the Scores accordion's: `SectionAccordion`
+    /// is a different view, and its rows are games, which set their own
+    /// height.
     private func groupSection(_ group: TableGroup) -> some View {
         let sectionId = group.id
         let isExpanded = !uiState.isConferenceCollapsed(sectionId)
@@ -224,6 +231,9 @@ struct TablesScreen: View {
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
+                // minHeight, never a fixed height: at accessibility text
+                // sizes the title outgrows the card and must be allowed to.
+                .frame(minHeight: Self.headerHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -247,6 +257,11 @@ struct TablesScreen: View {
         .padding(.bottom, isExpanded ? Spacing.xs : 0)
         .cardSurface()
     }
+
+    /// What a followed table's card measures, and so what a league header
+    /// does: the follow star's 34pt tap target, inside the row's 7pt and
+    /// the card's 4pt.
+    private static let headerHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
 
     /// League-qualified and namespaced: the collapse state is persisted
     /// alongside every conference accordion's, so the key has to be unique

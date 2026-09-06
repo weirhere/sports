@@ -18,19 +18,19 @@ nonisolated struct NextGameEntry: TimelineEntry {
             WidgetGame(id: "1",
                        away: WidgetTeamLine(abbreviation: "BALL", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "OSU", rank: 1, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 12:30 PM", network: "FOX", isLive: false, showsScores: false),
+                       statusLine: "Sat", statusDetail: "12:30 PM", network: "FOX", isLive: false, showsScores: false),
             WidgetGame(id: "2",
                        away: WidgetTeamLine(abbreviation: "KENT", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "SC", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 12:45 PM", network: "ESPN2", isLive: false, showsScores: false),
+                       statusLine: "Sat", statusDetail: "12:45 PM", network: "ESPN2", isLive: false, showsScores: false),
             WidgetGame(id: "3",
                        away: WidgetTeamLine(abbreviation: "FIU", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "USF", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat 7:00 PM", network: "ABC", isLive: false, showsScores: false),
+                       statusLine: "Sat", statusDetail: "7:00 PM", network: "ABC", isLive: false, showsScores: false),
             WidgetGame(id: "4",
                        away: WidgetTeamLine(abbreviation: "AUB", rank: nil, record: "5-3", score: 13, muted: true, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, record: "7-1", score: 27, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "FINAL", network: nil, isLive: false, showsScores: true),
+                       statusLine: "FINAL", statusDetail: nil, network: nil, isLive: false, showsScores: true),
         ], stale: false))
     }
 }
@@ -46,7 +46,14 @@ nonisolated struct WidgetGame: Identifiable {
     let away: WidgetTeamLine
     let home: WidgetTeamLine
     let statusLine: String
-    /// Second status line: the TV network, pre-game and live only — a
+    /// The kickoff time, on its own line under the day (Andy, 2026-09-06:
+    /// the NFL's times were truncating). A pre-game row 7+ days out spends
+    /// its day part on "Sun, 9/13", and "Sun, 9/13 1:00 PM" does not fit a
+    /// 64pt column at any text size — so day and time split the way the
+    /// app's own `GameRow` splits them. Nil for live and final rows, whose
+    /// status is one word.
+    let statusDetail: String?
+    /// Third status line: the TV network, pre-game and live only — a
     /// final row has nothing left to tune into.
     let network: String?
     let isLive: Bool
@@ -61,7 +68,7 @@ nonisolated struct WidgetGame: Identifiable {
             id: "0",
             away: WidgetTeamLine(abbreviation: "UGA", rank: 3, record: "5-0", score: 24, muted: false, logo: nil, darkLogo: nil),
             home: WidgetTeamLine(abbreviation: "TENN", rank: 12, record: "4-1", score: 17, muted: false, logo: nil, darkLogo: nil),
-            statusLine: "Q3 5:24", network: "CBS", isLive: true, showsScores: true
+            statusLine: "Q3 5:24", statusDetail: nil, network: "CBS", isLive: true, showsScores: true
         )
     }
 }
@@ -104,21 +111,26 @@ nonisolated extension WidgetGame {
                                  logo: awayLogo, darkLogo: awayDarkLogo),
             home: WidgetTeamLine(competitor: game.home, muted: homeMuted,
                                  logo: homeLogo, darkLogo: homeDarkLogo),
-            statusLine: Self.statusLine(for: game),
+            statusLine: Self.status(for: game).line,
+            statusDetail: Self.status(for: game).detail,
             network: (isPre || game.isLive) ? game.broadcast : nil,
             isLive: game.isLive,
             showsScores: !isPre
         )
     }
 
-    static func statusLine(for game: Game) -> String {
+    /// The status column's lines: a headline and, for a kickoff, the time
+    /// beneath it. Two values rather than one joined string because the
+    /// column is a fixed 64pt and the joined form overflowed it — see
+    /// `statusDetail`.
+    static func status(for game: Game) -> (line: String, detail: String?) {
         switch game.status {
         case .pre:
-            // Time only — no network, the row hasn't the room. Absolute
-            // dates (never "Today"): widget strings outlive the moment
-            // they're generated. The date joins once a bare weekday would
-            // lie — a week or more out, "Sat" means *this* Saturday.
-            guard let date = game.date else { return "TBD" }
+            // Absolute dates (never "Today"): widget strings outlive the
+            // moment they're generated. The date joins the weekday once a
+            // bare weekday would lie — a week or more out, "Sat" means
+            // *this* Saturday.
+            guard let date = game.date else { return ("TBD", nil) }
             let time = game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute())
             let calendar = Calendar.current
             let days = calendar.dateComponents([.day],
@@ -126,14 +138,14 @@ nonisolated extension WidgetGame {
                                                to: calendar.startOfDay(for: date)).day ?? 0
             let weekday = Date.FormatStyle.dateTime.weekday(.abbreviated)
             let day = date.formatted(days < 7 ? weekday : weekday.month(.defaultDigits).day())
-            return "\(day) \(time)"
+            return (day, time)
         case .live:
-            return game.status.liveStatusText ?? "Live"
+            return (game.status.liveStatusText ?? "Live", nil)
         case .final(let detail):
-            if let detail, detail.localizedCaseInsensitiveContains("OT") { return "FINAL OT" }
-            return "FINAL"
+            if let detail, detail.localizedCaseInsensitiveContains("OT") { return ("FINAL OT", nil) }
+            return ("FINAL", nil)
         case .other(let detail):
-            return detail ?? "—"
+            return (detail ?? "—", nil)
         }
     }
 }
@@ -176,6 +188,10 @@ nonisolated struct WidgetSnapshot: Codable {
         let homeMuted: Bool
         let homeLogoURL: URL?
         let statusLine: String
+        /// Optional twice over: only kickoffs carry one, and snapshots
+        /// written before the time moved to its own line still decode —
+        /// those rows show the day without the time for one stale cycle.
+        let statusDetail: String?
         /// Optional twice over: finals carry none, and snapshots written
         /// before the network line shipped still decode.
         let network: String?
@@ -208,6 +224,7 @@ nonisolated struct WidgetSnapshot: Codable {
                 homeMuted: widgetGame.home.muted,
                 homeLogoURL: game.home.team.logoURL,
                 statusLine: widgetGame.statusLine,
+                statusDetail: widgetGame.statusDetail,
                 network: widgetGame.network,
                 isLive: widgetGame.isLive,
                 showsScores: widgetGame.showsScores

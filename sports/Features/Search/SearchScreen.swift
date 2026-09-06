@@ -57,7 +57,16 @@ struct SearchScreen: View {
                 LazyVStack(spacing: Spacing.sm) {
                     if !results.teams.isEmpty {
                         resultSection("Teams") {
-                            ForEach(results.teams) { team in
+                            // Keyed on the follow key, never `Team.id`: the
+                            // bare ESPN id collides across leagues, and this
+                            // is the one list in the app that always spans
+                            // them. Two teams sharing an identity here let
+                            // SwiftUI reuse one row's state for the other as
+                            // the query changes — which is why the Bills'
+                            // row wore Auburn's mark, both being id 2 (Andy,
+                            // 2026-09-06). A query matching both at once
+                            // would corrupt the layout outright.
+                            ForEach(results.teams, id: \.followKey) { team in
                                 SearchTeamRow(team: team,
                                               leagueTag: results.spansLeagues ? team.league : nil)
                                 { select(team) }
@@ -124,8 +133,10 @@ struct SearchScreen: View {
     // Setting a pending id is the whole gesture: RootView's intent handlers
     // switch tabs, which also leaves the search tab.
 
+    /// The whole team, not its id: ids collide across leagues, and a
+    /// result row that reads "Browns" must not open UAB (Andy, 2026-09-06).
     private func select(_ team: Team) {
-        router.pendingTeamId = team.id
+        router.pendingTeam = TeamRef(team)
     }
 
     private func select(_ conference: ConferenceTeams) {

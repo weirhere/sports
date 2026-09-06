@@ -38,16 +38,16 @@ final class SmokeUITests: XCTestCase {
         anyLeague.tap()
 
         // The day strip walks the season. Yesterday always exists inside
-        // it, and the Today chip is the way back — it only appears once
-        // the strip has wandered off today.
-        let today = app.buttons["day-strip-today"]
-        XCTAssertFalse(today.exists, "The Today chip should be hidden on today")
+        // it, and the floating Today button is the way back — it only
+        // appears once the strip has wandered off today.
+        let today = app.buttons["scores-today-jump"]
+        XCTAssertFalse(today.exists, "The Today button should be hidden on today")
         app.swipeLeft()
         XCTAssertTrue(today.waitForExistence(timeout: 10),
                       "Swiping to another day should offer the way back")
         today.tap()
-        // XCUIElement has no wait-for-absence, and the chip disappearing
-        // *is* the assertion — the strip only offers it off today.
+        // XCUIElement has no wait-for-absence, and the button disappearing
+        // *is* the assertion — the screen only offers it off today.
         let goneExpectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"), object: today)
         XCTAssertEqual(XCTWaiter().wait(for: [goneExpectation], timeout: 10), .completed,

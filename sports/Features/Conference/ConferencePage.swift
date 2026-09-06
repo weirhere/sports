@@ -12,12 +12,13 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games
+        case standings, games, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .postseason: "Postseason"
             }
         }
     }
@@ -34,6 +35,9 @@ struct ConferencePage: View {
     /// conferences, so this is the one scope that costs a request.
     @State private var divisionsByYear: [Int: [ConferenceStandings]] = [:]
     @State private var gamesByYear: [Int: [Game]] = [:]
+    /// The Postseason tab's round. Session-scoped like the team filter,
+    /// and guarded the same way — see `activePostseasonRound`.
+    @State private var postseasonRound: String?
     @State private var selectedYear = CFBSeason.year()
     /// The Games tab's team filter — a member's team id, nil for the whole
     /// slate. Kept across season switches: `activeTeamFilter` drops it
@@ -206,6 +210,12 @@ struct ConferencePage: View {
 
     /// The season slate narrowed to the picked team, which is what the
     /// Games tab actually renders.
+    ///
+    /// The whole season, postseason included (Andy, 2026-09-06). The
+    /// Postseason tab shows the playoff as a bracket; this tab shows every
+    /// game there was, in order — the two answer different questions, and
+    /// "when is that playoff game" is this one's. Sections stay complete,
+    /// the way they do on Scores.
     private var filteredGames: [Game]? {
         games.map { ConferenceSlate.games($0, forTeamId: activeTeamFilter) }
     }
@@ -261,6 +271,7 @@ struct ConferencePage: View {
                             switch tab {
                             case .standings: standingsCard
                             case .games: gamesSection
+                            case .postseason: postseasonSection
                             }
                         }
                         // geometryGroup pins row logos to the sliding pane —
@@ -269,10 +280,16 @@ struct ConferencePage: View {
                         .id(tab)
                         .transition(.push(from: tabSlideEdge))
                         // The week swipe's sibling (Andy, 2026-08-29): swipe
-                        // the content to walk the tab pair; the buttons stay.
+                        // the content to walk the tabs; the buttons stay.
+                        //
+                        // Except on Postseason, where the same gesture walks
+                        // the bracket's rounds instead (Andy, 2026-09-06).
+                        // One horizontal axis, and on that tab the rounds
+                        // are what it moves — the tabs keep their buttons.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 20)
                                 .onEnded { value in
+                                    guard tab != .postseason else { return }
                                     let dx = value.translation.width
                                     guard abs(dx) > 50,
                                           abs(dx) > abs(value.translation.height) * 1.5,
@@ -399,7 +416,7 @@ struct ConferencePage: View {
                 // whatever the text size does to it.
                 .background(Color.bgCard.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                controlRow(showsTeamFilter: tab == .games)
+                controlRow(for: tab)
                     .padding(.horizontal, Spacing.sm)
                     .padding(.top, Spacing.sm)
                 // The gap that used to be the pane's own top padding, so
@@ -416,8 +433,41 @@ struct ConferencePage: View {
 
     // HeroTabBar carries the Figma tab specs.
     private var tabRow: some View {
-        HeroTabBar(tabs: [.standings, .games], selection: tab,
-                   onSelect: { select(tab: $0) })
+        HeroTabBar(tabs: availableTabs, selection: tab, onSelect: { select(tab: $0) })
+    }
+
+    /// Postseason only where this season's slate actually has one — a
+    /// conference whose teams made no bowl, and every season before
+    /// December, show two tabs exactly as they always did. A tab that would
+    /// open on "no games" is worse than no tab.
+    private var availableTabs: [Tab] {
+        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+    }
+
+    /// The postseason is already in hand: the Games tab fetches the whole
+    /// season, so splitting it out costs no request.
+    private var postseasonRounds: [PostseasonRound] {
+        Postseason.rounds(from: gamesByYear[selectedYear] ?? [],
+                          league: destination.conference.league)
+    }
+
+    /// A picked round survives a season switch only where the new season
+    /// has one by that name — the season chip's own disproof rule, so
+    /// flipping years never lands the pane on a round that season lacked.
+    private var activePostseasonRound: String? {
+        let rounds = postseasonRounds
+        if let postseasonRound, rounds.contains(where: { $0.name == postseasonRound }) {
+            return postseasonRound
+        }
+        return Postseason.defaultRound(in: rounds)
+    }
+
+    private var postseasonSection: some View {
+        PostseasonSection(rounds: postseasonRounds,
+                          exhibition: Postseason.exhibition(from: gamesByYear[selectedYear] ?? [],
+                                                            league: destination.conference.league),
+                          selection: activePostseasonRound,
+                          onSelectRound: { postseasonRound = $0 })
     }
 
     /// The pane's control row — the Games tab's Weeks / Date toggles and
@@ -427,8 +477,14 @@ struct ConferencePage: View {
     /// identity, and the row is free for the controls that shape only
     /// these cards.
     @ViewBuilder
-    private func controlRow(showsTeamFilter: Bool = false) -> some View {
-        if showsTeamFilter {
+    private func controlRow(for tab: Tab) -> some View {
+        // The Postseason tab brings its own control — the round chips,
+        // inside the pane where the bracket is. The standings scope has
+        // nothing to say about a playoff bracket (Andy, 2026-09-06), and a
+        // second row of chrome above the rounds was just noise.
+        if tab == .postseason {
+            EmptyView()
+        } else if tab == .games {
             SlateControlRow(grouping: grouping,
                             onToggle: { toggle(grouping: $0) },
                             teams: filterableTeams,

@@ -14,16 +14,6 @@ import Foundation
 /// 2026-09-05. An id the directory doesn't carry is simply skipped, so a
 /// realignment or a renamed franchise costs a row, never a crash.
 nonisolated enum PopularTeams {
-    /// One league's shortlist. A named type rather than a tuple because
-    /// `ForEach` needs an identity and Swift has no key path into a tuple
-    /// element.
-    struct Group: Identifiable {
-        let league: League
-        let teams: [Team]
-
-        var id: League { league }
-    }
-
     private static let ids: [League: [String]] = [
         .collegeFootball: [
             "194",   // Ohio State
@@ -56,18 +46,40 @@ nonisolated enum PopularTeams {
         ],
     ]
 
-    /// The shortlist per league, in curated order, resolved against the
-    /// loaded directory. A league whose teams haven't landed yet (the
-    /// directory publishes college football first) is absent rather than
-    /// present and empty.
-    static func groups(in conferences: [ConferenceTeams]) -> [Group] {
-        League.allCases.compactMap { league in
+    /// The shortlist as one list, resolved against the loaded directory.
+    ///
+    /// Interleaved rather than league after league (Andy, 2026-09-06, when
+    /// the sheet dropped its league headings): a flat concatenation is a
+    /// grouping whether or not anything says so, and it would put every
+    /// college program above every franchise — fifteen cards of scrolling
+    /// before an NFL fan sees a team they recognise. Round-robin by
+    /// position instead, so the top of the sheet is both leagues' biggest
+    /// names and each league keeps its own curated order within the mix.
+    ///
+    /// A league whose teams haven't landed yet (the directory publishes
+    /// college football first) simply contributes nothing.
+    static func teams(in conferences: [ConferenceTeams]) -> [Team] {
+        let perLeague = League.allCases.map { league -> [Team] in
             let byId = Dictionary(
                 conferences.filter { $0.league == league }.flatMap(\.teams).map { ($0.id, $0) },
                 uniquingKeysWith: { first, _ in first }
             )
-            let teams = (ids[league] ?? []).compactMap { byId[$0] }
-            return teams.isEmpty ? nil : Group(league: league, teams: teams)
+            return (ids[league] ?? []).compactMap { byId[$0] }
         }
+        // Proportional round-robin: each league is drawn from at a rate set
+        // by its own length, so a 15-team list and a 10-team one finish
+        // together instead of the shorter one running out a third of the
+        // way down.
+        let longest = perLeague.map(\.count).max() ?? 0
+        guard longest > 0 else { return [] }
+        var merged: [Team] = []
+        for step in 0..<longest {
+            for league in perLeague where !league.isEmpty {
+                let position = step * league.count / longest
+                let previous = step == 0 ? -1 : (step - 1) * league.count / longest
+                if position != previous { merged.append(league[position]) }
+            }
+        }
+        return merged
     }
 }

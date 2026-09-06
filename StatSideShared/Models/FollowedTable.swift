@@ -62,7 +62,10 @@ nonisolated enum FollowedTable: Hashable, Sendable, Identifiable {
     /// and the tables hub row both wear a trophy glyph instead.
     var logoURL: URL? {
         switch self {
-        case .poll: nil
+        // The poll wears its league's mark (Andy, 2026-09-06): "Top 25"
+        // never said whose, which is fine while one league polls and
+        // confusing the moment a second one does.
+        case .poll(let league): league.logoURL
         case .conference(let id): Conference.logoURL(for: id)
         }
     }

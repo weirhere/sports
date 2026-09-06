@@ -10,69 +10,33 @@ import SwiftUI
 struct DayStrip: View {
     let days: [DaySlot]
     let selectedId: String?
-    /// Shown as a leading jump-home chip whenever the strip has wandered
-    /// off it. A season is ~200 chips wide, so finding today again by
-    /// dragging is not a plan.
-    let today: Date
     let onSelect: (Date) -> Void
 
-    private var todayId: String { DayFormat.id(for: today) }
-    private var showsTodayJump: Bool {
-        selectedId != todayId && days.contains { $0.id == todayId }
-    }
-
+    /// The strip is only the days. The way back to today is a floating
+    /// button over the slate, not a chip pinned here (Andy, 2026-09-06) —
+    /// so the strip runs its full width on every day, not just today.
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Spacing.xs) {
-                        ForEach(days) { day in
-                            chip(for: day)
-                        }
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.vertical, Spacing.sm)
-                }
-                .onAppear {
-                    if let selectedId {
-                        proxy.scrollTo(selectedId, anchor: .center)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.xs) {
+                    ForEach(days) { day in
+                        chip(for: day)
                     }
                 }
-                .onChange(of: selectedId) { _, newValue in
-                    if let newValue {
-                        withAnimation { proxy.scrollTo(newValue, anchor: .center) }
-                    }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+            }
+            .onAppear {
+                if let selectedId {
+                    proxy.scrollTo(selectedId, anchor: .center)
                 }
             }
-            if showsTodayJump {
-                todayJump
+            .onChange(of: selectedId) { _, newValue in
+                if let newValue {
+                    withAnimation { proxy.scrollTo(newValue, anchor: .center) }
+                }
             }
         }
-    }
-
-    /// Pinned to the strip's trailing edge rather than riding inside it: a
-    /// season is ~200 chips wide, and a jump-home button that scrolls away
-    /// with the content is a jump-home button you can never find.
-    ///
-    /// Never "selected" — it is a shortcut back, not a date of its own —
-    /// and it disappears the moment it would be redundant, which is what
-    /// gives the strip its full width on the day that matters most.
-    private var todayJump: some View {
-        Button {
-            onSelect(today)
-        } label: {
-            Text("Today")
-                .font(.chip)
-                .fixedSize()
-                .foregroundStyle(Color.textPrimary)
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 6)
-                .glassCapsule(fallback: Color.bgElevated)
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, Spacing.sm)
-        .accessibilityLabel("Jump to today")
-        .accessibilityIdentifier("day-strip-today")
     }
 
     @ViewBuilder
@@ -141,12 +105,8 @@ struct DayStrip: View {
     let days = (-4...4).compactMap { calendar.date(byAdding: .day, value: $0, to: .now) }
         .map { DaySlot($0) }
     return VStack(spacing: Spacing.lg) {
-        DayStrip(days: days, selectedId: DayFormat.id(for: .now),
-                 today: .now, onSelect: { _ in })
-        // Scrolled off today: the jump-home chip claims the trailing edge.
-        DayStrip(days: days,
-                 selectedId: days.first?.id,
-                 today: .now, onSelect: { _ in })
+        DayStrip(days: days, selectedId: DayFormat.id(for: .now), onSelect: { _ in })
+        DayStrip(days: days, selectedId: days.first?.id, onSelect: { _ in })
     }
     .background(Color.bgPrimary)
 }

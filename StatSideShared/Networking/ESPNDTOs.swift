@@ -126,6 +126,16 @@ nonisolated struct CompetitionDTO: Decodable {
     let broadcasts: [BroadcastDTO]?
     let competitors: [CompetitorDTO]?
     let situation: SituationDTO?
+    /// "Bucked Up LA Bowl", "College Football Playoff Quarterfinal at the
+    /// Allstate Sugar Bowl". The only thing distinguishing one postseason
+    /// college-football game from another — ESPN files every bowl and every
+    /// playoff round under one `seasontype=3` week (verified live
+    /// 2026-09-06: 46 games, all week 1).
+    let notes: [CompetitionNoteDTO]?
+}
+
+nonisolated struct CompetitionNoteDTO: Decodable {
+    let headline: String?
 }
 
 nonisolated struct BroadcastDTO: Decodable {
@@ -281,7 +291,17 @@ nonisolated struct ScheduleEventDTO: Decodable {
     let name: String?
     let shortName: String?
     let week: WeekRefDTO?
+    /// The schedule endpoint spells it `seasonType` on the event, where the
+    /// scoreboard spells it `season.type` — same 1/2/3, different key. It
+    /// is what separates a preseason game from a real one, and without it
+    /// every schedule game looked like regular season.
+    let seasonType: ScheduleSeasonTypeDTO?
     let competitions: [ScheduleCompetitionDTO]?
+}
+
+/// `id` is a *string* here and `type` the number — decode the number.
+nonisolated struct ScheduleSeasonTypeDTO: Decodable {
+    let type: Int?
 }
 
 nonisolated struct ScheduleCompetitionDTO: Decodable {

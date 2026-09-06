@@ -31,12 +31,13 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games
+        case standings, games, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .postseason: "Postseason"
             }
         }
     }
@@ -73,6 +74,9 @@ struct PollScreen: View {
     /// chronological card. Team is the filter.
     @State private var grouping: ConferenceSlate.Grouping = .week
     @State private var teamFilter: String?
+    /// The Postseason tab's round — session-scoped, guarded like the team
+    /// filter beside it.
+    @State private var postseasonRound: String?
 
     var body: some View {
         ScrollView {
@@ -83,6 +87,7 @@ struct PollScreen: View {
                     switch tab {
                     case .standings: standingsSection
                     case .games: gamesSection
+                    case .postseason: postseasonSection
                     }
                 }
                 .transition(.push(from: tabSlideEdge))
@@ -205,14 +210,12 @@ struct PollScreen: View {
 
     // MARK: - Hero
 
-    /// The conference hero's shape with a glyph where the mark goes: the
-    /// poll has no logo, and the trophy is the one the hub's row and the
-    /// Scores section header already spend on it.
+    /// The conference hero's shape, wearing the league's own mark — the
+    /// same swap the hub's row made (Andy, 2026-09-06): "Top 25" doesn't
+    /// say whose, and the trophy said even less.
     private var hero: some View {
         HStack(spacing: Spacing.md) {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(.textSecondary)
+            LogoImage(url: league.logoURL, placeholder: nil)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.logoBacking).padding(-6))
                 .padding(6)
@@ -250,7 +253,7 @@ struct PollScreen: View {
     }
 
     private var tabRow: some View {
-        HeroTabBar(tabs: [.standings, .games], selection: tab,
+        HeroTabBar(tabs: availableTabs, selection: tab,
                    onSelect: { select(tab: $0) })
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.lg)
@@ -351,9 +354,41 @@ struct PollScreen: View {
         filterableTeams.first { $0.id == activeTeamId }?.location
     }
 
+    /// The whole season, postseason included (Andy, 2026-09-06): the
+    /// bracket answers "who plays whom", this tab answers "when", and a
+    /// playoff game is easiest to find in date order with everything else.
     private var filteredGames: [Game]? {
         guard let rankedGames else { return nil }
         return ConferenceSlate.games(rankedGames, forTeamId: activeTeamId)
+    }
+
+    /// Postseason only where the season has one. This page is college
+    /// football's league-wide entity — the poll's own 25 teams don't scope
+    /// it, because a bowl slate is the division's, not the Top 25's, and a
+    /// postseason narrowed to ranked teams would drop most of the bowls.
+    private var availableTabs: [Tab] {
+        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+    }
+
+    private var postseasonRounds: [PostseasonRound] {
+        Postseason.rounds(from: gamesByYear[year] ?? [], league: league)
+    }
+
+    private var activePostseasonRound: String? {
+        let rounds = postseasonRounds
+        if let postseasonRound, rounds.contains(where: { $0.name == postseasonRound }) {
+            return postseasonRound
+        }
+        return Postseason.defaultRound(in: rounds)
+    }
+
+    private var postseasonSection: some View {
+        PostseasonSection(rounds: postseasonRounds,
+                          exhibition: Postseason.exhibition(from: gamesByYear[year] ?? [],
+                                                            league: league),
+                          selection: activePostseasonRound,
+                          onSelectRound: { postseasonRound = $0 })
+            .padding(Spacing.sm)
     }
 
     private var gamesSection: some View {

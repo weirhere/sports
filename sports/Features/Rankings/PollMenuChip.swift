@@ -8,17 +8,33 @@ struct PollMenuChip: View {
     let current: String?
     let onSelect: (String) -> Void
 
-    private var currentType: String { current ?? polls.first?.type ?? "ap" }
+    /// The menu's rows as (type, label) pairs, so every `tag` is statically
+    /// a `String` — the selection binding's own type.
+    ///
+    /// This is the whole reason the pairs exist. `Poll.type` is `String?`,
+    /// and tagging rows with it while binding the selection to a `String`
+    /// gave SwiftUI a tag type it could never match: no row read as
+    /// selected, and picking one couldn't write back, so the chip looked
+    /// alive and did nothing (Andy, 2026-09-06 — "the AP/coaches filter
+    /// isn't working"). A poll ESPN sent no type for isn't offered at all,
+    /// because the type *is* the selection value.
+    private var options: [(type: String, label: String)] {
+        polls.compactMap { poll in
+            poll.type.map { (type: $0, label: PollScreen.label(for: poll)) }
+        }
+    }
+
+    private var currentType: String { current ?? options.first?.type ?? "ap" }
 
     private var currentLabel: String {
-        polls.first { $0.type == currentType }.map(PollScreen.label(for:)) ?? "Poll"
+        options.first { $0.type == currentType }?.label ?? "Poll"
     }
 
     var body: some View {
         Menu {
             Picker("Poll", selection: Binding(get: { currentType }, set: onSelect)) {
-                ForEach(polls, id: \.id) { poll in
-                    Text(PollScreen.label(for: poll)).tag(poll.type)
+                ForEach(options, id: \.type) { option in
+                    Text(option.label).tag(option.type)
                 }
             }
         } label: {
@@ -37,7 +53,7 @@ struct PollMenuChip: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .disabled(polls.count < 2)
+        .disabled(options.count < 2)
         .accessibilityLabel("Poll, \(currentLabel)")
     }
 }

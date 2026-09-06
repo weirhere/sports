@@ -14,6 +14,10 @@ struct ConferenceStandingRow: View {
     /// pair's colors put to live fortunes. Nil (the usual state) shows
     /// nothing.
     var liveResult: LiveResult? = nil
+    /// True for the rows above a conference's championship cut. The bar
+    /// beside them is decorative, so the fact has to live in the sentence
+    /// too — VoiceOver reads no edges.
+    var qualifies: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
@@ -131,6 +135,7 @@ struct ConferenceStandingRow: View {
         if let overall = standing.overallRecord {
             parts.append("\(spoken(overall)) overall")
         }
+        if qualifies { parts.append("in the championship game") }
         return parts.joined(separator: ", ")
     }
 

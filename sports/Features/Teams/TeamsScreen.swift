@@ -56,7 +56,7 @@ struct TeamsScreen: View {
             resolvePendingTeam()
             resolvePendingConference()
         }
-        .onChange(of: router.pendingTeamId) { _, _ in resolvePendingTeam() }
+        .onChange(of: router.pendingTeam) { _, _ in resolvePendingTeam() }
         .onChange(of: router.pendingConferenceId) { _, _ in resolvePendingConference() }
         .onChange(of: directory.conferences) { _, _ in
             resolvePendingTeam()
@@ -67,12 +67,15 @@ struct TeamsScreen: View {
         }
     }
 
-    /// Lands a deep-linked team once the directory is loaded; an unknown id
-    /// degrades to landing on the Teams tab.
+    /// Lands a deep-linked or searched team once the directory is loaded;
+    /// an unknown id degrades to landing on the Teams tab.
+    ///
+    /// The match is league-qualified — see `TeamDirectoryStore.team(matching:)`.
     private func resolvePendingTeam() {
-        guard let pendingId = router.pendingTeamId,
-              let team = directory.allTeams.first(where: { $0.id == pendingId }) else { return }
-        router.pendingTeamId = nil
+        guard let pending = router.pendingTeam,
+              let team = directory.team(matching: pending,
+                                        followedKeys: following.teamKeys) else { return }
+        router.pendingTeam = nil
         path = NavigationPath([team])
     }
 

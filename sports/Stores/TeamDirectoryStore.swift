@@ -35,6 +35,34 @@ final class TeamDirectoryStore {
         conferences.flatMap(\.teams)
     }
 
+    /// Resolve a routing intent to a real team.
+    ///
+    /// The league is what makes this unambiguous: `allTeams` spans both
+    /// leagues and college football is published first, so matching on the
+    /// bare id alone handed back UAB for every NFL team whose id a college
+    /// program also holds (Andy, 2026-09-06 — searching "Browns" opened
+    /// UAB). Every in-app intent carries its league.
+    ///
+    /// Without one — only a legacy bare `statside://team/{id}` link — a
+    /// team the user follows wins over a stranger, since a link they were
+    /// sent is far likelier to be about a team of theirs; failing that the
+    /// directory's own order decides, which is the old behaviour and the
+    /// best a bare id can do.
+    func team(matching ref: TeamRef, followedKeys: Set<String> = []) -> Team? {
+        Self.team(matching: ref, in: allTeams, followedKeys: followedKeys)
+    }
+
+    /// The rule itself, over any list of teams — pure, so it can be tested
+    /// without standing up a directory or a stub client.
+    nonisolated static func team(matching ref: TeamRef, in teams: [Team],
+                                 followedKeys: Set<String> = []) -> Team? {
+        let candidates = teams.filter { $0.id == ref.id }
+        if let league = ref.league {
+            return candidates.first { $0.league == league }
+        }
+        return candidates.first { followedKeys.contains($0.followKey) } ?? candidates.first
+    }
+
     /// One league's conferences, in the order `load` fetched them.
     func conferences(in league: League) -> [ConferenceTeams] {
         conferences.filter { $0.league == league }

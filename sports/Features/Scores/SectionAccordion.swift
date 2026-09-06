@@ -72,7 +72,7 @@ struct SectionAccordion: View {
     }
 
     /// The mark + name. Every section carries its own — a conference's
-    /// shield, the NFL's, the poll's trophy — and `ConferenceLogo` falls
+    /// shield, the NFL's, the poll's league mark — and `ConferenceLogo` falls
     /// back to the football glyph where ESPN ships no asset, so the titles
     /// all start at the same x either way. Following keeps the star: it is
     /// a promise about you, not a competition with a logo.
@@ -180,13 +180,12 @@ struct SectionAccordion: View {
         following.isFollowing(team) ? "Unfollow \(team.location)" : "Follow \(team.location)"
     }
 
-    /// Header glyph for the sections with no mark of their own. star.fill
-    /// echoes the follow toggle on team pages and trophy.fill the tables
-    /// hub's Top 25 row; both sit in the same 18pt footprint a conference
-    /// mark does, so every title starts at the same x.
+    /// Header glyph for the one section with no mark of its own. star.fill
+    /// echoes the follow toggle on team pages, and sits in the same 18pt
+    /// footprint a conference mark does, so every title starts at the same
+    /// x. The poll used to take a trophy here; it wears its league's mark
+    /// now (Andy, 2026-09-06), which `section.logoURL` carries.
     private var headerSymbol: String? {
-        if section.id == GameSection.followingId { return "star.fill" }
-        if case .poll = section.table { return "trophy.fill" }
-        return nil
+        section.id == GameSection.followingId ? "star.fill" : nil
     }
 }
