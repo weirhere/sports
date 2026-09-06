@@ -31,15 +31,14 @@ extension XCUIApplication {
     /// The season picker's menu button in the filter sheet, labeled with
     /// the selected year.
     var seasonChip: XCUIElement {
-        buttons.matching(NSPredicate(format: "label MATCHES %@", "^20[0-9][0-9]$"))
-            .firstMatch
+        descendants(matching: .any).matching(identifier: "season-chip").firstMatch
     }
 
-    /// The Scores header's funnel chip — the door to the view-options
-    /// sheet (grouping, season, conference filter).
-    var scoresFilterChip: XCUIElement {
-        descendants(matching: .any)
-            .matching(identifier: "scores-filter-chip").firstMatch
+    /// The Scores header's Live chip — the one control left there, and so
+    /// the stable "Scores has rendered" marker. It replaced the
+    /// view-options funnel, which retired with its sheet.
+    var scoresLiveChip: XCUIElement {
+        descendants(matching: .any).matching(identifier: "scores-live-chip").firstMatch
     }
 
     /// A followed team's card on the Teams tab. The card speaks its name
@@ -291,18 +290,12 @@ extension XCTestCase {
                       attempts: Int = 3) -> Bool {
         let label = String(year)
         for _ in 0..<attempts {
-            // The season picker lives in the filter sheet (2026-08-29).
-            if !app.seasonChip.exists {
-                let funnel = app.scoresFilterChip
-                guard funnel.waitForExistence(timeout: 15) else { continue }
-                funnel.tap()
-            }
+            // Wherever the chip rides — a hero toolbar, a tab pane — it is
+            // simply on screen; there is no door to open first. Scores has
+            // no season control at all now, so this is for entity pages.
             let chip = app.seasonChip
-            guard chip.waitForExistence(timeout: 10) else { continue }
-            if chip.label == label {
-                dismissFilterSheet(in: app)
-                return true
-            }
+            guard chip.waitForExistence(timeout: 15) else { continue }
+            if chip.value as? String == label { return true }
             chip.tap()
 
             // Picker rows inside a Menu surface as plain buttons on iOS.
@@ -311,18 +304,11 @@ extension XCTestCase {
             option.tap()
 
             let updated = app.seasonChip
-            if updated.waitForExistence(timeout: 10), updated.label == label {
-                dismissFilterSheet(in: app)
+            if updated.waitForExistence(timeout: 10),
+               updated.value as? String == label {
                 return true
             }
         }
         return false
-    }
-
-    /// Closes the filter sheet if it's up; a no-op otherwise.
-    @MainActor
-    func dismissFilterSheet(in app: XCUIApplication) {
-        let cancel = app.buttons["Cancel"]
-        if cancel.waitForExistence(timeout: 3) { cancel.tap() }
     }
 }

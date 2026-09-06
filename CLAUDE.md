@@ -4,9 +4,11 @@ Context file for AI-assisted development sessions on this project. Read this bef
 
 ## What this is
 
-A college football scores app for iOS, inspired by FotMob's information architecture. One sport, done fast and beautifully, in black and white. NCAA football first; the architecture should leave the door open to other sports later without designing for them now.
+A football scores app for iOS — college football and the NFL — inspired by FotMob's information architecture. Two leagues, done fast and beautifully, in black and white. College football came first and still leads; the NFL joined at 2.0 (2026-09-05), and the league axis it introduced is what a third sport would arrive through.
 
-The target user checks scores 20+ times every fall Saturday and is tired of ad-stuffed everything-apps where CFB is one tab among 30. Speed and focus are the product.
+The target user checks scores 20+ times a fall weekend and is tired of ad-stuffed everything-apps where their sport is one tab among 30. Speed and focus are the product.
+
+**On "one sport, done fast":** that was the 1.x charter, and the discipline behind it survives — the app still does a small number of things completely rather than many things partly. What changed is that a football fan's weekend is Saturday *and* Sunday, and the two leagues share teams' worth of structure (the same ESPN shapes, the same follows, the same widget). What they do not share is a calendar, which is why the week strip retired for a day strip.
 
 **Monorepo note:** this repo also carries `web/` — a Next.js prototype web app (`college-football-hub`), merged in with full history from a standalone web repo (confusingly also named `weirhere/sports` at the time, since deleted) on 2026-09-01 via `git subtree`. It has its own README and PRD under `web/` and none of the iOS conventions below apply to it. Everything else in this file is about the iOS app. This repo itself is **`weirhere/sports`** — renamed from `weirhere/sports-ios` on 2026-09-01; GitHub redirects the old URLs.
 
