@@ -33,6 +33,38 @@ Primary: **Sports**. No secondary needed.
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
 
+### 2.1 (build 14)
+
+> • Playoff brackets. The NFL's league page and the Top 25 each have a
+>   Postseason tab that draws the bracket instead of listing it — who plays
+>   whom, round by round, with a bye shown where a team sat one out. Swipe
+>   between rounds.
+> • Scores goes back to conferences. College football breaks down the way you
+>   already think about it — the SEC, the Big Ten, the Big 12 — instead of one
+>   sixty-row list. The NFL's Sunday stays one section, because that's the
+>   whole slate at a glance.
+> • Follow a conference and its table moves up. Following stays your teams; a
+>   conference or poll you follow now rides directly beneath it instead of
+>   pouring another eight games in.
+> • Drag your tables into the order you want. Rearrange them in Tables and the
+>   Scores page follows suit.
+> • Jump to any day. A calendar opens beside the day strip, so a game in
+>   November is one tap instead of a long drag — and Today floats over the
+>   slate whenever you've wandered off.
+> • NFL standings, three ways. See the whole league, a conference, or a
+>   single division. An AFC or NFC division page has its table back, too.
+> • The preseason gets its own cards. The Hall of Fame Game and the preseason
+>   weeks sit apart from the games that count, on team pages and league pages
+>   both.
+> • The FCS lives inside College Football in Tables now — one card, FBS
+>   conferences and then FCS ones. It's all college football.
+> • Conference standings mark the championship cut, so you can see at a glance
+>   which teams are playing for the title.
+> • Day chips carry their month, and yesterday and tomorrow are named the way
+>   you'd name them.
+> • Fixes: searching "Browns" no longer opens UAB, the AP/Coaches poll picker
+>   works, and NFL kickoff times stopped getting cut off in the widget.
+
 ### 2.0 (build 13)
 
 > • The NFL is here. Follow your NFL teams alongside your college ones —
