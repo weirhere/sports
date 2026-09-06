@@ -11,19 +11,34 @@ import Testing
         return defaults
     }
 
-    @Test func leagueSectionsStartExpandedAndToggleInverts() {
+    @Test func slateSectionsStartExpandedAndToggleInverts() {
         let store = UIStateStore(defaults: makeDefaults())
         let leagueId = GameSection.id(for: .nfl)
 
-        // Inverse semantics: unknown league ids are expanded; every other
-        // id is collapsed until something opens it.
+        // Inverse semantics: every section of the day's slate is expanded
+        // until something closes it. Following keeps the opt-in set it has
+        // had since launch — seeded open on a fresh install, but a store
+        // reading someone else's saved state can find it closed.
         #expect(store.isExpanded(leagueId))
-        #expect(!store.isExpanded("conf-SEC"))
+        #expect(store.isExpanded(GameSection.conferencePrefix + ConferenceID.cfb(8).token))
+        #expect(store.isExpanded(FollowedTable.poll(.collegeFootball).token))
+        #expect(store.isExpanded(GameSection.otherPrefix + "cfb"))
+        #expect(!store.isExpanded("something-else"))
 
         store.toggle(leagueId)
         #expect(!store.isExpanded(leagueId))
         store.expand(leagueId)
         #expect(store.isExpanded(leagueId))
+    }
+
+    @Test func aCollapsedConferenceSectionPersistsLikeALeagueOne() {
+        let defaults = makeDefaults()
+        let sectionId = GameSection.conferencePrefix + ConferenceID.cfb(5).token
+        UIStateStore(defaults: defaults).toggle(sectionId)
+
+        let reloaded = UIStateStore(defaults: defaults)
+        #expect(!reloaded.isExpanded(sectionId))
+        #expect(!reloaded.expandedSections.contains(sectionId))
     }
 
     @Test func collapsedLeaguesPersistAcrossInstances() {
@@ -79,11 +94,11 @@ import Testing
     @Test func bulkOpsPersistAcrossInstances() {
         let defaults = makeDefaults()
         let leagueId = GameSection.id(for: .nfl)
-        UIStateStore(defaults: defaults).collapseAll(["conf-SEC", leagueId,
+        UIStateStore(defaults: defaults).collapseAll(["something-else", leagueId,
                                                      GameSection.followingId])
 
         let reloaded = UIStateStore(defaults: defaults)
-        #expect(!reloaded.isExpanded("conf-SEC"))
+        #expect(!reloaded.isExpanded("something-else"))
         #expect(!reloaded.isExpanded(leagueId))
         #expect(!reloaded.isExpanded(GameSection.followingId))
     }
@@ -93,9 +108,9 @@ import Testing
         let leagueId = GameSection.id(for: .collegeFootball)
 
         // Only the passed ids move; the league stays open by default.
-        store.collapseAll(["conf-SEC"])
-        store.collapseAll(["conf-SEC"])
-        #expect(!store.isExpanded("conf-SEC"))
+        store.collapseAll(["something-else"])
+        store.collapseAll(["something-else"])
+        #expect(!store.isExpanded("something-else"))
         #expect(store.isExpanded(leagueId))
 
         store.expandAll([])

@@ -63,13 +63,13 @@ ESPN's `leagues[0].calendar` provides labeled periods (Regular Season, Postseaso
 **Rollover rule:** the strip's default selection is the ESPN current week, except Sundays, where we pin to the week that just completed (Sunday is catch-up + new poll day; flip Monday morning). Implement as: if today is Sunday and ESPN says week N+1, show N.
 
 ### Section grouping
-`ScoreboardStore` groups one week's games into ordered sections:
+The week strip retired on 2026-09-05 — the day is the Scores screen's axis, because two leagues have two calendars. `LeagueScoreboards.sections` assembles one day across every league (each `ScoreboardStore` owns its own league's games):
 
-1. **Following** — any game where either competitor ∈ FollowingStore (skip section if empty)
-2. **Top 25** — any game where either competitor has `curatedRank.current ≤ 25`
-3. **One section per conference** — via `team.conferenceId`, ordered by relevance: followed team's conference first, then Power 4, then Group of 5, then Independents; unknown ids bucket into "Other"
+1. **Following** — any game where either competitor ∈ `FollowingStore.teamKeys`. **Teams only**: a conference or poll follow is a *table* follow and hoists a section instead (2026-09-06). Cross-league, ordered live → upcoming → final, then by clock.
+2. **Followed tables** — `FollowingStore.orderedTables`, in the order the user dragged them into on the Tables hub. A college-football conference already in the stack *moves* here; a poll or an NFL group, which the stack has no counterpart for, gains a section.
+3. **The slate** — college football as one section per conference (`team.conferenceId`, Power 4 → Group of 5 → Independents → FCS → "Other" for both-sides-unknown, alphabetical within a tier), then the NFL as one section. Conference buckets follow the *fetched* divisions, so FCS only appears once someone follows an FCS conference.
 
-Games intentionally appear in multiple sections. Within a section: chronological, with day dividers (Thu/Fri/Sat) only when the section spans multiple days. Conference chips scroll-anchor to sections (`ScrollViewReader`), never filter. The Live toggle is the only filter: it collapses each section to in-progress games and hides empty sections.
+`GameSection.table` is what makes a hoist a move rather than a clone; everything else intentionally appears in multiple sections. Within a section: chronological. The Live toggle collapses each section to in-progress games and hides the empty ones. Every section but Following defaults open (`UIStateStore.defaultsOpen`).
 
 Conference id map (hardcode with an "Other" fallback; ids verified against ESPN groups): ACC 1, American 151, Big 12 4, Big Ten 5, C-USA 12, Independents 18, MAC 15, Mountain West 17, Pac-12 9, SEC 8, Sun Belt 37, FBS umbrella 80.
 

@@ -41,6 +41,25 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: "scores-live-chip").firstMatch
     }
 
+    /// Any section accordion on the Scores screen, by identifier prefix.
+    ///
+    /// Not by label: which sections exist is a calendar fact and, since
+    /// 2026-09-06, a follow-set fact too — a September Saturday is a stack
+    /// of college-football conferences, a Sunday is the NFL's one
+    /// accordion, and a followed table hoists a section above both. The
+    /// identifier prefix is the one thing every Scores section shares
+    /// (`SectionAccordion`).
+    var anyScoresSection: XCUIElement {
+        buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@",
+                                     "scores-section-")).firstMatch
+    }
+
+    /// One named Scores section, by the title its header speaks —
+    /// "SEC, 6 games".
+    func scoresSection(_ title: String) -> XCUIElement {
+        buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "\(title),")).firstMatch
+    }
+
     /// A followed team's card on the Teams tab. The card speaks its name
     /// and the group it plays in ("Georgia Bulldogs, SEC"), so the match
     /// is a prefix — the sheet's rows carry the bare name.

@@ -2,14 +2,14 @@ import SwiftUI
 import os
 
 /// The product: one screen answering "what's the state of the day" in one
-/// thumb, one scroll. Day strip → Following → one accordion per league.
+/// thumb, one scroll. Day strip → Following → the tables you follow → the
+/// day's slate, conference by conference for college football and whole
+/// for the NFL.
 ///
 /// The league used to be a segmented control and the day a week (Andy,
 /// 2026-09-05). Both changed for the same reason: a selector shows one
 /// league at a time and has to grow a segment per sport, while a week strip
-/// can only ever be honest about one league's calendar. Stacked league
-/// accordions under a shared day cost one row each and scale to whatever
-/// sport lands next.
+/// can only ever be honest about one league's calendar.
 struct ScoresScreen: View {
     /// Forensics for the self-popping live detail (BACKLOG E5, found
     /// 2026-08-29): a pop through the path binding logs a count change; a
@@ -133,7 +133,7 @@ struct ScoresScreen: View {
 
     private var sections: [GameSection] {
         scoreboards.sections(followingIds: following.teamKeys,
-                             followedConferenceIds: following.conferenceIds,
+                             followedTables: following.orderedTables,
                              liveOnly: uiState.liveOnly)
     }
 
@@ -277,7 +277,7 @@ struct ScoresScreen: View {
     private func previewPane(for target: Date) -> some View {
         let sections = scoreboards.sections(day: target,
                                             followingIds: following.teamKeys,
-                                            followedConferenceIds: following.conferenceIds,
+                                            followedTables: following.orderedTables,
                                             liveOnly: uiState.liveOnly)
         Group {
             if sections.isEmpty {

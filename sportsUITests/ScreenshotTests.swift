@@ -16,12 +16,11 @@ final class ScreenshotTests: XCTestCase {
                                 "-ui.scoreFilter", ""]
         app.launch()
 
-        // Scores: the day's slate, one accordion per league. Which leagues
-        // are playing depends on the day, so the shot waits on whichever
-        // one is there rather than naming it.
-        let anyLeague = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
-            "College Football,", "NFL,")).firstMatch
+        // Scores: the day's slate as a stack of accordions — college
+        // football's conferences, the NFL's one section, any followed
+        // table above them. Which are on screen depends on the day, so the
+        // shot waits on whichever is there rather than naming it.
+        let anyLeague = app.anyScoresSection
         XCTAssertTrue(anyLeague.waitForExistence(timeout: 20))
         let gameLink = app.scrollViews.buttons.matching(NSPredicate(
             format: "label CONTAINS %@", " at ")).firstMatch
@@ -29,7 +28,7 @@ final class ScreenshotTests: XCTestCase {
             anyLeague.tap()
         }
         XCTAssertTrue(gameLink.waitForExistence(timeout: 10),
-                      "An expanded league should reveal game rows")
+                      "An expanded section should reveal game rows")
         snapshot(app, "\(prefix)-scores")
 
         // The view-options sheet retired on 2026-09-06 — Live and Top 25

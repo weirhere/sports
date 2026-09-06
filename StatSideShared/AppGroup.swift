@@ -24,6 +24,19 @@ nonisolated enum AppGroup {
     /// one needs no migration.
     static let followingPollLeaguesKey = "following.pollLeagues"
 
+    /// The order followed tables appear in — `FollowedTable` tokens
+    /// (`"poll-cfb"`, `"conf-cfb-5"`), the arrangement the user dragged
+    /// them into on the tables hub. It drives the hoisted sections on
+    /// Scores too, which is the whole point: one list, one order, both
+    /// screens.
+    ///
+    /// Absence is not an error — a follow set saved before dragging
+    /// existed simply has no stored order, and falls back to
+    /// `FollowedTable.defaultOrder`. Tokens for tables no longer followed
+    /// are dropped on read rather than migrated away, so unfollowing and
+    /// re-following restores nothing and costs nothing.
+    static let followingTableOrderKey = "following.tableOrder"
+
     static let snapshotKey = "widget.snapshot"
     private static let migrationKey = "migration.followingToGroup.done"
     private static let leagueMigrationKey = "migration.leagueNamespacing.done"

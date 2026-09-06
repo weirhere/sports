@@ -81,8 +81,12 @@ struct DayStrip: View {
         Button {
             onSelect(day.date)
         } label: {
+            // fixedSize: the labels are words now, not two glyphs, and a
+            // chip that truncates to "Tomorr…" is worse than a wider strip.
             let label = Text(compactLabel(day.date))
                 .font(.chip)
+                .lineLimit(1)
+                .fixedSize()
                 .foregroundStyle(isSelected ? Color.bgPrimary : Color.textSecondary)
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 6)
@@ -97,29 +101,38 @@ struct DayStrip: View {
             }
         }
         .buttonStyle(.plain)
-        // The chip is two glyphs wide; the spoken label is the whole date,
-        // and "Today" and "Tomorrow" keep their meaning rather than being
-        // read as a bare weekday.
+        // The chip abbreviates its month and weekday; the spoken label is
+        // the whole date, and the named days keep their names.
         .accessibilityLabel(spokenLabel(day.date))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .id(day.id)
     }
 
-    /// "Today" / "Sat 6" — the strip is contiguous, so the day number needs
-    /// no month beside it.
+    /// "Yesterday" / "Today" / "Tomorrow" / "Sun, Sep 27" (Andy,
+    /// 2026-09-06).
+    ///
+    /// The three named days are how anyone actually refers to them, and
+    /// they are the three the strip lands on most. Every other chip carries
+    /// its month: the strip spans a whole season, so a bare "Sat 5" is
+    /// ambiguous the moment you drag past the fortnight either side of
+    /// today — and a season crosses a year boundary. Built through the
+    /// localized formatter, like every other date string in the app, so
+    /// the order follows the reader's calendar rather than ours.
     private func compactLabel(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "Today" }
-        let day = calendar.component(.day, from: date)
-        return "\(date.formatted(.dateTime.weekday(.abbreviated))) \(day)"
+        if let named = namedDay(date) { return named }
+        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 
-    private func spokenLabel(_ date: Date) -> String {
+    private func namedDay(_ date: Date) -> String? {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Today" }
         if calendar.isDateInTomorrow(date) { return "Tomorrow" }
         if calendar.isDateInYesterday(date) { return "Yesterday" }
-        return date.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        return nil
+    }
+
+    private func spokenLabel(_ date: Date) -> String {
+        namedDay(date) ?? date.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 }
 
