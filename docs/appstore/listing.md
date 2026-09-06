@@ -51,6 +51,9 @@ release-notes history now.
 > • Jump to any day. A calendar opens beside the day strip, so a game in
 >   November is one tap instead of a long drag — and Today floats over the
 >   slate whenever you've wandered off.
+> • Swiping between days works over the games again. A swipe that started on
+>   a game row used to open that game instead of moving the day — which on a
+>   Saturday, when the screen is nothing but games, was most of the screen.
 > • NFL standings, three ways. See the whole league, a conference, or a
 >   single division. An AFC or NFC division page has its table back, too.
 > • The preseason gets its own cards. The Hall of Fame Game and the preseason
