@@ -174,7 +174,8 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
                 id: "passing", label: "Passing",
                 away: .init(name: "A. Passer", statLine: "18/24, 231 yds"),
                 home: .init(name: "B. Thrower", statLine: "14/20, 178 yds"))],
-            venue: "Fixture Field", attendance: 54_321)
+            venue: "Fixture Field", attendance: 54_321,
+            venueCity: "Fixture City, TX", venueCapacity: 60_000, grassSurface: true)
     }
 
     // MARK: - The scripted Saturday

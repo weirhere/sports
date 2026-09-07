@@ -356,6 +356,10 @@ nonisolated struct SummaryResponseDTO: Decodable {
 
 nonisolated struct DrivesDTO: Decodable {
     let previous: LossyArray<DriveDTO>?
+    /// The possession in progress. ESPN ships it on live games only, in
+    /// the same shape as a previous drive, and drops it once the game
+    /// goes final — which is what retires the situation strip.
+    let current: DriveDTO?
 }
 
 nonisolated struct DriveDTO: Decodable {
@@ -365,6 +369,30 @@ nonisolated struct DriveDTO: Decodable {
     let isScore: Bool?
     let team: TeamDTO?
     let start: DriveEndpointDTO?
+    let plays: LossyArray<PlayDTO>?
+}
+
+/// One play-by-play row. `start` describes the down the play began on and
+/// `end` the down it left behind — the live strip wants `end` (what
+/// happens next), the play list wants `start` (what this play faced).
+nonisolated struct PlayDTO: Decodable {
+    let id: String?
+    let text: String?
+    let type: PlayTypeDTO?
+    let period: PeriodRefDTO?
+    let clock: ClockRefDTO?
+    let scoringPlay: Bool?
+    let awayScore: Int?
+    let homeScore: Int?
+    let start: PlayEndpointDTO?
+    let end: PlayEndpointDTO?
+}
+
+nonisolated struct PlayEndpointDTO: Decodable {
+    let downDistanceText: String?       // "1st & 10 at IU 5"
+    let shortDownDistanceText: String?  // "1st & 10"
+    let possessionText: String?         // "MIA 28"
+    let yardsToEndzone: Int?
 }
 
 nonisolated struct DriveEndpointDTO: Decodable {
@@ -487,10 +515,21 @@ nonisolated struct GameInfoDTO: Decodable {
 }
 
 nonisolated struct VenueDTO: Decodable {
+    /// The core API's key for the venue — the site API's own venue object
+    /// carries no capacity (verified across both leagues' captured
+    /// summary and scoreboard payloads), so the id is how the number gets
+    /// fetched.
+    let id: String?
     let fullName: String?
     let address: VenueAddressDTO?
     let capacity: Int?
     let grass: Bool?
+}
+
+/// The core API's venue resource, which is where `capacity` actually
+/// lives. Only the one field is read.
+nonisolated struct CoreVenueDTO: Decodable {
+    let capacity: Int?
 }
 
 nonisolated struct VenueAddressDTO: Decodable {
