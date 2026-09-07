@@ -14,7 +14,10 @@ struct NextGameWidgetView: View {
                            subtitle: "Pick teams in StatSide and their games live here.")
                 .widgetURL(URL(string: "statside://teams"))
         case .noGames:
-            EmptyStateView(title: "No games this week",
+            // "This week" was true when the provider asked for one; it now
+            // asks for a fortnight, and a team on a bye has no games in
+            // either sense.
+            EmptyStateView(title: "No games scheduled",
                            subtitle: "Your teams' next kickoff will show up here.")
         case .games(let games, let stale):
             switch family {

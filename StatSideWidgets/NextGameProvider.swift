@@ -62,9 +62,10 @@ nonisolated struct NextGameProvider: TimelineProvider {
             // shared blob, and a per-family limit would let a medium reload
             // overwrite it with too few games for a placed large.
             //
-            // The pick is cross-league and purely chronological, which is
-            // the right answer for "my games": a Sunday NFL kickoff can
-            // outrank a Saturday that has already finished.
+            // The pick is cross-league and chronological, which is the
+            // right answer for "my games": a Sunday NFL kickoff can outrank
+            // a Saturday college game that has already finished, and once
+            // that Saturday is yesterday it drops off the list entirely.
             let relevant = GameSelection.relevantGames(
                 in: games, followedKeys: followedKeys, limit: 4, now: now
             )
@@ -120,15 +121,17 @@ nonisolated struct NextGameProvider: TimelineProvider {
         }
     }
 
-    /// Each league's current slate, in flight together. `nil` marks a league
-    /// that failed, so the caller can tell "nobody plays" from "nobody
-    /// answered" — the two look identical in a flattened list of games.
+    /// Each league's slate over the window the widget can speak for, in
+    /// flight together. `nil` marks a league that failed, so the caller can
+    /// tell "nobody plays" from "nobody answered" — the two look identical
+    /// in a flattened list of games.
     private static func currentGames(in leagues: [League]) async -> [[Game]?] {
-        await withTaskGroup(of: [Game]?.self) { group in
+        let window = GameSelection.fetchWindow(around: .now)
+        return await withTaskGroup(of: [Game]?.self) { group in
             for league in leagues {
                 group.addTask {
                     try? await DataProvider.makeClient(league: league)
-                        .scoreboard(weekValue: nil, seasonType: nil, year: nil).games
+                        .scoreboard(days: window).games
                 }
             }
             return await group.reduce(into: [[Game]?]()) { $0.append($1) }
