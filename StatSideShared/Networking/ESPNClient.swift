@@ -954,6 +954,61 @@ nonisolated enum ESPNMapper {
         )
     }
 
+    /// Stamps every scoring play with the side whose number went up.
+    /// A running score is the only honest source: a pick six scores for
+    /// the defense, and the drive's team says the opposite.
+    static func attributingScores(previous: [Drive], current: Drive?)
+        -> (previous: [Drive], current: Drive?) {
+        var away = 0
+        var home = 0
+        func stamp(_ drive: Drive) -> Drive {
+            var drive = drive
+            drive.plays = drive.plays.map { play in
+                guard let a = play.awayScore, let h = play.homeScore else { return play }
+                var play = play
+                if play.isScoringPlay {
+                    play.scoringSide = a > away ? .away : (h > home ? .home : nil)
+                }
+                away = a
+                home = h
+                return play
+            }
+            return drive
+        }
+        return (previous.map(stamp), current.map(stamp))
+    }
+
+    /// One drive and its plays. Shared by the drive log and the live
+    /// current drive — ESPN ships them in the same shape, so the strip and
+    /// the play list can't disagree about a possession.
+    static func drive(from dto: DriveDTO, fallbackId: String) -> Drive {
+        Drive(
+            id: dto.id ?? fallbackId,
+            teamId: dto.team?.id,
+            result: dto.displayResult?.trimmingCharacters(in: .whitespaces),
+            isScore: dto.isScore ?? false,
+            summary: dto.description,
+            period: dto.start?.period?.number,
+            plays: (dto.plays?.elements ?? []).enumerated().map { index, play in
+                Play(
+                    id: play.id ?? "\(dto.id ?? fallbackId)-play-\(index)",
+                    text: play.text?.trimmingCharacters(in: .whitespaces),
+                    downDistanceText: play.start?.downDistanceText,
+                    nextDownDistanceText: play.end?.shortDownDistanceText
+                        ?? play.end?.downDistanceText,
+                    possessionText: play.end?.possessionText,
+                    yardsToEndzone: play.end?.yardsToEndzone,
+                    clock: play.clock?.displayValue,
+                    period: play.period?.number,
+                    typeText: play.type?.text,
+                    isScoringPlay: play.scoringPlay ?? false,
+                    awayScore: play.awayScore,
+                    homeScore: play.homeScore
+                )
+            }
+        )
+    }
+
     static func gameSummary(from dto: SummaryResponseDTO,
                             league: League = .collegeFootball) -> GameSummary {
         let competition = dto.header?.competitions?.first
@@ -974,6 +1029,16 @@ nonisolated enum ESPNMapper {
             )
         }
 
+        // One chronological pass over every play, current drive included,
+        // so each scoring play knows whose points it put up before any
+        // view asks. Split back apart after — the strip wants the drive
+        // in progress on its own.
+        let previousDrives = (dto.drives?.previous?.elements ?? []).enumerated().map { index, driveDTO in
+            drive(from: driveDTO, fallbackId: "drive-\(index)")
+        }
+        let currentDrive = dto.drives?.current.map { drive(from: $0, fallbackId: "drive-current") }
+        let stampedDrives = attributingScores(previous: previousDrives, current: currentDrive)
+
         return GameSummary(
             home: side("home"),
             away: side("away"),
@@ -990,16 +1055,8 @@ nonisolated enum ESPNMapper {
                     homeScore: play.homeScore
                 )
             },
-            drives: (dto.drives?.previous?.elements ?? []).enumerated().map { index, drive in
-                Drive(
-                    id: drive.id ?? "drive-\(index)",
-                    teamId: drive.team?.id,
-                    result: drive.displayResult?.trimmingCharacters(in: .whitespaces),
-                    isScore: drive.isScore ?? false,
-                    summary: drive.description,
-                    period: drive.start?.period?.number
-                )
-            },
+            drives: stampedDrives.previous,
+            currentDrive: stampedDrives.current,
             teamStats: teamStats(from: dto.boxscore),
             leaders: leaders(from: dto.leaders?.elements ?? [], competitors: competitors),
             boxScore: boxScore(from: dto.boxscore),

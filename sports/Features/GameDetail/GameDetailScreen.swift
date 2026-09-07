@@ -24,23 +24,39 @@ struct GameDetailScreen: View {
     /// rule: trailing walking forward, leading coming back.
     @State private var tabSlideEdge: Edge = .trailing
 
+    /// Whether the Plays tab is narrowed to the plays that scored. Lives
+    /// here rather than in the list so switching tabs and coming back
+    /// doesn't quietly widen the slate under the user.
+    @State private var scoringOnly = false
+
     /// Raw values order the tabs — the slide direction is an ordinal
-    /// comparison. Summary keeps every card the screen has always had, in
-    /// the order it had them; Box score is purely additive.
+    /// comparison. Summary keeps every card the screen has always had,
+    /// minus Drives, which moved into Plays (2026-09-06); Plays sits in
+    /// the middle because chronology comes before rosters.
     private enum Tab: Int, HeroTabItem {
-        case summary, boxScore
+        case summary, plays, boxScore
 
         var title: String {
             switch self {
             case .summary: "Summary"
+            case .plays: "Plays"
             case .boxScore: "Box score"
             }
         }
     }
 
-    /// No player stats, no tab row: pre-kick games, CFBD's feed, and any
-    /// game ESPN hasn't filled in look exactly as they did before.
-    private var showsTabs: Bool { !(summary?.boxScore.isEmpty ?? true) }
+    /// A tab only exists where its data does. Pre-kick games, CFBD's
+    /// feed, and any game ESPN hasn't filled in show Summary alone and
+    /// no tab row — exactly as they did before either tab existed.
+    private var availableTabs: [Tab] {
+        guard let summary else { return [.summary] }
+        var tabs: [Tab] = [.summary]
+        if !summary.drives.isEmpty || summary.currentDrive != nil { tabs.append(.plays) }
+        if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
+        return tabs
+    }
+
+    private var showsTabs: Bool { availableTabs.count > 1 }
 
     /// Scoped to the game's league — the summary endpoint lives behind
     /// its own sport path, and event ids are fetched through it.
@@ -60,7 +76,7 @@ struct GameDetailScreen: View {
                         // Leading, with the entity pages' Spacing.lg gutter —
                         // Team and Conference anchor their tab rows to the
                         // left edge and this is the same component.
-                        HeroTabBar(tabs: [.summary, .boxScore], selection: tab,
+                        HeroTabBar(tabs: availableTabs, selection: tab,
                                    onSelect: { select(tab: $0) })
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Spacing.lg)
@@ -70,10 +86,16 @@ struct GameDetailScreen: View {
                 .background(Color.bgCard)
                 if let summary {
                     Group {
-                        if tab == .boxScore, showsTabs {
+                        // A tab whose data went away between polls falls
+                        // back rather than rendering an empty pane.
+                        let shown: Tab = availableTabs.contains(tab) ? tab : .summary
+                        switch shown {
+                        case .boxScore:
                             BoxScoreList(summary: summary)
                                 .padding(Spacing.sm)
-                        } else {
+                        case .plays:
+                            playsPane(summary)
+                        case .summary:
                             summaryCards(summary)
                         }
                     }
@@ -90,11 +112,14 @@ struct GameDetailScreen: View {
                         DragGesture(minimumDistance: 20)
                             .onEnded { value in
                                 let dx = value.translation.width
+                                let tabs = availableTabs
                                 guard showsTabs, abs(dx) > 50,
                                       abs(dx) > abs(value.translation.height) * 1.5,
-                                      let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
+                                      let here = tabs.firstIndex(of: tab)
                                 else { return }
-                                select(tab: target)
+                                let next = here + (dx < 0 ? 1 : -1)
+                                guard tabs.indices.contains(next) else { return }
+                                select(tab: tabs[next])
                             }
                     )
                 } else if isLoading {
@@ -339,6 +364,14 @@ struct GameDetailScreen: View {
     @ViewBuilder
     private func summaryCards(_ summary: GameSummary) -> some View {
         VStack(spacing: Spacing.sm) {
+                    // The Gamecast strip leads while a game is live: the
+                    // down, the spot, and the last play are what the page
+                    // is being opened for at 3:30 on a Saturday.
+                    if let situation = summary.situation {
+                        card(title: "Current drive") {
+                            LiveSituationCard(summary: summary, situation: situation)
+                        }
+                    }
                     // Pre-kick, the sections below are all empty — the
                     // game-info card carries the "what do I need to
                     // know" load (FotMob's Preview cards, monochrome).
@@ -373,9 +406,6 @@ struct GameDetailScreen: View {
                                              standings: conferenceStandings)
                         }
                     }
-                    if !summary.drives.isEmpty {
-                        card(title: "Drives") { DriveLogList(summary: summary) }
-                    }
                     // Pre-game the info card already places the game;
                     // once scores exist it returns as the venue card.
                     if showsScores, summary.venue != nil || summary.attendance != nil {
@@ -383,6 +413,36 @@ struct GameDetailScreen: View {
                     }
             }
             .padding(Spacing.sm)
+    }
+
+    /// The Plays tab: the Games tabs' control row language — two toggles
+    /// answering one question, so turning one on turns the other off —
+    /// over the one card that holds every possession.
+    private func playsPane(_ summary: GameSummary) -> some View {
+        VStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
+                SlateToggleChip(title: "All plays", isOn: !scoringOnly,
+                                hint: "Shows every play") {
+                    scoringOnly = false
+                }
+                SlateToggleChip(title: "Scoring", isOn: scoringOnly,
+                                hint: "Shows only the plays that scored") {
+                    scoringOnly = true
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.sm)
+            if scoringOnly, summary.drives.allSatisfy({ $0.scoringPlays.isEmpty }),
+               summary.currentDrive?.scoringPlays.isEmpty ?? true {
+                Text("No scoring plays yet.")
+                    .font(.teamName)
+                    .foregroundStyle(.textSecondary)
+                    .padding(.vertical, Spacing.xl)
+            } else {
+                card { PlayByPlayList(summary: summary, scoringOnly: scoringOnly) }
+            }
+        }
+        .padding(Spacing.sm)
     }
 
     /// One content card: optional bordered header, then the section's own

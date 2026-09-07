@@ -117,7 +117,9 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
 - `scoringPlays` via `drives.previous[].plays[]` (`scoringPlay: true`) and a top-level `scoringPlays[]` when present: `{period, clock, text, awayScore, homeScore, team, type}`
 - `header.competitions[0].competitors[].linescores[]` — per-quarter line score
 - `gameInfo`: `{venue{fullName, address}, attendance}`
-- `drives.previous[]`: full drive log — the DRIVES section's source. `displayResult` ("Punt") beats the ALL-CAPS `result`; `description` is a pre-built "5 plays, 20 yards, 2:39" line; `start.period.number` drives the quarter markers
+- `drives.previous[]`: full drive log — the Plays tab's source. `displayResult` ("Punt") beats the ALL-CAPS `result`; `description` is a pre-built "5 plays, 20 yards, 2:39" line; `start.period.number` drives the quarter markers
+- `drives.previous[].plays[]`: the play-by-play — `text`, `type.text`, `clock.displayValue`, `period.number`, `scoringPlay`, `awayScore`/`homeScore`. `start.downDistanceText` is the down the play faced ("1st & 10 at IU 5", absent on kickoffs); `end` carries what happens next — `shortDownDistanceText` ("2nd & 4"), `possessionText` ("MIA 28") and `yardsToEndzone`. The drive-derived scoring plays match the top-level `scoringPlays[]` exactly (8 and 8 in the captured championship fixture, 22 drives / 175 plays)
+- `drives.current`: the possession in progress, same shape as a previous drive — the live situation strip's only source. Absent on final games, which is what retires the card. **Not probed live** (the captured fixture is final); reasoned from ESPN's live shape and decoded fully optionally
 
 ### Teams + schedules (shapes verified live 2026-07-20)
 
