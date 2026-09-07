@@ -147,7 +147,7 @@ struct WidgetGameRow: View {
                     .lineLimit(1)
             }
             // The kickoff time under its day, `GameRow`'s own split: the
-            // joined "Sun, 9/13 1:00 PM" overflowed the fixed column and
+            // joined "Sun, Sep 13 1:00 PM" overflowed the fixed column and
             // truncated mid-time (Andy, 2026-09-06).
             if let detail = game.statusDetail {
                 Text(detail)
