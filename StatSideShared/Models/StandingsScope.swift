@@ -41,6 +41,55 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// The scopes a *team* page can show: every level the team itself
+    /// belongs to — its division, its conference, and the league it plays
+    /// in. Where a conference page scopes downward into what it contains,
+    /// a team page scopes outward into what contains it, and each step is
+    /// still one table with the team's own row in it.
+    ///
+    /// One level is no choice at all, so college football — whose teams
+    /// belong to a conference and nothing else — offers none, exactly as
+    /// its conference pages do.
+    static func scopes(forTeamIn conference: ConferenceID) -> [StandingsScope] {
+        let levels = Set(Conference.chain(for: conference).compactMap {
+            scope(at: Conference.tier(for: $0.id, in: $0.league))
+        })
+        guard levels.count > 1 else { return [] }
+        // Widest first, the league page's order.
+        return allCases.filter { levels.contains($0) }
+    }
+
+    /// Where a team page opens: its conference's table, which is what the
+    /// tab has always shown. The league is one step out from there and the
+    /// division one step in — a team sits in the middle of its own
+    /// hierarchy, so its page has no widest-view-of-itself to default to.
+    static func `default`(forTeamIn conference: ConferenceID) -> StandingsScope {
+        scopes(forTeamIn: conference).contains(.conference) ? .conference : .division
+    }
+
+    /// Whether this scope tables fewer teams than `baseline` — the chip's
+    /// ink rule. A page's own default is the baseline, so scoping *out*
+    /// (a team page reading the whole league) sits as quiet as the default
+    /// does, and only a narrowed table wears the fill.
+    func isNarrower(than baseline: StandingsScope) -> Bool {
+        rank > baseline.rank
+    }
+
+    /// Widest to narrowest, which is `allCases`' own order.
+    private var rank: Int {
+        StandingsScope.allCases.firstIndex(of: self) ?? 0
+    }
+
+    /// The scope a level of the hierarchy is seen at.
+    private static func scope(at tier: Conference.Tier) -> StandingsScope? {
+        switch tier {
+        case .league: .league
+        case .nflConference: .conference
+        case .nflDivision: .division
+        default: nil
+        }
+    }
+
     /// Where a page opens. The widest view of itself: the league's own
     /// table on the league page, its 16 on a conference page — and a
     /// division page, which has no scopes to offer, still has to ask for
