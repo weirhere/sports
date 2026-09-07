@@ -39,12 +39,17 @@ final class SmokeUITests: XCTestCase {
 
         // The day strip walks the season. Yesterday always exists inside
         // it, and the floating Today button is the way back — it only
-        // appears once the strip has wandered off today.
+        // appears once the strip has wandered far enough that the Today
+        // chip itself is off screen — three days out (2026-09-07) — so one
+        // swipe is deliberately not enough.
         let today = app.buttons["scores-today-jump"]
         XCTAssertFalse(today.exists, "The Today button should be hidden on today")
         app.swipeLeft()
+        XCTAssertFalse(today.exists,
+                       "One day out, the Today chip is still on the strip")
+        for _ in 0..<2 { app.swipeLeft() }
         XCTAssertTrue(today.waitForExistence(timeout: 10),
-                      "Swiping to another day should offer the way back")
+                      "Swiping past the Today chip should offer the way back")
         today.tap()
         // XCUIElement has no wait-for-absence, and the button disappearing
         // *is* the assertion — the screen only offers it off today.

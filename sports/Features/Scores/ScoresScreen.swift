@@ -104,10 +104,10 @@ struct ScoresScreen: View {
             }
             .background(Color.bgPrimary)
             .overlay(alignment: .bottom) {
-                if scoreboards.canJumpToToday { todayJump }
+                if scoreboards.showsTodayJump { todayJump }
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.85),
-                       value: scoreboards.canJumpToToday)
+                       value: scoreboards.showsTodayJump)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
@@ -191,6 +191,10 @@ struct ScoresScreen: View {
     /// *changes* the day rather than describing it, and it only exists
     /// while it has somewhere to go, so it can afford to be the loudest
     /// thing on screen.
+    ///
+    /// "Somewhere to go" means off the strip, not just off today (Andy,
+    /// 2026-09-07): a day or two out the Today chip is still up there, and
+    /// two Todays a thumb apart is one too many.
     private var todayJump: some View {
         Button {
             select(day: .now)
@@ -336,7 +340,7 @@ struct ScoresScreen: View {
                 .padding(Spacing.sm)
                 // The jump floats over this scroll view, so the last card
                 // needs room to clear it rather than sitting underneath.
-                .padding(.bottom, scoreboards.canJumpToToday ? Self.jumpClearance : 0)
+                .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
             }
             .refreshable {
                 await scoreboards.refresh()
