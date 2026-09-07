@@ -32,6 +32,28 @@ nonisolated enum DayFormat {
                       parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
+    /// The inverse of `id(for:)`: a local start-of-day from `"2026-09-05"`.
+    ///
+    /// What a deep link's `?day=` hint parses through (2026-09-07). The
+    /// widget lists games a fortnight out and the Scores screen holds five
+    /// days at a time, so a tap on next Sunday's kickoff has to say where
+    /// its game lives before the screen can go and find it.
+    ///
+    /// Rejects a day that isn't one rather than rolling it over: Foundation
+    /// reads month 13 as next January and February 31st as March 3rd, and a
+    /// link that lands the strip on a day nobody meant is worse than one
+    /// that carries no day at all.
+    static func date(fromId id: String, calendar: Calendar = .current) -> Date? {
+        let parts = id.split(separator: "-")
+        guard parts.count == 3,
+              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
+              let date = calendar.date(from: DateComponents(year: year, month: month, day: day)),
+              calendar.component(.month, from: date) == month,
+              calendar.component(.day, from: date) == day
+        else { return nil }
+        return date
+    }
+
     /// `"20260905"` — ESPN's `dates=` token.
     ///
     /// Rendered in **Eastern** time, because that is how ESPN reads the

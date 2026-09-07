@@ -22,7 +22,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         if let gameId = response.notification.request.content.userInfo["gameId"] as? String {
-            router.pendingGameId = gameId
+            router.pendingGame = GameRef(id: gameId)
         }
     }
 }

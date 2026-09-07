@@ -91,7 +91,11 @@ final class WidgetUITests: XCTestCase {
         XCTAssertTrue(springboard.staticTexts["SEA"].firstMatch.waitForExistence(timeout: 30),
                       "Widget should render the followed NFL team's game too")
 
-        // Tap-through: widgetURL → statside://game/{id} → game lands in-app.
+        // Tap-through: the row's link → statside://game/{id}?day=… → game
+        // lands in-app. The day is what makes a row the app hasn't loaded
+        // openable at all (Andy, 2026-09-07); Georgia's next game is
+        // usually inside the loaded window, so this asserts the path, not
+        // the far-off case.
         rendered.tap()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10),
                       "Widget tap should foreground the app")

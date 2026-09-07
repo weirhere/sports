@@ -109,7 +109,8 @@ nonisolated struct NextGameProvider: TimelineProvider {
                         statusDetail: game.statusDetail,
                         network: game.network,
                         isLive: game.isLive,
-                        showsScores: game.showsScores ?? true
+                        showsScores: game.showsScores ?? true,
+                        day: game.day
                     )
                 }
                 // Dated at the snapshot's save, not now: the stale marker's

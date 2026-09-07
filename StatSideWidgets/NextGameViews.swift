@@ -12,7 +12,7 @@ struct NextGameWidgetView: View {
         case .noFollows:
             EmptyStateView(title: "Follow your teams",
                            subtitle: "Pick teams in StatSide and their games live here.")
-                .widgetURL(URL(string: "statside://teams"))
+                .widgetURL(DeepLinkURL.teams)
         case .noGames:
             // "This week" was true when the provider asked for one; it now
             // asks for a fortnight, and a team on a bye has no games in
