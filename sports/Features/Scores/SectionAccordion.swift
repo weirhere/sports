@@ -88,10 +88,41 @@ struct SectionAccordion: View {
             } else {
                 ConferenceLogo(url: section.logoURL)
             }
-            Text(section.title)
-                .font(.sectionHeader)
-                .foregroundStyle(.textPrimary)
+            // Tighter than the row's own spacing: the caption belongs to
+            // the name, not to the count that follows it.
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
+                Text(section.title)
+                    .font(.sectionHeader)
+                    .foregroundStyle(.textPrimary)
+                leagueTagText
+            }
         }
+    }
+
+    /// The league caption riding the name. A conference names itself, not
+    /// its sport — "ACC" and "Top 25" say nothing about which football this
+    /// is now that both leagues share the page (Andy, 2026-09-06). Same
+    /// quiet uppercase `shortName` the game rows and search results tag
+    /// with, so the app has one word for a league everywhere.
+    @ViewBuilder
+    private var leagueTagText: some View {
+        if let league = tagLeague {
+            Text(league.shortName)
+                .font(.rowMeta)
+                .tracking(0.4)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// The league a section needs spelled out: every one that has a league
+    /// but doesn't already say it. The NFL's own section is titled "NFL",
+    /// and Following spans them both.
+    private var tagLeague: League? {
+        guard let league = section.league,
+              section.title != league.shortName,
+              section.title != league.displayName else { return nil }
+        return league
     }
 
     private var countAndChevron: some View {
@@ -107,6 +138,16 @@ struct SectionAccordion: View {
         }
     }
 
+    /// The header's spoken sentence, carrying the same league anchor the
+    /// caption does — a VoiceOver swipe lands on "ACC" with no marks and no
+    /// screen to read it against, so the ambiguity is worse here, not less.
+    /// Spelled out rather than abbreviated: "CFB" is a caption, not a word.
+    private var headerLabel: String {
+        let games = "\(section.games.count) \(section.games.count == 1 ? "game" : "games")"
+        guard let league = tagLeague else { return "\(section.title), \(games)" }
+        return "\(section.title), \(league.displayName), \(games)"
+    }
+
     private func toggleButton(@ViewBuilder content: () -> some View) -> some View {
         Button(action: onToggle) {
             content()
@@ -114,7 +155,7 @@ struct SectionAccordion: View {
         // The header sits on the day-swipe pane too, so it takes the same
         // style as the rows: a swipe across it must not toggle the section.
         .buttonStyle(SwipeSafeButtonStyle())
-        .accessibilityLabel("\(section.title), \(section.games.count) \(section.games.count == 1 ? "game" : "games")")
+        .accessibilityLabel(headerLabel)
         .accessibilityValue(isExpanded ? "expanded" : "collapsed")
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("scores-section-\(section.id)")
