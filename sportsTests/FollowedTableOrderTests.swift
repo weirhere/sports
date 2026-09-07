@@ -14,8 +14,9 @@ import Testing
     }
 
     @Test func nonsenseTokensDoNotParse() {
-        // The drop destination accepts any text drag, so a token that
-        // isn't one of ours has to fail rather than resolve to something
+        // The stored order is a list of these tokens, written by whatever
+        // version of the app last touched it, so a token that isn't one of
+        // ours has to fail rather than resolve to something
         // plausible-looking.
         #expect(FollowedTable(token: "") == nil)
         #expect(FollowedTable(token: "SEC") == nil)
@@ -138,12 +139,65 @@ import Testing
         #expect(FollowingStore(defaults: defaults).orderedTables == [.conference(.cfb(8))])
     }
 
-    @Test func aDropFromOutsideTheListChangesNothing() {
+    @Test func movingSomethingUnfollowedChangesNothing() {
         let (store, _) = makeStore()
         store.toggleConference(.cfb(8))
         store.toggleConference(.cfb(5))
 
         store.move(.conference(.cfb(4)), onto: .conference(.cfb(8)))
+        store.move(.conference(.cfb(4)), to: 0)
+        #expect(store.orderedTables == [.conference(.cfb(8)), .conference(.cfb(5))])
+    }
+
+    // MARK: - Index moves
+    //
+    // What a drag resolves to: an insertion index into the list with the
+    // lifted card taken out of it, which is the only reading that can name
+    // the slot past the last card.
+
+    @Test func anIndexMoveDropsTheCardIntoThatSlot() {
+        let (store, defaults) = makeStore()
+        store.toggleConference(.cfb(8))
+        store.toggleConference(.cfb(5))
+        store.toggleConference(.cfb(1))
+
+        // Lift the first card, drop it into the last slot.
+        store.move(.conference(.cfb(8)), to: 2)
+        #expect(store.orderedTables == [.conference(.cfb(5)), .conference(.cfb(1)),
+                                        .conference(.cfb(8))])
+
+        // And back to the top.
+        store.move(.conference(.cfb(8)), to: 0)
+        #expect(store.orderedTables == [.conference(.cfb(8)), .conference(.cfb(5)),
+                                        .conference(.cfb(1))])
+
+        #expect(FollowingStore(defaults: defaults).orderedTables
+                == [.conference(.cfb(8)), .conference(.cfb(5)), .conference(.cfb(1))])
+    }
+
+    @Test func droppingACardBackWhereItStartedPersistsNothing() {
+        // A lift that travels nowhere shouldn't pin down an order the user
+        // never arranged — everything here is still riding the default.
+        let name = "test.tableorder.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        defaults.set(["cfb-8", "cfb-5"], forKey: AppGroup.followingConferenceTokensKey)
+        let store = FollowingStore(defaults: defaults)
+
+        #expect(store.orderedTables == [.conference(.cfb(5)), .conference(.cfb(8))])
+        store.move(.conference(.cfb(5)), to: 0)
+        #expect(store.tableOrder.isEmpty)
+    }
+
+    @Test func anOutOfRangeIndexClampsRatherThanCrashing() {
+        let (store, _) = makeStore()
+        store.toggleConference(.cfb(8))
+        store.toggleConference(.cfb(5))
+
+        store.move(.conference(.cfb(8)), to: 99)
+        #expect(store.orderedTables == [.conference(.cfb(5)), .conference(.cfb(8))])
+
+        store.move(.conference(.cfb(8)), to: -3)
         #expect(store.orderedTables == [.conference(.cfb(8)), .conference(.cfb(5))])
     }
 }

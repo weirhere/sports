@@ -15,7 +15,10 @@ struct Top25Row: View {
             } label: {
                 rowContent
             }
-            .buttonStyle(.plain)
+            // Not `.plain`: this row is also a card the Following list
+            // lifts and drags, and `.plain` fires on any touch-up still
+            // inside the row — which a whole-card drag never leaves.
+            .buttonStyle(SwipeSafeButtonStyle())
             .accessibilityIdentifier("rankings-top25-row")
             PollFollowStar(league: league)
         }
