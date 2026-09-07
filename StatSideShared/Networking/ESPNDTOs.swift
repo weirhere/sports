@@ -356,6 +356,10 @@ nonisolated struct SummaryResponseDTO: Decodable {
 
 nonisolated struct DrivesDTO: Decodable {
     let previous: LossyArray<DriveDTO>?
+    /// The possession in progress. ESPN ships it on live games only, in
+    /// the same shape as a previous drive, and drops it once the game
+    /// goes final — which is what retires the situation strip.
+    let current: DriveDTO?
 }
 
 nonisolated struct DriveDTO: Decodable {
@@ -365,6 +369,30 @@ nonisolated struct DriveDTO: Decodable {
     let isScore: Bool?
     let team: TeamDTO?
     let start: DriveEndpointDTO?
+    let plays: LossyArray<PlayDTO>?
+}
+
+/// One play-by-play row. `start` describes the down the play began on and
+/// `end` the down it left behind — the live strip wants `end` (what
+/// happens next), the play list wants `start` (what this play faced).
+nonisolated struct PlayDTO: Decodable {
+    let id: String?
+    let text: String?
+    let type: PlayTypeDTO?
+    let period: PeriodRefDTO?
+    let clock: ClockRefDTO?
+    let scoringPlay: Bool?
+    let awayScore: Int?
+    let homeScore: Int?
+    let start: PlayEndpointDTO?
+    let end: PlayEndpointDTO?
+}
+
+nonisolated struct PlayEndpointDTO: Decodable {
+    let downDistanceText: String?       // "1st & 10 at IU 5"
+    let shortDownDistanceText: String?  // "1st & 10"
+    let possessionText: String?         // "MIA 28"
+    let yardsToEndzone: Int?
 }
 
 nonisolated struct DriveEndpointDTO: Decodable {

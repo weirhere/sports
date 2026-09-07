@@ -177,8 +177,8 @@ struct ScoresScreen: View {
     /// thing on screen.
     ///
     /// "Somewhere to go" means off the strip, not just off today (Andy,
-    /// 2026-09-07): within three days either side the Today chip is still
-    /// on screen, and two Todays a thumb apart is one too many.
+    /// 2026-09-07): a day or two out the Today chip is still up there, and
+    /// two Todays a thumb apart is one too many.
     private var todayJump: some View {
         Button {
             select(day: .now)
@@ -271,8 +271,18 @@ struct ScoresScreen: View {
         path = NavigationPath([game])
     }
 
-    @ViewBuilder
+    /// The slate, however it lands: games, an empty day, an error, or the
+    /// first-load skeleton. `bgRecessed` is painted once out here so every
+    /// one of those stands on the same ground — an empty day used to fall
+    /// through to the window's `bgPrimary` and read as a different screen.
     private var content: some View {
+        slate
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.bgRecessed)
+    }
+
+    @ViewBuilder
+    private var slate: some View {
         let sections = self.sections
         if sections.isEmpty {
             emptyState
@@ -299,7 +309,6 @@ struct ScoresScreen: View {
                 // needs room to clear it rather than sitting underneath.
                 .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
             }
-            .background(Color.bgRecessed)
             .refreshable {
                 await scoreboards.refresh()
                 refreshCount += 1
