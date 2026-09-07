@@ -147,6 +147,31 @@ final class LeagueScoreboards {
         return today >= calendar.startOfDay(for: span.lowerBound) && today <= span.upperBound
     }
 
+    /// How far the strip can drift with today's chip still on screen. The
+    /// strip centres its selection and the chips carry their month now, so
+    /// the Today chip is already clipping at the leading edge two days out
+    /// and gone at three (Andy, 2026-09-07).
+    private static let todayChipReach = 2
+
+    /// Whether today's own chip is still within reach on the strip — the
+    /// floating button's other gate. A control that duplicates a chip the
+    /// thumb can already see is chrome saying the same thing twice.
+    ///
+    /// A past season has no today chip at all, however close the dates
+    /// look: the strip is bounded to the season it shows.
+    func todayIsOnStrip(calendar: Calendar = .current) -> Bool {
+        guard seasonYear == currentSeasonYear else { return false }
+        let today = calendar.startOfDay(for: .now)
+        let distance = calendar.dateComponents([.day], from: today, to: selectedDay).day ?? 0
+        return abs(distance) <= Self.todayChipReach
+    }
+
+    /// The floating Today button's whole condition: somewhere to go, and
+    /// today's chip out of view (Andy, 2026-09-07).
+    var showsTodayJump: Bool {
+        canJumpToToday && !todayIsOnStrip()
+    }
+
     // MARK: - Loading
 
     /// First load: the day the app opened on, plus a snap forward if

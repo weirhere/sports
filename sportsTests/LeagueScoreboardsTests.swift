@@ -499,6 +499,37 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(scoreboards.sections(followingIds: []).first?.games.map(\.id) == ["c-today"])
     }
 
+    @Test func theTodayJumpWaitsUntilTheTodayChipIsOffTheStrip() async {
+        let calendar = Calendar.current
+        let scoreboards = await makeScoreboards()
+        #expect(!scoreboards.showsTodayJump)
+
+        // Inside the reach the chip is still on screen, so the floating
+        // button would only say it twice.
+        for offset in [1, -1, 2, -2] {
+            let day = calendar.date(byAdding: .day, value: offset, to: today()) ?? today()
+            await scoreboards.select(day: day)
+            #expect(scoreboards.canJumpToToday)
+            #expect(scoreboards.todayIsOnStrip())
+            #expect(!scoreboards.showsTodayJump)
+        }
+
+        for offset in [3, -3, 30] {
+            let day = calendar.date(byAdding: .day, value: offset, to: today()) ?? today()
+            await scoreboards.select(day: day)
+            #expect(!scoreboards.todayIsOnStrip())
+            #expect(scoreboards.showsTodayJump)
+        }
+    }
+
+    @Test func aPastSeasonHasNoTodayChipHoweverCloseTheDatesLook() async {
+        let scoreboards = await makeScoreboards()
+        await scoreboards.select(season: 2019)
+
+        #expect(!scoreboards.todayIsOnStrip())
+        #expect(scoreboards.showsTodayJump)
+    }
+
     @Test func adjacentDayIsBoundedByTheSeason() async {
         let scoreboards = await makeScoreboards()
         #expect(scoreboards.adjacentDay(offset: 1) != nil)
