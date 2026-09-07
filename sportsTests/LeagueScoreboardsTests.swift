@@ -499,6 +499,50 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(scoreboards.sections(followingIds: []).first?.games.map(\.id) == ["c-today"])
     }
 
+    /// The day strip reads `selectedDay`, and a swipe has to move it on the
+    /// frame the thumb lifts — so the move and the fetch are separable
+    /// (Andy, 2026-09-07: "no delay").
+    @Test func showingADayMovesTheStripBeforeTheFetch() async {
+        let calendar = Calendar.current
+        let later = calendar.date(byAdding: .day, value: 10, to: today()) ?? today()
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c-today", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball)),
+                  game("c-later", home: team("3", in: .collegeFootball),
+                       away: team("4", in: .collegeFootball), at: later)])
+
+        // Synchronous: the day is already the new one, with nothing awaited.
+        #expect(scoreboards.show(day: later))
+        #expect(scoreboards.selectedDay == calendar.startOfDay(for: later))
+        #expect(!scoreboards.selectedDayIsLoaded)
+        // Idempotent — a day that didn't move reports it, so `select(day:)`
+        // can skip the fetch.
+        #expect(!scoreboards.show(day: later))
+
+        await scoreboards.loadSelectedDay()
+        #expect(scoreboards.selectedDayIsLoaded)
+        #expect(scoreboards.sections(followingIds: []).first?.games.map(\.id) == ["c-later"])
+    }
+
+    /// A settling swipe asks for its neighbours from the day still on
+    /// screen, not the one it just committed to.
+    @Test func adjacentDayCanCountFromAnyDay() async {
+        let calendar = Calendar.current
+        let scoreboards = await makeScoreboards()
+        // Counted from the season's opening rather than today, so the day
+        // either side of it is inside the span whenever the suite runs.
+        let span = SeasonSpan.days(year: scoreboards.seasonYear)
+        let later = calendar.date(byAdding: .day, value: 10,
+                                  to: calendar.startOfDay(for: span.lowerBound)) ?? span.lowerBound
+
+        #expect(scoreboards.adjacentDay(offset: 1, from: later)
+                    == calendar.date(byAdding: .day, value: 1, to: later))
+        #expect(scoreboards.adjacentDay(offset: -1, from: later)
+                    == calendar.date(byAdding: .day, value: -1, to: later))
+        // Still bounded by the season, whatever day it counts from.
+        #expect(scoreboards.adjacentDay(offset: 1, from: span.upperBound) == nil)
+    }
+
     @Test func theTodayJumpWaitsUntilTheTodayChipIsOffTheStrip() async {
         let calendar = Calendar.current
         let scoreboards = await makeScoreboards()
