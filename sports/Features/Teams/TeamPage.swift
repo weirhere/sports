@@ -56,12 +56,22 @@ struct TeamPage: View {
     /// The Standings tab's tables, keyed by year like the schedules —
     /// ConferencePage's caching pattern. The tab gained past seasons when
     /// the season chip moved into the panes (Andy, 2026-08-31).
-    /// The season's standings tables — one for a conference that ships
-    /// its own, one per division for a divisional one (ConferencePage's
-    /// shape: the divisions stay apart).
+    /// The season's standings response, stored whole: the pane reads its
+    /// own tables out of it per scope, and re-scoping must never re-fetch
+    /// (ConferencePage's rule).
     @State private var standingsByYear: [Int: [ConferenceStandings]] = [:]
+    /// The divisional tables, fetched only once a scope asks for them —
+    /// ESPN's shipped standings response stops at the conferences, so this
+    /// is the one scope that costs a request.
+    @State private var divisionsByYear: [Int: [ConferenceStandings]] = [:]
     @State private var standingsLoadingYears: Set<Int> = []
     @State private var standingsFailedYears: Set<Int> = []
+    @State private var divisionLoadingYears: Set<Int> = []
+    @State private var divisionFailedYears: Set<Int> = []
+    /// How wide the Standings tab tables its teams — the team's league,
+    /// its conference, or its division (Andy, 2026-09-07). Session-scoped
+    /// like ConferencePage's, and only the NFL's pages offer the choice.
+    @State private var scope: StandingsScope = .conference
 
     /// Scoped to the page's own league. ESPN team ids collide — id 5 is
     /// the Cleveland Browns and UAB — so a league-less client here fetches
@@ -318,14 +328,41 @@ struct TeamPage: View {
                 // lands on empty bgCard and can never cover the subtitle —
                 // whatever the text size does to it.
                 .background(Color.bgCard.padding(.top, -Spacing.sm))
-            // The gap that used to be the pane's own top padding, so
-            // pinned cards never touch the tab row. The season chip left
-            // this row for the toolbar (Andy, 2026-09-05).
-            Color.clear
-                .frame(height: Spacing.sm)
-                .frame(maxWidth: .infinity)
-                .background(Color.bgRecessed)
+            VStack(spacing: 0) {
+                // The Standings tab's own control: how wide the table is
+                // (Andy, 2026-09-07). Only the NFL's team pages have one —
+                // a college team belongs to a conference and nothing else,
+                // so there is no other level to read it at.
+                if showsScopeChip {
+                    HStack(spacing: Spacing.sm) {
+                        StandingsScopeChip(
+                            scopes: availableScopes, selection: scope,
+                            isNarrowed: resolvedConference.map {
+                                scope.isNarrower(than: StandingsScope.default(forTeamIn: $0))
+                            } ?? false,
+                            onSelect: { select(scope: $0) })
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.top, Spacing.sm)
+                }
+                // The gap that used to be the pane's own top padding, so
+                // pinned cards never touch the row above. Its own view
+                // rather than the chip's padding: every other tab has no
+                // chip, and a collapsed gap there merges a bgCard card into
+                // the bgCard tab row (ConferencePage's shape).
+                Color.clear.frame(height: Spacing.sm)
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.bgRecessed)
         }
+    }
+
+    /// The scope chip rides the Standings tab only — it has nothing to say
+    /// about a schedule — and only where the league nests deep enough to
+    /// give it more than one answer.
+    private var showsScopeChip: Bool {
+        tab == .standings && availableScopes.count > 1
     }
 
     /// Bare mark on the card-color header — dark mode reads the `500-dark`
@@ -376,6 +413,16 @@ struct TeamPage: View {
         showsStandingsTab ? [.overview, .games, .standings] : [.overview, .games]
     }
 
+    /// Switching scope re-reads the same season. Division is the only one
+    /// that can need a fetch, and it asks for it here rather than on every
+    /// appearance — a page nobody scopes down pays for nothing.
+    private func select(scope value: StandingsScope) {
+        guard value != scope else { return }
+        withAnimation(.default) { scope = value }
+        guard value == .division else { return }
+        Task { await loadDivisions() }
+    }
+
     /// Chip taps and content swipes share the one direction rule, the
     /// week-select pattern. The edge commits a transaction BEFORE the
     /// switch: the outgoing pane's `.push` resolves against the pre-change
@@ -395,7 +442,45 @@ struct TeamPage: View {
     private var standingsYear: Int { selectedYear ?? CFBSeason.year() }
     /// The tables with something in them — one, or a division each.
     private var selectedStandings: [ConferenceStandings] {
-        (standingsByYear[standingsYear] ?? []).filter { !$0.entries.isEmpty }
+        tables(for: scope).filter { !$0.entries.isEmpty }
+    }
+
+    /// The season's response read at one scope. Every level here is one
+    /// the team itself belongs to, so its own row is in whichever table
+    /// comes back — the AFC North's four, the AFC's sixteen, the league's
+    /// thirty-two.
+    private func tables(for scope: StandingsScope) -> [ConferenceStandings] {
+        let all = standingsByYear[standingsYear] ?? []
+        switch scope {
+        case .league:
+            // The merged 32, built from the conference tables already in
+            // hand — the Tables hub's league row, and ConferencePage's.
+            return all.leagueTable(in: pageLeague).map { [$0] } ?? []
+        case .conference:
+            // A divisional conference splits into two or four tables (the
+            // Sun Belt's East and West). The conference's own table when
+            // ESPN ships one, its divisions otherwise — kept apart,
+            // because each division's order is the only ranking the
+            // payload actually makes.
+            guard let id = standingsGroupId else { return [] }
+            let mine = all.filter { $0.belongs(to: ConferenceID(pageLeague, id)) }
+            let own = mine.filter { $0.parentId == nil }
+            return own.isEmpty ? mine : own
+        case .division:
+            // The team's own division, not all eight — every scope on a
+            // team page is a group the team is in.
+            guard let own = resolvedConference else { return [] }
+            return (divisionsByYear[standingsYear] ?? [])
+                .filter { $0.conference == own }
+        }
+    }
+
+    /// The scopes this page can offer, from where the team sits in its
+    /// league's hierarchy. Empty everywhere college football goes — its
+    /// teams belong to a conference and nothing else — which is what hides
+    /// the control.
+    private var availableScopes: [StandingsScope] {
+        resolvedConference.map { StandingsScope.scopes(forTeamIn: $0) } ?? []
     }
 
     /// Whether those tables are divisions rather than the conference —
@@ -403,8 +488,16 @@ struct TeamPage: View {
     private var standingsAreDivisional: Bool {
         selectedStandings.contains { $0.parentId != nil }
     }
-    private var standingsLoading: Bool { standingsLoadingYears.contains(standingsYear) }
-    private var standingsFailed: Bool { standingsFailedYears.contains(standingsYear) }
+    private var standingsLoading: Bool {
+        scope == .division
+            ? divisionLoadingYears.contains(standingsYear)
+            : standingsLoadingYears.contains(standingsYear)
+    }
+    private var standingsFailed: Bool {
+        scope == .division
+            ? divisionFailedYears.contains(standingsYear)
+            : standingsFailedYears.contains(standingsYear)
+    }
 
     /// The team's own row in its conference table — the record card's
     /// source while the season is current, whatever year the chip shows.
@@ -567,7 +660,7 @@ struct TeamPage: View {
                     .padding(.vertical, Spacing.xl)
             } else if standingsFailed {
                 StatusMessage(text: "Couldn't load standings.",
-                              retry: { Task { await loadStandings(force: true) } })
+                              retry: { Task { await loadStandings(scope: scope, force: true) } })
                     .cardSurface()
             } else {
                 StatusMessage(text: "Standings TBA")
@@ -579,8 +672,10 @@ struct TeamPage: View {
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
         // Re-fires on year flips while the tab is up; first visit to a
-        // year fetches lazily, a seen year is a cache hit.
-        .task(id: standingsYear) { await loadStandings() }
+        // year fetches lazily, a seen year is a cache hit. The divisional
+        // fetch rides along only for a pane already scoped to it — a page
+        // nobody scopes down pays for nothing.
+        .task(id: standingsYear) { await loadStandings(scope: scope) }
     }
 
     // MARK: - Loads
@@ -629,6 +724,43 @@ struct TeamPage: View {
         }
     }
 
+    /// Both fetches a scope can need. The shipped response is always
+    /// worth having — the Overview record card reads the team's own row
+    /// out of it, and scoping back out must never land on a blank table —
+    /// while the divisional one rides along only for a pane scoped to it.
+    private func loadStandings(scope: StandingsScope, force: Bool = false) async {
+        async let shipped: Void = loadStandings(force: force)
+        async let divisions: Void = loadDivisionsIfShowing(scope: scope, force: force)
+        _ = await (shipped, divisions)
+    }
+
+    private func loadDivisionsIfShowing(scope: StandingsScope, force: Bool) async {
+        guard scope == .division else { return }
+        await loadDivisions(force: force)
+    }
+
+    /// The team's division table, the one scope that costs a second
+    /// request (ConferencePage's rule, 2026-09-06). Cached per year like
+    /// the rest, so flipping scopes and seasons back and forth stays free
+    /// after the first look.
+    private func loadDivisions(force: Bool = false) async {
+        // The same fact that makes Division a real scope: a team with no
+        // group above its own has no divisional table to ask for.
+        guard Conference.parent(of: resolvedConferenceId, in: pageLeague) != nil else { return }
+        let year = standingsYear
+        guard force || divisionsByYear[year] == nil else { return }
+        guard !divisionLoadingYears.contains(year) else { return }
+        divisionLoadingYears.insert(year)
+        defer { divisionLoadingYears.remove(year) }
+        do {
+            divisionsByYear[year] = try await client.divisionStandings(
+                year: year == SeasonYear.year(for: pageLeague) ? nil : year)
+            divisionFailedYears.remove(year)
+        } catch {
+            divisionFailedYears.insert(year)
+        }
+    }
+
     private func loadStandings(force: Bool = false) async {
         // The NFL's table is keyed by conference, so a division resolves up.
         guard let id = standingsGroupId else { return }
@@ -649,18 +781,18 @@ struct TeamPage: View {
                 year: year == SeasonYear.year(for: pageLeague) ? nil : year,
                 division: Conference.division(for: id, in: pageLeague) ?? .fbs)
             let target = ConferenceID(pageLeague, id)
-            let mine = all.filter { $0.belongs(to: target) }
-            // The conference's own table when ESPN ships one, its divisions
-            // otherwise — kept apart, like ConferencePage. Nothing at all
-            // still caches an empty table under the conference's id, so the
+            // Stored whole: which tables this pane draws is `tables(for:)`'s
+            // job, and the League scope reads the conferences the team's own
+            // table came in beside. A response carrying nothing for this
+            // conference still caches an empty table under its id, so the
             // guard above sees a fetched season and the tab says "TBA"
             // instead of refetching on every visit.
-            let own = mine.filter { $0.parentId == nil }
-            let tables = own.isEmpty ? mine : own
-            standingsByYear[year] = tables.isEmpty
-                ? [ConferenceStandings(id: id, name: Conference.name(for: id, in: pageLeague),
-                                       entries: [], league: pageLeague)]
-                : tables
+            let mine = all.filter { $0.belongs(to: target) }
+            standingsByYear[year] = mine.isEmpty
+                ? all + [ConferenceStandings(id: id,
+                                             name: Conference.name(for: id, in: pageLeague),
+                                             entries: [], league: pageLeague)]
+                : all
             standingsFailedYears.remove(year)
         } catch {
             standingsFailedYears.insert(year)
