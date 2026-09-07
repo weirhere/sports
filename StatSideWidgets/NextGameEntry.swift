@@ -18,15 +18,15 @@ nonisolated struct NextGameEntry: TimelineEntry {
             WidgetGame(id: "1",
                        away: WidgetTeamLine(abbreviation: "BALL", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "OSU", rank: 1, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat", statusDetail: "12:30 PM", network: "FOX", isLive: false, showsScores: false),
+                       statusLine: "Sat, Sep 5", statusDetail: "12:30 PM", network: "FOX", isLive: false, showsScores: false),
             WidgetGame(id: "2",
                        away: WidgetTeamLine(abbreviation: "KENT", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "SC", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat", statusDetail: "12:45 PM", network: "ESPN2", isLive: false, showsScores: false),
+                       statusLine: "Sat, Sep 5", statusDetail: "12:45 PM", network: "ESPN2", isLive: false, showsScores: false),
             WidgetGame(id: "3",
                        away: WidgetTeamLine(abbreviation: "FIU", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "USF", rank: nil, record: "0-0", score: nil, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "Sat", statusDetail: "7:00 PM", network: "ABC", isLive: false, showsScores: false),
+                       statusLine: "Sat, Sep 5", statusDetail: "7:00 PM", network: "ABC", isLive: false, showsScores: false),
             WidgetGame(id: "4",
                        away: WidgetTeamLine(abbreviation: "AUB", rank: nil, record: "5-3", score: 13, muted: true, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, record: "7-1", score: 27, muted: false, logo: nil, darkLogo: nil),
@@ -47,11 +47,11 @@ nonisolated struct WidgetGame: Identifiable {
     let home: WidgetTeamLine
     let statusLine: String
     /// The kickoff time, on its own line under the day (Andy, 2026-09-06:
-    /// the NFL's times were truncating). A pre-game row 7+ days out spends
-    /// its day part on "Sun, 9/13", and "Sun, 9/13 1:00 PM" does not fit a
-    /// 64pt column at any text size — so day and time split the way the
-    /// app's own `GameRow` splits them. Nil for live and final rows, whose
-    /// status is one word.
+    /// the NFL's times were truncating). A pre-game row spends its day part
+    /// on "Sun, Sep 13", and "Sun, Sep 13 1:00 PM" does not fit a 64pt
+    /// column at any text size — so day and time split the way the app's
+    /// own `GameRow` splits them. Nil for live and final rows, whose status
+    /// is one word.
     let statusDetail: String?
     /// Third status line: the TV network, pre-game and live only — a
     /// final row has nothing left to tune into.
@@ -127,17 +127,12 @@ nonisolated extension WidgetGame {
         switch game.status {
         case .pre:
             // Absolute dates (never "Today"): widget strings outlive the
-            // moment they're generated. The date joins the weekday once a
-            // bare weekday would lie — a week or more out, "Sat" means
-            // *this* Saturday.
+            // moment they're generated — and they always name the month,
+            // since a widget row carries no strip or header to say which
+            // week you're looking at.
             guard let date = game.date else { return ("TBD", nil) }
             let time = game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute())
-            let calendar = Calendar.current
-            let days = calendar.dateComponents([.day],
-                                               from: calendar.startOfDay(for: .now),
-                                               to: calendar.startOfDay(for: date)).day ?? 0
-            let weekday = Date.FormatStyle.dateTime.weekday(.abbreviated)
-            let day = date.formatted(days < 7 ? weekday : weekday.month(.defaultDigits).day())
+            let day = date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
             return (day, time)
         case .live:
             return (game.status.liveStatusText ?? "Live", nil)
