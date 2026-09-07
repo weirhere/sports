@@ -61,21 +61,37 @@ final class FollowingStore {
         return result
     }
 
-    /// Reorder: put `table` where `other` currently sits. A no-op when
-    /// either isn't followed, so a stray text drop from outside the list
-    /// can't rewrite the order.
+    /// Reorder: drop `table` into `index` of the list with `table` taken
+    /// out of it — the insertion index a drag resolves to, which is what
+    /// the lifted card's own position on screen means. A no-op when the
+    /// table isn't followed, or when it lands back where it started.
     ///
     /// Persists the full *resolved* order, never the partial stored one,
     /// so the first drag also pins down everything that was still riding
     /// the default.
+    func move(_ table: FollowedTable, to index: Int) {
+        var tables = orderedTables
+        guard let from = tables.firstIndex(of: table) else { return }
+        tables.remove(at: from)
+        let destination = min(max(index, 0), tables.count)
+        guard destination != from else { return }
+        tables.insert(table, at: destination)
+        setOrder(tables)
+    }
+
+    /// Reorder: put `table` where `other` currently sits — the VoiceOver
+    /// path, which names a neighbour rather than a position. A no-op when
+    /// either isn't followed.
     func move(_ table: FollowedTable, onto other: FollowedTable) {
         guard table != other else { return }
-        var tables = orderedTables
-        guard let from = tables.firstIndex(of: table),
+        let tables = orderedTables
+        guard tables.contains(table),
               let to = tables.firstIndex(of: other) else { return }
-        tables.remove(at: from)
-        tables.insert(table, at: to)
-        setOrder(tables)
+        // `other`'s index in the full list *is* the insertion index in the
+        // list without `table`: removing `table` first shifts everything
+        // after it down one, so a move down lands after `other` and a move
+        // up lands before it.
+        move(table, to: to)
     }
 
     private func setOrder(_ tables: [FollowedTable]) {

@@ -42,6 +42,9 @@ struct TablesScreen: View {
     @State private var fcsStandings: [ConferenceStandings] = []
     @State private var isLoading = false
     @State private var lastError: String?
+    /// Set while a Following card is lifted, so the hub's ScrollView stops
+    /// competing for the same vertical pan. See `FollowedTablesList`.
+    @State private var isReordering = false
 
     var body: some View {
         NavigationStack {
@@ -167,7 +170,7 @@ struct TablesScreen: View {
                         // accordion below, since duplicate identities in
                         // one LazyVStack corrupt its layout (blank
                         // card-sized gaps).
-                        FollowedTablesList(rows: followed)
+                        FollowedTablesList(rows: followed, isReordering: $isReordering)
                     }
                     ListSectionHeading(title: "Leagues")
                     ForEach(groups) { group in
@@ -177,6 +180,7 @@ struct TablesScreen: View {
                 .padding(Spacing.sm)
             }
             .background(Color.bgRecessed)
+            .scrollDisabled(isReordering)
             .refreshable { await load() }
         } else if isLoading {
             Spacer()
