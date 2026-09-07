@@ -94,8 +94,10 @@ final class LeagueScoreboards {
     /// True once every league has answered for the selected day. An empty
     /// day and an unfetched one look identical, and only one of them
     /// should say "no games".
-    var selectedDayIsLoaded: Bool {
-        all.allSatisfy { $0.isLoaded(selectedDay) }
+    var selectedDayIsLoaded: Bool { isLoaded(selectedDay) }
+
+    func isLoaded(_ day: Date) -> Bool {
+        all.allSatisfy { $0.isLoaded(day) }
     }
 
     // MARK: - The day strip
@@ -120,10 +122,14 @@ final class LeagueScoreboards {
         return result
     }
 
-    /// The day `offset` steps from the selected one, or nil past either end
-    /// of the season — where a swipe is a quiet no-op.
-    func adjacentDay(offset: Int, calendar: Calendar = .current) -> Date? {
-        guard let day = calendar.date(byAdding: .day, value: offset, to: selectedDay) else { return nil }
+    /// The day `offset` steps from `from` (the selected one by default), or
+    /// nil past either end of the season — where a swipe is a quiet no-op.
+    ///
+    /// `from` is what a settling swipe passes: the day committed the moment
+    /// the thumb lifted is already selected, while the panes still show the
+    /// one sliding out.
+    func adjacentDay(offset: Int, from: Date? = nil, calendar: Calendar = .current) -> Date? {
+        guard let day = calendar.date(byAdding: .day, value: offset, to: from ?? selectedDay) else { return nil }
         let span = SeasonSpan.days(year: seasonYear, calendar: calendar)
         guard day >= calendar.startOfDay(for: span.lowerBound),
               day <= span.upperBound else { return nil }
@@ -157,11 +163,29 @@ final class LeagueScoreboards {
     }
 
     func select(day: Date) async {
+        guard show(day: day) else { return }
+        await loadSelectedDay()
+    }
+
+    /// Move to `day` now, without waiting on the network — the synchronous
+    /// half of `select(day:)`.
+    ///
+    /// The day strip, the header and the Today button all read
+    /// `selectedDay`, and a swipe has to move them on the frame the thumb
+    /// lifts (Andy, 2026-09-07). Callers that split the move from the fetch
+    /// pair this with `loadSelectedDay()`. Returns whether the day moved.
+    @discardableResult
+    func show(day: Date) -> Bool {
         let day = Calendar.current.startOfDay(for: day)
-        guard day != selectedDay else { return }
+        guard day != selectedDay else { return false }
         snapTask?.cancel()
         selectedDay = day
-        await load(around: day)
+        return true
+    }
+
+    /// Fetch whatever day is selected — the other half of the split above.
+    func loadSelectedDay() async {
+        await load(around: selectedDay)
     }
 
     /// Switch seasons. The strip re-bounds and lands on the first day of

@@ -376,7 +376,10 @@ struct GameDetailScreen: View {
                     // game-info card carries the "what do I need to
                     // know" load (FotMob's Preview cards, monochrome).
                     if !showsScores {
-                        card(title: "Game info") { gameInfoRows(summary) }
+                        card(title: "Game info") {
+                            GameInfoRows(game: game, summary: summary,
+                                         showsKickoffDetails: true)
+                        }
                     }
                     if summary.away?.linescores.isEmpty == false {
                         card { LineScoreGrid(summary: summary) }
@@ -408,8 +411,10 @@ struct GameDetailScreen: View {
                     }
                     // Pre-game the info card already places the game;
                     // once scores exist it returns as the venue card.
-                    if showsScores, summary.venue != nil || summary.attendance != nil {
-                        card(title: "Game info") { venueRows(summary) }
+                    if showsScores, GameInfoRows.hasVenueContent(summary) {
+                        card(title: "Game info") {
+                            GameInfoRows(game: game, summary: summary)
+                        }
                     }
             }
             .padding(Spacing.sm)
@@ -460,74 +465,10 @@ struct GameDetailScreen: View {
         .cardSurface()
     }
 
-    /// The pre-game card's rows: kickoff, network, venue, surface,
-    /// weather — whatever the payload actually knows, one line each.
-    @ViewBuilder
-    private func gameInfoRows(_ summary: GameSummary) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let date = game.date {
-                infoRow("calendar",
-                        game.timeTBD
-                            ? "\(GameRow.relativeKickParts(date, weekday: .abbreviated).day) · Kickoff TBD"
-                            : GameRow.relativeKick(date, weekday: .abbreviated))
-            }
-            if let broadcast = game.broadcast {
-                infoRow("tv", broadcast)
-            }
-            if let venue = summary.venue {
-                infoRow("mappin.and.ellipse",
-                        [venue, summary.venueCity].compactMap { $0 }.joined(separator: " · "))
-            }
-            if summary.venueCapacity != nil || summary.grassSurface != nil {
-                let capacity = summary.venueCapacity.map { "Capacity \($0.formatted())" }
-                let surface = summary.grassSurface.map { $0 ? "Grass" : "Turf" }
-                infoRow("sportscourt", [capacity, surface].compactMap { $0 }.joined(separator: " · "))
-            }
-            let weatherLine = [summary.weatherTemperature.map { "\($0)°" },
-                               summary.weatherCondition]
-                .compactMap { $0 }.joined(separator: " · ")
-            if !weatherLine.isEmpty {
-                infoRow("cloud.sun", weatherLine)
-            }
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-
-    private func infoRow(_ symbol: String, _ text: String) -> some View {
-        HStack(spacing: Spacing.md) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.textSecondary)
-                .frame(width: 20)
-            Text(text)
-                .font(.teamName)
-                .foregroundStyle(.textPrimary)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 7)
-    }
-
     /// The Team stats card's column legend, formerly the sub-view's own
     /// header trailing text.
     private func statsLegend(_ summary: GameSummary) -> String {
         "\(summary.away?.team.abbreviation ?? "AWAY") · \(summary.home?.team.abbreviation ?? "HOME")"
-    }
-
-    /// The live/final counterpart to the pre-game info rows: where the
-    /// game is (was) and how many showed up.
-    @ViewBuilder
-    private func venueRows(_ summary: GameSummary) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let venue = summary.venue {
-                infoRow("mappin.and.ellipse",
-                        [venue, summary.venueCity].compactMap { $0 }.joined(separator: " · "))
-            }
-            if let attendance = summary.attendance {
-                infoRow("person.2", "Attendance \(attendance.formatted())")
-            }
-        }
-        .padding(.vertical, Spacing.xs)
     }
 
     private func load(force: Bool = false) async {
