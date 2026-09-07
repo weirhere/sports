@@ -36,6 +36,40 @@ import Testing
         #expect(StandingsScope.scopes(for: .nfl(999)).isEmpty)
     }
 
+    // MARK: - What a team page offers
+
+    /// A team page scopes *outward*: every group the team is in, widest
+    /// first, each still a table with the team's own row in it (Andy,
+    /// 2026-09-07).
+    @Test func aTeamPageOffersEveryLevelItBelongsTo() {
+        // Cleveland's own group is AFC North.
+        #expect(StandingsScope.scopes(forTeamIn: .nfl(12))
+            == [.league, .conference, .division])
+        // It opens where the tab has always opened: the conference table.
+        #expect(StandingsScope.default(forTeamIn: .nfl(12)) == .conference)
+    }
+
+    /// College football nests nothing under a league, so a team there has
+    /// exactly one table and no choice to offer.
+    @Test func aCollegeTeamPageOffersNoScopes() {
+        #expect(StandingsScope.scopes(forTeamIn: .cfb(8)).isEmpty)
+        #expect(StandingsScope.scopes(forTeamIn: .nfl(999)).isEmpty)
+    }
+
+    /// The chip's ink says "you are looking at fewer teams than this page
+    /// opened with" — so scoping out to the league sits as quiet as the
+    /// default, and only the division wears the fill.
+    @Test func onlyANarrowerScopeReadsAsNarrowed() {
+        let base = StandingsScope.default(forTeamIn: .nfl(12))
+        #expect(StandingsScope.division.isNarrower(than: base))
+        #expect(!StandingsScope.league.isNarrower(than: base))
+        #expect(!base.isNarrower(than: base))
+        // The conference page's own rule is unchanged: its default is the
+        // widest view it has, so everything under it is narrowed.
+        #expect(StandingsScope.division.isNarrower(than: .conference))
+        #expect(StandingsScope.conference.isNarrower(than: .league))
+    }
+
     // MARK: - Reading a level=3 response
 
     private func response(_ json: String) throws -> StandingsResponseDTO {

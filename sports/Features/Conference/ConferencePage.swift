@@ -496,8 +496,8 @@ struct ConferencePage: View {
             // football's conferences nest nothing to scope down to.
             HStack(spacing: Spacing.sm) {
                 StandingsScopeChip(scopes: availableScopes, selection: scope,
-                                   isNarrowed: scope != StandingsScope.default(
-                                       for: destination.conference),
+                                   isNarrowed: scope.isNarrower(
+                                       than: StandingsScope.default(for: destination.conference)),
                                    onSelect: { select(scope: $0) })
                 Spacer(minLength: 0)
             }
