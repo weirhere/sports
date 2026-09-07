@@ -300,8 +300,18 @@ struct ScoresScreen: View {
         path = NavigationPath([game])
     }
 
-    @ViewBuilder
+    /// The slate, however it lands: games, an empty day, an error, or the
+    /// first-load skeleton. `bgRecessed` is painted once out here so every
+    /// one of those stands on the same ground — an empty day used to fall
+    /// through to the window's `bgPrimary` and read as a different screen.
     private var content: some View {
+        slate
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.bgRecessed)
+    }
+
+    @ViewBuilder
+    private var slate: some View {
         let sections = self.sections
         if sections.isEmpty {
             emptyState
@@ -328,7 +338,6 @@ struct ScoresScreen: View {
                 // needs room to clear it rather than sitting underneath.
                 .padding(.bottom, scoreboards.canJumpToToday ? Self.jumpClearance : 0)
             }
-            .background(Color.bgRecessed)
             .refreshable {
                 await scoreboards.refresh()
                 refreshCount += 1
