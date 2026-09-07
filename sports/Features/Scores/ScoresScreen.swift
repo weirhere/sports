@@ -42,6 +42,12 @@ struct ScoresScreen: View {
     @State private var dragOffset: CGFloat = 0
     @State private var dragAxis: DragAxis?
     @State private var paneWidth: CGFloat = 393
+    // The day the panes keep rendering while a committed swipe slides
+    // home. A swipe commits its day the instant the thumb lifts — the
+    // strip, the header and the Today button move then, not when the
+    // animation lands (Andy, 2026-09-07) — so the outgoing slate needs a
+    // day of its own for the ~0.3s it spends leaving.
+    @State private var settlingFrom: Date?
 
     private enum DragAxis { case horizontal, vertical }
 
@@ -67,7 +73,7 @@ struct ScoresScreen: View {
                 // old slate out and the new one in from `daySlideEdge`.
                 ZStack {
                     content
-                        .id(DayFormat.id(for: scoreboards.selectedDay))
+                        .id(DayFormat.id(for: shownDay))
                         .transition(.push(from: daySlideEdge))
                         .offset(x: dragOffset)
                     // The adjacent day rides in with the finger. Its games
@@ -75,7 +81,8 @@ struct ScoresScreen: View {
                     // window, so both neighbours land in the same request
                     // the shown day did.
                     if dragOffset != 0,
-                       let target = scoreboards.adjacentDay(offset: dragOffset < 0 ? 1 : -1) {
+                       let target = scoreboards.adjacentDay(offset: dragOffset < 0 ? 1 : -1,
+                                                            from: shownDay) {
                         previewPane(for: target)
                             .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
                     }
@@ -86,7 +93,7 @@ struct ScoresScreen: View {
                             .onChange(of: proxy.size.width) { _, width in paneWidth = width }
                     }
                 )
-                .animation(daySlideAnimation, value: scoreboards.selectedDay)
+                .animation(daySlideAnimation, value: shownDay)
                 // Horizontal counterpart to the day strip: swipe left for
                 // tomorrow, right for yesterday. Simultaneous so vertical
                 // scrolling and the pinch gesture are unaffected; attached
@@ -136,7 +143,10 @@ struct ScoresScreen: View {
         }
         .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
         .onChange(of: scoreboards.selectedDay) { _, _ in
-            dragOffset = 0
+            // A settling swipe owns the offset until its slide lands. Every
+            // other day change — a chip, the calendar, the Today jump, a
+            // snap forward — starts from rest anyway.
+            if settlingFrom == nil { dragOffset = 0 }
             resolvePendingGame()
         }
     }
@@ -146,8 +156,14 @@ struct ScoresScreen: View {
                                   followedConferenceIds: following.conferenceIds)
     }
 
+    /// The day the content panes are drawn for: the selected one, except
+    /// during a settling swipe, where the selected day is already the one
+    /// arriving from the edge.
+    private var shownDay: Date { settlingFrom ?? scoreboards.selectedDay }
+
     private var sections: [GameSection] {
-        scoreboards.sections(followingIds: following.teamKeys,
+        scoreboards.sections(day: shownDay,
+                             followingIds: following.teamKeys,
                              followedTables: following.orderedTables,
                              liveOnly: uiState.liveOnly)
     }
@@ -217,13 +233,20 @@ struct ScoresScreen: View {
     private var daySwipeGesture: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
+                // A new drag lands the settling one on the spot: its day is
+                // already selected, so there is nothing left to wait for.
+                if settlingFrom != nil {
+                    settlingFrom = nil
+                    dragOffset = 0
+                }
                 let dx = value.translation.width
                 let dy = value.translation.height
                 if dragAxis == nil, abs(dx) > 10 || abs(dy) > 10 {
                     dragAxis = abs(dx) > abs(dy) * 1.5 ? .horizontal : .vertical
                 }
                 guard dragAxis == .horizontal else { return }
-                let hasTarget = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1) != nil
+                let hasTarget = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1,
+                                                        from: shownDay) != nil
                 dragOffset = hasTarget ? dx : dx * 0.25
             }
             .onEnded { value in
@@ -237,22 +260,32 @@ struct ScoresScreen: View {
                 let commits = abs(dx) > paneWidth * 0.35
                     || (sameDirection && abs(flick) > paneWidth * 0.6)
                 guard commits,
-                      let target = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1) else {
+                      let target = scoreboards.adjacentDay(offset: dx < 0 ? 1 : -1,
+                                                           from: shownDay) else {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
                         dragOffset = 0
                     }
                     return
                 }
+                // The day changes here, on the frame the thumb lifts — the
+                // strip must never lag the gesture that moved it. The slate
+                // finishes its slide afterwards, drawn for `settlingFrom`.
+                let leaving = shownDay
+                settlingFrom = leaving
+                daySlideAnimation = nil
+                scoreboards.show(day: target)
+                Task { await scoreboards.loadSelectedDay() }
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.95),
                               completionCriteria: .logicallyComplete) {
                     dragOffset = dx < 0 ? -paneWidth : paneWidth
                 } completion: {
                     // The push transition is the chip taps' mechanism; the
-                    // drag already animated, so the id swap is instant. The
-                    // offset resets when the day actually changes (see
-                    // onChange above), so the preview covers the handoff.
-                    daySlideAnimation = nil
-                    Task { await scoreboards.select(day: target) }
+                    // drag already animated, so the handoff is instant —
+                    // the preview pane is already sitting where the content
+                    // lands. Skipped when a newer swipe took over.
+                    guard settlingFrom == leaving else { return }
+                    settlingFrom = nil
+                    dragOffset = 0
                 }
             }
     }
@@ -382,7 +415,7 @@ struct ScoresScreen: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if !scoreboards.selectedDayIsLoaded {
+        if !scoreboards.isLoaded(shownDay) {
             ScrollView { SkeletonRows() }
         } else {
             VStack(spacing: Spacing.md) {
@@ -408,7 +441,7 @@ struct ScoresScreen: View {
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
                 } else {
-                    Text(emptyMessage(for: scoreboards.selectedDay))
+                    Text(emptyMessage(for: shownDay))
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                 }
