@@ -13,7 +13,7 @@ crops identically in the timeline.
 | 1. "StatSide is college football, at a glance…" | `statside-landscape-1600x900.png` | Three devices — Scores, Rankings, Game detail |
 | 2. "Kickoff is coming. Follow your teams now…" | `statside-02-follow.png` | Team page follow button + the Following section it feeds |
 | 3. BUILT FOR SATURDAYS | `statside-03-saturdays.png` | The five bullets, Scores device alongside |
-| 4. A WEEK, NOT A DATE | `statside-04-week.png` | The week strip, and the slate it controls |
+| 4. A DAY AT A TIME | `statside-04-week.png` | The day strip, and the Sunday slate it controls |
 | 5. RANKINGS AND DETAILS | `statside-05-rankings.png` | Rankings device with movement arrows, Game detail behind |
 | 6. DESIGNED QUIET | `statside-06-quiet.png` | Typographic — the four things the app doesn't do |
 | 7. "Free. Fast. One sport, done right." | `statside-07-closer.png` | Icon, wordmark, tagline, disclaimer |
@@ -70,7 +70,7 @@ frame of their own, which pushed "designed quiet" and the closer to 07 and 08.
 | 1 | `01-hero.png` | Three devices — Scores, Rankings, Game detail |
 | 2 | `02-follow.png` | The team-page hero and the Following section it feeds |
 | 3 | `03-saturdays.png` | The five bullets, Scores device alongside |
-| 4 | `04-week.png` | The week strip, and the slate it controls |
+| 4 | `04-week.png` | The day strip, and the Sunday slate it controls |
 | 5 | `05-rankings.png` | The poll |
 | 6 | `06-boxscore.png` | Box score tab, both teams, real stat lines |
 | 7 | `07-quiet.png` | Typographic — the four things the app doesn't do |
@@ -153,15 +153,16 @@ file that matters.
   the card width and offset with negative `top` to land on the region you want.
   Screenshots are 1320 × 2868, so `scale = card_width / 1320` and
   `top = -region_y * scale`. Change the screenshots and every offset moves.
-- **The thread and story sources still carry the pre-1.4.0 offsets.** The
-  `as-*` crops were re-aimed at the 2026-09-05 reshoot; `02-follow.html`,
-  `04-week.html` and their `story-*` counterparts were not, so re-rendering
-  those today lands their windows on the wrong rows. The committed PNGs in
-  `docs/social/` are the old renders and are still internally consistent —
-  they just can't be regenerated without the same pass. Regions worth knowing
-  on the current shots: week strip `y 380-500`, Scores' Following card
-  `y 526-1536`, Top 25 card `y 1560-2608`, the team-page hero through its
-  first card `y 170-1170`.
+- **`02-follow.html`/`story-02-follow.html` and `04-week.html`/`story-04-week.html`
+  were re-aimed 2026-09-08**, matching the `as-*` crops the App Store set already
+  used since the 2026-09-06 reshoot. `04-week` also stopped being about the week
+  strip, which had already retired — it's "A day at a time" now, cropping
+  `08-nfl-sunday.png` (the day strip, then the Sunday slate below it) the same way
+  `as-04-week.html` does. `02-follow` still crops `06-team-page.png` and
+  `01-scores.png`, just at the corrected offsets. The committed PNGs in
+  `docs/social/` reflect this pass. Regions worth knowing on the current shots:
+  the day strip `y 380-500`, Scores' Following card `y 500-1460`, Top 25 card
+  `y 1560-2608`, the team-page hero through its first card `y 170-1170`.
 - Device frames are driven by one number: `font-size` on `.phone` sets its
   width (`width: 1em`), and the bezel and radii are `em` fractions of it. The
   outer radius is `screen-radius + bezel`, so the curves stay concentric at any

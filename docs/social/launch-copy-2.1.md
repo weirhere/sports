@@ -4,16 +4,13 @@ Draft copy for getting the 2.0/2.1 update in front of actual college football
 and NFL fans. Written to pair with the existing asset library in this folder.
 Nothing here is load-bearing — edit freely.
 
-## Before posting: a graphics note
+## Graphics status
 
-The thread/story PNGs in this folder were shot before the day-strip and NFL
-landed. Per this folder's own README, `02-follow` and `04-week` still carry
-pre-1.4.0 crop offsets, and the "A WEEK, NOT A DATE" frame describes the week
-strip, which retired 2026-09-05. Posting the current PNGs next to copy that
-talks about the day strip and both leagues would show a screenshot that
-contradicts the text. Worth a reshoot + re-render pass (see this folder's
-"Regenerating" section) before this thread goes out as images. The captions
-below are written for what the app does today; they'll need graphics to match.
+Fixed 2026-09-08: `statside-02-follow.png` and `statside-04-week.png` (plus
+their story-set counterparts) were re-rendered against the current app — day
+strip, both leagues, real Inter font. `04-week`'s frame is now "A day at a
+time" instead of the retired week strip, matching the copy below. Nothing
+left blocking this thread from going out as images.
 
 ## X / Twitter thread
 
