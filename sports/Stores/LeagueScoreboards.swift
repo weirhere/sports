@@ -213,6 +213,23 @@ final class LeagueScoreboards {
         await load(around: selectedDay)
     }
 
+    /// Land on a specific day and fetch it — a deep link's arrival.
+    ///
+    /// Unlike `select(day:)` this re-bounds the strip first: the day comes
+    /// from outside the app, so it can belong to a season the strip is not
+    /// currently showing, and a selected day the strip has no chip for is
+    /// a screen with no way back. The fetch itself is the ordinary window,
+    /// which no-ops when the day is already in hand.
+    func open(day: Date) async {
+        let year = SeasonSpan.year(containing: day)
+        if year != seasonYear {
+            snapTask?.cancel()
+            seasonYear = year
+        }
+        show(day: day)
+        await loadSelectedDay()
+    }
+
     /// Switch seasons. The strip re-bounds and lands on the first day of
     /// that season anyone actually plays — its nominal August start is
     /// weeks of empty chips otherwise.

@@ -60,8 +60,15 @@ nonisolated struct WidgetGame: Identifiable {
     /// Pre-game rows carry no scores at all — no zeros, no dashes; the
     /// kickoff time is the row's whole story until the game starts.
     let showsScores: Bool
+    /// Kickoff, carried purely so the tap can say which day to open. The
+    /// widget lists games from yesterday to a fortnight out and the app
+    /// holds five days at a time, so an id alone lands nowhere for most of
+    /// this list (Andy, 2026-09-07). Defaulted for the samples, and
+    /// optional in the snapshot — a row that has lost its day still opens
+    /// whatever it can, exactly as every row used to.
+    var day: Date? = nil
 
-    var deepLink: URL? { URL(string: "statside://game/\(id)") }
+    var deepLink: URL? { DeepLinkURL.game(id: id, day: day) }
 
     static var sampleLive: WidgetGame {
         WidgetGame(
@@ -115,7 +122,8 @@ nonisolated extension WidgetGame {
             statusDetail: Self.status(for: game).detail,
             network: (isPre || game.isLive) ? game.broadcast : nil,
             isLive: game.isLive,
-            showsScores: !isPre
+            showsScores: !isPre,
+            day: game.date
         )
     }
 
@@ -194,6 +202,9 @@ nonisolated struct WidgetSnapshot: Codable {
         /// Optional so snapshots written before the scoreless-pre-game
         /// change still decode; they render scores for one stale cycle.
         let showsScores: Bool?
+        /// Kickoff, for the row's deep link. Optional on the same terms —
+        /// an older blob's rows just open without a day hint.
+        let day: Date?
     }
 
     let games: [SnapshotGame]
@@ -222,7 +233,8 @@ nonisolated struct WidgetSnapshot: Codable {
                 statusDetail: widgetGame.statusDetail,
                 network: widgetGame.network,
                 isLive: widgetGame.isLive,
-                showsScores: widgetGame.showsScores
+                showsScores: widgetGame.showsScores,
+                day: widgetGame.day
             )
         }
     }

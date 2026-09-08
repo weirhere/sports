@@ -26,13 +26,36 @@ nonisolated struct TeamRef: Equatable, Sendable {
     }
 }
 
+/// A game to open, and the day it kicks off on where the intent knows it.
+///
+/// The day is what makes a widget tap land. The Scores screen holds five
+/// days at a time and the widget lists games from yesterday to a fortnight
+/// out, so most of what a widget row can show is not in memory when the
+/// tap arrives — the day tells the screen where to go looking (Andy,
+/// 2026-09-07). Nil where the intent carries no date: a kickoff reminder
+/// (always ~30 minutes out, so inside the window already) or a link
+/// written by a build that predates the hint.
+nonisolated struct GameRef: Equatable, Sendable {
+    let id: String
+    var day: Date?
+
+    init(id: String, day: Date? = nil) {
+        self.id = id
+        self.day = day
+    }
+
+    init(_ game: Game) {
+        self.init(id: game.id, day: game.date)
+    }
+}
+
 /// Pending navigation intents from outside the view hierarchy — widget
 /// taps, notification taps, and app-wide search results. Screens consume
 /// their pending id once the matching data is loaded; an id that never
 /// resolves quietly expires when the next intent replaces it.
 @Observable
 final class Router {
-    var pendingGameId: String?
+    var pendingGame: GameRef?
     var pendingTeam: TeamRef?
     /// Search's conference intent. Today the Teams tab consumes it (expand
     /// + scroll to the section); a dedicated conference destination can take
@@ -44,7 +67,7 @@ final class Router {
 
     func open(_ link: DeepLink) {
         switch link {
-        case .game(let id): pendingGameId = id
+        case .game(let id, let day): pendingGame = GameRef(id: id, day: day)
         case .team(let id, let league): pendingTeam = TeamRef(id: id, league: league)
         case .teams: break // Landing on the Teams tab is the whole intent.
         }

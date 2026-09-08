@@ -21,7 +21,7 @@ struct WidgetGameList: View {
                 .padding(.bottom, family == .systemMedium ? Spacing.sm : Spacing.md)
             VStack(spacing: 2) {
                 ForEach(shown) { game in
-                    Link(destination: game.deepLink ?? URL(string: "statside://teams")!) {
+                    Link(destination: game.deepLink ?? DeepLinkURL.teams) {
                         WidgetGameRow(game: game)
                     }
                 }

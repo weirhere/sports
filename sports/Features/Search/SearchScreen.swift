@@ -144,6 +144,6 @@ struct SearchScreen: View {
     }
 
     private func select(_ game: Game) {
-        router.pendingGameId = game.id
+        router.pendingGame = GameRef(game)
     }
 }

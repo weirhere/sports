@@ -71,8 +71,8 @@ struct RootView: View {
         }
         // Notification taps set the pending id directly (no URL); the tab
         // switch lives here so both entry paths land the same way.
-        .onChange(of: router.pendingGameId) { _, id in
-            if id != nil { selectedTab = .scores }
+        .onChange(of: router.pendingGame) { _, game in
+            if game != nil { selectedTab = .scores }
         }
         .onChange(of: router.pendingTeam) { _, team in
             if team != nil { selectedTab = .teams }

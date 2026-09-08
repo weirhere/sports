@@ -48,6 +48,9 @@ struct ScoresScreen: View {
     // animation lands (Andy, 2026-09-07) — so the outgoing slate needs a
     // day of its own for the ~0.3s it spends leaving.
     @State private var settlingFrom: Date?
+    /// The pending intent whose day is already being fetched — one attempt
+    /// per intent, so a game missing from the day it claims can't spin.
+    @State private var pendingDayFetch: String?
 
     private enum DragAxis { case horizontal, vertical }
 
@@ -141,7 +144,20 @@ struct ScoresScreen: View {
                 select(day: day)
             }
         }
-        .onChange(of: router.pendingGameId) { _, _ in resolvePendingGame() }
+        .onChange(of: router.pendingGame) { _, pending in
+            guard pending != nil else { return }
+            // A fresh intent gets its own day fetch, even where it repeats
+            // an id whose day has since been evicted from the cache.
+            pendingDayFetch = nil
+            resolvePendingGame()
+        }
+        // The cold-launch race: a widget tap sets its intent while the
+        // first window is still in flight, and resolving against an empty
+        // store fails silently — which is every widget tap on a freshly
+        // launched app. Each load's end is another chance at it.
+        .onChange(of: scoreboards.isLoading) { _, loading in
+            if !loading { resolvePendingGame() }
+        }
         .onChange(of: scoreboards.selectedDay) { _, _ in
             // A settling swipe owns the offset until its slide lands. Every
             // other day change — a chip, the calendar, the Today jump, a
@@ -294,14 +310,34 @@ struct ScoresScreen: View {
             }
     }
 
-    /// Lands a widget/notification tap on its game. The search space is
-    /// every day currently in memory across every league; an id that isn't
-    /// there degrades to landing on Scores.
+    /// Lands a widget/notification tap on its game.
+    ///
+    /// The first search space is memory — every day in hand across every
+    /// league. That is five days, and the widget lists games from
+    /// yesterday to a fortnight out, so most of what a widget row can show
+    /// isn't there: an intent that knows its day sends the strip to that
+    /// day and looks again once the slate lands (Andy, 2026-09-07).
+    ///
+    /// One day fetch per intent, so an id that genuinely isn't in that
+    /// day's slate can't loop. An id that never resolves still degrades to
+    /// landing on Scores, and expires when the next intent replaces it.
     private func resolvePendingGame() {
-        guard let pendingId = router.pendingGameId,
-              let game = scoreboards.game(id: pendingId) else { return }
-        router.pendingGameId = nil
-        path = NavigationPath([game])
+        guard let pending = router.pendingGame else { return }
+        if let game = scoreboards.game(id: pending.id) {
+            router.pendingGame = nil
+            pendingDayFetch = nil
+            path = NavigationPath([game])
+            return
+        }
+        guard let day = pending.day, pendingDayFetch != pending.id else { return }
+        pendingDayFetch = pending.id
+        // A deep link isn't a directional move through the strip, so it
+        // arrives the way the first load does: no slide.
+        daySlideAnimation = nil
+        Task {
+            await scoreboards.open(day: day)
+            resolvePendingGame()
+        }
     }
 
     /// The slate, however it lands: games, an empty day, an error, or the

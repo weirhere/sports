@@ -626,6 +626,38 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(scoreboards.game(id: "c1")?.id == "c1")
         #expect(scoreboards.game(id: "nope") == nil)
     }
+
+    /// The widget lists games a fortnight out and the screen holds five
+    /// days, so a tap on next week's kickoff finds nothing in memory. The
+    /// link's day is what sends the strip to fetch it (Andy, 2026-09-07).
+    @Test func openingADayBringsAFarOffGameIntoMemory() async {
+        let calendar = Calendar.current
+        let nextWeek = calendar.date(byAdding: .day, value: 9, to: today()) ?? today()
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c1", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))],
+            nfl: [game("far", home: team("26", in: .nfl), away: team("27", in: .nfl),
+                       at: nextWeek)])
+
+        #expect(scoreboards.game(id: "far") == nil)
+
+        await scoreboards.open(day: nextWeek)
+
+        #expect(scoreboards.game(id: "far")?.id == "far")
+        #expect(scoreboards.selectedDay == calendar.startOfDay(for: nextWeek))
+    }
+
+    /// A link's day can belong to a season the strip isn't bound to, and a
+    /// selected day with no chip is a screen with no way back.
+    @Test func openingADayRebindsTheStripToItsSeason() async {
+        let scoreboards = await makeScoreboards()
+        let october2019 = Calendar.current.date(from: DateComponents(year: 2019, month: 10, day: 12))
+
+        await scoreboards.open(day: october2019 ?? .now)
+
+        #expect(scoreboards.seasonYear == 2019)
+        #expect(scoreboards.days().contains { $0.date == october2019 })
+    }
 }
 
 @Suite struct SeasonSpanTests {
