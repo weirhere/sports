@@ -168,3 +168,122 @@ private func nflGame(_ id: String, week: Int?, seasonType: Int?,
         #expect(ConferenceSlate.games(slate, forTeamId: nil).count == slate.count)
     }
 }
+
+/// Where a Games tab opens mid-season: the played cards folded behind one
+/// row, so the first card on screen holds the next game (Andy, 2026-09-08).
+@MainActor
+@Suite struct SlateFoldTests {
+    private let calendar = Calendar.current
+
+    /// Noon on the given day — the same convention the grouping tests use,
+    /// so a day token is stable in every time zone.
+    private func day(_ month: Int, _ dayOfMonth: Int) -> DateComponents {
+        DateComponents(year: 2026, month: month, day: dayOfMonth)
+    }
+
+    private func noon(_ month: Int, _ dayOfMonth: Int) -> Date {
+        var parts = day(month, dayOfMonth)
+        parts.hour = 12
+        return calendar.date(from: parts)!
+    }
+
+    /// Weeks 1–3 played, week 4 to come: the fold splits at week 4 and the
+    /// three behind it come back in one piece, in order.
+    @Test func theFoldSplitsAtTheFirstCardWithFootballLeftInIt() {
+        let slate = (1...5).map { week in
+            game("w\(week)", week: week, day: day(9, 5 + (week - 1) * 7))
+        }
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .week),
+                                        now: noon(9, 26), calendar: calendar)
+        #expect(fold.earlier.map(\.id) == ["week-1", "week-2", "week-3"])
+        #expect(fold.upcoming.map(\.id) == ["week-4", "week-5"])
+    }
+
+    /// A season with nothing left folds nothing: every past season, and
+    /// this one once the last whistle blows. There is no next game to open
+    /// on, and hiding the whole slate answers a question nobody asked.
+    @Test func aFinishedSeasonFoldsNothing() {
+        let slate = (1...3).map { week in
+            game("w\(week)", week: week, day: day(9, 5 + (week - 1) * 7))
+        }
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .week),
+                                        now: noon(12, 25), calendar: calendar)
+        #expect(fold.earlier.isEmpty)
+        #expect(fold.upcoming.count == 3)
+    }
+
+    /// Nothing played yet — preseason, and the whole app in July.
+    @Test func aSeasonThatHasntStartedFoldsNothing() {
+        let slate = (1...3).map { week in
+            game("w\(week)", week: week, day: day(9, 5 + (week - 1) * 7))
+        }
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .week),
+                                        now: noon(8, 1), calendar: calendar)
+        #expect(fold.earlier.isEmpty)
+        #expect(fold.upcoming.map(\.id) == ["week-1", "week-2", "week-3"])
+    }
+
+    /// The day's own card stays out of the fold all day, whatever the
+    /// clock says — `GameSelection.isSpent`'s rule, which is what keeps a
+    /// Saturday's results in place through Saturday night.
+    @Test func todaysCardIsNeverFoldedAway() {
+        let slate = [game("w1", week: 1, day: day(9, 5)),
+                     game("w2", week: 2, day: day(9, 12))]
+        let groups = ConferenceSlate.groups(from: slate, by: .week)
+        // 11pm on week 2's own Saturday: every kickoff is hours gone.
+        var lateNight = day(9, 12)
+        lateNight.hour = 23
+        let fold = ConferenceSlate.fold(groups, now: calendar.date(from: lateNight)!,
+                                        calendar: calendar)
+        #expect(fold.earlier.map(\.id) == ["week-1"])
+        #expect(fold.upcoming.map(\.id) == ["week-2"])
+    }
+
+    /// The fold is a prefix, never a scan: a spent card *behind* a live one
+    /// stays where the calendar put it. Rearranging a season is the one
+    /// thing this must never do.
+    @Test func theFoldOnlyEverTakesAPrefix() {
+        // Week 1 played, week 2 postponed into October, week 3 played.
+        let slate = [game("w1", week: 1, day: day(9, 5)),
+                     game("w2", week: 2, day: day(10, 31)),
+                     game("w3", week: 3, day: day(9, 19))]
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .week),
+                                        now: noon(9, 26), calendar: calendar)
+        #expect(fold.earlier.map(\.id) == ["week-1"])
+        #expect(fold.upcoming.map(\.id) == ["week-2", "week-3"])
+    }
+
+    /// A card ESPN never dated — a TBD bowl slot — can't fold away on a
+    /// guess, so it stops the fold where it stands.
+    @Test func anUndatedCardIsNeverSpent() {
+        let slate = [game("w1", week: 1, day: day(9, 5)),
+                     game("tbd", week: nil, seasonType: 3, dated: false)]
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .week),
+                                        now: noon(12, 25), calendar: calendar)
+        #expect(fold.earlier.map(\.id) == ["week-1"])
+        #expect(fold.upcoming.map(\.id) == ["week-postseason"])
+    }
+
+    /// Days fold exactly as weeks do — the split reads cards, not clocks.
+    @Test func dayGroupingFoldsTheSameWay() {
+        let slate = [game("a", week: 1, day: day(9, 5)),
+                     game("b", week: 2, day: day(9, 12)),
+                     game("c", week: 3, day: day(9, 19))]
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .day),
+                                        now: noon(9, 12), calendar: calendar)
+        #expect(fold.earlier.count == 1)
+        #expect(fold.upcoming.count == 2)
+    }
+
+    /// Both toggles off is one card holding the whole season, and a card
+    /// with the season's future in it is never spent — so the ungrouped
+    /// view folds nothing, which is the only honest answer for it.
+    @Test func theUngroupedCardNeverFolds() {
+        let slate = [game("w1", week: 1, day: day(9, 5)),
+                     game("w2", week: 2, day: day(9, 12))]
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: slate, by: .none),
+                                        now: noon(9, 8), calendar: calendar)
+        #expect(fold.earlier.isEmpty)
+        #expect(fold.upcoming.count == 1)
+    }
+}

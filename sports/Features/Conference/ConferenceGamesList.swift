@@ -4,6 +4,11 @@ import SwiftUI
 /// postseason last. Rows are the Scores `GameRow` — same matchup language,
 /// same tap-through to game detail (every stack that can push this page
 /// registers a `Game` destination).
+///
+/// Mid-season the cards that are already played fold behind one "Earlier
+/// games" row, so the pane opens on the card holding the next game with
+/// the page still at its true top (Andy, 2026-09-08). The split itself is
+/// `ConferenceSlate.fold`, which carries the reasoning.
 struct ConferenceGamesList: View {
     let games: [Game]
     /// What the cards are headed by. Weeks is the season's own clock and
@@ -11,33 +16,89 @@ struct ConferenceGamesList: View {
     /// or for one unheaded card (Andy, 2026-09-05).
     var grouping: ConferenceSlate.Grouping = .week
 
+    /// Whether the season's spent cards are showing. Collapsed on arrival
+    /// mid-season, which is the whole point — see `ConferenceSlate.fold`.
+    /// Held across a season or filter change on purpose: a user who asked
+    /// for the history once shouldn't have to ask again to flip back.
+    @State private var showsEarlier = false
+
     var body: some View {
-        ForEach(ConferenceSlate.groups(from: games, by: grouping)) { group in
-            VStack(spacing: 0) {
-                // An unheaded card is the ungrouped list's whole point —
-                // nothing is being grouped, so nothing labels it.
-                if !group.title.isEmpty {
-                    CardHeader(title: group.title)
+        let fold = ConferenceSlate.fold(ConferenceSlate.groups(from: games, by: grouping))
+        // Same spacing as the panes that host this list, so nesting a
+        // stack inside theirs lays out exactly as the loose cards did.
+        VStack(spacing: Spacing.sm) {
+            if !fold.earlier.isEmpty {
+                earlierRow(fold.earlier)
+                if showsEarlier {
+                    ForEach(fold.earlier) { card($0) }
                 }
-                VStack(spacing: 0) {
-                    ForEach(Array(group.games.enumerated()), id: \.element.id) { index, game in
-                        NavigationLink(value: game) {
-                            GameRow(game: game)
-                        }
-                        .buttonStyle(.plain)
-                        if index < group.games.count - 1 {
-                            Divider()
-                                .overlay(Color.divider)
-                                .padding(.leading, Spacing.lg)
-                        }
+            }
+            ForEach(fold.upcoming) { card($0) }
+        }
+    }
+
+    /// The fold's one row: what's behind it, and the way in. Expanding
+    /// pushes the next game's card down rather than moving it, which is
+    /// what keeps the season in order — the history lands above the card
+    /// it happened before.
+    private func earlierRow(_ groups: [ConferenceSlate.WeekGroup]) -> some View {
+        let count = groups.reduce(0) { $0 + $1.games.count }
+        return Button {
+            withAnimation(.default) { showsEarlier.toggle() }
+        } label: {
+            HStack(spacing: Spacing.sm) {
+                Text("Earlier games")
+                    .font(.sectionHeader)
+                    .foregroundStyle(.textPrimary)
+                Text("\(count)")
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .rotationEffect(.degrees(showsEarlier ? 180 : 0))
+            }
+            .padding(Spacing.md)
+            .contentShape(Rectangle())
+        }
+        // The entity pages swipe between tabs, and a full-width surface is
+        // wider than any swipe, so `.plain` would fire on the way out of
+        // one (2026-09-06). Named, not `.swipeSafe` — the shorthand is
+        // deliberately absent.
+        .buttonStyle(SwipeSafeButtonStyle())
+        .cardSurface()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Earlier games, \(count) \(count == 1 ? "game" : "games")")
+        .accessibilityValue(showsEarlier ? "expanded" : "collapsed")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private func card(_ group: ConferenceSlate.WeekGroup) -> some View {
+        VStack(spacing: 0) {
+            // An unheaded card is the ungrouped list's whole point —
+            // nothing is being grouped, so nothing labels it.
+            if !group.title.isEmpty {
+                CardHeader(title: group.title)
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(group.games.enumerated()), id: \.element.id) { index, game in
+                    NavigationLink(value: game) {
+                        GameRow(game: game)
+                    }
+                    .buttonStyle(.plain)
+                    if index < group.games.count - 1 {
+                        Divider()
+                            .overlay(Color.divider)
+                            .padding(.leading, Spacing.lg)
                     }
                 }
-                .padding(.top, group.title.isEmpty ? 0 : Spacing.xs)
             }
-            .padding(.bottom, Spacing.xs)
-            .cardSurface()
-            .id(group.id)
+            .padding(.top, group.title.isEmpty ? 0 : Spacing.xs)
         }
+        .padding(.bottom, Spacing.xs)
+        .cardSurface()
+        .id(group.id)
     }
 }
 

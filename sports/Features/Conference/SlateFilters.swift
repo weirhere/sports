@@ -88,3 +88,61 @@ nonisolated extension ConferenceSlate {
         return date.formatted(style)
     }
 }
+
+/// Where a Games tab opens: the cards already played, folded away behind
+/// one row, so the pane's first card is the one with the next game in it
+/// (Andy, 2026-09-08).
+///
+/// This is deliberately *not* a scroll. Scrolling the pane to the current
+/// week takes the hero and the page's identity off screen with it — which
+/// is why the 2026-08-29 scroll-to-current-week cut was reverted the day
+/// it landed. Folding leaves the page at its true top, full header and
+/// all, and the season's history one tap up rather than one scroll up.
+nonisolated extension ConferenceSlate {
+    /// A slate split at the first card that still has football left in it.
+    struct Fold: Equatable {
+        /// The spent cards, oldest first — everything before the split.
+        var earlier: [WeekGroup]
+        /// The card the season is on, and everything after it.
+        var upcoming: [WeekGroup]
+    }
+
+    /// Splits the cards at the first one that isn't spent.
+    ///
+    /// A **prefix**, never a scan: a card that somehow reads as spent in
+    /// the middle of a live season (a postponed game rescheduled forward
+    /// leaves its old week short) stays exactly where the calendar put it.
+    /// The fold can only ever hide a run of cards off the front, which is
+    /// the one thing it can do without rearranging a season.
+    ///
+    /// A season with nothing left — every past season, and this one from
+    /// the last whistle to next July — folds nothing at all. There is no
+    /// "next game" to open on, and a page whose whole slate hid behind a
+    /// row would be answering a question nobody asked.
+    static func fold(_ groups: [WeekGroup], now: Date = .now,
+                     calendar: Calendar = .current) -> Fold {
+        guard let split = groups.firstIndex(where: {
+            !isSpent($0, now: now, calendar: calendar)
+        }), split > 0 else {
+            return Fold(earlier: [], upcoming: groups)
+        }
+        return Fold(earlier: Array(groups[..<split]), upcoming: Array(groups[split...]))
+    }
+
+    /// Whether a card has stopped being the one to look at: nothing in it
+    /// is live, and nothing in it has yet to kick off.
+    ///
+    /// The per-game rule is the widget's own `GameSelection.isSpent` —
+    /// a result holds its slot for the day it was played in, with six
+    /// hours of grace so a game that ends after midnight doesn't vanish
+    /// on the whistle. Which means a Saturday's card stays put all
+    /// Saturday night and folds on Sunday morning, and a game ESPN never
+    /// dated (a TBD bowl slot) is never spent, so its card can't fold
+    /// away on a guess.
+    static func isSpent(_ group: WeekGroup, now: Date = .now,
+                        calendar: Calendar = .current) -> Bool {
+        !group.games.contains {
+            !GameSelection.isSpent($0, now: now, calendar: calendar)
+        }
+    }
+}
