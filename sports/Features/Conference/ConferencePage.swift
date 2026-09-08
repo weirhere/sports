@@ -305,9 +305,11 @@ struct ConferencePage: View {
             }
             // The anchor scroll: a push from a TeamPage lands with the
             // team's own row in view, FotMob's table pattern. The Games
-            // tab deliberately has no equivalent — the page opens at the
-            // top with the hero in view (Andy, 2026-08-29, reverting the
-            // scroll-to-current-week first cut).
+            // tab still has no equivalent and never will — the page opens
+            // at the top with the hero in view (Andy, 2026-08-29,
+            // reverting the scroll-to-current-week first cut). What it
+            // has instead is `ConferenceSlate.fold`, which brings the next
+            // game up to the top rather than taking the top away.
             .onChange(of: standingsTables) { _, loaded in
                 guard tab == .standings,
                       let target = destination.highlightTeamId,
