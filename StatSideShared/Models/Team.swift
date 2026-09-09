@@ -127,7 +127,33 @@ nonisolated enum Conference {
         177: "United Athletic",
     ]
 
-    private static let cfbNames: [Int: String] = fbsNames.merging(fcsNames) { fbs, _ in fbs }
+    /// College football's two divisions, named as the groups they are.
+    ///
+    /// They head their own lists on the tables hub (Andy, 2026-09-09) and
+    /// each has a page — 11 conference tables under one, 14 under the
+    /// other. Deliberately *not* in `fbsNames`/`fcsNames`: those are the
+    /// conference lists, and a division is what a conference list belongs
+    /// to, not an entry in one.
+    private static let divisionRootNames: [Int: String] = [
+        Division.fbs.groupId: "FBS",
+        Division.fcs.groupId: "FCS",
+    ]
+
+    private static let cfbNames: [Int: String] = fbsNames
+        .merging(fcsNames) { fbs, _ in fbs }
+        .merging(divisionRootNames) { existing, _ in existing }
+
+    /// The group id standing for a whole college-football division, which
+    /// is the rung the pro leagues call a league.
+    static func divisionRoot(_ division: Division) -> ConferenceID {
+        ConferenceID(.collegeFootball, division.groupId)
+    }
+
+    /// Whether this id is a division's root rather than a conference in it.
+    static func isDivisionRoot(_ id: Int?, in league: League) -> Bool {
+        guard league == .collegeFootball, let id else { return false }
+        return divisionRootNames[id] != nil
+    }
 
     /// One pro league's group hierarchy, hardcoded because the scoreboard
     /// payload carries none of it.
@@ -325,15 +351,16 @@ nonisolated enum Conference {
         guard let id, let name = names(in: league)[id] else { return "Other" }
         guard let parent = parent(of: id, in: league),
               let registry = registries[league],
-              let short = registry.conferenceShorts[parent],
-              // Tested against the conference's *full* name, rendered with
-              // its short one. Testing the short form is what a compass
-              // point breaks: "Southeast" contains "east" and "Northwest"
-              // contains "west", so exactly the divisions that need
-              // placing would have decided they already said it.
-              !name.localizedCaseInsensitiveContains(registry.allNames[parent] ?? short)
+              let conference = registry.allNames[parent],
+              // "Eastern", not "East" (Andy, 2026-09-09) — and the same
+              // full form is what the containment test needs anyway. A
+              // compass point breaks the short one: "Southeast" contains
+              // "east" and "Northwest" contains "west", so exactly the
+              // divisions that need placing would have decided they
+              // already said it.
+              !name.localizedCaseInsensitiveContains(conference)
         else { return name }
-        return "\(name) (\(short))"
+        return "\(name) (\(conference))"
     }
 
     static func name(for conference: ConferenceID?) -> String {
@@ -375,7 +402,11 @@ nonisolated enum Conference {
         guard let id else { return nil }
         // The league's shield is filed under `leagues/`, not beside the
         // conference marks (`nfl/500/nfl.png` 404s — probed 2026-09-05).
-        if id == leagueWideId(in: league) { return league.logoURL }
+        // A college-football division root wears the same mark: FBS and
+        // FCS are the sport, sliced.
+        if id == leagueWideId(in: league) || isDivisionRoot(id, in: league) {
+            return league.logoURL
+        }
         guard let slug = logoSlugs(in: league)[id] else {
             // A division wears its conference's mark — an AFC East header
             // showing the AFC shield reads better than a bare glyph.
@@ -415,6 +446,7 @@ nonisolated enum Conference {
     /// is real.
     static func division(for id: Int?, in league: League) -> Division? {
         guard league == .collegeFootball, let id else { return nil }
+        if let root = Division(rawValue: id), divisionRootNames[id] != nil { return root }
         if fbsNames[id] != nil { return .fbs }
         return fcsNames[id] != nil ? .fcs : nil
     }
@@ -422,7 +454,10 @@ nonisolated enum Conference {
     static func tier(for id: Int?, in league: League) -> Tier {
         guard let id, names(in: league)[id] != nil else { return .other }
         guard let registry = registries[league] else {
-            // College football: one flat list of conferences, ranked.
+            // College football: one flat list of conferences, ranked —
+            // under a division root, which leads that list exactly as a
+            // league leads its conferences.
+            if divisionRootNames[id] != nil { return .league }
             if fcsNames[id] != nil { return .fcs }
             if power4.contains(id) { return .power4 }
             if id == 18 { return .independent }

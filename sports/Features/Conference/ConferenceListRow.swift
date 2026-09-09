@@ -21,6 +21,10 @@ struct ConferenceListRow: View {
     /// it, where a followed table is the thing itself rather than an index
     /// entry for it.
     var showsLeader: Bool = true
+    /// Off for a row that names a group nobody can follow — college
+    /// football's FBS and FCS, whose ids no team carries, so a star there
+    /// would set a follow that matched no game.
+    var showsFollow: Bool = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -38,7 +42,9 @@ struct ConferenceListRow: View {
                 // still inside the row — which a whole-card drag never
                 // leaves.
                 .buttonStyle(SwipeSafeButtonStyle())
-                ConferenceFollowStar(conference: id, conferenceName: conference.name)
+                if showsFollow {
+                    ConferenceFollowStar(conference: id, conferenceName: conference.name)
+                }
             } else {
                 // No id means no page and no follow — CFBD's unknown-name
                 // fallback. The row still lists the conference.

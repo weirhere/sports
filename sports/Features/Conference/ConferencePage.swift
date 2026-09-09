@@ -73,8 +73,23 @@ struct ConferencePage: View {
 
     /// Whether this page is the whole league rather than one of its
     /// conferences — the NFL's 32-team table (Andy, 2026-09-05).
+    /// Whether this page is the root of a list of conferences rather than
+    /// one of them — a league's own table, or college football's FBS and
+    /// FCS, which lead their eleven and fourteen the same way.
     private var isLeagueWide: Bool {
         destination.conferenceId == Conference.leagueWideId(in: destination.league)
+            || Conference.isDivisionRoot(destination.conferenceId, in: destination.league)
+    }
+
+    /// The conferences this page contains, in browse order — a league's
+    /// two, or a college-football division's eleven or fourteen.
+    private var memberConferenceIds: [Int] {
+        if let division = Conference.division(for: destination.conferenceId,
+                                              in: destination.league),
+           Conference.isDivisionRoot(destination.conferenceId, in: destination.league) {
+            return Conference.orderedIds(in: division)
+        }
+        return Conference.topLevelIds(in: destination.league)
     }
 
     /// Scoped to this conference's league: group id 8 is the SEC in
@@ -139,7 +154,7 @@ struct ConferencePage: View {
                 // The league's own page has no conference of its own, so
                 // it takes its league's, in browse order (AFC, then NFC).
                 let tables = topLevelTables(in: all)
-                return Conference.topLevelIds(in: destination.league).compactMap { id in
+                return memberConferenceIds.compactMap { id in
                     tables.first { $0.id == id }
                 }
             }
@@ -461,6 +476,8 @@ struct ConferencePage: View {
             .padding(.top, Spacing.md)
             // The gap the tab row's own top padding used to make.
             .padding(.bottom, Spacing.sm)
+            // Matching TeamPage's identity block, whose template this is.
+            .padding(.vertical, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.bgCard)
@@ -520,10 +537,10 @@ struct ConferencePage: View {
     /// conference pages don't.
     private var availableTabs: [Tab] {
         guard destination.league.canTableAWholeSeason else {
-            // A rolling window is the only slate these leagues can afford,
-            // and a window around today means nothing in a season that
-            // already ended — so a past season keeps Standings alone.
-            return selectedYear == currentSeasonYear ? [.standings, .games] : [.standings]
+            // A rolling window is the only slate these leagues can afford.
+            // A past season gets one too (Andy, 2026-09-09) — anchored at
+            // its opening rather than at today, which is outside it.
+            return [.standings, .games]
         }
         return postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
     }
@@ -836,8 +853,12 @@ struct ConferencePage: View {
         let window = league.gamesWindow
         let span = SeasonSpan.days(of: league, year: selectedYear, calendar: calendar)
         let table = FollowedTable.conference(destination.conference)
-        var start = calendar.date(byAdding: .day, value: -window.back,
-                                  to: calendar.startOfDay(for: .now)) ?? .now
+        // The current season reads from around today; a finished one reads
+        // from its opening, because "a week back" is nowhere near it.
+        var start = selectedYear == currentSeasonYear
+            ? calendar.date(byAdding: .day, value: -window.back,
+                            to: calendar.startOfDay(for: .now)) ?? .now
+            : span.lowerBound
         // Walk forward a window at a time until one has games in it, the
         // way the day strip's own `firstDayWithGames` probe does. In
         // September the NBA's next game is three weeks past the end of the

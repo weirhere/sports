@@ -34,10 +34,16 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     /// college-football conference — offers none, which is what hides the
     /// control.
     static func scopes(for conference: ConferenceID) -> [StandingsScope] {
+        // A rung only counts where there is a table at it. College
+        // football's division roots sit at the `.league` rung — FBS leads
+        // its eleven conferences the way the NFL leads its two — but the
+        // sport keeps no 136-team table and nests no divisions under a
+        // conference, so a root there offers no choice at all.
+        guard Conference.leagueWideId(in: conference.league) != nil else { return [] }
         switch Conference.tier(for: conference.id, in: conference.league) {
-        case .league: [.league, .conference, .division]
-        case .conference: [.conference, .division]
-        default: []
+        case .league: return [.league, .conference, .division]
+        case .conference: return [.conference, .division]
+        default: return []
         }
     }
 
@@ -96,7 +102,12 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     /// the divisional tables or it would find nothing at all.
     static func `default`(for conference: ConferenceID) -> StandingsScope {
         switch Conference.tier(for: conference.id, in: conference.league) {
-        case .league: .league
+        // A league with no table of its own — college football, whose
+        // division roots sit at this rung — opens on the conferences
+        // under it instead, which is the widest view it actually has.
+        case .league:
+            Conference.leagueWideId(in: conference.league) == nil
+                ? StandingsScope.conference : StandingsScope.league
         case .division: .division
         default: .conference
         }

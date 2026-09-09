@@ -86,7 +86,7 @@ import Testing
     @Test func collidingIdsStayApartAcrossLeagues() {
         #expect(Conference.name(for: .nhl(9)) == "NHL")
         #expect(Conference.name(for: .nfl(9)) == "NFL")
-        #expect(Conference.name(for: .nba(4)) == "Pacific (West)")
+        #expect(Conference.name(for: .nba(4)) == "Pacific (Western)")
         #expect(Conference.name(for: .nfl(4)) == "AFC East")
         #expect(Conference.name(for: .cfb(4)) == "Big 12")
         #expect(ConferenceID.nhl(9) != ConferenceID.nfl(9))
@@ -160,14 +160,14 @@ import Testing
         // Rendered with ESPN's short form, but tested against the full
         // one — "Southeast" contains "east", and testing the short form
         // would drop the qualifier from every compass division.
-        #expect(Conference.name(for: .nba(1)) == "Atlantic (East)")
-        #expect(Conference.name(for: .nba(2)) == "Central (East)")
-        #expect(Conference.name(for: .nba(9)) == "Southeast (East)")
-        #expect(Conference.name(for: .nba(11)) == "Northwest (West)")
-        #expect(Conference.name(for: .nba(4)) == "Pacific (West)")
-        #expect(Conference.name(for: .nba(10)) == "Southwest (West)")
-        #expect(Conference.name(for: .nhl(32)) == "Atlantic (East)")
-        #expect(Conference.name(for: .nhl(30)) == "Pacific (West)")
+        #expect(Conference.name(for: .nba(1)) == "Atlantic (Eastern)")
+        #expect(Conference.name(for: .nba(2)) == "Central (Eastern)")
+        #expect(Conference.name(for: .nba(9)) == "Southeast (Eastern)")
+        #expect(Conference.name(for: .nba(11)) == "Northwest (Western)")
+        #expect(Conference.name(for: .nba(4)) == "Pacific (Western)")
+        #expect(Conference.name(for: .nba(10)) == "Southwest (Western)")
+        #expect(Conference.name(for: .nhl(32)) == "Atlantic (Eastern)")
+        #expect(Conference.name(for: .nhl(30)) == "Pacific (Western)")
 
         // The conferences themselves are not qualified, and neither is a
         // league.
@@ -179,6 +179,36 @@ import Testing
         #expect(Conference.name(for: .nfl(4)) == "AFC East")
         #expect(Conference.name(for: .nfl(3)) == "NFC West")
         #expect(Conference.name(for: .cfb(8)) == "SEC")
+    }
+
+    /// FBS and FCS are groups now: each heads its own list on the tables
+    /// hub and each has a page, the way a league leads its conferences.
+    @Test func collegeFootballsDivisionsAreGroupsOfTheirOwn() {
+        for division in [Conference.Division.fbs, .fcs] {
+            let id = Conference.divisionRoot(division)
+            #expect(Conference.isDivisionRoot(id.id, in: .collegeFootball))
+            #expect(Conference.isKnown(id.id, in: .collegeFootball))
+            // The rung a league sits at — it leads a list of conferences.
+            #expect(Conference.tier(for: id.id, in: .collegeFootball) == .league)
+            // And it belongs to its own division, which is what sends the
+            // page's standings request to the right group.
+            #expect(Conference.division(for: id.id, in: .collegeFootball) == division)
+            // FBS and FCS are the sport, sliced — they wear its mark.
+            #expect(Conference.logoURL(for: id) == League.collegeFootball.logoURL)
+        }
+        #expect(Conference.name(for: .cfb(80)) == "FBS")
+        #expect(Conference.name(for: .cfb(81)) == "FCS")
+
+        // A root is not a conference in either list, so it can never be
+        // mistaken for one when the lists are built.
+        #expect(!Conference.orderedIds(in: .fbs).contains(80))
+        #expect(!Conference.orderedIds(in: .fcs).contains(81))
+
+        // Nothing above them: college football keeps no table of its own,
+        // which is why its pages offer no standings scope at all.
+        #expect(Conference.leagueWideId(in: .collegeFootball) == nil)
+        #expect(StandingsScope.scopes(for: .cfb(80)).isEmpty)
+        #expect(StandingsScope.default(for: .cfb(80)) == .conference)
     }
 
     @Test func everyLeagueSpeaksItsOwnSport() {

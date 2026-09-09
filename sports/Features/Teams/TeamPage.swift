@@ -309,6 +309,11 @@ struct TeamPage: View {
             .padding(.top, Spacing.md)
             // The gap the tab row's own top padding used to make.
             .padding(.bottom, Spacing.sm)
+            // 8pt more on each side of the identity block (Andy,
+            // 2026-09-09): the mark, the name and the badges were sitting
+            // tight against the bar above and the tabs below, and the
+            // header reads as its own band with the room.
+            .padding(.vertical, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The strip above — through the bar and the top bounce — is

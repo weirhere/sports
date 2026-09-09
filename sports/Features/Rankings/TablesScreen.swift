@@ -148,8 +148,42 @@ struct TablesScreen: View {
     /// football's parts are its conferences, which is the same rung: the
     /// group a team plays a schedule inside.
     private func tables(in league: League) -> [ConferenceStandings] {
-        let parts = league.hasCollegeDivisions ? conferences(in: league) : divisions(in: league)
-        return (leagueTable(in: league).map { [$0] } ?? []) + parts
+        guard !league.hasCollegeDivisions else { return collegeFootballTables }
+        return (leagueTable(in: league).map { [$0] } ?? []) + divisions(in: league)
+    }
+
+    /// College football's list, each division led by its own root row
+    /// (Andy, 2026-09-09): FBS above the eleven, FCS above the fourteen.
+    ///
+    /// The roots are placeholder tables — a name and an id, no entries.
+    /// They exist to be rows and destinations; the standings behind them
+    /// are fetched by the page they open, which is the only place a
+    /// 136-team list of conferences is worth assembling.
+    private var collegeFootballTables: [ConferenceStandings] {
+        let all = conferences(in: .collegeFootball)
+        var rows: [ConferenceStandings] = []
+        for division in [Conference.Division.fbs, .fcs] {
+            let members = all.filter {
+                Conference.division(for: $0.id, in: .collegeFootball) == division
+            }
+            guard !members.isEmpty else { continue }
+            rows.append(divisionRoot(division))
+            rows += members
+        }
+        // Anything the division tables don't claim — an unknown id — keeps
+        // its place at the end rather than vanishing.
+        let claimed = Set(rows.compactMap(\.id))
+        return rows + all.filter { $0.id.map { !claimed.contains($0) } ?? true }
+    }
+
+    private func divisionRoot(_ division: Conference.Division) -> ConferenceStandings {
+        let id = Conference.divisionRoot(division)
+        return ConferenceStandings(id: id.id, name: Conference.name(for: id),
+                                   entries: [], league: .collegeFootball)
+    }
+
+    private func isDivisionRoot(_ table: ConferenceStandings) -> Bool {
+        Conference.isDivisionRoot(table.id, in: table.league)
     }
 
     /// Every table a league offers that someone could be following,
@@ -159,6 +193,7 @@ struct TablesScreen: View {
     private func followableTables(in league: League) -> [ConferenceStandings] {
         var seen: Set<ConferenceID?> = []
         return (tables(in: league) + conferences(in: league))
+            .filter { !isDivisionRoot($0) }
             .filter { seen.insert($0.conference).inserted }
     }
 
@@ -279,6 +314,11 @@ struct TablesScreen: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        // The column the rows' stars centre in, so the
+                        // header's chevron and every star below it share
+                        // one vertical line.
+                        .frame(width: ConferenceFollowStar.controlColumn)
+                        .padding(.trailing, ConferenceFollowStar.controlNudge)
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
@@ -319,7 +359,11 @@ struct TablesScreen: View {
                         // above it has already said which league it is.
                         ConferenceListRow(conference: conference,
                                           title: isLeagueWide(conference) ? "Full league" : nil,
-                                          showsLeader: false)
+                                          showsLeader: false,
+                                          // FBS and FCS are ids no team
+                                          // carries, so a follow there
+                                          // would match no game.
+                                          showsFollow: !isDivisionRoot(conference))
                     }
                 }
             }

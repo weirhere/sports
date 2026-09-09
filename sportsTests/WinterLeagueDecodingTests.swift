@@ -275,11 +275,11 @@ private func fixture(_ name: String) throws -> Data {
     @Test func theHubGroupsDivisionsByTheirConference() throws {
         let expected: [(String, League, [String])] = [
             ("nba-standings-level3", .nba,
-             ["Atlantic (East)", "Central (East)", "Southeast (East)",
-              "Northwest (West)", "Pacific (West)", "Southwest (West)"]),
+             ["Atlantic (Eastern)", "Central (Eastern)", "Southeast (Eastern)",
+              "Northwest (Western)", "Pacific (Western)", "Southwest (Western)"]),
             ("nhl-standings-level3", .nhl,
-             ["Atlantic (East)", "Metropolitan (East)",
-              "Central (West)", "Pacific (West)"]),
+             ["Atlantic (Eastern)", "Metropolitan (Eastern)",
+              "Central (Western)", "Pacific (Western)"]),
         ]
         for (name, league, order) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
@@ -313,7 +313,7 @@ private func fixture(_ name: String) throws -> Data {
 
         // A division's own page: itself, with its teams in it.
         let central = divisions.divisionTables(for: .nba(2), isLeagueWide: false)
-        #expect(central.map(\.name) == ["Central (East)"])
+        #expect(central.map(\.name) == ["Central (Eastern)"])
         #expect(central.first?.entries.isEmpty == false)
     }
 

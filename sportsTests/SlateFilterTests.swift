@@ -110,6 +110,32 @@ private func nflGame(_ id: String, week: Int?, seasonType: Int?,
 
 @MainActor
 @Suite struct SlateFilterTests {
+
+    /// A weekday and a date are enough while the year is obvious. On a
+    /// past season it isn't — the whole point of the pane is that these
+    /// games are not from now.
+    @Test func aDateInAnotherYearSaysWhichYear() {
+        let calendar = Calendar.current
+        func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day)) ?? .now
+        }
+        let now = day(2026, 9, 9)
+
+        let thisYear = ConferenceSlate.dayTitle(for: day(2026, 10, 2),
+                                                calendar: calendar, now: now)
+        #expect(!thisYear.contains("2026"))
+
+        let lastYear = ConferenceSlate.dayTitle(for: day(2025, 10, 2),
+                                                calendar: calendar, now: now)
+        #expect(lastYear.contains("2025"))
+
+        // A season that runs into the next year says so too, which is the
+        // same question asked from the other side.
+        let nextYear = ConferenceSlate.dayTitle(for: day(2027, 1, 12),
+                                                calendar: calendar, now: now)
+        #expect(nextYear.contains("2027"))
+    }
+
     private let slate = [
         game("sat1", week: 1, home: "ohio", away: "texas"),
         game("sat2", week: 1, home: "duke", away: "army"),
