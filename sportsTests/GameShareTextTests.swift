@@ -31,6 +31,22 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
         #expect(text.contains("— via StatSide"))
     }
 
+    /// The kickoff clause joins its day and time with a space, never the
+    /// locale's "at" — the app says a kickoff one way everywhere, and the
+    /// matchup's own "Georgia at Tennessee" is the sentence's only "at".
+    @Test func kickoffJoinsDayAndTimeWithoutAn_at() {
+        let kick = Date(timeIntervalSince1970: 1_787_200_200)
+        #expect(kick.shareKickText
+            == "\(kick.shareKickDayText) \(kick.formatted(.dateTime.hour().minute()))")
+        #expect(!kick.shareKickText.contains(" at "))
+
+        let text = game(status: .pre(detail: nil), date: kick, broadcast: "ESPN").shareText
+        #expect(text.contains(kick.shareKickText))
+        // One "at" left in the sentence, and it's the matchup's.
+        #expect(text.components(separatedBy: " at ").count == 2)
+        #expect(text.hasPrefix("Georgia at Tennessee"))
+    }
+
     @Test func unannouncedKickoffSharesTheDayWithTimeTBD() {
         let kick = Date(timeIntervalSince1970: 1_787_200_200)
         let text = game(status: .pre(detail: nil), date: kick, timeTBD: true).shareText

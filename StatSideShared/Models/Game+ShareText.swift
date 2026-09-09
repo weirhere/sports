@@ -35,8 +35,13 @@ nonisolated extension Game {
 nonisolated extension Date {
     /// Kick times in shares stay absolute — the text outlives the moment
     /// it was generated, so no "Today"/"Tomorrow" (decisions log 2026-08-09).
+    ///
+    /// Day and time are formatted apart and joined with a space, the way
+    /// `GameRow.relativeKick` joins them ("Sat, 9/5 3:30 PM"): one style
+    /// spanning both lets the locale slip its own "at" between them, and
+    /// the app says a kickoff the same way everywhere.
     var shareKickText: String {
-        formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
+        "\(shareKickDayText) \(formatted(.dateTime.hour().minute()))"
     }
 
     /// The day alone, for kickoffs whose time is still a placeholder.
