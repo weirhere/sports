@@ -82,8 +82,20 @@ nonisolated extension ConferenceSlate {
 
     /// "Saturday, September 5" — Andy's example, and the way a fan says
     /// which day they mean.
-    static func dayTitle(for date: Date, calendar: Calendar) -> String {
+    /// "Saturday, September 5" — and "Thursday, October 2, 2025" once the
+    /// date is in a different year from the one we're standing in (Andy,
+    /// 2026-09-09).
+    ///
+    /// A weekday and a date are enough while the year is obvious. On a
+    /// past season it isn't: the whole point of the pane is that these
+    /// games are not from now, and a card headed "Thursday, October 2"
+    /// says nothing about which October.
+    static func dayTitle(for date: Date, calendar: Calendar,
+                         now: Date = .now) -> String {
         var style = Date.FormatStyle.dateTime.weekday(.wide).month(.wide).day()
+        if calendar.component(.year, from: date) != calendar.component(.year, from: now) {
+            style = style.year()
+        }
         style.timeZone = calendar.timeZone
         return date.formatted(style)
     }

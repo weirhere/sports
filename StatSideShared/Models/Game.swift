@@ -78,23 +78,33 @@ nonisolated enum GameStatus: Hashable, Sendable {
     /// the row, detail header, widget, share text, and share card can't
     /// drift apart again; callers supply their own fallback for the rare
     /// live game with nothing to say (`?? "Live"`).
-    var liveStatusText: String? {
+    func liveStatusText(in league: League = .collegeFootball) -> String? {
         guard case .live(let clock, let period, let detail, let phase, _) = self else { return nil }
+        func label(_ period: Int) -> String { Self.periodLabel(period, in: league) }
         switch phase {
         case .halftime:
             return "Half"
         case .endOfPeriod:
             // The clock has run out, so "Q2 0:00" would claim a running
             // clock; the period alone carries the truth.
-            return period.map { "End \(Self.periodLabel($0))" } ?? detail
+            return period.map { "End \(label($0))" } ?? detail
         case .playing:
-            let line = [period.map(Self.periodLabel), clock].compactMap(\.self).joined(separator: " ")
+            let line = [period.map(label), clock].compactMap(\.self).joined(separator: " ")
             return line.isEmpty ? detail : line
         }
     }
 
-    static func periodLabel(_ period: Int) -> String {
-        period <= 4 ? "Q\(period)" : (period == 5 ? "OT" : "\(period - 4)OT")
+    /// "Q3" in football and basketball, "P2" in hockey, and past
+    /// regulation whatever the overtime count is.
+    ///
+    /// No shootout label here on purpose: the status line only renders
+    /// while a game is live, and a shootout arrives as a final. If one ever
+    /// does show live, "1OT" is a wrong word rather than a wrong number.
+    static func periodLabel(_ period: Int, in league: League = .collegeFootball) -> String {
+        let format = league.periodFormat
+        if period <= format.regulationCount { return "\(format.shortName)\(period)" }
+        if period == format.regulationCount + 1 { return "OT" }
+        return "\(period - format.regulationCount)OT"
     }
 }
 

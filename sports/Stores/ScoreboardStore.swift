@@ -330,6 +330,11 @@ final class ScoreboardStore {
             // each 30s poll tick even when nothing moved.
             if updated != gamesByDay { gamesByDay = updated }
             if lastError != nil { lastError = nil }
+        } catch is CancellationError {
+            // Abandoned on purpose — the day moved out from under this
+            // fetch. Not a failure, and never the refresh banner's copy.
+        } catch let error as URLError where error.code == .cancelled {
+            // The same thing, as URLSession spells it.
         } catch {
             // Keep last-good games on failure.
             lastError = describe(error)

@@ -52,9 +52,13 @@ final class LeagueScoreboards {
     }
 
     func store(for league: League) -> ScoreboardStore {
-        // Every league has a store by construction; the fallback exists so
-        // a lookup can't crash a screen.
-        stores[league] ?? stores[.collegeFootball] ?? ScoreboardStore(league: league)
+        if let store = stores[league] { return store }
+        // Every league has a store by construction, so a miss is a wiring
+        // bug — and a silent one, because aliasing to another league's
+        // store makes `all` return it twice and quietly doubles every
+        // count derived from it. Loud in DEBUG, still harmless in release.
+        assertionFailure("no scoreboard store for \(league.rawValue)")
+        return stores[.collegeFootball] ?? ScoreboardStore(league: league)
     }
 
     var all: [ScoreboardStore] { League.allCases.map(store(for:)) }
@@ -104,7 +108,8 @@ final class LeagueScoreboards {
 
     /// Selectable seasons, newest first. Floor is 2014 — the CFP era.
     var availableSeasons: [Int] {
-        Array(stride(from: currentSeasonYear, through: League.collegeFootball.seasonFloor, by: -1))
+        Array(stride(from: currentSeasonYear,
+                     through: League.allCases.map(\.seasonFloor).min() ?? 2014, by: -1))
     }
 
     /// Every day of the selected season, in order — the strip's contents.
@@ -208,9 +213,27 @@ final class LeagueScoreboards {
         return true
     }
 
+    /// How long a day sits still before we ask for it.
+    ///
+    /// The move itself is synchronous (`show(day:)`) — the strip, the
+    /// header and the Today button follow the thumb on the frame it lifts,
+    /// which is the whole point of the 2026-09-07 split. Only the *fetch*
+    /// waits, so nothing on screen is slower and a flick across a fortnight
+    /// stops asking for every day it passed through.
+    ///
+    /// It matters more at four leagues than it did at two: each day change
+    /// is one request per league, and `URLSession` allows six concurrent
+    /// connections to a host — so an undebounced flick was queueing behind
+    /// its own earlier requests, which is both impolite and slower.
+    private static let settleBeforeFetch = Duration.milliseconds(250)
+
     /// Fetch whatever day is selected — the other half of the split above.
     func loadSelectedDay() async {
-        await load(around: selectedDay)
+        let day = selectedDay
+        try? await Task.sleep(for: Self.settleBeforeFetch)
+        // The thumb kept moving; the day it landed on will ask for itself.
+        guard selectedDay == day else { return }
+        await load(around: day)
     }
 
     /// Land on a specific day and fetch it — a deep link's arrival.
@@ -299,6 +322,11 @@ final class LeagueScoreboards {
             guard !Task.isCancelled, let found, found != self.selectedDay else { return }
             // The user may have moved while the probe was out; their choice wins.
             guard self.selectedDay == from else { return }
+            // Let go of the handle before selecting. `show(day:)` cancels
+            // the snap task, and this *is* the snap task — so without
+            // this the move cancels its own fetch, and every league comes
+            // back `-999 cancelled` on the day the app just chose.
+            self.snapTask = nil
             await self.select(day: found)
         }
     }
@@ -336,12 +364,14 @@ final class LeagueScoreboards {
     /// directly beneath Following instead, in the order you dragged them
     /// into on the tables hub.
     ///
-    /// **College football breaks down by conference; the NFL doesn't**
+    /// **College football breaks down by conference; nobody else does**
     /// (Andy, 2026-09-06, superseding the one-accordion-per-league shape).
     /// A single "College Football" accordion is 60 rows on a Saturday with
     /// no way in; its conferences are the way fans already carve it up.
-    /// The NFL's 16 games in one section is the whole slate at a glance,
-    /// and splitting it by division would be four rows a section.
+    /// The NFL's 16 games, the NBA's 11 and the NHL's 8 are each the whole
+    /// slate at a glance, and their divisions would be one or two rows a
+    /// section. Which shape a league takes is `slateSplitsByConference`,
+    /// so the stack is one loop rather than a branch per league.
     ///
     /// Sections stay complete, never deduplicated: a game is in Following,
     /// in a followed table's section, and in its conference's. The one
@@ -382,19 +412,15 @@ final class LeagueScoreboards {
             visible[league] = games
         }
 
-        // The full slate, in its resting order.
-        var stack = conferenceSections(from: visible[.collegeFootball] ?? [])
-        if let nfl = visible[.nfl], !nfl.isEmpty {
-            stack.append(GameSection(id: GameSection.id(for: .nfl),
-                                     title: League.nfl.displayName,
-                                     games: nfl,
-                                     league: .nfl,
-                                     logoURL: League.nfl.logoURL,
-                                     // The whole league standing as one
-                                     // table — following the NFL on the
-                                     // hub hoists this very section.
-                                     table: Conference.leagueWideId(in: .nfl)
-                                         .map { FollowedTable.conference(ConferenceID(.nfl, $0)) }))
+        // The full slate, in its resting order — `League.allCases`' own,
+        // which is also the Tables hub's.
+        var stack: [GameSection] = []
+        for league in League.allCases {
+            let games = visible[league] ?? []
+            guard !games.isEmpty else { continue }
+            stack += league.slateSplitsByConference
+                ? conferenceSections(from: games, in: league)
+                : [leagueSection(league, games: games)]
         }
 
         // Followed tables lead the stack, in the user's order. One already
@@ -443,9 +469,22 @@ final class LeagueScoreboards {
     /// knowledge: FCS is opt-in, so until someone follows an FCS
     /// conference a Big Sky visitor stays in its host's section rather
     /// than spawning a Big Sky one.
-    private func conferenceSections(from games: [Game]) -> [GameSection] {
+    /// A league that stands as one section — its whole night at a glance.
+    private func leagueSection(_ league: League, games: [Game]) -> GameSection {
+        GameSection(id: GameSection.id(for: league),
+                    title: league.displayName,
+                    games: games,
+                    league: league,
+                    logoURL: league.logoURL,
+                    // The whole league standing as one table — following
+                    // it on the hub hoists this very section.
+                    table: Conference.leagueWideId(in: league)
+                        .map { FollowedTable.conference(ConferenceID(league, $0)) })
+    }
+
+    private func conferenceSections(from games: [Game], in league: League) -> [GameSection] {
         guard !games.isEmpty else { return [] }
-        let divisions = store(for: .collegeFootball).divisions
+        let divisions = store(for: league).divisions
         var byConference: [ConferenceID?: [Game]] = [:]
         for game in games {
             let claimed = Set([game.home.team.conference, game.away.team.conference]
@@ -464,18 +503,18 @@ final class LeagueScoreboards {
         }
         // P4 → G5 → Independents → FCS → Other, alphabetical within a tier.
         let ordered = byConference.keys.sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs?.id, in: .collegeFootball),
-                            Conference.tier(for: rhs?.id, in: .collegeFootball))
+            let (lt, rt) = (Conference.tier(for: lhs?.id, in: league),
+                            Conference.tier(for: rhs?.id, in: league))
             return lt == rt
                 ? Conference.name(for: lhs) < Conference.name(for: rhs)
                 : lt < rt
         }
         return ordered.map { id in
             GameSection(id: id.map { GameSection.conferencePrefix + $0.token }
-                            ?? (GameSection.otherPrefix + League.collegeFootball.rawValue),
+                            ?? (GameSection.otherPrefix + league.rawValue),
                         title: Conference.name(for: id),
                         games: byConference[id] ?? [],
-                        league: .collegeFootball,
+                        league: league,
                         logoURL: Conference.logoURL(for: id),
                         table: id.map(FollowedTable.conference))
         }

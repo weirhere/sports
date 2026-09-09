@@ -70,7 +70,7 @@ nonisolated extension Game {
             }
             body = parts.joined(separator: ", ")
         case .live:
-            body = "\(scored(away)), \(scored(home)), \(status.liveStatusText ?? "live")"
+            body = "\(scored(away)), \(scored(home)), \(status.liveStatusText(in: home.team.league) ?? "live")"
         case .final(let detail):
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
             body = "Final\(overtime ? " (OT)" : ""): \(scored(away)), \(scored(home))"

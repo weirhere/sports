@@ -77,6 +77,7 @@ struct TablesScreen: View {
             .map { TableGroup(id: Self.sectionId(for: $0),
                               title: $0.displayName,
                               logoURL: $0.logoURL,
+                              league: $0,
                               rows: rows(for: $0)) }
             .filter { !$0.rows.isEmpty }
     }
@@ -89,19 +90,44 @@ struct TablesScreen: View {
         return PollScreen.displayed(polls)
     }
 
-    /// Divisions folded into their conference: the hub names conferences,
-    /// so the Sun Belt is one row here even though its standings are two
-    /// tables (the page that tables them still gets both).
+    /// Divisions folded into their conference: the Sun Belt, not
+    /// "Sun Belt - East" and "Sun Belt - West"; the AFC, not its four.
     ///
     /// College football's two divisions fold together here — the fetches
     /// stay separate (they are separate requests, and either can fail
     /// alone), the list doesn't. Folding the union in one pass is what
     /// sorts FBS above FCS: `foldingDivisions()` re-applies the tier rule
     /// across everything it is handed.
+    ///
+    /// For the pro leagues this is a *derivation*, not a fetch: their hub
+    /// request is the divisional one, and folding it back up is what
+    /// gives the league row something to merge.
     private func conferences(in league: League) -> [ConferenceStandings] {
         var fetched = standings[league] ?? []
         if league == .collegeFootball { fetched += fcsStandings }
         return fetched.foldingDivisions()
+    }
+
+    /// The divisions a league's accordion lists, grouped by the
+    /// conference they belong to and alphabetical inside it — the AFC's
+    /// four, then the NFC's.
+    ///
+    /// The mapper sorts divisions by name alone, which is right for a
+    /// standings pane listing one conference's and wrong for a list of
+    /// every one: alphabetically the NBA's six interleave their
+    /// conferences, and Northwest lands between Central and Pacific with
+    /// nothing on screen to explain why.
+    private func divisions(in league: League) -> [ConferenceStandings] {
+        let conferenceOrder = Conference.topLevelIds(in: league)
+        func rank(_ table: ConferenceStandings) -> Int {
+            table.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
+        }
+        return (standings[league] ?? [])
+            .filter { $0.parentId != nil }
+            .sorted { lhs, rhs in
+                let (l, r) = (rank(lhs), rank(rhs))
+                return l == r ? lhs.name < rhs.name : l < r
+            }
     }
 
     /// The league's own table, where it has one — the NFL's 32 teams in a
@@ -109,17 +135,68 @@ struct TablesScreen: View {
     /// just the different conferences"). College football answers the same
     /// question with its poll, so this is nil there.
     private func leagueTable(in league: League) -> ConferenceStandings? {
-        (standings[league] ?? []).leagueTable(in: league)
+        conferences(in: league).leagueTable(in: league)
     }
 
-    /// Every table a league offers, league-wide row first: the whole thing
-    /// above its parts, which is also where the poll row sits in college
-    /// football.
+    /// What a league's accordion holds, league-wide row first: the whole
+    /// thing above its parts.
+    ///
+    /// The parts are **divisions** for the pro leagues (Andy, 2026-09-09:
+    /// "split into division rather than conference … conferences aren't as
+    /// a priority here") — a division is the race anyone is actually in,
+    /// where a conference is a playoff bracket's seeding pool. College
+    /// football's parts are its conferences, which is the same rung: the
+    /// group a team plays a schedule inside.
     private func tables(in league: League) -> [ConferenceStandings] {
-        (leagueTable(in: league).map { [$0] } ?? []) + conferences(in: league)
+        guard !league.hasCollegeDivisions else { return collegeFootballTables }
+        return (leagueTable(in: league).map { [$0] } ?? []) + divisions(in: league)
     }
 
-    /// What a league's accordion holds — its conferences, plus the poll row
+    /// College football's list, each division led by its own root row
+    /// (Andy, 2026-09-09): FBS above the eleven, FCS above the fourteen.
+    ///
+    /// The roots are placeholder tables — a name and an id, no entries.
+    /// They exist to be rows and destinations; the standings behind them
+    /// are fetched by the page they open, which is the only place a
+    /// 136-team list of conferences is worth assembling.
+    private var collegeFootballTables: [ConferenceStandings] {
+        let all = conferences(in: .collegeFootball)
+        var rows: [ConferenceStandings] = []
+        for division in [Conference.Division.fbs, .fcs] {
+            let members = all.filter {
+                Conference.division(for: $0.id, in: .collegeFootball) == division
+            }
+            guard !members.isEmpty else { continue }
+            rows.append(divisionRoot(division))
+            rows += members
+        }
+        // Anything the division tables don't claim — an unknown id — keeps
+        // its place at the end rather than vanishing.
+        let claimed = Set(rows.compactMap(\.id))
+        return rows + all.filter { $0.id.map { !claimed.contains($0) } ?? true }
+    }
+
+    private func divisionRoot(_ division: Conference.Division) -> ConferenceStandings {
+        let id = Conference.divisionRoot(division)
+        return ConferenceStandings(id: id.id, name: Conference.name(for: id),
+                                   entries: [], league: .collegeFootball)
+    }
+
+    private func isDivisionRoot(_ table: ConferenceStandings) -> Bool {
+        Conference.isDivisionRoot(table.id, in: table.league)
+    }
+
+    /// Every table a league offers that someone could be following,
+    /// including the conference rows the accordion no longer lists. A
+    /// conference follow made before the hub showed divisions still has a
+    /// card in Following and still hoists its section on Scores.
+    private func followableTables(in league: League) -> [ConferenceStandings] {
+        var seen: Set<ConferenceID?> = []
+        return (tables(in: league) + conferences(in: league))
+            .filter { seen.insert($0.conference).inserted }
+    }
+
+    /// What a league's accordion holds — its tables, plus the poll row
     /// where the league has one. The count in the header is this.
     private func rows(for league: League) -> [TableRow] {
         var rows: [TableRow] = []
@@ -127,6 +204,10 @@ struct TablesScreen: View {
         if !polls.isEmpty { rows.append(.poll(polls, league)) }
         rows += tables(in: league).map(TableRow.conference)
         return rows
+    }
+
+    private func isLeagueWide(_ table: ConferenceStandings) -> Bool {
+        table.id != nil && table.id == Conference.leagueWideId(in: table.league)
     }
 
     /// The Following section's rows, in the user's own order (Andy,
@@ -138,7 +219,7 @@ struct TablesScreen: View {
     /// came back empty has no row here, exactly as it has no accordion
     /// below. Nothing errors over a missing one.
     private var followedRows: [FollowedTableRow] {
-        let loaded = League.allCases.flatMap(tables(in:))
+        let loaded = League.allCases.flatMap(followableTables(in:))
         return following.orderedTables.compactMap { table -> FollowedTableRow? in
             switch table {
             case .poll(let league):
@@ -220,7 +301,7 @@ struct TablesScreen: View {
                 withAnimation { uiState.toggleConference(sectionId) }
             } label: {
                 HStack(spacing: Spacing.sm) {
-                    ConferenceLogo(url: group.logoURL)
+                    ConferenceLogo(url: group.logoURL, league: group.league)
                     Text(group.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -232,6 +313,11 @@ struct TablesScreen: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        // The column the rows' stars centre in, so the
+                        // header's chevron and every star below it share
+                        // one vertical line.
+                        .frame(width: ConferenceFollowStar.controlColumn)
+                        .padding(.trailing, ConferenceFollowStar.controlNudge)
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
@@ -245,7 +331,19 @@ struct TablesScreen: View {
             .accessibilityLabel("\(group.title), \(rows.count) \(rows.count == 1 ? "table" : "tables")")
             .accessibilityValue(isExpanded ? "expanded" : "collapsed")
             .accessibilityAddTraits(.isHeader)
-            .background(Color.bgHeader)
+            // The header is the same card surface as the rows beneath it,
+            // open or shut (Andy, 2026-09-09) — a tinted bar made every
+            // collapsed league read as a control rather than as the top of
+            // its own card. Open, a hairline is what separates it from the
+            // rows; closed, there is nothing to separate it from.
+            .background(Color.bgCard)
+            .overlay(alignment: .bottom) {
+                if isExpanded {
+                    Rectangle()
+                        .fill(Color.divider)
+                        .frame(height: 1)
+                }
+            }
 
             if isExpanded {
                 ForEach(rows) { row in
@@ -253,7 +351,14 @@ struct TablesScreen: View {
                     case .poll(let polls, let league):
                         Top25Row(polls: polls, league: league)
                     case .conference(let conference):
-                        ConferenceListRow(conference: conference)
+                        // Inside its own league's accordion the whole-league
+                        // table would read "NHL" under a header saying
+                        // "NHL". It keeps its real name everywhere else —
+                        // the Following card, its own page — where nothing
+                        // above it has already said which league it is.
+                        ConferenceListRow(conference: conference,
+                                          title: isLeagueWide(conference) ? "Full league" : nil,
+                                          showsLeader: false)
                     }
                 }
             }
@@ -304,11 +409,24 @@ struct TablesScreen: View {
 
     /// Every league's standings in parallel — one league's outage leaves
     /// the others' tables on screen rather than emptying the hub.
+    ///
+    /// A league whose accordion lists divisions asks for the divisional
+    /// response instead of the conference one, and the conference tables
+    /// are folded back out of it (`conferences(in:)`). One request either
+    /// way: asking for both would have cost three more on every hub load,
+    /// and `level=3` carries everything the shallower response does.
     private static func allStandings() async -> [League: [ConferenceStandings]] {
         await withTaskGroup(of: (League, [ConferenceStandings]).self) { group in
             for league in League.allCases {
                 group.addTask {
                     let client = DataProvider.makeClient(league: league)
+                    guard !league.hasCollegeDivisions else {
+                        return (league, (try? await client.conferenceStandings()) ?? [])
+                    }
+                    let divisions = (try? await client.divisionStandings(year: nil)) ?? []
+                    // A league that ships no divisional response still has
+                    // conferences worth listing.
+                    guard divisions.isEmpty else { return (league, divisions) }
                     return (league, (try? await client.conferenceStandings()) ?? [])
                 }
             }
@@ -343,9 +461,9 @@ private struct TableGroup: Identifiable {
     let id: String
     let title: String
     /// The badge beside the title — the league's own mark. Optional so a
-    /// future card without one falls back to the football glyph every
-    /// conference header already uses.
+    /// card without one falls back to that sport's own glyph.
     let logoURL: URL?
+    let league: League
     let rows: [TableRow]
 
     /// `tables-league-cfb` — the UI tests' handle.

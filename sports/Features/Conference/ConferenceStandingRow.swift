@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// One team's line in the standings table: logo, school, then conference
-/// and overall records in aligned trailing columns. At accessibility text
-/// sizes the columns stop fitting, so the records drop to their own labeled
-/// line under the name (GameRow's reflow pattern).
+/// One team's line in the standings table: logo, school, then whichever
+/// numeric columns the league keeps, in aligned trailing columns. At
+/// accessibility text sizes the columns stop fitting, so they drop to
+/// their own labeled line under the name (GameRow's reflow pattern).
 struct ConferenceStandingRow: View {
     let standing: ConferenceStanding
     /// 1-based place in the displayed order — the table's first column
@@ -21,8 +21,12 @@ struct ConferenceStandingRow: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
-    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var scale: CGFloat = 1
     @ScaledMetric(relativeTo: .subheadline) private var positionWidth: CGFloat = 16
+
+    /// Mirrors `StandingsColumnCaptions` — the numbers have to sit under
+    /// the captions promising them.
+    private var columns: [StandingsColumn] { standing.team.league.standingsColumns }
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -49,8 +53,9 @@ struct ConferenceStandingRow: View {
                 .layoutPriority(1)
             liveDot
             Spacer(minLength: Spacing.sm)
-            recordColumn(standing.conferenceRecord)
-            recordColumn(standing.overallRecord)
+            ForEach(columns) { column in
+                recordColumn(standing.value(for: column), width: column.width)
+            }
         }
     }
 
@@ -89,11 +94,11 @@ struct ConferenceStandingRow: View {
         }
     }
 
-    private func recordColumn(_ record: String?) -> some View {
-        Text(record ?? "–")
+    private func recordColumn(_ value: String?, width: CGFloat) -> some View {
+        Text(value ?? "–")
             .font(.teamName.monospacedDigit())
-            .foregroundStyle(record == nil ? .textSecondary : .textPrimary)
-            .frame(minWidth: recordWidth, alignment: .trailing)
+            .foregroundStyle(value == nil ? .textSecondary : .textPrimary)
+            .frame(minWidth: width * scale, alignment: .trailing)
     }
 
     /// The place number, GameRow's rank recipe: weight-emphasized meta,
@@ -109,14 +114,17 @@ struct ConferenceStandingRow: View {
     }
 
     private var stackedRecordLine: String {
-        [standing.conferenceRecord.map { "Conf \($0)" },
-         standing.overallRecord.map { "Overall \($0)" }]
-            .compactMap(\.self)
+        columns
+            .compactMap { column in
+                standing.value(for: column).map { "\(column.caption) \($0)" }
+            }
             .joined(separator: " · ")
     }
 
-    /// One sentence: "Number 3, Georgia, 7 and 1 in conference, 13 and 2
-    /// overall".
+    /// One sentence, in whatever columns the league keeps: "Number 3,
+    /// Georgia, 7 and 1 in conference, 13 and 2 overall" — or "Number 1,
+    /// Carolina, 82 games played, 53 and 22 and 7 and overtime losses, 113
+    /// points".
     var accessibilitySummary: String {
         var parts = [String]()
         if let position {
@@ -129,11 +137,9 @@ struct ConferenceStandingRow: View {
         case .tied: parts.append("playing now, tied")
         case nil: break
         }
-        if let conference = standing.conferenceRecord {
-            parts.append("\(spoken(conference)) \(League.inGroupRecordSpoken(standing.team.league))")
-        }
-        if let overall = standing.overallRecord {
-            parts.append("\(spoken(overall)) overall")
+        for column in columns {
+            guard let value = standing.value(for: column) else { continue }
+            parts.append("\(spoken(value)) \(column.spoken)")
         }
         if qualifies { parts.append("in the championship game") }
         return parts.joined(separator: ", ")

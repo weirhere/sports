@@ -144,7 +144,7 @@ struct StatSideShortcuts: AppShortcutsProvider {
                 "When do my teams play in \(.applicationName)",
             ],
             shortTitle: "Next Game",
-            systemImageName: "football"
+            systemImageName: "sportscourt.fill"
         )
     }
 }

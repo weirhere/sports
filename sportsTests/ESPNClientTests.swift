@@ -102,7 +102,7 @@ private func fixture(_ name: String) throws -> Data {
         } else {
             Issue.record("expected live status")
         }
-        #expect(mapped.liveStatusText == "Half")
+        #expect(mapped.liveStatusText() == "Half")
     }
 
     @Test func endOfPeriodStopsClaimingARunningClock() {
@@ -113,28 +113,28 @@ private func fixture(_ name: String) throws -> Data {
         } else {
             Issue.record("expected live status")
         }
-        #expect(mapped.liveStatusText == "End Q1")
+        #expect(mapped.liveStatusText() == "End Q1")
     }
 
     @Test func inProgressKeepsQuarterAndClock() {
         let mapped = status(name: "STATUS_IN_PROGRESS", clock: "5:24", period: 3)
-        #expect(mapped.liveStatusText == "Q3 5:24")
+        #expect(mapped.liveStatusText() == "Q3 5:24")
     }
 
     @Test func overtimePeriodsKeepTheirLabels() {
         #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 5)
-            .liveStatusText == "OT 0:48")
+            .liveStatusText() == "OT 0:48")
         #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 6)
-            .liveStatusText == "2OT 0:48")
+            .liveStatusText() == "2OT 0:48")
     }
 
     @Test func bareLiveStatusFallsBackToDetailThenCaller() {
         // Nothing to render → detail; nothing at all → nil, and every
         // surface supplies its own "Live".
         #expect(status(name: nil, clock: nil, period: nil, detail: "In Progress")
-            .liveStatusText == "In Progress")
-        #expect(status(name: nil, clock: nil, period: nil).liveStatusText == nil)
-        #expect(GameStatus.pre(detail: nil).liveStatusText == nil)
+            .liveStatusText() == "In Progress")
+        #expect(status(name: nil, clock: nil, period: nil).liveStatusText() == nil)
+        #expect(GameStatus.pre(detail: nil).liveStatusText() == nil)
     }
 }
 

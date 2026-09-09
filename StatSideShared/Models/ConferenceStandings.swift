@@ -12,8 +12,21 @@ nonisolated struct ConferenceStanding: Identifiable, Hashable, Sendable {
     /// 1-based when ESPN knows it; nil (or ESPN's 0) when it doesn't.
     var playoffSeed: Int? = nil
     /// ESPN's `winpercent`, 0...1 — its own number, ties already counted.
-    /// The league table orders on it; nothing else reads it.
+    /// The league table orders on it, and the NBA shows it as PCT. Absent
+    /// from the NHL's payload entirely.
     var winPercent: Double? = nil
+    /// Hockey's own three-number record, composed from wins, losses and
+    /// overtime losses. ESPN's `total` summary is "53-22-7, 113 PTS" — a
+    /// sentence, not a column.
+    var winLossOTL: String? = nil
+    var gamesPlayed: Int? = nil
+    /// Standings points: two for a win, one for an overtime loss. What the
+    /// NHL's tables are actually sorted by.
+    var points: Int? = nil
+    /// ESPN's own display string ("-", "3.5"), never computed here — the
+    /// arithmetic is a tiebreaker's, and inventing one is what the
+    /// standings contract forbids.
+    var gamesBehind: String? = nil
 
     var id: String { team.id }
 }
@@ -61,12 +74,41 @@ nonisolated extension Array where Element == ConferenceStandings {
             id: id, name: Conference.name(for: id, in: league),
             entries: entries.enumerated()
                 .sorted { lhs, rhs in
-                    let (l, r) = (lhs.element.winPercent, rhs.element.winPercent)
+                    let (l, r) = (Self.rank(lhs.element, in: league),
+                                  Self.rank(rhs.element, in: league))
                     guard let l, let r, l != r else { return lhs.offset < rhs.offset }
                     return l > r
                 }
                 .map(\.element),
             league: league)
+    }
+
+    /// How a league table ranks rows it merged from its conferences: win
+    /// percentage where the league keeps one, standings points where it
+    /// keeps those instead.
+    ///
+    /// The NHL ships no `winpercent` at all, so every comparison fell to
+    /// the source-order tiebreak and the "NHL" table came back East's
+    /// seeds then West's — a table calling itself a ranking while ranking
+    /// nothing. Points is what the NHL's own league view sorts on.
+    private static func rank(_ entry: ConferenceStanding, in league: League) -> Double? {
+        league == .nhl ? entry.points.map(Double.init) : entry.winPercent
+    }
+
+    /// The division tables a page shows at Division scope, out of every
+    /// division its league has.
+    ///
+    /// Three different questions wearing one scope. A **league's** page
+    /// shows them all. A **conference's** page shows the ones under it. A
+    /// **division's** own page shows *itself* — it is one of these tables
+    /// rather than a parent of them, and asking for its children finds
+    /// nothing, which is how every division page said "Standings TBA"
+    /// while the row that pushed it was teasing that division's leader.
+    func divisionTables(for conference: ConferenceID,
+                        isLeagueWide: Bool) -> [ConferenceStandings] {
+        guard !isLeagueWide else { return self }
+        if let own = first(where: { $0.conference == conference }) { return [own] }
+        return filter { $0.parentId == conference.id && $0.league == conference.league }
     }
 
     /// One row per conference, divisions folded into their parent — the Sun
@@ -172,7 +214,11 @@ nonisolated struct ConferenceStandings: Identifiable, Hashable, Sendable {
     var leader: ConferenceStanding? {
         guard !spansDivisions,
               let first = entries.first,
-              let record = first.conferenceRecord, record != "0-0" else { return nil }
+              // Asks the question rather than testing one league's field:
+              // an NHL row has no conference record at all, so the old
+              // `conferenceRecord != "0-0"` was nil there and every hockey
+              // card would have hidden its leader forever.
+              first.hasStartedInGroupPlay else { return nil }
         return first
     }
 

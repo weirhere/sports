@@ -59,7 +59,7 @@ struct ScoresHeader: View {
 
     private var wordmark: some View {
         HStack(spacing: Spacing.xs + 2) {
-            Image(systemName: "football.fill")
+            Image(systemName: "sportscourt.fill")
                 .font(.system(size: 15, weight: .semibold))
             Text("StatSide")
                 .font(.system(size: 17, weight: .heavy))

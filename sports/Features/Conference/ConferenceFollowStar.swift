@@ -10,6 +10,15 @@ struct ConferenceFollowStar: View {
 
     @Environment(FollowingStore.self) private var following
 
+    /// The width every trailing control on the tables hub centres in.
+    static let controlColumn: CGFloat = 34
+
+    /// How far that column sits outside the row's own trailing padding
+    /// (Andy, 2026-09-09: "move both the chevrons and the stars to the
+    /// right by 4px"). Negative padding rather than a narrower column, so
+    /// the 34pt tap target survives the nudge.
+    static let controlNudge: CGFloat = -4
+
     var body: some View {
         Button {
             following.toggleConference(conference)
@@ -17,10 +26,13 @@ struct ConferenceFollowStar: View {
             Image(systemName: following.isFollowingConference(conference) ? "star.fill" : "star")
                 .font(.system(size: 16))
                 .foregroundStyle(.textPrimary)
-                // Trailing-aligned so the star's right edge sits on the same
-                // trailing line as the accordion chevrons; the 34pt frame is
-                // the tap target, extending inward.
-                .frame(width: 34, height: 34, alignment: .trailing)
+                // Centred in the column the accordion chevrons share, so
+                // the two line up down the middle rather than along their
+                // right edges — a star is wider than a chevron, so edge
+                // alignment left their centres apart (Andy, 2026-09-09).
+                // The 34pt frame is also the tap target.
+                .frame(width: Self.controlColumn, height: 34)
+                .padding(.trailing, Self.controlNudge)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

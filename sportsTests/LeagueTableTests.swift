@@ -88,7 +88,9 @@ import Testing
         #expect(Conference.chain(for: .nfl(3)) == [.nfl(3), .nfl(7), .nfl(9)])
         #expect(Conference.chain(for: .nfl(7)) == [.nfl(7), .nfl(9)])
         #expect(Conference.chain(for: .nfl(9)) == [.nfl(9)])
-        // College football nests nothing, so a conference is the chain.
-        #expect(Conference.chain(for: .cfb(8)) == [.cfb(8)])
+        // College football nests no divisions *under* a conference, but
+        // since 2026-09-09 a conference sits inside one — FBS or FCS —
+        // which is what lets a follow there claim its games.
+        #expect(Conference.chain(for: .cfb(8)) == [.cfb(8), Conference.divisionRoot(.fbs)])
     }
 }

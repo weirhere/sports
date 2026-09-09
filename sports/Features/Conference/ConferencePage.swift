@@ -38,7 +38,9 @@ struct ConferencePage: View {
     /// The Postseason tab's round. Session-scoped like the team filter,
     /// and guarded the same way — see `activePostseasonRound`.
     @State private var postseasonRound: String?
-    @State private var selectedYear = CFBSeason.year()
+    /// Seeded in `init` from the page's own league — a college-football
+    /// rollover applied to a hockey page would call June "next season".
+    @State private var selectedYear: Int
     /// The Games tab's team filter — a member's team id, nil for the whole
     /// slate. Kept across season switches: `activeTeamFilter` drops it
     /// wherever the team isn't in that season's conference, so flipping to
@@ -48,7 +50,9 @@ struct ConferencePage: View {
     /// How the Games tab heads its cards. Weeks is the season's own clock
     /// and stays the default; Date is the other answer, and both off is
     /// one chronological card (Andy, 2026-09-05).
-    @State private var grouping: ConferenceSlate.Grouping = .week
+    /// Seeded in `init`: Weeks where the league has them, Date where it
+    /// doesn't.
+    @State private var grouping: ConferenceSlate.Grouping
     /// How wide the Standings tab tables its teams — the whole league, its
     /// conferences, or its divisions (Andy, 2026-09-06). Session-scoped
     /// like the season chip and the team filter beside it.
@@ -69,8 +73,23 @@ struct ConferencePage: View {
 
     /// Whether this page is the whole league rather than one of its
     /// conferences — the NFL's 32-team table (Andy, 2026-09-05).
+    /// Whether this page is the root of a list of conferences rather than
+    /// one of them — a league's own table, or college football's FBS and
+    /// FCS, which lead their eleven and fourteen the same way.
     private var isLeagueWide: Bool {
         destination.conferenceId == Conference.leagueWideId(in: destination.league)
+            || Conference.isDivisionRoot(destination.conferenceId, in: destination.league)
+    }
+
+    /// The conferences this page contains, in browse order — a league's
+    /// two, or a college-football division's eleven or fourteen.
+    private var memberConferenceIds: [Int] {
+        if let division = Conference.division(for: destination.conferenceId,
+                                              in: destination.league),
+           Conference.isDivisionRoot(destination.conferenceId, in: destination.league) {
+            return Conference.orderedIds(in: division)
+        }
+        return Conference.topLevelIds(in: destination.league)
     }
 
     /// Scoped to this conference's league: group id 8 is the SEC in
@@ -89,7 +108,7 @@ struct ConferencePage: View {
     /// In-progress games for the standings dots — current season only; a
     /// past season's table gets no live claims.
     private var liveGames: [Game] {
-        guard selectedYear == CFBSeason.year() else { return [] }
+        guard selectedYear == currentSeasonYear else { return [] }
         return liveBoard?.boardGames.filter(\.isLive) ?? []
     }
 
@@ -101,6 +120,11 @@ struct ConferencePage: View {
         // The widest view of the page's own level: the league's table on
         // the league page, its 16 on a conference page.
         _scope = State(initialValue: StandingsScope.default(for: destination.conference))
+        _selectedYear = State(initialValue: SeasonYear.year(for: destination.league))
+        // Weeks is a football clock. The NBA and NHL send `week: null` on
+        // every event, so a Weeks toggle there files a whole season under
+        // one unheaded card — Date leads instead.
+        _grouping = State(initialValue: destination.league.hasWeeks ? .week : .day)
     }
 
     /// The scopes this page can offer, from where it sits in its league's
@@ -130,7 +154,7 @@ struct ConferencePage: View {
                 // The league's own page has no conference of its own, so
                 // it takes its league's, in browse order (AFC, then NFC).
                 let tables = topLevelTables(in: all)
-                return Conference.topLevelIds(in: destination.league).compactMap { id in
+                return memberConferenceIds.compactMap { id in
                     tables.first { $0.id == id }
                 }
             }
@@ -143,10 +167,8 @@ struct ConferencePage: View {
             let own = mine.filter { $0.parentId == nil }
             return own.isEmpty ? mine : own
         case .division:
-            let divisions = divisionsByYear[selectedYear] ?? []
-            return isLeagueWide
-                ? divisions
-                : divisions.filter { $0.parentId == destination.conferenceId }
+            return (divisionsByYear[selectedYear] ?? [])
+                .divisionTables(for: destination.conference, isLeagueWide: isLeagueWide)
         }
     }
 
@@ -175,7 +197,12 @@ struct ConferencePage: View {
     /// any scope that draws more than one card — an unheaded pair of
     /// tables is two rankings with no way to tell which is which.
     private var showsTableHeaders: Bool {
-        isDivisional || standingsTables.count > 1
+        // More than one table needs telling apart. One table needs a
+        // header only when it isn't this page — a division's own page
+        // would otherwise head its single table with the name already in
+        // the hero two lines above it.
+        standingsTables.count > 1
+            || standingsTables.first.map { $0.conference != destination.conference } == true
     }
 
     /// Whether those tables are the conference's divisions rather than the
@@ -204,7 +231,7 @@ struct ConferencePage: View {
     /// skip the merge outright; nothing in them can be live.
     private var games: [Game]? {
         guard let slate = gamesByYear[selectedYear] else { return nil }
-        guard selectedYear == CFBSeason.year() else { return slate }
+        guard selectedYear == currentSeasonYear else { return slate }
         return Game.merging(slate, withLive: liveBoard?.boardGames ?? [])
     }
 
@@ -251,11 +278,15 @@ struct ConferencePage: View {
         activeTeamFilter.flatMap { id in filterableTeams.first { $0.id == id }?.location }
     }
 
-    /// Newest first, floored at 2014 — the CFP era, matching the Scores and
-    /// TeamPage selectors.
+    /// Newest first, floored at the league's own floor — the CFP era for
+    /// all four, matching the TeamPage selector.
     private var availableSeasons: [Int] {
-        Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+        Array(stride(from: currentSeasonYear,
+                     through: destination.league.seasonFloor, by: -1))
     }
+
+    /// The season "now" belongs to, on this page's league's clock.
+    private var currentSeasonYear: Int { SeasonYear.year(for: destination.league) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -354,7 +385,7 @@ struct ConferencePage: View {
             // with the page's identity rather than above one pane's cards.
             // Declaration order is left-to-right — season, then follow.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: destination.league,
                                style: .bar, onSelect: { select(year: $0) })
                 ConferenceFollowPill(conference: destination.conference)
             }
@@ -367,6 +398,59 @@ struct ConferencePage: View {
     /// Just the identity now — the tab row moved into `pinnedControls`
     /// so it can stick (Andy, 2026-09-05). This block is what scrolls
     /// away and hands the nav bar its title.
+    /// The line under the hero title: the league this page sits inside,
+    /// and how many teams the page holds.
+    ///
+    /// The league half is a link (Andy, 2026-09-09: "an affordance to
+    /// easily and quickly get to the league page"). A division is two
+    /// rungs down from its league and the only way back was the tables
+    /// hub — TeamPage has had exactly this line, pointing one rung up,
+    /// since its hero landed.
+    ///
+    /// College football gets no link and needs none: its conferences sit
+    /// directly under a division of the sport, not under a league table,
+    /// so `leagueWideId` is nil there and the line is just the count.
+    @ViewBuilder
+    private var subtitle: some View {
+        if let league = parentLeagueDestination {
+            HStack(spacing: Spacing.xs) {
+                NavigationLink(value: league) {
+                    HeaderLinkBadge(title: league.name)
+                }
+                .buttonStyle(SwipeSafeButtonStyle())
+                .accessibilityLabel(league.name)
+                .accessibilityHint("Opens the league's standings")
+                if showsTeamCount {
+                    Text("\(teamCount) teams")
+                        .font(.chipEmphasis)
+                        .foregroundStyle(.textSecondary)
+                }
+            }
+        } else if showsTeamCount {
+            Text("\(teamCount) teams")
+                .font(.chipEmphasis)
+                .foregroundStyle(.textSecondary)
+        }
+    }
+
+    /// Whether the count earns its place. A division is five teams and the
+    /// table under it is five rows — the number is right there (Andy,
+    /// 2026-09-09). A conference's sixteen and a league's thirty-two are
+    /// not countable at a glance, so those keep it.
+    private var showsTeamCount: Bool {
+        teamCount > 0
+            && Conference.tier(for: destination.conferenceId,
+                               in: destination.league) != .division
+    }
+
+    /// The list this page belongs to: a pro league's whole-league table,
+    /// or — since 2026-09-09 — the college-football division a conference
+    /// plays in, so the SEC can say FBS and get there.
+    private var parentLeagueDestination: ConferenceDestination? {
+        guard let id = Conference.root(above: destination.conference) else { return nil }
+        return ConferenceDestination(conference: id, name: Conference.name(for: id))
+    }
+
     private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
@@ -382,11 +466,7 @@ struct ConferencePage: View {
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    if teamCount > 0 {
-                        Text("\(teamCount) teams")
-                            .font(.chipEmphasis)
-                            .foregroundStyle(.textSecondary)
-                    }
+                    subtitle
                 }
                 Spacer(minLength: 0)
             }
@@ -394,6 +474,8 @@ struct ConferencePage: View {
             .padding(.top, Spacing.md)
             // The gap the tab row's own top padding used to make.
             .padding(.bottom, Spacing.sm)
+            // Matching TeamPage's identity block, whose template this is.
+            .padding(.vertical, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.bgCard)
@@ -442,8 +524,23 @@ struct ConferencePage: View {
     /// conference whose teams made no bowl, and every season before
     /// December, show two tabs exactly as they always did. A tab that would
     /// open on "no games" is worse than no tab.
+    ///
+    /// Games only where a whole season is affordable to fetch. College
+    /// football's is ~950 events, which one `dates=` window carries; the
+    /// NBA's is ~1,300 and it does not — probed live 2026-09-08, a
+    /// season-long request returns exactly 900 events and 12 MB, silently
+    /// truncating in February, and `groups=` is ignored outside football
+    /// so there is no narrow fetch to fall back on. A team's season is
+    /// affordable at any size, so team pages keep their Games tab and
+    /// conference pages don't.
     private var availableTabs: [Tab] {
-        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        guard destination.league.canTableAWholeSeason else {
+            // A rolling window is the only slate these leagues can afford.
+            // A past season gets one too (Andy, 2026-09-09) — anchored at
+            // its opening rather than at today, which is outside it.
+            return [.standings, .games]
+        }
+        return postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
     }
 
     /// The postseason is already in hand: the Games tab fetches the whole
@@ -491,7 +588,8 @@ struct ConferencePage: View {
                             onToggle: { toggle(grouping: $0) },
                             teams: filterableTeams,
                             teamSelection: activeTeamFilter,
-                            onSelectTeam: { teamFilter = $0 })
+                            onSelectTeam: { teamFilter = $0 },
+                            league: destination.league)
         } else if availableScopes.count > 1 {
             // The Standings tab's own control: how wide the table is
             // (Andy, 2026-09-06). Only the NFL's pages have one — college
@@ -572,6 +670,31 @@ struct ConferencePage: View {
 
     // MARK: - Standings
 
+    /// A table's card header, and the way into that table's own page
+    /// (Andy, 2026-09-09) — the league page lists eight divisions, and
+    /// each card's title was the only thing naming a page you couldn't
+    /// get to from it. The same rule the Scores accordion headers follow:
+    /// the name of a group is the route to it.
+    ///
+    /// Not a link when the card *is* this page's own group — a division's
+    /// page heads its one table with its own name, and a link there would
+    /// go nowhere.
+    @ViewBuilder
+    private func tableHeader(_ table: ConferenceStandings) -> some View {
+        let title = table.divisionName(under: destination.name)
+        if let id = table.conference, id != destination.conference,
+           Conference.isKnown(id.id, in: id.league) {
+            NavigationLink(value: ConferenceDestination(conference: id,
+                                                        name: Conference.name(for: id),
+                                                        highlightTeamId: destination.highlightTeamId)) {
+                CardHeader(title: title, isLink: true)
+            }
+            .buttonStyle(SwipeSafeButtonStyle())
+        } else {
+            CardHeader(title: title)
+        }
+    }
+
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29).
     private var standingsCard: some View {
@@ -585,7 +708,7 @@ struct ConferencePage: View {
                 ForEach(standingsTables, id: \.name) { table in
                     VStack(spacing: 0) {
                         if showsTableHeaders {
-                            CardHeader(title: table.divisionName(under: destination.name))
+                            tableHeader(table)
                         }
                         StandingsList(
                             entries: table.entries,
@@ -703,12 +826,58 @@ struct ConferencePage: View {
         gamesLoadingYears.insert(year)
         defer { gamesLoadingYears.remove(year) }
         do {
-            gamesByYear[year] = try await client.conferenceGames(
-                conferenceId: destination.conferenceId,
-                year: year == CFBSeason.year() ? nil : year)
+            gamesByYear[year] = destination.league.canTableAWholeSeason
+                ? try await client.conferenceGames(
+                    conferenceId: destination.conferenceId,
+                    year: year == currentSeasonYear ? nil : year)
+                : try await rollingGames()
             gamesFailedYears.remove(year)
         } catch {
             gamesFailedYears.insert(year)
         }
     }
+
+    /// The slate for a league whose season is too big to fetch: one
+    /// `dates=` window around today, narrowed to this page's teams.
+    ///
+    /// ESPN ignores `groups=` outside football, so the narrowing happens
+    /// here — through the same rule that decides whether a followed table
+    /// claims a game, so a division's page and a division follow can never
+    /// disagree about which games are its. A league-wide page keeps them
+    /// all, because every team's chain reaches its league.
+    private func rollingGames() async throws -> [Game] {
+        let calendar = Calendar.current
+        let league = destination.league
+        let window = league.gamesWindow
+        let span = SeasonSpan.days(of: league, year: selectedYear, calendar: calendar)
+        let table = FollowedTable.conference(destination.conference)
+        // The current season reads from around today; a finished one reads
+        // from its opening, because "a week back" is nowhere near it.
+        var start = selectedYear == currentSeasonYear
+            ? calendar.date(byAdding: .day, value: -window.back,
+                            to: calendar.startOfDay(for: .now)) ?? .now
+            : span.lowerBound
+        // Walk forward a window at a time until one has games in it, the
+        // way the day strip's own `firstDayWithGames` probe does. In
+        // September the NBA's next game is three weeks past the end of the
+        // first window — a tab that says "Schedule TBA" three weeks before
+        // tip-off is answering the wrong question.
+        for _ in 0..<Self.rollingWindowProbes {
+            guard start <= span.upperBound,
+                  let end = calendar.date(byAdding: .day,
+                                          value: window.back + window.forward, to: start)
+            else { return [] }
+            let board = try await client.scoreboard(days: start...min(end, span.upperBound),
+                                                    divisions: [])
+            let games = board.games.filter(table.matches)
+            if !games.isEmpty { return games }
+            start = end
+        }
+        return []
+    }
+
+    /// How many windows forward the Games tab will look before giving up.
+    /// One in season; the offseason costs at most this many, and only
+    /// until the schedule starts.
+    private static let rollingWindowProbes = 4
 }

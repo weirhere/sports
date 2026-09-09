@@ -86,11 +86,19 @@ struct TeamPage: View {
         currentSeasonYear.flatMap { schedules[$0] }
     }
 
-    /// Newest first, floored at 2014 — the CFP era, matching the Scores
-    /// header's selector.
+    /// Newest first, floored at the league's own floor — the CFP era for
+    /// all four, matching the ConferencePage selector.
     private var availableSeasons: [Int] {
-        Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+        Array(stride(from: seasonNow, through: pageLeague.seasonFloor, by: -1))
     }
+
+    /// The season "now" belongs to, on this page's league's clock. A
+    /// college-football rollover applied to a hockey page would call June
+    /// "next season" while the Stanley Cup was still being played for.
+    ///
+    /// Distinct from `currentSeasonYear`, which is the season the *loaded
+    /// schedule* turned out to describe.
+    private var seasonNow: Int { SeasonYear.year(for: pageLeague) }
 
     /// The selected season's payload wins (groups is season-scoped, so a
     /// realignment year reads correctly under the season chip), then the
@@ -301,6 +309,11 @@ struct TeamPage: View {
             .padding(.top, Spacing.md)
             // The gap the tab row's own top padding used to make.
             .padding(.bottom, Spacing.sm)
+            // 8pt more on each side of the identity block (Andy,
+            // 2026-09-09): the mark, the name and the badges were sitting
+            // tight against the bar above and the tabs below, and the
+            // header reads as its own band with the room.
+            .padding(.vertical, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The strip above — through the bar and the top bounce — is
@@ -372,36 +385,76 @@ struct TeamPage: View {
             .frame(width: 56, height: 56)
     }
 
-    /// The conference name; the record moved into Overview's Record card,
-    /// and the placement string into the Standings tab, where it's a table
-    /// instead of a claim. Links to the full conference page when there is one.
+    /// Where this team sits, and the way there: its own group, then the
+    /// league that group belongs to.
+    ///
+    /// Both rungs are links (Andy, 2026-09-09: "include what league
+    /// they're a part of (not just what division) … link to that league
+    /// like we do for college football conferences"). A pro team's group
+    /// is its *division*, which named a race with no route to the league
+    /// above it — and the line linked at all only for college football,
+    /// because the gate asked whether the id had an FBS/FCS division
+    /// rather than whether it had a page.
+    ///
+    /// College football is unchanged: its conferences sit under a division
+    /// of the sport rather than a league table, so there is no second rung
+    /// and the line stays one link.
     @ViewBuilder
     private var conferenceLine: some View {
-        // Both divisions link now: the conference page fetches standings
-        // for its own division, and ESPN serves its Games tab off the same
-        // `groups={id}` scoreboard call either way (probed 2026-09-03:
-        // Big Sky 2026 returns 96 events). An id we can't name still
-        // renders as plain text — there's no page to send it to.
         let label = resolvedConference.map { Conference.name(for: $0) } ?? ""
-        if let id = resolvedConference, Conference.division(for: id.id, in: id.league) != nil {
-            NavigationLink(value: ConferenceDestination(conference: id,
-                                                        name: Conference.name(for: id),
-                                                        highlightTeamId: team.id)) {
-                HStack(spacing: Spacing.xs) {
-                    Text(label)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+        HStack(spacing: Spacing.xs) {
+            if let id = resolvedConference, Conference.isKnown(id.id, in: id.league) {
+                // Widest first in the pro leagues — [NBA] [Atlantic] —
+                // because the league is the identity and the division is
+                // the detail inside it.
+                //
+                // College football reads the other way (Andy, 2026-09-09):
+                // Miami is an ACC team that happens to play in FBS, not an
+                // FBS team that happens to be in the ACC. The conference is
+                // the identity there and the subdivision is the
+                // classification around it, so it goes second.
+                if pageLeague.hasCollegeDivisions {
+                    groupLink(id, label: label)
+                    leagueDestination.map(leagueLink)
+                } else {
+                    leagueDestination.map(leagueLink)
+                    groupLink(id, label: label)
                 }
-                .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
+            } else if !label.isEmpty {
+                // An id we can't name renders as plain text — there's no
+                // page to send it to.
+                Text(label)
+                    .font(.chipEmphasis)
+                    .foregroundStyle(.textSecondary)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("View conference standings")
-        } else if !label.isEmpty {
-            Text(label)
-                .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
         }
+    }
+
+    private func groupLink(_ id: ConferenceID, label: String) -> some View {
+        NavigationLink(value: ConferenceDestination(conference: id,
+                                                    name: Conference.name(for: id),
+                                                    highlightTeamId: team.id)) {
+            HeaderLinkBadge(title: label)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("View standings")
+    }
+
+    private func leagueLink(_ destination: ConferenceDestination) -> some View {
+        NavigationLink(value: destination) {
+            HeaderLinkBadge(title: destination.name)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("View league standings")
+    }
+
+    /// The list this team's group sits in: a pro league's whole-league
+    /// table, or the college-football division its conference plays in.
+    private var leagueDestination: ConferenceDestination? {
+        guard let own = resolvedConference,
+              let id = Conference.root(above: own) else { return nil }
+        return ConferenceDestination(conference: id, name: Conference.name(for: id),
+                                     highlightTeamId: team.id)
     }
 
     private var tabRow: some View {
@@ -439,7 +492,7 @@ struct TeamPage: View {
     // MARK: - Tab content
 
     /// The chip's year before the first schedule load pins it.
-    private var standingsYear: Int { selectedYear ?? CFBSeason.year() }
+    private var standingsYear: Int { selectedYear ?? seasonNow }
     /// The tables with something in them — one, or a division each.
     private var selectedStandings: [ConferenceStandings] {
         tables(for: scope).filter { !$0.entries.isEmpty }
@@ -519,7 +572,7 @@ struct TeamPage: View {
     @ViewBuilder
     private var seasonChip: some View {
         if let selectedYear, tab != .overview {
-            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+            SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
                            style: .bar, onSelect: { select(year: $0) })
         }
     }
@@ -688,7 +741,7 @@ struct TeamPage: View {
             let loaded = try await client.teamSchedule(teamId: team.id)
             // Register the result under the year it really is, so
             // explicitly re-picking the fallback season is a cache hit.
-            let year = loaded.year ?? CFBSeason.year()
+            let year = loaded.year ?? seasonNow
             schedules[year] = loaded
             currentSeasonYear = year
             selectedYear = year

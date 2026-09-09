@@ -19,7 +19,8 @@ struct PollFollowStar: View {
                 .foregroundStyle(.textPrimary)
                 // The conference star's frame, so the hub's rows share one
                 // trailing line.
-                .frame(width: 34, height: 34, alignment: .trailing)
+                .frame(width: ConferenceFollowStar.controlColumn, height: 34)
+                .padding(.trailing, ConferenceFollowStar.controlNudge)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

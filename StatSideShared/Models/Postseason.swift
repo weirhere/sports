@@ -87,6 +87,16 @@ nonisolated enum Postseason {
         switch league {
         case .nfl: nflName(week: game.weekNumber)
         case .collegeFootball: collegeName(headline: game.headline)
+        // The NBA and NHL playoffs are best-of-seven *series*, and this
+        // bracket models single-elimination games: `feeders(of:from:)`
+        // reads advancement off "a completed game's winner turns up in a
+        // later game", which is true of every game of a series against
+        // the same opponent. Naming no round means `rounds(from:league:)`
+        // produces none and the Postseason tab never appears — the
+        // deferral made explicit rather than accidental. The data is
+        // there when we build it: playoff games carry
+        // `competitions[].series` with each side's wins.
+        case .nba, .nhl: nil
         }
     }
 

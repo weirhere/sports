@@ -4,9 +4,9 @@ import SwiftUI
 /// quiet metric rows. Strings come straight from the standings payload (or
 /// the schedule's derived record for past seasons) — never recomputed here.
 struct TeamRecordCard: View {
-    /// Which league's vocabulary the in-group row uses — "Conference" in
-    /// college football, "Division" in the NFL, whose payload carries a
-    /// division record and no conference one.
+    /// Which league's vocabulary the in-group row uses. Every league that
+    /// carries an in-group record calls it a conference record; the NHL
+    /// carries none at all, so the row is simply absent there.
     var league: League = .collegeFootball
     /// Nil hides the row — past seasons and no-conference teams show
     /// overall only.
@@ -17,14 +17,17 @@ struct TeamRecordCard: View {
     /// something once the OVERALL line does — a September team legitimately
     /// sits 0-0 in conference while its overall record already talks.
     static func hasContent(conferenceRecord: String?, overallRecord: String?) -> Bool {
-        overallRecord != nil && overallRecord != "0-0"
+        guard let overallRecord else { return false }
+        // "0-0" in football, "0-0-0" in hockey — a season that hasn't
+        // started has nothing to say either way.
+        return overallRecord != "0-0" && overallRecord != "0-0-0"
     }
 
     var body: some View {
         VStack(spacing: 0) {
             CardHeader(title: "Record")
             if let conferenceRecord {
-                row(League.inGroupRecordLabel(league), conferenceRecord)
+                row(inGroupLabel, conferenceRecord)
                 if overallRecord != nil {
                     Divider().overlay(Color.divider)
                         .padding(.leading, Spacing.lg)
@@ -35,6 +38,15 @@ struct TeamRecordCard: View {
             }
         }
         .padding(.bottom, Spacing.xs)
+    }
+
+    /// The long form of the league's in-group standings column, for a
+    /// card row rather than a table caption.
+    private var inGroupLabel: String {
+        league.standingsColumns
+            .first { $0.field == .inGroupRecord }
+            .map { $0.spoken.replacingOccurrences(of: "in ", with: "").capitalized }
+            ?? "Conference"
     }
 
     private func row(_ label: String, _ value: String) -> some View {

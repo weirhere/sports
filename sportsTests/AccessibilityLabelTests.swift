@@ -304,6 +304,66 @@ private func game(status: GameStatus,
         #expect(row.accessibilitySummary == "SEC, led by Georgia at 7 and 1")
     }
 
+    /// Hockey ships no conference record at all, so the teaser falls back
+    /// to the overall one — otherwise every NHL row on the tables hub sits
+    /// bare while the ones above it read fine.
+    @Test func aLeagueWithNoConferenceRecordSpeaksItsOverallOne() {
+        let carolina = Team(id: "7", location: "Carolina", name: "Hurricanes",
+                            abbreviation: "CAR", displayName: "Carolina Hurricanes",
+                            shortDisplayName: "Carolina", logoURL: nil,
+                            conferenceId: 32, league: .nhl)
+        let row = ConferenceListRow(conference: ConferenceStandings(
+            id: 32, name: "Atlantic",
+            entries: [ConferenceStanding(team: carolina, conferenceRecord: nil,
+                                         overallRecord: "53-22-7", streak: nil,
+                                         gamesPlayed: 82)],
+            league: .nhl, parentId: 7))
+        #expect(row.accessibilitySummary == "Atlantic, led by Carolina at 53 and 22 and 7")
+    }
+
+    /// A followed team says which league it plays in, not just which
+    /// group: both basketball and hockey call a conference Eastern, so a
+    /// card of followed teams was two identical subtitles for teams in
+    /// different sports.
+    @Test func aFollowedTeamNamesItsLeagueAndItsGroup() {
+        func card(_ id: String, _ location: String, in league: League,
+                  conference: Int) -> FollowedTeamCard {
+            FollowedTeamCard(team: Team(id: id, location: location, name: nil,
+                                        abbreviation: nil, displayName: location,
+                                        shortDisplayName: nil, logoURL: nil,
+                                        conferenceId: conference, league: league))
+        }
+        #expect(card("5", "Cleveland", in: .nba, conference: 5).spokenLabel
+                == "Cleveland, NBA Eastern")
+        #expect(card("20", "Tampa Bay", in: .nhl, conference: 7).spokenLabel
+                == "Tampa Bay, NHL Eastern")
+        #expect(card("194", "Ohio State", in: .collegeFootball, conference: 5).spokenLabel
+                == "Ohio State, CFB Big Ten")
+        // The NFL's group is its division, and a team the tables don't
+        // know keeps its name alone.
+        #expect(card("2", "Buffalo", in: .nfl, conference: 8).spokenLabel
+                == "Buffalo, NFL AFC East")
+        #expect(card("179", "Tennessee State", in: .collegeFootball,
+                     conference: 999).spokenLabel == "Tennessee State")
+    }
+
+    /// A whole-league row teases nothing: its leader is only the best
+    /// record in the sport, and the number it used to show was an
+    /// in-group record on a row that spans every group.
+    @Test func aWholeLeagueRowSpeaksJustItsName() {
+        let okc = Team(id: "25", location: "Oklahoma City", name: "Thunder",
+                       abbreviation: "OKC", displayName: "Oklahoma City Thunder",
+                       shortDisplayName: "Thunder", logoURL: nil,
+                       conferenceId: 11, league: .nba)
+        let row = ConferenceListRow(conference: ConferenceStandings(
+            id: Conference.leagueWideId(in: .nba), name: "NBA",
+            entries: [ConferenceStanding(team: okc, conferenceRecord: "41-11",
+                                         overallRecord: "64-18", streak: nil,
+                                         gamesPlayed: 82)],
+            league: .nba))
+        #expect(row.accessibilitySummary == "NBA")
+    }
+
     @Test func preseasonSpeaksJustTheName() {
         let row = ConferenceListRow(conference: conference(entries: [
             ConferenceStanding(team: georgia, conferenceRecord: "0-0",

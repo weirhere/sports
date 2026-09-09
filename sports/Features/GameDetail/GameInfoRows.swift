@@ -21,10 +21,19 @@ struct GameInfoRows: View {
     /// `MatchupStandings.hasContent` precedent.
     static func hasVenueContent(_ summary: GameSummary) -> Bool {
         summary.venue != nil || summary.attendance != nil
-            || summary.venueCapacity != nil || summary.grassSurface != nil
+            || summary.venueCapacity != nil || surface(of: summary) != nil
     }
 
-    private var surface: String? { summary.grassSurface.map { $0 ? "Grass" : "Turf" } }
+    /// Grass or turf — and nothing at all for a sport played indoors on a
+    /// floor or on ice, where ESPN still ships `grass: false` and we were
+    /// rendering it as "Turf" on a hockey rink.
+    static func surface(of summary: GameSummary) -> String? {
+        let league = (summary.home ?? summary.away)?.team.league ?? .collegeFootball
+        guard league.playsOnASurface else { return nil }
+        return summary.grassSurface.map { $0 ? "Grass" : "Turf" }
+    }
+
+    private var surface: String? { Self.surface(of: summary) }
 
     private var weatherLine: String {
         [summary.weatherTemperature.map { "\($0)°" }, summary.weatherCondition]

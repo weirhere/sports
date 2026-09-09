@@ -25,6 +25,11 @@ nonisolated struct GameSummary: Sendable {
     /// Defaulted so CFBD (no player feed) and every fixture construct
     /// unchanged — empty is what hides the Box score tab.
     var boxScore: [BoxScore] = []
+    /// The flat play feed, oldest first. Only populated for leagues with
+    /// no drives to group by — football's plays live inside `drives`, and
+    /// carrying them twice would print the same rows in two places.
+    /// Defaulted so every fixture and the CFBD mapper construct unchanged.
+    var plays: [Play] = []
     let venue: String?
     let attendance: Int?
     /// The pre-game info card's extras — every field optional, defaulted
@@ -89,6 +94,9 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// change in the running score. Nil on every non-scoring play, and on
     /// a scoring play whose numbers ESPN didn't ship.
     var scoringSide: ScoringSide? = nil
+    /// Whose play it was, where the payload says. Only the flat feed
+    /// carries it — a drive's plays belong to the drive's offense.
+    var teamId: String? = nil
 }
 
 /// Which side of the matchup a scoring play's points belong to. Read off

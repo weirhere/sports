@@ -48,14 +48,32 @@ nonisolated struct LossyArray<Element: Decodable>: Decodable {
 // MARK: - Scoreboard
 
 nonisolated struct ScoreboardDTO: Decodable {
-    let leagues: [LeagueDTO]?
+    /// Lossy, like `events`: one league object we can't read must never
+    /// cost the whole slate.
+    let leagues: LossyArray<LeagueDTO>?
     let season: SeasonDTO?
     let week: WeekRefDTO?
     let events: LossyArray<EventDTO>?
 }
 
 nonisolated struct LeagueDTO: Decodable {
-    let calendar: [CalendarPeriodDTO]?
+    /// ESPN ships two different calendars under one key, and which one you
+    /// get depends on the league *and* the request.
+    ///
+    /// Football's is a list of labelled periods with week entries inside —
+    /// what `weekSlots` reads. Basketball's and hockey's is a flat list of
+    /// **ISO date strings**, one per game day (229 of them for a season),
+    /// because `calendarType` there is "day" rather than "list". A single
+    /// `dates=` request returns it; a date *range* returns an empty array,
+    /// which is why this shape stayed hidden until a one-day fixture was
+    /// captured.
+    ///
+    /// Lossy, so the string form decodes to no periods rather than
+    /// throwing. It threw before, and because `leagues` was a plain array
+    /// the throw took the entire scoreboard with it — every event of a
+    /// single-day NBA or NHL request, lost to a field nothing reads for
+    /// those leagues.
+    let calendar: LossyArray<CalendarPeriodDTO>?
 }
 
 nonisolated struct CalendarPeriodDTO: Decodable {
@@ -196,6 +214,18 @@ nonisolated struct LogoDTO: Decodable {
 nonisolated struct StandingsResponseDTO: Decodable {
     let name: String?
     let children: [StandingsGroupDTO]?
+    let season: StandingsSeasonDTO?
+}
+
+/// The season a standings response says it is for.
+///
+/// Its `year` cannot be trusted to describe the *numbers*: probed live
+/// 2026-09-08, ESPN's NBA standings stamp the upcoming 2026-27 season on
+/// a table still full of 2025-26 results. `startDate` can — a season that
+/// opens in three weeks has been played by nobody.
+nonisolated struct StandingsSeasonDTO: Decodable {
+    let year: Int?
+    let startDate: String?
 }
 
 nonisolated struct StandingsGroupDTO: Decodable {
@@ -354,6 +384,10 @@ nonisolated struct SummaryResponseDTO: Decodable {
     let boxscore: BoxscoreDTO?
     let scoringPlays: [ScoringPlayDTO]?
     let drives: DrivesDTO?
+    /// The flat play feed. Football nests its plays inside drives and
+    /// ships this too; basketball and hockey ship only this, because
+    /// neither has a possession long enough to be worth grouping by.
+    let plays: LossyArray<PlayDTO>?
     let leaders: LossyArray<SummaryTeamLeadersDTO>?
     let gameInfo: GameInfoDTO?
 }
@@ -390,6 +424,14 @@ nonisolated struct PlayDTO: Decodable {
     let homeScore: Int?
     let start: PlayEndpointDTO?
     let end: PlayEndpointDTO?
+    /// Who made the play. Football reads the side off the drive it sits
+    /// in; a flat feed has no drive, and a goals card with no mark beside
+    /// the row can't say whose goal it was.
+    let team: TeamRefDTO?
+}
+
+nonisolated struct TeamRefDTO: Decodable {
+    let id: String?
 }
 
 nonisolated struct PlayEndpointDTO: Decodable {

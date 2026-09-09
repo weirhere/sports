@@ -51,12 +51,35 @@ struct GameDetailScreen: View {
     private var availableTabs: [Tab] {
         guard let summary else { return [.summary] }
         var tabs: [Tab] = [.summary]
-        if !summary.drives.isEmpty || summary.currentDrive != nil { tabs.append(.plays) }
+        if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
         if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
         return tabs
     }
 
     private var showsTabs: Bool { availableTabs.count > 1 }
+
+    /// Football's plays live inside its drives; every other league's
+    /// arrive flat. Which list the Plays tab renders follows from that.
+    private func hasDrives(_ summary: GameSummary) -> Bool {
+        !summary.drives.isEmpty || summary.currentDrive != nil
+    }
+
+    private func hasScoringPlays(_ summary: GameSummary) -> Bool {
+        if hasDrives(summary) {
+            return !summary.drives.allSatisfy(\.scoringPlays.isEmpty)
+                || !(summary.currentDrive?.scoringPlays.isEmpty ?? true)
+        }
+        return summary.plays.contains(where: \.isScoringPlay)
+    }
+
+    private var gameLeague: League { game.home.team.league }
+
+    /// Whether a period past the overtime would be a shootout rather than
+    /// a second overtime. Hockey settles a regular-season tie that way and
+    /// a playoff game never does, so the label has to know which it is.
+    private var allowsShootout: Bool {
+        gameLeague == .nhl && game.seasonType != Postseason.seasonType
+    }
 
     /// Scoped to the game's league — the summary endpoint lives behind
     /// its own sport path, and event ids are fetched through it.
@@ -202,7 +225,13 @@ struct GameDetailScreen: View {
     /// Past-season games (pushed from a flipped team schedule) must not
     /// wear the current season's standings.
     private var isCurrentSeason: Bool {
-        game.date.map { CFBSeason.year(for: $0) == CFBSeason.year() } ?? false
+        // On the game's own league's clock: a March hockey game is this
+        // season's, where a college-football rollover would file it under
+        // last year's.
+        let league = game.home.team.league
+        return game.date.map {
+            SeasonYear.year(for: league, now: $0) == SeasonYear.year(for: league)
+        } ?? false
     }
 
     private var currentScores: [Int?] {
@@ -382,10 +411,19 @@ struct GameDetailScreen: View {
                         }
                     }
                     if summary.away?.linescores.isEmpty == false {
-                        card { LineScoreGrid(summary: summary) }
+                        card {
+                            LineScoreGrid(summary: summary, league: gameLeague,
+                                          allowsShootout: allowsShootout)
+                        }
                     }
-                    if !summary.scoringPlays.isEmpty {
-                        card(title: "Scoring") { ScoringPlaysList(summary: summary) }
+                    // "Scoring" in football, "Goals" in hockey, and no
+                    // card at all in basketball — ~98 buckets a game is
+                    // the box score with worse formatting.
+                    if let title = gameLeague.scoringCardTitle, !summary.scoringPlays.isEmpty {
+                        card(title: title) {
+                            ScoringPlaysList(summary: summary, league: gameLeague,
+                                             allowsShootout: allowsShootout)
+                        }
                     }
                     if !summary.teamStats.isEmpty {
                         card(title: "Team stats", subtitle: statsLegend(summary)) {
@@ -437,14 +475,21 @@ struct GameDetailScreen: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Spacing.sm)
-            if scoringOnly, summary.drives.allSatisfy({ $0.scoringPlays.isEmpty }),
-               summary.currentDrive?.scoringPlays.isEmpty ?? true {
+            if scoringOnly, !hasScoringPlays(summary) {
                 Text("No scoring plays yet.")
                     .font(.teamName)
                     .foregroundStyle(.textSecondary)
                     .padding(.vertical, Spacing.xl)
-            } else {
+            } else if hasDrives(summary) {
                 card { PlayByPlayList(summary: summary, scoringOnly: scoringOnly) }
+            } else {
+                // A league with no possessions to group by: the period is
+                // the only rung ESPN's flat feed carries.
+                card {
+                    PeriodPlayList(summary: summary, league: gameLeague,
+                                   allowsShootout: allowsShootout,
+                                   scoringOnly: scoringOnly)
+                }
             }
         }
         .padding(Spacing.sm)

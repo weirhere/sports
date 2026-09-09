@@ -7,6 +7,24 @@ import SwiftUI
 /// the two splitting one line into a pair of ellipses.
 struct ConferenceListRow: View {
     let conference: ConferenceStandings
+    /// What the row calls itself, where its own name would repeat
+    /// something already on screen — the whole-league table sitting inside
+    /// its league's own accordion, which otherwise reads "NHL" under a
+    /// header saying "NHL" (Andy, 2026-09-09).
+    var title: String? = nil
+    /// Whether the row teases its table's current leader.
+    ///
+    /// Off inside the tables hub's league accordions (Andy, 2026-09-09):
+    /// the list there is a way *into* eight or eleven tables, and a leader
+    /// beside every row is a column of numbers nobody is comparing —
+    /// they belong on the table the row opens. The Following cards keep
+    /// it, where a followed table is the thing itself rather than an index
+    /// entry for it.
+    var showsLeader: Bool = true
+    /// Off for a row that names a group nobody can follow — college
+    /// football's FBS and FCS, whose ids no team carries, so a star there
+    /// would set a follow that matched no game.
+    var showsFollow: Bool = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -24,7 +42,9 @@ struct ConferenceListRow: View {
                 // still inside the row — which a whole-card drag never
                 // leaves.
                 .buttonStyle(SwipeSafeButtonStyle())
-                ConferenceFollowStar(conference: id, conferenceName: conference.name)
+                if showsFollow {
+                    ConferenceFollowStar(conference: id, conferenceName: conference.name)
+                }
             } else {
                 // No id means no page and no follow — CFBD's unknown-name
                 // fallback. The row still lists the conference.
@@ -37,7 +57,8 @@ struct ConferenceListRow: View {
 
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
-            ConferenceLogo(url: Conference.logoURL(for: conference.conference))
+            ConferenceLogo(url: Conference.logoURL(for: conference.conference),
+                           league: conference.league)
             if isStacked {
                 VStack(alignment: .leading, spacing: 2) {
                     nameText
@@ -54,11 +75,18 @@ struct ConferenceListRow: View {
         .accessibilityLabel(accessibilitySummary)
     }
 
+    private var displayName: String { title ?? conference.name }
+
     private var nameText: some View {
-        Text(conference.name)
+        Text(displayName)
             .font(.teamName)
             .foregroundStyle(.textPrimary)
             .lineLimit(isStacked ? 2 : 1)
+            // The name is the row's identity; the teaser is a courtesy.
+            // Without this a long division name gave way first, so
+            // "Northwest (West)" clipped while the leader beside it sat
+            // whole.
+            .layoutPriority(1)
     }
 
     @ViewBuilder
@@ -71,18 +99,40 @@ struct ConferenceListRow: View {
         }
     }
 
+    /// The whole league standing as one table shows no teaser at all
+    /// (Andy, 2026-09-09). Its "leader" is only the best record in the
+    /// sport, which is not the question a league row is asked — and the
+    /// number it was showing was an *in-group* record on a row that spans
+    /// every group, so the NFL's read as a conference record and the
+    /// NBA's as a 41-11 that matched no column on the page it opens.
+    private var isLeagueWide: Bool {
+        Conference.tier(for: conference.id, in: conference.league) == .league
+    }
+
     /// "Ole Miss · 7-1" — the current leader, only once records exist.
     private var teaser: String? {
-        guard let leader = conference.leader,
-              let record = leader.conferenceRecord else { return nil }
+        guard showsLeader, !isLeagueWide,
+              let leader = conference.leader,
+              let record = leaderRecord(leader) else { return nil }
         return "\(leader.team.location) · \(record)"
     }
 
-    /// "SEC, led by Ole Miss at 7 and 1" — or just the name preseason.
+    /// The record a teaser shows: the in-group one where the league keeps
+    /// it, which is the number a table is sorted by in football and
+    /// basketball — and otherwise the overall one, because the NHL ships
+    /// no conference record at all and every hockey row would sit here
+    /// bare while the ones above it read fine.
+    private func leaderRecord(_ leader: ConferenceStanding) -> String? {
+        leader.conferenceRecord ?? leader.displayRecord
+    }
+
+    /// "SEC, led by Ole Miss at 7 and 1" — or just the name preseason,
+    /// and just the name for a whole-league row, which teases nothing.
     var accessibilitySummary: String {
-        guard let leader = conference.leader,
-              let record = leader.conferenceRecord else { return conference.name }
+        guard showsLeader, !isLeagueWide,
+              let leader = conference.leader,
+              let record = leaderRecord(leader) else { return displayName }
         let spoken = record.replacingOccurrences(of: "-", with: " and ")
-        return "\(conference.name), led by \(leader.team.location) at \(spoken)"
+        return "\(displayName), led by \(leader.team.location) at \(spoken)"
     }
 }

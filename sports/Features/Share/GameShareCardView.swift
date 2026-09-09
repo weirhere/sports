@@ -56,7 +56,7 @@ struct GameShareCardView: View {
 
             // Attribution lives on the card, mirroring ScoresHeader's wordmark.
             HStack(spacing: Spacing.xs + 2) {
-                Image(systemName: "football.fill")
+                Image(systemName: "sportscourt.fill")
                     .font(.system(size: 13, weight: .semibold))
                 Text("StatSide")
                     .font(.system(size: 15, weight: .heavy))

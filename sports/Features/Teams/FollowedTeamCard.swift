@@ -43,17 +43,34 @@ struct FollowedTeamCard: View {
         .cardSurface()
     }
 
-    /// "Buckeyes · Big Ten". Either half can be missing — an FCS visitor
-    /// carries no conference we know — and the separator goes with it.
+    /// "Buckeyes · CFB Big Ten". Either half can be missing — an FCS
+    /// visitor carries no conference we know — and the separator goes with
+    /// it.
     private var subtitle: String? {
         let parts = [team.name, groupName].compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// The group the team plays in. For the NFL that's the division: the
-    /// directory files NFL teams under their conference, so reading the
-    /// team's own `conferenceId` would only ever say AFC or NFC.
+    /// The group the team plays in, with the league in front of it (Andy,
+    /// 2026-09-09: "Cleveland Cavaliers are NBA Eastern. Tampa Bay
+    /// Lightning are NHL Eastern").
+    ///
+    /// The league is what makes the group a name rather than a word. The
+    /// directory files basketball and hockey teams under their
+    /// *conference*, and both leagues call theirs Eastern and Western —
+    /// so a card of followed teams was two identical subtitles for teams
+    /// in different sports.
+    ///
+    /// For the NFL the group is the division: the directory files those
+    /// teams under their conference too, so the team's own `conferenceId`
+    /// would only ever say AFC or NFC.
     private var groupName: String? {
+        guard let group = rawGroupName else { return nil }
+        let league = team.league.shortName
+        return group.localizedCaseInsensitiveContains(league) ? group : "\(league) \(group)"
+    }
+
+    private var rawGroupName: String? {
         if team.league == .nfl,
            let division = Conference.division(forTeamId: team.id, in: .nfl) {
             return Conference.name(for: division, in: .nfl)
@@ -62,7 +79,10 @@ struct FollowedTeamCard: View {
         return Conference.name(for: team.conference)
     }
 
-    private var spokenLabel: String {
+    /// One sentence: "Cleveland, NBA Eastern". Internal, not private, so
+    /// the label shape is unit-testable — the other rows' labels are
+    /// reachable the same way.
+    var spokenLabel: String {
         let name = team.displayName ?? team.location
         guard let groupName else { return name }
         return "\(name), \(groupName)"

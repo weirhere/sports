@@ -174,7 +174,7 @@ final class NotificationScheduler {
             guard let date = game.date else { continue }
             try? await center.add(
                 id: id,
-                title: "Kickoff soon",
+                title: "\(game.home.team.league.startNoun) soon",
                 body: Self.reminderBody(for: game),
                 fireDate: date.addingTimeInterval(-Self.leadTime),
                 gameId: game.id
@@ -189,11 +189,15 @@ final class NotificationScheduler {
     static func reminderBody(for game: Game) -> String {
         let matchup = "\(game.away.team.location) at \(game.home.team.location)"
         let time = game.date.map { $0.formatted(date: .omitted, time: .shortened) }
+        // A football game kicks off, a basketball game tips off, and a
+        // hockey game drops the puck. The request-id prefix stays
+        // `kickoff.` — that's a persistence token, not copy.
+        let verb = game.home.team.league.startVerbPhrase
         var body = matchup
         if let time {
-            body += " kicks off at \(time)"
+            body += " \(verb) at \(time)"
         } else {
-            body += " kicks off soon"
+            body += " \(verb) soon"
         }
         if let broadcast = game.broadcast {
             let network = broadcast.split(separator: "/").first.map(String.init) ?? broadcast

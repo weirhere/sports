@@ -27,7 +27,7 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            SwiftUI.Tab("Scores", systemImage: "football", value: Tab.scores) {
+            SwiftUI.Tab("Games", systemImage: "sportscourt.fill", value: Tab.scores) {
                 ScoresScreen()
             }
             // "Tables", not "Rankings": the NFL has no poll, so half the

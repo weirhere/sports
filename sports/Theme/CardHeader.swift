@@ -8,6 +8,9 @@ struct CardHeader: View {
     /// Trailing context in meta type — e.g. Team stats' "UGA · TENN"
     /// column legend.
     var subtitle: String? = nil
+    /// Draws a trailing chevron, for a header the caller has wrapped in a
+    /// link — a card whose title is the way to that card's own page.
+    var isLink: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +23,11 @@ struct CardHeader: View {
                 if let subtitle {
                     Text(subtitle)
                         .font(.meta)
+                        .foregroundStyle(.textSecondary)
+                }
+                if isLink {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
                 }
             }

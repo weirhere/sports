@@ -25,6 +25,7 @@ struct AddTeamsSheet: View {
         NavigationStack {
             content
                 .background(Color.bgRecessed)
+                .navigationDestination(for: Team.self) { TeamPage(team: $0) }
                 .navigationTitle("Add teams")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -84,7 +85,8 @@ struct AddTeamsSheet: View {
     /// different job from the headings that came out.
     private func teamCards(_ teams: [Team], leagueTags: Bool = false) -> some View {
         ForEach(teams, id: \.followKey) { team in
-            TeamFollowRow(team: team, leagueTag: leagueTags ? team.league : nil)
+            TeamFollowRow(team: team, leagueTag: leagueTags ? team.league : nil,
+                          opensTeam: true)
                 // The rows carry a list row's 7pt; a card wants a card's height.
                 .padding(.vertical, Spacing.xs)
                 .cardSurface()
