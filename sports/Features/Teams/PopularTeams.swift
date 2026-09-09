@@ -10,8 +10,10 @@ import Foundation
 /// the app, not a ranking that claims to be anything else. Search is one
 /// keystroke away for everyone else.
 ///
-/// Ids are ESPN team ids, verified live against the standings payloads on
-/// 2026-09-05. An id the directory doesn't carry is simply skipped, so a
+/// Ids are ESPN team ids, read off the live `/teams` payloads rather than
+/// recalled — a wrong id is silently skipped, so the failure mode is an
+/// invisibly short sheet rather than anything that shows up in review.
+/// Football verified 2026-09-05, basketball and hockey 2026-09-08. An id the directory doesn't carry is simply skipped, so a
 /// realignment or a renamed franchise costs a row, never a crash.
 nonisolated enum PopularTeams {
     private static let ids: [League: [String]] = [
@@ -43,6 +45,30 @@ nonisolated enum PopularTeams {
             "2",     // Buffalo Bills
             "33",    // Baltimore Ravens
             "8",     // Detroit Lions
+        ],
+        .nba: [
+            "13",    // Los Angeles Lakers
+            "2",     // Boston Celtics
+            "9",     // Golden State Warriors
+            "18",    // New York Knicks
+            "4",     // Chicago Bulls
+            "14",    // Miami Heat
+            "20",    // Philadelphia 76ers
+            "7",     // Denver Nuggets
+            "6",     // Dallas Mavericks
+            "21",    // Phoenix Suns
+        ],
+        .nhl: [
+            "21",    // Toronto Maple Leafs
+            "13",    // New York Rangers
+            "1",     // Boston Bruins
+            "10",    // Montreal Canadiens
+            "4",     // Chicago Blackhawks
+            "5",     // Detroit Red Wings
+            "16",    // Pittsburgh Penguins
+            "6",     // Edmonton Oilers
+            "15",    // Philadelphia Flyers
+            "37",    // Vegas Golden Knights
         ],
     ]
 

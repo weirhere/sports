@@ -76,24 +76,42 @@ final class TeamDirectoryStore {
         guard conferences.isEmpty, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        // All three at once. Only the college-football FBS half is
+        // Every league at once. Only the college-football FBS half is
         // load-bearing: a directory without it isn't a directory, so its
-        // failure is the error. Losing the FCS half costs the FCS rows;
-        // losing the NFL half costs the NFL ones.
+        // failure is the error. Every other request costs only its own
+        // rows when it fails — losing hockey loses the hockey teams and
+        // nothing else.
+        //
+        // A task group rather than a hand-written `async let` per league,
+        // because the hand-written version is what stopped being true the
+        // moment a fourth league existed.
         let cfb = makeClient(.collegeFootball)
-        async let fcs = try? await cfb.conferences(in: .fcs)
-        async let nfl = try? await makeClient(.nfl).conferences(in: .fbs)
+        let makeClient = self.makeClient
+        let rest = Task {
+            await withTaskGroup(of: [ConferenceTeams].self) { group in
+                group.addTask { (try? await cfb.conferences(in: .fcs)) ?? [] }
+                for league in League.allCases where league != .collegeFootball {
+                    group.addTask {
+                        // The division argument is college football's own
+                        // axis; every other league ignores it.
+                        (try? await makeClient(league).conferences(in: .fbs)) ?? []
+                    }
+                }
+                return await group.reduce(into: [ConferenceTeams]()) { $0 += $1 }
+            }
+        }
         do {
             // Published the moment it lands, rather than after the slowest
-            // of three: browse and search are usable as soon as the FBS
+            // of five: browse and search are usable as soon as the FBS
             // half arrives, and adding a league must never make the
             // college-football half slower to appear.
             conferences = try await cfb.conferences(in: .fbs)
             lastError = nil
         } catch {
             lastError = "Couldn't load teams."
+            rest.cancel()
             return
         }
-        conferences += (await fcs ?? []) + (await nfl ?? [])
+        conferences += await rest.value
     }
 }

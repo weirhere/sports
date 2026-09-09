@@ -143,6 +143,50 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(sections.allSatisfy { $0.league != nil })
     }
 
+    /// Which shape a league takes is a property of the league, not a
+    /// branch per league — basketball and hockey stand as one section each
+    /// for exactly the reason the NFL does.
+    @Test func everyLeagueButCollegeFootballStandsAsOneSection() async {
+        let cfb = [game("sec", home: team("1", in: .collegeFootball, conference: 8),
+                        away: team("2", in: .collegeFootball, conference: 8))]
+        let nba = [game("b1", home: team("13", in: .nba, conference: 4),
+                        away: team("2", in: .nba, conference: 1)),
+                   game("b2", home: team("18", in: .nba, conference: 1),
+                        away: team("9", in: .nba, conference: 4))]
+        let nhl = [game("h1", home: team("21", in: .nhl, conference: 32),
+                        away: team("13", in: .nhl, conference: 33))]
+        let scoreboards = await makeScoreboards(cfb: cfb, nba: nba, nhl: nhl)
+
+        let sections = scoreboards.sections(followingIds: [])
+        // `League.allCases`' own order, and one section each for the three
+        // leagues that don't carve up.
+        #expect(sections.map(\.id) == [confSection(.cfb(8)),
+                                       GameSection.id(for: .nba),
+                                       GameSection.id(for: .nhl)])
+        #expect(sections.map(\.title) == ["SEC", "NBA", "NHL"])
+        #expect(sections[1].games.map(\.id) == ["b1", "b2"])
+        // Following the whole league on the hub hoists this very section,
+        // so it has to carry the league-wide table's identity.
+        #expect(sections[1].table == .conference(.nba(7)))
+        #expect(sections[2].table == .conference(.nhl(9)))
+    }
+
+    /// A followed hockey team and a followed college team share one
+    /// Following section — the whole point of the cross-league card.
+    @Test func followingSpansAllFourLeagues() async {
+        let toronto = team("21", in: .nhl, conference: 32)
+        let lakers = team("13", in: .nba, conference: 4)
+        let scoreboards = await makeScoreboards(
+            nba: [game("b1", home: lakers, away: team("2", in: .nba, conference: 1))],
+            nhl: [game("h1", home: toronto, away: team("13", in: .nhl, conference: 33))])
+
+        let sections = scoreboards.sections(
+            followingIds: [toronto.followKey, lakers.followKey])
+        #expect(sections.first?.id == GameSection.followingId)
+        #expect(sections.first?.games.map(\.id).sorted() == ["b1", "h1"])
+        #expect(sections.first?.spansLeagues == true)
+    }
+
     @Test func aCrossConferenceGameLandsInBothSections() async {
         // Sections are complete, never deduplicated.
         let scoreboards = await makeScoreboards(

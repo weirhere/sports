@@ -12,18 +12,22 @@ struct OnboardingScreen: View {
 
     private var conferences: [ConferenceTeams] { directory.conferences }
 
-    /// Grouped by league, with the NFL above the FCS tail. FCS is the
-    /// opt-in long tail (E8 scope (b)); the NFL is a first-class league,
-    /// and burying it under fourteen FCS conferences on the pick-your-teams
-    /// screen is how nobody would ever find it.
+    /// Grouped by league, with every pro league above the FCS tail. FCS is
+    /// the opt-in long tail (E8 scope (b)); the pro leagues are
+    /// first-class, and burying them under fourteen FCS conferences on the
+    /// pick-your-teams screen is how nobody would ever find them.
     private var groups: [(title: String, conferences: [ConferenceTeams])] {
         let cfb = conferences.filter { $0.league == .collegeFootball }
         let fbs = cfb.filter { Conference.division(for: $0.id, in: $0.league) != .fcs }
         let fcs = cfb.filter { Conference.division(for: $0.id, in: $0.league) == .fcs }
-        let nfl = Conference.topLevelIds(in: .nfl).compactMap { id in
-            conferences.first { $0.league == .nfl && $0.id == id }
-        }
-        return [("FBS conferences", fbs), ("NFL", nfl), ("FCS conferences", fcs)]
+        let pro = League.allCases
+            .filter { $0 != .collegeFootball }
+            .map { league in
+                (league.displayName, Conference.topLevelIds(in: league).compactMap { id in
+                    conferences.first { $0.league == league && $0.id == id }
+                })
+            }
+        return ([("FBS conferences", fbs)] + pro + [("FCS conferences", fcs)])
             .filter { !$0.1.isEmpty }
     }
 
