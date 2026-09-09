@@ -34,3 +34,33 @@ describe("darkTeamLogoVariant", () => {
     expect(darkTeamLogoVariant("not a url")).toBeNull();
   });
 });
+
+describe("dark variants across leagues", () => {
+  it("derives a dark twin in every team bucket", () => {
+    // All four verified 200 against the CDN on 2026-09-09.
+    expect(
+      darkTeamLogoVariant("https://a.espncdn.com/i/teamlogos/nfl/500/ne.png")
+    ).toBe("https://a.espncdn.com/i/teamlogos/nfl/500-dark/ne.png");
+    expect(
+      darkTeamLogoVariant("https://a.espncdn.com/i/teamlogos/nba/500/bos.png")
+    ).toBe("https://a.espncdn.com/i/teamlogos/nba/500-dark/bos.png");
+  });
+
+  it("keeps the NHL's nested scoreboard path", () => {
+    expect(
+      darkTeamLogoVariant(
+        "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/sea.png"
+      )
+    ).toBe("https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/sea.png");
+  });
+
+  it("still refuses conference marks", () => {
+    // `ncaa_conf/500/` shares the `/500/` shape but has no dark twin under
+    // any spelling — a header rides a light backing disc instead.
+    expect(
+      darkTeamLogoVariant(
+        "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/sec.png"
+      )
+    ).toBeNull();
+  });
+});

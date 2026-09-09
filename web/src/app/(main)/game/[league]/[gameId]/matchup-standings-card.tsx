@@ -156,7 +156,7 @@ function StandingRow({ slot }: { slot: Slot }) {
         {position}
       </span>
       <TeamLogo
-        espnId={standing.team.espnId}
+        team={standing.team}
         teamName=""
         size="sm"
         className="h-5 w-5 shrink-0"

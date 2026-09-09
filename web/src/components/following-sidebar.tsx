@@ -12,6 +12,7 @@
 // this rail links to. A rail that could empty itself under the pointer is
 // a rail that moves the row you were aiming at.
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { CardHeader } from "@/components/card-header";
@@ -21,9 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { conferenceLogoUrlFor, conferenceNameFor } from "@/lib/conferences";
-import type { League } from "@/lib/leagues";
 import {
   conferenceToken,
+  followedLeagues,
   followKey,
   parseConferenceToken,
   parseFollowKey,
@@ -32,23 +33,19 @@ import {
 import { conferencePath, teamPath } from "@/lib/routes";
 import type { Team } from "@/lib/types";
 
-interface FollowingSidebarProps {
-  /**
-   * The slate's league. Team rows resolve against its directory — the same
-   * one-league scope search and onboarding are still on, and it widens with
-   * them. A conference row needs no directory, so those span every league
-   * already.
-   */
-  league: League;
-}
-
-export function FollowingSidebar({ league }: FollowingSidebarProps) {
+export function FollowingSidebar() {
   const {
     favorites,
     favoriteConferences,
     isLoaded: favoritesLoaded,
   } = useFavoritesContext();
-  const { conferences, isLoading: directoryLoading } = useTeamDirectory(league);
+  // Every league the follow set actually touches, not the slate's one:
+  // the slate spans all four now, so a college-football-only directory
+  // would drop a followed NFL team rather than name it. A set that only
+  // holds college teams still costs exactly one request.
+  const leagues = useMemo(() => followedLeagues(favorites), [favorites]);
+  const { conferences, isLoading: directoryLoading } =
+    useTeamDirectory(leagues);
 
   // The follow set is league-qualified keys; the directory is what turns
   // one into a name. Until it lands the rows are skeletons, never a key.
@@ -106,7 +103,7 @@ export function FollowingSidebar({ league }: FollowingSidebarProps) {
                       className="flex items-center gap-3 px-3 py-[7px] transition-colors hover:bg-bg-header"
                     >
                       {/* Decorative — the row's text carries the name. */}
-                      <TeamLogo espnId={team.espnId} teamName="" size="sm" />
+                      <TeamLogo team={team} teamName="" size="sm" />
                       <span className="truncate type-team-name text-text-primary">
                         {team.school}
                       </span>

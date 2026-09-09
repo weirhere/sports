@@ -14,7 +14,7 @@
 
 import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
-import { cfbSeasonYear } from "@/lib/season";
+import { seasonYear } from "@/lib/leagues";
 import { showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
 import { GameInfoCard } from "./game-info-card";
@@ -52,9 +52,13 @@ export function GameDetailView({
 
   // Past-season games (reached by direct link) must not wear the current
   // season's standings — the fetch is always the current tables.
+  // Read on **this game's league's** clock: a college-football rollover
+  // would call June "next season" while the Stanley Cup was still being
+  // played for, and February the same for the NFL.
   const isCurrentSeason =
     game.scheduledAt !== "" &&
-    cfbSeasonYear(new Date(game.scheduledAt)) === cfbSeasonYear();
+    seasonYear(game.league, new Date(game.scheduledAt)) ===
+      seasonYear(game.league);
   const standingsVisible =
     standings !== null &&
     isCurrentSeason &&

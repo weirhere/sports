@@ -11,7 +11,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   // One width per route, published as a custom property so the nav bar and
-  // the week strip line up with the content instead of each hardcoding a
+  // the day strip line up with the content instead of each hardcoding a
   // number. Custom properties inherit through the tree, so the fixed week
   // strip inside <main> still sees it.
   const pathname = usePathname();

@@ -112,7 +112,7 @@ function TeamLine({
   return (
     <div className="flex min-w-0 items-center gap-2">
       <TeamLogo
-        espnId={side.team.espnId}
+        team={side.team}
         teamName={side.team.school}
         size="sm"
         className="h-5 w-5 shrink-0 object-contain"

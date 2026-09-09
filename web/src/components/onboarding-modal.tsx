@@ -163,7 +163,7 @@ function OnboardingTeamRow({ team }: { team: Team }) {
       aria-pressed={followed}
       className="flex w-full items-center gap-3 px-4 py-[7px] text-left transition-colors hover:bg-bg-header"
     >
-      <TeamLogo espnId={team.espnId} teamName="" size="sm" />
+      <TeamLogo team={team} teamName="" size="sm" />
       <span
         className={cn(
           "truncate text-text-primary",

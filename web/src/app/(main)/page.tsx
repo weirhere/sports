@@ -1,34 +1,71 @@
+// The landing page: today's slate, every league, read live on every request
+// — never frozen at build time. The provider's 30s revalidate window is the
+// request throttle.
+//
+// The server renders one day so the first paint carries real games; the
+// client hook takes over from there, and its own five-day window subsumes
+// this one. Each league fails independently: a dead NHL response costs the
+// NHL's section, not the page.
+
 import { ScoresView } from "./scores-view";
-import { scoreboard } from "@/lib/espn";
-import type { Scoreboard } from "@/lib/types";
+import { scoreboardForDays } from "@/lib/espn";
+import { addDays, clampDay, dayId, startOfDay } from "@/lib/day";
+import { LEAGUES, seasonYearContaining, unionSeasonSpan } from "@/lib/leagues";
+import type { Game } from "@/lib/types";
 import type { League } from "@/lib/leagues";
 
-// The landing page reads the live slate on every request — never frozen at
-// build time. The provider's 30s revalidate window is the request throttle.
 export const dynamic = "force-dynamic";
 
-// Still college football alone: the day strip and the cross-league slate
-// are W2's, and until then this page is one league's week. Stated rather
-// than assumed — the provider takes a league now, so there is no default to
-// be wrong about.
-const LEAGUE: League = "cfb";
-
-const EMPTY_BOARD: Scoreboard = { league: LEAGUE, weeks: [], games: [] };
+/** The window radius the client hook uses, so the two agree on a day. */
+const WINDOW_RADIUS = 2;
 
 export default async function ScoresPage() {
-  // A dead ESPN response degrades to the empty state instead of a 500 —
-  // the client can still walk weeks/seasons, which retries via /api.
-  const board = await scoreboard(LEAGUE).catch(() => EMPTY_BOARD);
+  // Today, unless today is outside every league's season — the deep
+  // offseason opens on the season's nominal start, and the client's probe
+  // walks forward from there to the first day anyone plays.
+  const today = startOfDay(new Date());
+  const span = unionSeasonSpan(seasonYearContaining(today));
+  const day = clampDay(today, span.start, span.end);
+
+  const results = await Promise.all(
+    LEAGUES.map(async (league) => {
+      try {
+        const board = await scoreboardForDays(
+          league,
+          addDays(day, -WINDOW_RADIUS),
+          addDays(day, WINDOW_RADIUS)
+        );
+        return { league, games: board.games };
+      } catch {
+        // A dead response costs this league's section, not the page. The
+        // client refetches on mount for anything that missed.
+        return undefined;
+      }
+    })
+  );
+
+  const loaded = results.filter(
+    (result): result is { league: League; games: Game[] } => result !== undefined
+  );
+  const id = dayId(day);
+  const games = loaded
+    .flatMap((result) => result.games)
+    // The seed carries only the rendered day; the window's outer days are a
+    // partial answer for most time zones and belong to the client's own
+    // bookkeeping.
+    .filter((game) => {
+      const time = Date.parse(game.scheduledAt);
+      return Number.isFinite(time) && dayId(new Date(time)) === id;
+    });
 
   return (
     <div>
       <ScoresView
-        league={LEAGUE}
-        initialGames={board.games}
-        initialWeeks={board.weeks}
-        initialCurrentWeekNumber={board.currentWeekNumber}
-        initialSeasonType={board.seasonType}
-        initialSeasonYear={board.seasonYear}
+        seed={{
+          dayId: id,
+          games,
+          leagues: loaded.map((result) => result.league),
+        }}
       />
     </div>
   );
