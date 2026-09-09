@@ -69,7 +69,11 @@ nonisolated enum Conference {
         /// Above the conference rung so it leads its league's list: the
         /// league is what the conferences are parts of.
         case league
-        case nflConference, nflDivision, other
+        /// A conference inside a league, and a division inside that — the
+        /// AFC and the AFC East, the Eastern Conference and the Atlantic.
+        /// Named for the rung rather than the league since the NBA and NHL
+        /// nest exactly the same way (2026-09-08).
+        case conference, division, other
 
         static func < (lhs: Tier, rhs: Tier) -> Bool { lhs.rawValue < rhs.rawValue }
     }
@@ -125,91 +129,132 @@ nonisolated enum Conference {
 
     private static let cfbNames: [Int: String] = fbsNames.merging(fcsNames) { fbs, _ in fbs }
 
-    /// The two NFL conferences, ids read live from
-    /// `apis/v2/sports/football/nfl/standings` on 2026-09-05.
-    private static let nflConferenceNames: [Int: String] = [
-        8: "AFC",
-        7: "NFC",
-    ]
-
-    /// The league itself as a group. ESPN's NFL standings response is
-    /// rooted at group 9 ("National Football League"), and asking for it
-    /// at `level=1` returns all 32 teams in one table — which is the row
-    /// Andy asked for on the Tables hub: the whole NFL, not just its two
-    /// conferences. We don't make that request (the conference tables we
-    /// already fetch merge into the same 32 rows), but the id is ESPN's
-    /// and is what the page and the follow token are keyed on.
+    /// One pro league's group hierarchy, hardcoded because the scoreboard
+    /// payload carries none of it.
     ///
-    /// College football has no counterpart: group 80 is FBS, its root
-    /// ships no entries, and a 130-team table isn't a thing anyone reads —
-    /// the poll answers "who's good" there.
-    private static let nflLeagueNames: [Int: String] = [
-        9: "NFL",
+    /// ESPN's NFL, NBA and NHL scoreboards all ship team objects with no
+    /// conference or group id at all, so without this every game of theirs
+    /// falls into the "Other" bucket and a followed conference matches
+    /// nothing. The precedent and the argument are the NFL's (2026-09-05):
+    /// these leagues realign about once a decade, an id the table doesn't
+    /// know still degrades to "Other", and a 30-row constant is the honest
+    /// fix. College football needs none of it — its scoreboard ships the
+    /// conference id inline.
+    private struct Registry: Sendable {
+        /// The group that stands for the whole league.
+        let leagueWideId: Int
+        let leagueName: String
+        /// Ordered — this *is* `topLevelIds(in:)`.
+        let conferences: [(id: Int, name: String)]
+        let divisionNames: [Int: String]
+        /// Division id → its conference id.
+        let divisionParents: [Int: Int]
+        /// Team id → its division id.
+        let teamDivisions: [Int: Int]
+        /// CDN slugs for the conference marks this league actually
+        /// publishes. Empty where none exist.
+        let conferenceSlugs: [Int: String]
+
+        var allNames: [Int: String] {
+            var names = divisionNames
+            for conference in conferences { names[conference.id] = conference.name }
+            names[leagueWideId] = leagueName
+            return names
+        }
+    }
+
+    /// Ids read live from `apis/v2/sports/football/nfl/standings` and the
+    /// same endpoint at `level=3`, 2026-09-05.
+    private static let nflRegistry = Registry(
+        leagueWideId: 9,
+        leagueName: "NFL",
+        conferences: [(8, "AFC"), (7, "NFC")],
+        divisionNames: [
+            4: "AFC East", 12: "AFC North", 13: "AFC South", 6: "AFC West",
+            1: "NFC East", 10: "NFC North", 11: "NFC South", 3: "NFC West",
+        ],
+        divisionParents: [4: 8, 12: 8, 13: 8, 6: 8, 1: 7, 10: 7, 11: 7, 3: 7],
+        teamDivisions: [
+            1: 11, 2: 4, 3: 10, 4: 12, 5: 12, 6: 1, 7: 6, 8: 10,
+            9: 10, 10: 13, 11: 13, 12: 6, 13: 6, 14: 3, 15: 4, 16: 10,
+            17: 4, 18: 11, 19: 1, 20: 4, 21: 1, 22: 3, 23: 12, 24: 6,
+            25: 3, 26: 3, 27: 11, 28: 1, 29: 11, 30: 13, 33: 12, 34: 13,
+        ],
+        // `nfl/500/afc.png` and `nfl/500/nfc.png`, both verified 200 on
+        // 2026-09-05. Divisions have no mark of their own.
+        conferenceSlugs: [8: "afc", 7: "nfc"]
+    )
+
+    /// Ids read live from `apis/v2/sports/basketball/nba/standings` and the
+    /// same endpoint at `level=3`, 2026-09-08.
+    private static let nbaRegistry = Registry(
+        leagueWideId: 7,
+        leagueName: "NBA",
+        conferences: [(5, "Eastern"), (6, "Western")],
+        divisionNames: [
+            1: "Atlantic", 2: "Central", 9: "Southeast",
+            11: "Northwest", 4: "Pacific", 10: "Southwest",
+        ],
+        divisionParents: [1: 5, 2: 5, 9: 5, 11: 6, 4: 6, 10: 6],
+        teamDivisions: [
+            1: 9, 2: 1, 3: 10, 4: 2, 5: 2, 6: 10, 7: 11, 8: 2,
+            9: 4, 10: 10, 11: 2, 12: 4, 13: 4, 14: 9, 15: 2, 16: 11,
+            17: 1, 18: 1, 19: 9, 20: 1, 21: 4, 22: 11, 23: 4, 24: 10,
+            25: 11, 26: 11, 27: 9, 28: 1, 29: 10, 30: 9,
+        ],
+        // ESPN publishes no NBA conference marks under any bucket
+        // (`nba_conf` 404s, probed 2026-09-08); the rows wear the league
+        // shield instead.
+        conferenceSlugs: [:]
+    )
+
+    /// Ids read live from `apis/v2/sports/hockey/nhl/standings` and the
+    /// same endpoint at `level=3`, 2026-09-08. The two long team ids are
+    /// real: NHL team ids are not contiguous.
+    private static let nhlRegistry = Registry(
+        leagueWideId: 9,
+        leagueName: "NHL",
+        conferences: [(7, "Eastern"), (8, "Western")],
+        divisionNames: [
+            32: "Atlantic", 33: "Metropolitan",
+            31: "Central", 30: "Pacific",
+        ],
+        divisionParents: [32: 7, 33: 7, 31: 8, 30: 8],
+        teamDivisions: [
+            1: 32, 2: 32, 3: 30, 4: 31, 5: 32, 6: 30, 7: 33, 8: 30,
+            9: 31, 10: 32, 11: 33, 12: 33, 13: 33, 14: 32, 15: 33, 16: 33,
+            17: 31, 18: 30, 19: 31, 20: 32, 21: 32, 22: 30, 23: 33, 25: 30,
+            26: 32, 27: 31, 28: 31, 29: 33, 30: 31, 37: 30,
+            124292: 30, 129764: 31,
+        ],
+        conferenceSlugs: [:]
+    )
+
+    /// The pro leagues, by league. College football is absent by design —
+    /// its hierarchy comes off the wire.
+    private static let registries: [League: Registry] = [
+        .nfl: nflRegistry, .nba: nbaRegistry, .nhl: nhlRegistry,
     ]
 
     /// The group id standing for a whole league, where the league has one.
+    ///
+    /// College football has no counterpart: group 80 is FBS, its root ships
+    /// no entries, and a 130-team table isn't a thing anyone reads — the
+    /// poll answers "who's good" there.
     static func leagueWideId(in league: League) -> Int? {
-        league == .nfl ? 9 : nil
+        registries[league]?.leagueWideId
     }
 
-    /// The eight divisions, read live from the same endpoint at `level=3`,
-    /// each mapped to its parent conference.
-    private static let nflDivisionParents: [Int: Int] = [
-        4: 8,   // AFC East
-        12: 8,  // AFC North
-        13: 8,  // AFC South
-        6: 8,   // AFC West
-        1: 7,   // NFC East
-        10: 7,  // NFC North
-        11: 7,  // NFC South
-        3: 7,   // NFC West
-    ]
-
-    private static let nflDivisionNames: [Int: String] = [
-        4: "AFC East",
-        12: "AFC North",
-        13: "AFC South",
-        6: "AFC West",
-        1: "NFC East",
-        10: "NFC North",
-        11: "NFC South",
-        3: "NFC West",
-    ]
-
-    /// Which division each NFL team plays in, read live from
-    /// `standings?level=3` on 2026-09-05.
-    ///
-    /// Hardcoded because the scoreboard payload has to be told: unlike
-    /// college football, ESPN's NFL scoreboard ships **no `conferenceId`
-    /// on its teams at all**, so without this every NFL game would fall
-    /// into the "Other" bucket. A 32-row table is the honest fix — the NFL
-    /// last realigned in 2002, so this is about as stable as a constant
-    /// gets, and an id the table doesn't know still degrades to "Other".
-    private static let nflTeamDivisions: [Int: Int] = [
-        1: 11, 2: 4, 3: 10, 4: 12, 5: 12, 6: 1, 7: 6, 8: 10,
-        9: 10, 10: 13, 11: 13, 12: 6, 13: 6, 14: 3, 15: 4, 16: 10,
-        17: 4, 18: 11, 19: 1, 20: 4, 21: 1, 22: 3, 23: 12, 24: 6,
-        25: 3, 26: 3, 27: 11, 28: 1, 29: 11, 30: 13, 33: 12, 34: 13,
-    ]
-
-    /// The division an NFL team plays in, for payloads that carry no group
+    /// The division a pro team plays in, for payloads that carry no group
     /// of their own. Nil for college football, whose scoreboard ships the
     /// conference id inline.
     static func division(forTeamId id: String?, in league: League) -> Int? {
-        guard league == .nfl, let id, let numeric = Int(id) else { return nil }
-        return nflTeamDivisions[numeric]
+        guard let id, let numeric = Int(id) else { return nil }
+        return registries[league]?.teamDivisions[numeric]
     }
 
-    private static let nflNames: [Int: String] =
-        nflConferenceNames
-            .merging(nflDivisionNames) { conf, _ in conf }
-            .merging(nflLeagueNames) { existing, _ in existing }
-
     private static func names(in league: League) -> [Int: String] {
-        switch league {
-        case .collegeFootball: cfbNames
-        case .nfl: nflNames
-        }
+        league == .collegeFootball ? cfbNames : (registries[league]?.allNames ?? [:])
     }
 
     private static let power4: Set<Int> = [1, 4, 5, 8]
@@ -248,19 +293,8 @@ nonisolated enum Conference {
         31: "swac",
     ]
 
-    /// Only the two conference marks exist — `nfl/500/afc.png` and
-    /// `nfl/500/nfc.png` (verified 200 on 2026-09-05). Divisions have no
-    /// mark of their own and deliberately fall through to nil.
-    private static let nflLogoSlugs: [Int: String] = [
-        8: "afc",
-        7: "nfc",
-    ]
-
     private static func logoSlugs(in league: League) -> [Int: String] {
-        switch league {
-        case .collegeFootball: cfbLogoSlugs
-        case .nfl: nflLogoSlugs
-        }
+        league == .collegeFootball ? cfbLogoSlugs : (registries[league]?.conferenceSlugs ?? [:])
     }
 
     static func name(for id: Int?, in league: League) -> String {
@@ -309,7 +343,20 @@ nonisolated enum Conference {
         // conference marks (`nfl/500/nfl.png` 404s — probed 2026-09-05).
         if id == leagueWideId(in: league) { return league.logoURL }
         guard let slug = logoSlugs(in: league)[id] else {
-            return parent(of: id, in: league).flatMap { logoURL(for: $0, in: league) }
+            // A division wears its conference's mark — an AFC East header
+            // showing the AFC shield reads better than a bare glyph.
+            if let parent = parent(of: id, in: league) {
+                return logoURL(for: parent, in: league)
+            }
+            // A league that publishes *no* conference marks at all lets
+            // its conferences wear its own shield: ESPN ships none for the
+            // NBA or NHL under any bucket (probed 2026-09-08), so an
+            // Eastern Conference row would otherwise fall to the football
+            // glyph. A league that does publish them and is simply missing
+            // one — FCS's United Athletic — still shows nothing, because
+            // there the gap is about that conference, not the league.
+            guard logoSlugs(in: league).isEmpty, isKnown(id, in: league) else { return nil }
+            return league.logoURL
         }
         return URL(string:
             "https://a.espncdn.com/i/teamlogos/\(league.conferenceLogoPathComponent)/500/\(slug).png")
@@ -340,16 +387,15 @@ nonisolated enum Conference {
 
     static func tier(for id: Int?, in league: League) -> Tier {
         guard let id, names(in: league)[id] != nil else { return .other }
-        switch league {
-        case .nfl:
-            if nflLeagueNames[id] != nil { return .league }
-            return nflConferenceNames[id] != nil ? .nflConference : .nflDivision
-        case .collegeFootball:
+        guard let registry = registries[league] else {
+            // College football: one flat list of conferences, ranked.
             if fcsNames[id] != nil { return .fcs }
             if power4.contains(id) { return .power4 }
             if id == 18 { return .independent }
             return .group5
         }
+        if id == registry.leagueWideId { return .league }
+        return registry.conferences.contains { $0.id == id } ? .conference : .division
     }
 
     /// Every group a team in `conference` belongs to, most specific first:
@@ -357,9 +403,10 @@ nonisolated enum Conference {
     /// College football nests nothing, so its chain is the conference
     /// alone.
     ///
-    /// This is what makes a conference follow match a game: the NFL
-    /// scoreboard gives a team its *division* id, so "I follow the AFC"
-    /// only means anything if the walk-up happens somewhere.
+    /// This is what makes a conference follow match a game: a pro
+    /// league's scoreboard gives a team its *division* id, so "I follow
+    /// the AFC" — or the Eastern Conference — only means anything if the
+    /// walk-up happens somewhere.
     static func chain(for conference: ConferenceID) -> [ConferenceID] {
         var chain = [conference]
         if let parent = parent(of: conference.id, in: conference.league) {
@@ -371,20 +418,22 @@ nonisolated enum Conference {
         return chain
     }
 
-    /// The conference an NFL division sits under, or nil for anything else.
+    /// The conference a pro league's division sits under, or nil for
+    /// anything else — college football nests nothing.
     static func parent(of id: Int?, in league: League) -> Int? {
-        guard league == .nfl, let id else { return nil }
-        return nflDivisionParents[id]
+        guard let id else { return nil }
+        return registries[league]?.divisionParents[id]
     }
 
-    /// An NFL conference's four divisions, in ESPN's East/North/South/West
-    /// order. Empty for college football, which nests nothing.
+    /// A conference's divisions, alphabetically — the NFL's four East/
+    /// North/South/West, the NBA's three, the NHL's two. Empty for college
+    /// football, which nests nothing.
     static func children(of id: Int?, in league: League) -> [Int] {
-        guard league == .nfl, let id else { return [] }
-        return nflDivisionParents
+        guard let id, let registry = registries[league] else { return [] }
+        return registry.divisionParents
             .filter { $0.value == id }
             .keys
-            .sorted { name(for: $0, in: .nfl) < name(for: $1, in: .nfl) }
+            .sorted { name(for: $0, in: league) < name(for: $1, in: league) }
     }
 
     /// Every known FBS conference in the app's browsing order: P4 → G5 →
@@ -408,14 +457,12 @@ nonisolated enum Conference {
     }
 
     /// A league's top-level groups in browsing order. College football's
-    /// are its FBS conferences; the NFL's are the AFC and the NFC, in that
-    /// order — the divisions hang beneath them rather than sitting in the
-    /// same list.
+    /// are its FBS conferences; a pro league's are its conferences, in
+    /// ESPN's own order — the divisions hang beneath them rather than
+    /// sitting in the same list.
     static func topLevelIds(in league: League) -> [Int] {
-        switch league {
-        case .collegeFootball: orderedIds
-        case .nfl: [8, 7]
-        }
+        guard let registry = registries[league] else { return orderedIds }
+        return registry.conferences.map(\.id)
     }
 
     /// Whether this conference's championship game takes the standings'

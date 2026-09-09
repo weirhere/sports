@@ -66,13 +66,20 @@ private func game(_ id: String, home: Team, away: Team, live: Bool = false,
 }
 
 @MainActor
-private func makeScoreboards(cfb: [Game] = [], nfl: [Game] = []) async -> LeagueScoreboards {
-    let stores: [League: ScoreboardStore] = [
-        .collegeFootball: ScoreboardStore(
-            league: .collegeFootball,
-            client: LeagueStub(league: .collegeFootball, games: cfb)),
-        .nfl: ScoreboardStore(league: .nfl, client: LeagueStub(league: .nfl, games: nfl)),
-    ]
+private func makeScoreboards(cfb: [Game] = [], nfl: [Game] = [],
+                             nba: [Game] = [], nhl: [Game] = []) async -> LeagueScoreboards {
+    // A store for *every* league, not just the ones a case names.
+    // `LeagueScoreboards.store(for:)` falls back to the college-football
+    // store for a league it has none for, so a partial dictionary made
+    // `all` return that one store several times over and quietly
+    // multiplied every count this suite asserts.
+    let games: [League: [Game]] = [.collegeFootball: cfb, .nfl: nfl, .nba: nba, .nhl: nhl]
+    let stores: [League: ScoreboardStore] = Dictionary(
+        uniqueKeysWithValues: League.allCases.map { league in
+            (league, ScoreboardStore(league: league,
+                                     client: LeagueStub(league: league,
+                                                        games: games[league] ?? [])))
+        })
     let scoreboards = LeagueScoreboards(stores: stores)
     await scoreboards.loadInitial()
     return scoreboards
@@ -661,7 +668,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 }
 
 @Suite struct SeasonSpanTests {
-    @Test func aSeasonOpensWithTheHallOfFameGameAndClosesAfterTheSuperBowl() {
+    @Test func aSeasonRunsFromTheFirstLeagueToOpenToTheLastToFinish() {
         let calendar = Calendar.current
         let span = SeasonSpan.days(year: 2026)
         #expect(calendar.component(.year, from: span.lowerBound) == 2026)
@@ -669,10 +676,42 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         // the first football of the year, and an August floor cut it off
         // (Andy, 2026-09-06).
         #expect(calendar.component(.month, from: span.lowerBound) == 7)
-        // The NFL's February closes it; college football's January would
-        // have cut the Super Bowl off.
+        // June closes it: the NBA Finals and the Stanley Cup are the last
+        // games of the season that opened in July. This was February until
+        // basketball and hockey arrived, when the app stopped having an
+        // offseason at all.
         #expect(calendar.component(.year, from: span.upperBound) == 2027)
-        #expect(calendar.component(.month, from: span.upperBound) == 2)
+        #expect(calendar.component(.month, from: span.upperBound) == 6)
+    }
+
+    /// The union is every league at once; each league still keeps its own.
+    @Test func theWinterLeaguesOpenInSeptemberAndCloseInJune() {
+        let calendar = Calendar.current
+        for league in [League.nba, .nhl] {
+            let span = SeasonSpan.days(of: league, year: 2026)
+            #expect(calendar.component(.month, from: span.lowerBound) == 9)
+            #expect(calendar.component(.year, from: span.upperBound) == 2027)
+            #expect(calendar.component(.month, from: span.upperBound) == 6)
+        }
+    }
+
+    /// The rollover rule takes the *latest* month any league runs into, so
+    /// adding a June-rollover league moves the boundary for everyone. Every
+    /// month still resolves to the season it belongs to — which is the
+    /// whole reason the rule is derived rather than per-league.
+    @Test func everyMonthResolvesToItsOwnSeason() {
+        let calendar = Calendar.current
+        func season(_ year: Int, _ month: Int) -> Int {
+            SeasonSpan.year(containing:
+                calendar.date(from: DateComponents(year: year, month: month, day: 15)) ?? .now)
+        }
+        // July opens a season (the Hall of Fame Game) through December.
+        for month in 7...12 { #expect(season(2026, month) == 2026) }
+        // January and February are still football's — the CFP and the
+        // Super Bowl. March through June are basketball's and hockey's.
+        for month in 1...6 { #expect(season(2027, month) == 2026) }
+        // And the next July starts over.
+        #expect(season(2027, 7) == 2027)
     }
 
     @Test func collegeFootballOpensInAugustAndClosesInJanuary() {

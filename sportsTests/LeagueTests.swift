@@ -85,8 +85,8 @@ import Testing
     @Test func unknownIdsStayOtherInBothLeagues() {
         #expect(Conference.tier(for: 999, in: .collegeFootball) == .other)
         #expect(Conference.tier(for: 999, in: .nfl) == .other)
-        #expect(Conference.tier(for: 8, in: .nfl) == .nflConference)
-        #expect(Conference.tier(for: 3, in: .nfl) == .nflDivision)
+        #expect(Conference.tier(for: 8, in: .nfl) == .conference)
+        #expect(Conference.tier(for: 3, in: .nfl) == .division)
         #expect(!Conference.isKnown(999, in: .nfl))
         #expect(Conference.isKnown(3, in: .nfl))
     }

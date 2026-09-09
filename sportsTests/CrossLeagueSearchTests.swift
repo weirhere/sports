@@ -125,6 +125,8 @@ private struct DirectoryStub: ScoresProviding {
             division == .fbs ? [sec] : []
         case .nfl:
             [ConferenceTeams(id: 8, name: "AFC", teams: [dolphins], league: .nfl)]
+        case .nba, .nhl:
+            []
         }
     }
 

@@ -170,10 +170,14 @@ actor ESPNClient: ScoresProviding {
     init(league: League = .collegeFootball, session: URLSession = .shared) {
         self.league = league
         self.session = session
-        self.base = "https://site.api.espn.com/apis/site/v2/sports/football/\(league.pathSegment)"
-        self.standingsBase = "https://site.api.espn.com/apis/v2/sports/football/\(league.pathSegment)"
+        // The sport segment sits above the league's own in every ESPN
+        // path — `football/nfl`, `basketball/nba`, `hockey/nhl` — and it
+        // was a literal here until the app covered more than one sport.
+        let sport = league.sportSegment
+        self.base = "https://site.api.espn.com/apis/site/v2/sports/\(sport)/\(league.pathSegment)"
+        self.standingsBase = "https://site.api.espn.com/apis/v2/sports/\(sport)/\(league.pathSegment)"
         self.coreBase =
-            "https://sports.core.api.espn.com/v2/sports/football/leagues/\(league.pathSegment)"
+            "https://sports.core.api.espn.com/v2/sports/\(sport)/leagues/\(league.pathSegment)"
     }
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
@@ -186,7 +190,7 @@ actor ESPNClient: ScoresProviding {
             items.append(URLQueryItem(name: "seasontype", value: String(seasonType)))
         }
         if let year {
-            items.append(URLQueryItem(name: "dates", value: String(year)))
+            items.append(URLQueryItem(name: "dates", value: String(league.espnSeason(for: year))))
         }
         return try await scoreboard(query: items, divisions: divisions)
     }
@@ -211,10 +215,13 @@ actor ESPNClient: ScoresProviding {
     private func scoreboard(query: [URLQueryItem],
                             divisions: Set<Conference.Division>) async throws -> Scoreboard {
         // Deterministic order, and FBS first when it's in the set: it is
-        // the canonical payload for anything both divisions carry. The NFL
-        // has no divisions, so it asks once with no group filter.
-        let ordered = league == .nfl ? [Conference.Division?.none]
-                                     : divisions.sorted { $0.groupId < $1.groupId }.map { $0 }
+        // the canonical payload for anything both divisions carry. FBS and
+        // FCS are college football's own axis — every other league asks
+        // once with no group filter, because there is nothing to filter by
+        // and (for the NBA at least) ESPN ignores `groups=` outright.
+        let ordered = league.hasCollegeDivisions
+            ? divisions.sorted { $0.groupId < $1.groupId }.map { $0 }
+            : [Conference.Division?.none]
         guard let primary = ordered.first else {
             throw ESPNError.invalidURL
         }
@@ -307,8 +314,8 @@ actor ESPNClient: ScoresProviding {
     private func seasonBoard(days: ClosedRange<Date>) async throws -> [Game] {
         var items = [URLQueryItem(name: "limit", value: "900"),
                      URLQueryItem(name: "dates", value: Self.datesToken(for: days))]
-        // The NFL's scoreboard takes no group filter at all.
-        if league == .collegeFootball {
+        // Only college football's scoreboard takes a group filter.
+        if league.hasCollegeDivisions {
             items.insert(URLQueryItem(name: "groups", value: String(Conference.fbsGroupId)), at: 0)
         }
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
@@ -419,10 +426,12 @@ actor ESPNClient: ScoresProviding {
     }
 
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
-        // The NFL's standings response is already the whole league (AFC and
-        // NFC, 16 entries each), so it takes no group filter.
-        let query = league == .nfl ? []
-            : [URLQueryItem(name: "group", value: String(division.groupId))]
+        // A pro league's standings response is already the whole league
+        // (AFC and NFC, East and West), so it takes no group filter — only
+        // college football splits into FBS and FCS.
+        let query = league.hasCollegeDivisions
+            ? [URLQueryItem(name: "group", value: String(division.groupId))]
+            : []
         let dto: StandingsResponseDTO = try await fetch(
             base: standingsBase, path: "/standings", query: query
         )
@@ -431,12 +440,13 @@ actor ESPNClient: ScoresProviding {
 
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] {
-        var query = league == .nfl ? []
-            : [URLQueryItem(name: "group", value: String(division.groupId))]
+        var query = league.hasCollegeDivisions
+            ? [URLQueryItem(name: "group", value: String(division.groupId))]
+            : []
         // Verified live 2026-08-25: `season` scopes records AND membership,
         // so realignment years read correctly.
         if let year {
-            query.append(URLQueryItem(name: "season", value: String(year)))
+            query.append(URLQueryItem(name: "season", value: String(league.espnSeason(for: year))))
         }
         let dto: StandingsResponseDTO = try await fetch(
             base: standingsBase, path: "/standings", query: query
@@ -454,10 +464,13 @@ actor ESPNClient: ScoresProviding {
     /// divisional era, and `conferenceStandings` already returns those
     /// divisions from the shipped response.
     func divisionStandings(year: Int?) async throws -> [ConferenceStandings] {
-        guard league == .nfl else { return [] }
+        // Any league whose registry nests divisions under conferences —
+        // the NFL's eight, the NBA's six, the NHL's four.
+        guard !league.hasCollegeDivisions,
+              Conference.leagueWideId(in: league) != nil else { return [] }
         var query = [URLQueryItem(name: "level", value: "3")]
         if let year {
-            query.append(URLQueryItem(name: "season", value: String(year)))
+            query.append(URLQueryItem(name: "season", value: String(league.espnSeason(for: year))))
         }
         let dto: StandingsResponseDTO = try await fetch(
             base: standingsBase, path: "/standings", query: query
@@ -488,7 +501,7 @@ actor ESPNClient: ScoresProviding {
         // preseason and no bowl is the normal case, not an error.
         let path = "/teams/\(teamId)/schedule"
         func query(_ seasonType: Int) -> [URLQueryItem] {
-            [URLQueryItem(name: "season", value: String(year)),
+            [URLQueryItem(name: "season", value: String(league.espnSeason(for: year))),
              URLQueryItem(name: "seasontype", value: String(seasonType))]
         }
         async let preseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: query(1))
@@ -910,34 +923,39 @@ nonisolated enum ESPNMapper {
             team: selfTeam,
             record: summariesTrusted ? dto.team?.recordSummary : nil,
             standing: summariesTrusted ? dto.team?.standingSummary : nil,
-            year: dto.requestedSeason?.year,
+            // Back onto our own axis: ESPN answers an NBA request for
+            // `season=2027` with `requestedSeason.year: 2027`, and the
+            // page that asked knows that season as 2026.
+            year: dto.requestedSeason?.year.map(league.seasonYear(fromESPN:)),
             games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) },
             byeWeek: dto.byeWeek?.value
         )
     }
 
-    /// `groups` is the team's most specific group, and the two leagues nest
-    /// it differently.
+    /// `groups` is the team's most specific group, and college football
+    /// nests it differently from the three pro leagues.
     ///
     /// College football: when the group IS the conference, its parent is FBS
     /// (80) — never walk up. When it's a division (isConference false or
     /// absent), the parent is the conference.
     ///
-    /// The NFL always ships the division with the conference as its parent
-    /// (verified live 2026-09-05: Seattle is `{id: "3", parent: {id: "7"}}`
-    /// — NFC West under the NFC) and always marks `isConference` false, so
-    /// walking up is always right. We keep the division id, which is the
-    /// more specific and more useful group; `Conference.parent(of:in:)`
-    /// recovers the conference.
+    /// The NFL, NBA and NHL all ship the division with the conference as
+    /// its parent (verified live: Seattle is `{id: "3", parent: {id: "7"}}`
+    /// — NFC West under the NFC, 2026-09-05; the Lakers are
+    /// `{id: "4", parent: {id: "6"}}` — Pacific under the West,
+    /// 2026-09-08) and all mark `isConference` false, so walking up is
+    /// always right. We keep the division id, which is the more specific
+    /// and more useful group; `Conference.parent(of:in:)` recovers the
+    /// conference.
     ///
     /// A wrong pick degrades safely: an unknown id is "Other" tier, which
     /// hides the affordance and lets callers fall back.
     static func conferenceId(from groups: TeamGroupsDTO?,
                              league: League = .collegeFootball) -> Int? {
         guard let groups else { return nil }
-        if league == .nfl {
+        if !league.hasCollegeDivisions {
             let id = groups.id?.value
-            return Conference.isKnown(id, in: .nfl) ? id : groups.parent?.id?.value
+            return Conference.isKnown(id, in: league) ? id : groups.parent?.id?.value
         }
         return groups.isConference == true ? groups.id?.value : groups.parent?.id?.value
     }

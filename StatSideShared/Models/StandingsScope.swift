@@ -36,7 +36,7 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     static func scopes(for conference: ConferenceID) -> [StandingsScope] {
         switch Conference.tier(for: conference.id, in: conference.league) {
         case .league: [.league, .conference, .division]
-        case .nflConference: [.conference, .division]
+        case .conference: [.conference, .division]
         default: []
         }
     }
@@ -84,8 +84,8 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     private static func scope(at tier: Conference.Tier) -> StandingsScope? {
         switch tier {
         case .league: .league
-        case .nflConference: .conference
-        case .nflDivision: .division
+        case .conference: .conference
+        case .division: .division
         default: nil
         }
     }
@@ -97,7 +97,7 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     static func `default`(for conference: ConferenceID) -> StandingsScope {
         switch Conference.tier(for: conference.id, in: conference.league) {
         case .league: .league
-        case .nflDivision: .division
+        case .division: .division
         default: .conference
         }
     }
