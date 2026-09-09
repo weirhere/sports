@@ -304,6 +304,23 @@ private func game(status: GameStatus,
         #expect(row.accessibilitySummary == "SEC, led by Georgia at 7 and 1")
     }
 
+    /// Hockey ships no conference record at all, so the teaser falls back
+    /// to the overall one — otherwise every NHL row on the tables hub sits
+    /// bare while the ones above it read fine.
+    @Test func aLeagueWithNoConferenceRecordSpeaksItsOverallOne() {
+        let carolina = Team(id: "7", location: "Carolina", name: "Hurricanes",
+                            abbreviation: "CAR", displayName: "Carolina Hurricanes",
+                            shortDisplayName: "Carolina", logoURL: nil,
+                            conferenceId: 32, league: .nhl)
+        let row = ConferenceListRow(conference: ConferenceStandings(
+            id: 32, name: "Atlantic",
+            entries: [ConferenceStanding(team: carolina, conferenceRecord: nil,
+                                         overallRecord: "53-22-7", streak: nil,
+                                         gamesPlayed: 82)],
+            league: .nhl, parentId: 7))
+        #expect(row.accessibilitySummary == "Atlantic, led by Carolina at 53 and 22 and 7")
+    }
+
     @Test func preseasonSpeaksJustTheName() {
         let row = ConferenceListRow(conference: conference(entries: [
             ConferenceStanding(team: georgia, conferenceRecord: "0-0",

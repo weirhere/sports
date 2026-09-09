@@ -73,15 +73,23 @@ struct ConferenceListRow: View {
 
     /// "Ole Miss · 7-1" — the current leader, only once records exist.
     private var teaser: String? {
-        guard let leader = conference.leader,
-              let record = leader.conferenceRecord else { return nil }
+        guard let leader = conference.leader, let record = leaderRecord(leader) else { return nil }
         return "\(leader.team.location) · \(record)"
+    }
+
+    /// The record a teaser shows: the in-group one where the league keeps
+    /// it, which is the number a table is sorted by in football and
+    /// basketball — and otherwise the overall one, because the NHL ships
+    /// no conference record at all and every hockey row would sit here
+    /// bare while the ones above it read fine.
+    private func leaderRecord(_ leader: ConferenceStanding) -> String? {
+        leader.conferenceRecord ?? leader.displayRecord
     }
 
     /// "SEC, led by Ole Miss at 7 and 1" — or just the name preseason.
     var accessibilitySummary: String {
         guard let leader = conference.leader,
-              let record = leader.conferenceRecord else { return conference.name }
+              let record = leaderRecord(leader) else { return conference.name }
         let spoken = record.replacingOccurrences(of: "-", with: " and ")
         return "\(conference.name), led by \(leader.team.location) at \(spoken)"
     }

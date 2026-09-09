@@ -61,6 +61,49 @@ final class WinterLeagueRenderTests: XCTestCase {
         try render(name: "nhl-team-stats", width: 393) {
             captioned("NHL — TEAM STATS") { TeamStatsCompare(summary: nhl) }
         }
+
+        // The Tables hub's accordion, now that it lists divisions rather
+        // than conferences (Andy, 2026-09-09).
+        for (name, league, caption) in [("nba-standings-level3", League.nba, "NBA"),
+                                        ("nhl-standings-level3", .nhl, "NHL")] {
+            let divisions = try divisionTables(name, league: league)
+            let leagueTable = divisions.foldingDivisions().leagueTable(in: league)
+            try render(name: "\(league.rawValue)-hub-rows", width: 393) {
+                captioned("\(caption) — HUB ACCORDION (league, then divisions)") {
+                    // No NavigationStack: ImageRenderer lays out none of
+                    // its content. The rows' links still draw their labels.
+                    VStack(spacing: 0) {
+                        if let leagueTable {
+                            ConferenceListRow(conference: leagueTable)
+                        }
+                        ForEach(divisions) { ConferenceListRow(conference: $0) }
+                    }
+                    // The follow star reads the store from the
+                    // environment, so the rows need one to render at all.
+                    .environment(FollowingStore(defaults: Self.scratchDefaults))
+                }
+            }
+        }
+    }
+
+    /// A throwaway suite, so rendering never touches real follows.
+    private static let scratchDefaults: UserDefaults = {
+        UserDefaults(suiteName: "test.winterrender.\(UUID().uuidString)") ?? .standard
+    }()
+
+    /// The hub's own order: grouped by conference, alphabetical inside
+    /// it, so the picture matches what ships.
+    private func divisionTables(_ name: String, league: League) throws -> [ConferenceStandings] {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+        let conferenceOrder = Conference.topLevelIds(in: league)
+        func rank(_ table: ConferenceStandings) -> Int {
+            table.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
+        }
+        return ESPNMapper.divisionStandings(from: dto, league: league)
+            .sorted { lhs, rhs in
+                let (l, r) = (rank(lhs), rank(rhs))
+                return l == r ? lhs.name < rhs.name : l < r
+            }
     }
 
     // MARK: - Scaffolding

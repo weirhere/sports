@@ -121,6 +121,75 @@ private func fixture(_ name: String) throws -> Data {
         }
     }
 
+    /// The hub lists divisions now (Andy, 2026-09-09), so a pro league's
+    /// one request is the divisional one — and everything above a division
+    /// has to be derivable from it, or the league row and any standing
+    /// conference follow would vanish with the fetch they used to have.
+    @Test func aDivisionalResponseStillFoldsBackUpToConferencesAndTheLeague() throws {
+        let expected: [(String, League, [Int])] = [
+            ("nba-standings-level3", .nba, [5, 6]),
+            ("nhl-standings-level3", .nhl, [7, 8]),
+        ]
+        for (name, league, conferenceIds) in expected {
+            let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+
+            // Folded: one row per conference, with every division's teams.
+            let conferences = divisions.foldingDivisions()
+            #expect(Set(conferences.compactMap(\.id)) == Set(conferenceIds))
+            #expect(conferences.allSatisfy { $0.parentId == nil })
+            for conference in conferences {
+                let members = divisions
+                    .filter { $0.parentId == conference.id }
+                    .flatMap(\.entries)
+                #expect(conference.entries.count == members.count)
+            }
+
+            // And the whole league merges out of the folded conferences,
+            // ranked, exactly as it did from the shallower response.
+            let table = try #require(conferences.leagueTable(in: league))
+            #expect(table.entries.count == divisions.flatMap(\.entries).count)
+            #expect(table.id == Conference.leagueWideId(in: league))
+            #expect(table.leader != nil)
+        }
+    }
+
+    /// A division's own order is ESPN's, which is what a leader teaser on
+    /// the hub reads — never re-sorted here.
+    @Test func everyDivisionKnowsItsLeader() throws {
+        for (name, league) in [("nba-standings-level3", League.nba),
+                               ("nhl-standings-level3", .nhl)] {
+            let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+            for division in ESPNMapper.divisionStandings(from: dto, league: league) {
+                #expect(division.leader != nil, "\(division.name) has no leader")
+                #expect(Conference.tier(for: division.id, in: league) == .division)
+            }
+        }
+    }
+
+    /// Grouped by conference, alphabetical inside it. The mapper sorts by
+    /// name alone, which interleaves the NBA's six — Northwest between
+    /// Central and Pacific, with nothing on screen to explain why.
+    @Test func theHubGroupsDivisionsByTheirConference() throws {
+        let expected: [(String, League, [String])] = [
+            ("nba-standings-level3", .nba,
+             ["Atlantic", "Central", "Southeast", "Northwest", "Pacific", "Southwest"]),
+            ("nhl-standings-level3", .nhl,
+             ["Atlantic", "Metropolitan", "Central", "Pacific"]),
+        ]
+        for (name, league, order) in expected {
+            let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let conferenceOrder = Conference.topLevelIds(in: league)
+            let grouped = divisions.sorted { lhs, rhs in
+                let l = lhs.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
+                let r = rhs.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
+                return l == r ? lhs.name < rhs.name : l < r
+            }
+            #expect(grouped.map(\.name) == order)
+        }
+    }
+
     /// The NHL keeps no conference record and ranks on points; the NBA
     /// keeps win percentage and games back. Each table's columns have to
     /// find numbers in the payload the league actually ships.

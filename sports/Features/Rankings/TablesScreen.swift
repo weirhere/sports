@@ -89,19 +89,44 @@ struct TablesScreen: View {
         return PollScreen.displayed(polls)
     }
 
-    /// Divisions folded into their conference: the hub names conferences,
-    /// so the Sun Belt is one row here even though its standings are two
-    /// tables (the page that tables them still gets both).
+    /// Divisions folded into their conference: the Sun Belt, not
+    /// "Sun Belt - East" and "Sun Belt - West"; the AFC, not its four.
     ///
     /// College football's two divisions fold together here — the fetches
     /// stay separate (they are separate requests, and either can fail
     /// alone), the list doesn't. Folding the union in one pass is what
     /// sorts FBS above FCS: `foldingDivisions()` re-applies the tier rule
     /// across everything it is handed.
+    ///
+    /// For the pro leagues this is a *derivation*, not a fetch: their hub
+    /// request is the divisional one, and folding it back up is what
+    /// gives the league row something to merge.
     private func conferences(in league: League) -> [ConferenceStandings] {
         var fetched = standings[league] ?? []
         if league == .collegeFootball { fetched += fcsStandings }
         return fetched.foldingDivisions()
+    }
+
+    /// The divisions a league's accordion lists, grouped by the
+    /// conference they belong to and alphabetical inside it — the AFC's
+    /// four, then the NFC's.
+    ///
+    /// The mapper sorts divisions by name alone, which is right for a
+    /// standings pane listing one conference's and wrong for a list of
+    /// every one: alphabetically the NBA's six interleave their
+    /// conferences, and Northwest lands between Central and Pacific with
+    /// nothing on screen to explain why.
+    private func divisions(in league: League) -> [ConferenceStandings] {
+        let conferenceOrder = Conference.topLevelIds(in: league)
+        func rank(_ table: ConferenceStandings) -> Int {
+            table.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
+        }
+        return (standings[league] ?? [])
+            .filter { $0.parentId != nil }
+            .sorted { lhs, rhs in
+                let (l, r) = (rank(lhs), rank(rhs))
+                return l == r ? lhs.name < rhs.name : l < r
+            }
     }
 
     /// The league's own table, where it has one — the NFL's 32 teams in a
@@ -109,17 +134,34 @@ struct TablesScreen: View {
     /// just the different conferences"). College football answers the same
     /// question with its poll, so this is nil there.
     private func leagueTable(in league: League) -> ConferenceStandings? {
-        (standings[league] ?? []).leagueTable(in: league)
+        conferences(in: league).leagueTable(in: league)
     }
 
-    /// Every table a league offers, league-wide row first: the whole thing
-    /// above its parts, which is also where the poll row sits in college
-    /// football.
+    /// What a league's accordion holds, league-wide row first: the whole
+    /// thing above its parts.
+    ///
+    /// The parts are **divisions** for the pro leagues (Andy, 2026-09-09:
+    /// "split into division rather than conference … conferences aren't as
+    /// a priority here") — a division is the race anyone is actually in,
+    /// where a conference is a playoff bracket's seeding pool. College
+    /// football's parts are its conferences, which is the same rung: the
+    /// group a team plays a schedule inside.
     private func tables(in league: League) -> [ConferenceStandings] {
-        (leagueTable(in: league).map { [$0] } ?? []) + conferences(in: league)
+        let parts = league.hasCollegeDivisions ? conferences(in: league) : divisions(in: league)
+        return (leagueTable(in: league).map { [$0] } ?? []) + parts
     }
 
-    /// What a league's accordion holds — its conferences, plus the poll row
+    /// Every table a league offers that someone could be following,
+    /// including the conference rows the accordion no longer lists. A
+    /// conference follow made before the hub showed divisions still has a
+    /// card in Following and still hoists its section on Scores.
+    private func followableTables(in league: League) -> [ConferenceStandings] {
+        var seen: Set<ConferenceID?> = []
+        return (tables(in: league) + conferences(in: league))
+            .filter { seen.insert($0.conference).inserted }
+    }
+
+    /// What a league's accordion holds — its tables, plus the poll row
     /// where the league has one. The count in the header is this.
     private func rows(for league: League) -> [TableRow] {
         var rows: [TableRow] = []
@@ -138,7 +180,7 @@ struct TablesScreen: View {
     /// came back empty has no row here, exactly as it has no accordion
     /// below. Nothing errors over a missing one.
     private var followedRows: [FollowedTableRow] {
-        let loaded = League.allCases.flatMap(tables(in:))
+        let loaded = League.allCases.flatMap(followableTables(in:))
         return following.orderedTables.compactMap { table -> FollowedTableRow? in
             switch table {
             case .poll(let league):
@@ -304,11 +346,24 @@ struct TablesScreen: View {
 
     /// Every league's standings in parallel — one league's outage leaves
     /// the others' tables on screen rather than emptying the hub.
+    ///
+    /// A league whose accordion lists divisions asks for the divisional
+    /// response instead of the conference one, and the conference tables
+    /// are folded back out of it (`conferences(in:)`). One request either
+    /// way: asking for both would have cost three more on every hub load,
+    /// and `level=3` carries everything the shallower response does.
     private static func allStandings() async -> [League: [ConferenceStandings]] {
         await withTaskGroup(of: (League, [ConferenceStandings]).self) { group in
             for league in League.allCases {
                 group.addTask {
                     let client = DataProvider.makeClient(league: league)
+                    guard !league.hasCollegeDivisions else {
+                        return (league, (try? await client.conferenceStandings()) ?? [])
+                    }
+                    let divisions = (try? await client.divisionStandings(year: nil)) ?? []
+                    // A league that ships no divisional response still has
+                    // conferences worth listing.
+                    guard divisions.isEmpty else { return (league, divisions) }
                     return (league, (try? await client.conferenceStandings()) ?? [])
                 }
             }
