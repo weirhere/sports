@@ -364,13 +364,15 @@ final class LeagueScoreboards {
     /// directly beneath Following instead, in the order you dragged them
     /// into on the tables hub.
     ///
-    /// **College football breaks down by conference; nobody else does**
-    /// (Andy, 2026-09-06, superseding the one-accordion-per-league shape).
-    /// A single "College Football" accordion is 60 rows on a Saturday with
-    /// no way in; its conferences are the way fans already carve it up.
-    /// The NFL's 16 games, the NBA's 11 and the NHL's 8 are each the whole
-    /// slate at a glance, and their divisions would be one or two rows a
-    /// section. Which shape a league takes is `slateSplitsByConference`,
+    /// **The football leagues break down by their own groups; the winter
+    /// ones stay whole.** A single "College Football" accordion is 60 rows
+    /// on a Saturday with no way in, and conferences are the way fans
+    /// already carve it up (Andy, 2026-09-06); the NFL's thirteen-game
+    /// Sunday is the same problem one size down, and its divisions are the
+    /// four teams anyone is actually tracking (Andy, 2026-09-09). The
+    /// NBA's eleven and the NHL's eight *are* the slate at a glance, and
+    /// splitting them would be one or two rows a section, six or eight
+    /// times over. Which shape a league takes is `slateSplitsByConference`,
     /// so the stack is one loop rather than a branch per league.
     ///
     /// Sections stay complete, never deduplicated: a game is in Following,
@@ -490,6 +492,16 @@ final class LeagueScoreboards {
             let claimed = Set([game.home.team.conference, game.away.team.conference]
                 .compactMap { conference -> ConferenceID? in
                     guard let conference else { return nil }
+                    // College football's sections follow the *fetched*
+                    // divisions, because FCS is opt-in: until someone
+                    // follows an FCS conference a Big Sky visitor stays in
+                    // its host's section rather than spawning a Big Sky
+                    // one. No other league has an opt-in half, so a group
+                    // it knows is always a section it shows.
+                    guard league.hasCollegeDivisions else {
+                        return Conference.isKnown(conference.id, in: conference.league)
+                            ? conference : nil
+                    }
                     return Conference.division(for: conference.id, in: conference.league)
                         .map(divisions.contains) == true ? conference : nil
                 })

@@ -170,12 +170,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// Whether the day's slate breaks into one section per conference, or
     /// stands as one section for the league.
     ///
-    /// Only college football is wide enough to need carving — 60 rows on a
-    /// Saturday with no way in, and conferences are how fans already carve
-    /// one up (Andy, 2026-09-06). A 16-game NFL Sunday, an 11-game NBA
-    /// night and an 8-game NHL night are each the whole slate at a glance,
-    /// and their divisions would be one or two rows a section.
-    var slateSplitsByConference: Bool { self == .collegeFootball }
+    /// College football carves by conference and the NFL by division
+    /// (Andy, 2026-09-09, superseding the one-section NFL of 2026-09-06:
+    /// "group NFL games by division rather than the full league… kinda
+    /// like how we're doing conferences in college football"). Thirteen
+    /// rows in one accordion is a list you scroll rather than read, and a
+    /// division is the four teams a fan is actually tracking.
+    ///
+    /// Basketball and hockey stay whole: five to thirteen games is the
+    /// slate at a glance, and splitting them would be one or two rows a
+    /// section, six or eight times over.
+    var slateSplitsByConference: Bool { self == .collegeFootball || self == .nfl }
 
     /// Whether the season has weeks worth grouping by. ESPN sends
     /// `week: null` on every NBA and NHL event and ships an empty
