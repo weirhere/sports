@@ -70,10 +70,17 @@ nonisolated enum CFBDMapper {
             .sorted { ($0.mediaType == "tv" ? 0 : 1) < ($1.mediaType == "tv" ? 0 : 1) }
             .first?.outlet
 
+        // CFBD mirrors ESPN's data, so its unannounced kickoffs are
+        // assumed to carry the same midnight-Eastern placeholder and get
+        // the same re-anchoring. Unlike ESPN's, that shape has not been
+        // probed live — CFBD is a non-default provider, and a day read in
+        // the wrong zone beats leaving a knowingly-wrong path behind.
+        let timeTBD = dto.startTimeTBD == true
+        let kickoff = CFBDDate.parse(dto.startDate)
         return Game(
             id: String(id),
-            date: CFBDDate.parse(dto.startDate),
-            timeTBD: dto.startTimeTBD == true,
+            date: timeTBD ? kickoff.map { DayFormat.placeholderKickoff($0) } : kickoff,
+            timeTBD: timeTBD,
             name: "\(awaySchool) at \(homeSchool)",
             shortName: shortName(away: away, home: home),
             weekNumber: dto.week,

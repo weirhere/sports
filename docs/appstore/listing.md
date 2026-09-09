@@ -33,6 +33,14 @@ Primary: **Sports**. No secondary needed.
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
 
+### 2.1.1 (build 15)
+
+> • Fixed: games with a kickoff time still to be announced showed up a day
+>   early for everyone outside Eastern time. A Saturday game landed on
+>   Friday in Central, Mountain, Pacific, Alaska and Hawaii — on the day
+>   strip, on team schedules, in shares and in the widget. They sit on the
+>   right day now.
+
 ### 2.1 (build 14)
 
 > • Playoff brackets. The NFL's league page and the Top 25 each have a

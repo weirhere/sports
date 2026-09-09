@@ -119,7 +119,9 @@ nonisolated struct StatusTypeDTO: Decodable {
 nonisolated struct CompetitionDTO: Decodable {
     let id: String?
     let date: String?
-    // false = kickoff time unannounced; the date is a midnight placeholder.
+    // false = kickoff time unannounced; the date is a midnight *Eastern*
+    // placeholder, which is the previous day west of ET — re-anchored by
+    // `ESPNDate.parseKickoff` on the way into `Game`.
     let timeValid: Bool?
     let neutralSite: Bool?
     let broadcast: String?
@@ -306,7 +308,9 @@ nonisolated struct ScheduleSeasonTypeDTO: Decodable {
 
 nonisolated struct ScheduleCompetitionDTO: Decodable {
     let date: String?
-    // false = kickoff time unannounced; the date is a midnight placeholder.
+    // false = kickoff time unannounced; the date is a midnight *Eastern*
+    // placeholder, which is the previous day west of ET — re-anchored by
+    // `ESPNDate.parseKickoff` on the way into `Game`.
     // The schedule endpoint carries it on the event too.
     let timeValid: Bool?
     let neutralSite: Bool?

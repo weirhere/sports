@@ -622,10 +622,11 @@ nonisolated enum ESPNMapper {
               let away = competitor(from: awayDTO, league: league)
         else { return nil }
 
+        let timeTBD = competition.timeValid == false
         return Game(
             id: id,
-            date: ESPNDate.parse(event.date),
-            timeTBD: competition.timeValid == false,
+            date: ESPNDate.parseKickoff(event.date, timeTBD: timeTBD),
+            timeTBD: timeTBD,
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,
@@ -951,10 +952,11 @@ nonisolated enum ESPNMapper {
               let away = competitors.first(where: { $0.homeAway == "away" })
                   .flatMap({ competitor(from: $0, league: league) })
         else { return nil }
+        let timeTBD = (event.timeValid ?? competition.timeValid) == false
         return Game(
             id: id,
-            date: ESPNDate.parse(event.date ?? competition.date),
-            timeTBD: (event.timeValid ?? competition.timeValid) == false,
+            date: ESPNDate.parseKickoff(event.date ?? competition.date, timeTBD: timeTBD),
+            timeTBD: timeTBD,
             name: event.name,
             shortName: event.shortName,
             weekNumber: event.week?.number,
@@ -1337,5 +1339,17 @@ nonisolated enum ESPNDate {
         return noSeconds.date(from: string)
             ?? withSeconds.date(from: string)
             ?? ISO8601DateFormatter().date(from: string)
+    }
+
+    /// A kickoff, with ESPN's unannounced-time placeholder re-anchored to
+    /// the reader's own calendar day.
+    ///
+    /// `timeValid: false` doesn't come with a kickoff — it comes with
+    /// midnight Eastern, which is the day before for most of the country.
+    /// Every `Game` is built through here so no surface has to know that.
+    /// See `DayFormat.placeholderKickoff`.
+    static func parseKickoff(_ string: String?, timeTBD: Bool) -> Date? {
+        guard let date = parse(string) else { return nil }
+        return timeTBD ? DayFormat.placeholderKickoff(date) : date
     }
 }
