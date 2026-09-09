@@ -54,15 +54,10 @@ struct GameShareCardView: View {
 
             Divider().overlay(Color.divider)
 
-            // Attribution lives on the card, mirroring ScoresHeader's wordmark.
-            HStack(spacing: Spacing.xs + 2) {
-                Image(systemName: "sportscourt.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("StatSide")
-                    .font(.system(size: 15, weight: .heavy))
-            }
-            .foregroundStyle(.textPrimary)
-            .padding(.vertical, Spacing.md)
+            // Attribution is the same mark the Scores header wears, one
+            // step down: the card is a share site, not the app's own chrome.
+            Wordmark(size: 18)
+                .padding(.vertical, Spacing.md)
         }
         .background(Color.bgPrimary)
     }
