@@ -16,7 +16,8 @@ import SwiftUI
 /// buried under 25 rank rows) and lists its conferences. The NFL has no
 /// poll at all — `/nfl/rankings` is a 404 — so it leads with its own
 /// 32-team table and then the AFC and the NFC, with no poll row rather
-/// than an empty one. Hence "Tables".
+/// than an empty one. The tab is named for the accordions ("Leagues"),
+/// not for what they hold.
 ///
 /// Following is one card per followed table, draggable (Andy, 2026-09-06):
 /// the Teams tab's shape, and the order is the order those same tables lead
@@ -50,7 +51,7 @@ struct TablesScreen: View {
         NavigationStack {
             content
                 .background(Color.bgPrimary)
-                .navigationTitle("Tables")
+                .navigationTitle("Leagues")
                 .navigationBarTitleDisplayMode(.inline)
                 // TeamPage is pushed view-based here, but its standing line
                 // and a standings row's team both push values — register
@@ -252,8 +253,11 @@ struct TablesScreen: View {
                         // one LazyVStack corrupt its layout (blank
                         // card-sized gaps).
                         FollowedTablesList(rows: followed, isReordering: $isReordering)
+                        // Only ever the boundary under Following: with no
+                        // Following section the heading sits one line under
+                        // a nav bar already saying "Leagues".
+                        ListSectionHeading(title: "Leagues")
                     }
-                    ListSectionHeading(title: "Leagues")
                     ForEach(groups) { group in
                         groupSection(group)
                     }

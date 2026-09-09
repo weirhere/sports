@@ -57,7 +57,7 @@ final class PostseasonSwipeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.scoreFilter", "none", "-ui.liveOnly", "NO"]
         app.launch()
-        app.tabBars.buttons["Tables"].firstMatch.tap()
+        app.tabBars.buttons["Leagues"].firstMatch.tap()
         guard openPostseason(app) else {
             XCTFail("Couldn't reach the Postseason tab in the previous season")
             return

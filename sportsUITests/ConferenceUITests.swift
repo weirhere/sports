@@ -23,8 +23,8 @@ final class ConferenceUITests: XCTestCase {
         // gone. ACC, not SEC — the hub's college-football accordion lists
         // conferences tier-then-name, so ACC is the first row under the
         // Top 25 one and is realized even in a LazyVStack.
-        XCTAssertTrue(openTab("Tables", in: app, until: app.top25Row),
-                      "Tables should load its hub")
+        XCTAssertTrue(openTab("Leagues", in: app, until: app.top25Row),
+                      "Leagues should load its hub")
         let accRow = app.buttons.matching(NSPredicate(
             format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC,")).firstMatch
         XCTAssertTrue(scrollUntilExists(accRow, in: app, timeout: 15),
@@ -122,15 +122,15 @@ final class ConferenceUITests: XCTestCase {
         app.launch()
 
         // The root is the list: Top 25 row first, conferences right below.
-        XCTAssertTrue(openTab("Tables", in: app, until: app.top25Row),
-                      "Tables should lead with the Top 25 row")
+        XCTAssertTrue(openTab("Leagues", in: app, until: app.top25Row),
+                      "Leagues should lead with the Top 25 row")
 
         // An ACC row exists year-round (the list renders offseason, teasers
         // or not); its label is either bare "ACC" or "ACC, led by …".
         let accRow = app.descendants(matching: .any).matching(NSPredicate(
             format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
         XCTAssertTrue(scrollUntilExists(accRow, in: app, maxSwipes: 4, timeout: 5),
-                      "Tables should list the ACC near the root")
+                      "Leagues should list the ACC near the root")
         // The pushed page's landmark is the follow pill, not the nav bar:
         // ConferencePage went `.navigationTitle("")` with the hero template
         // (172155d), so the bar is never identified "ACC" anymore. The tap
@@ -160,7 +160,7 @@ final class ConferenceUITests: XCTestCase {
                       "Back should pop the conference page")
         XCTAssertTrue(scrollUntilExists(app.top25Row, in: app,
                                         revealing: .above, timeout: 5),
-                      "Popping back should land on the Tables list")
+                      "Popping back should land on the Leagues list")
         app.top25Row.tap()
         XCTAssertTrue(app.topRankedRow.waitForExistence(timeout: 15),
                       "The Top 25 row should push a poll with a ranked #1")

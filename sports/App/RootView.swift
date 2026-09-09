@@ -30,11 +30,14 @@ struct RootView: View {
             SwiftUI.Tab("Games", systemImage: "sportscourt.fill", value: Tab.scores) {
                 ScoresScreen()
             }
-            // "Tables", not "Rankings": the NFL has no poll, so half the
-            // time the tab would be named after a thing the league on
-            // screen doesn't have. FotMob and Sofascore both call this
-            // Leagues; Tables says what's inside it.
-            SwiftUI.Tab("Tables", systemImage: "list.number", value: Tab.tables) {
+            // "Leagues", not "Rankings" or "Tables" (Andy, 2026-09-09):
+            // the NFL has no poll, so half the time "Rankings" would name a
+            // thing the league on screen doesn't have — and "Tables" named
+            // the contents rather than the tab. FotMob and Sofascore both
+            // call this Leagues, and a league is what the accordions are.
+            // The trophy follows the name: `list.number` drew the standings
+            // table the old name promised.
+            SwiftUI.Tab("Leagues", systemImage: "trophy.fill", value: Tab.tables) {
                 TablesScreen()
             }
             SwiftUI.Tab("Teams", systemImage: "shield.lefthalf.filled", value: Tab.teams) {

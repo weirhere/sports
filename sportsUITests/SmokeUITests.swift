@@ -58,7 +58,7 @@ final class SmokeUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [goneExpectation], timeout: 10), .completed,
                        "Tapping Today should return the strip home")
 
-        // Tables leads with the Top 25 row; the poll itself is one tap
+        // Leagues leads with the Top 25 row; the poll itself is one tap
         // down. Which poll depends on the calendar — the AP preseason Top
         // 25 doesn't drop until mid-August.
         XCTAssertTrue(openRankingsPoll(in: app),
