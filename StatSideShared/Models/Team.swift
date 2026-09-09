@@ -144,8 +144,12 @@ nonisolated enum Conference {
         /// The group that stands for the whole league.
         let leagueWideId: Int
         let leagueName: String
-        /// Ordered — this *is* `topLevelIds(in:)`.
-        let conferences: [(id: Int, name: String)]
+        /// Ordered — this *is* `topLevelIds(in:)`. The short form is
+        /// ESPN's own `abbreviation` for the group ("East", "West",
+        /// "AFC"), and it is what a division's name is qualified with:
+        /// "Northwest (West)" fits a row where "Northwest (Western)"
+        /// truncates it.
+        let conferences: [(id: Int, name: String, short: String)]
         let divisionNames: [Int: String]
         /// Division id → its conference id.
         let divisionParents: [Int: Int]
@@ -161,6 +165,10 @@ nonisolated enum Conference {
             names[leagueWideId] = leagueName
             return names
         }
+
+        var conferenceShorts: [Int: String] {
+            Dictionary(uniqueKeysWithValues: conferences.map { ($0.id, $0.short) })
+        }
     }
 
     /// Ids read live from `apis/v2/sports/football/nfl/standings` and the
@@ -168,7 +176,7 @@ nonisolated enum Conference {
     private static let nflRegistry = Registry(
         leagueWideId: 9,
         leagueName: "NFL",
-        conferences: [(8, "AFC"), (7, "NFC")],
+        conferences: [(8, "AFC", "AFC"), (7, "NFC", "NFC")],
         divisionNames: [
             4: "AFC East", 12: "AFC North", 13: "AFC South", 6: "AFC West",
             1: "NFC East", 10: "NFC North", 11: "NFC South", 3: "NFC West",
@@ -190,7 +198,7 @@ nonisolated enum Conference {
     private static let nbaRegistry = Registry(
         leagueWideId: 7,
         leagueName: "NBA",
-        conferences: [(5, "Eastern"), (6, "Western")],
+        conferences: [(5, "Eastern", "East"), (6, "Western", "West")],
         divisionNames: [
             1: "Atlantic", 2: "Central", 9: "Southeast",
             11: "Northwest", 4: "Pacific", 10: "Southwest",
@@ -217,7 +225,7 @@ nonisolated enum Conference {
     private static let nhlRegistry = Registry(
         leagueWideId: 9,
         leagueName: "NHL",
-        conferences: [(7, "Eastern"), (8, "Western")],
+        conferences: [(7, "Eastern", "East"), (8, "Western", "West")],
         divisionNames: [
             32: "Atlantic", 33: "Metropolitan",
             31: "Central", 30: "Pacific",
@@ -303,9 +311,29 @@ nonisolated enum Conference {
         league == .collegeFootball ? cfbLogoSlugs : (registries[league]?.conferenceSlugs ?? [:])
     }
 
+    /// A group's display name, with its conference folded in where the
+    /// name alone doesn't place it — "Atlantic (Eastern)".
+    ///
+    /// A division is the row anyone reads, and half of them are named for
+    /// a compass point that says nothing about which half of the league
+    /// they sit in: the NBA's Atlantic and the NHL's are in different
+    /// conferences of different sports. The NFL needs none of this ("AFC
+    /// East" already says it), and college football has no divisions to
+    /// qualify — the qualifier appears only where the name is genuinely
+    /// ambiguous, which is what the containment check tests.
     static func name(for id: Int?, in league: League) -> String {
         guard let id, let name = names(in: league)[id] else { return "Other" }
-        return name
+        guard let parent = parent(of: id, in: league),
+              let registry = registries[league],
+              let short = registry.conferenceShorts[parent],
+              // Tested against the conference's *full* name, rendered with
+              // its short one. Testing the short form is what a compass
+              // point breaks: "Southeast" contains "east" and "Northwest"
+              // contains "west", so exactly the divisions that need
+              // placing would have decided they already said it.
+              !name.localizedCaseInsensitiveContains(registry.allNames[parent] ?? short)
+        else { return name }
+        return "\(name) (\(short))"
     }
 
     static func name(for conference: ConferenceID?) -> String {

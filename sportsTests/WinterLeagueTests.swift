@@ -86,7 +86,7 @@ import Testing
     @Test func collidingIdsStayApartAcrossLeagues() {
         #expect(Conference.name(for: .nhl(9)) == "NHL")
         #expect(Conference.name(for: .nfl(9)) == "NFL")
-        #expect(Conference.name(for: .nba(4)) == "Pacific")
+        #expect(Conference.name(for: .nba(4)) == "Pacific (West)")
         #expect(Conference.name(for: .nfl(4)) == "AFC East")
         #expect(Conference.name(for: .cfb(4)) == "Big 12")
         #expect(ConferenceID.nhl(9) != ConferenceID.nfl(9))
@@ -147,6 +147,38 @@ import Testing
             #expect(Conference.division(for: 5, in: league) == nil)
             #expect(!Conference.titleGameIsTopTwo(id: 5, year: 2026, in: league))
         }
+    }
+
+    /// A division row says which conference it is in one way or the
+    /// other: the NBA's wear the Eastern or Western mark, and the NHL's —
+    /// whose conferences ESPN gives no mark at all — carry the name as a
+    /// caption instead. The NFL needs neither: "AFC East" says it.
+    /// A division's name says which conference it is in, because half of
+    /// them are named for a compass point that doesn't: the NBA's Atlantic
+    /// and the NHL's sit in different conferences of different sports.
+    @Test func aDivisionsNamePlacesItInItsConference() {
+        // Rendered with ESPN's short form, but tested against the full
+        // one — "Southeast" contains "east", and testing the short form
+        // would drop the qualifier from every compass division.
+        #expect(Conference.name(for: .nba(1)) == "Atlantic (East)")
+        #expect(Conference.name(for: .nba(2)) == "Central (East)")
+        #expect(Conference.name(for: .nba(9)) == "Southeast (East)")
+        #expect(Conference.name(for: .nba(11)) == "Northwest (West)")
+        #expect(Conference.name(for: .nba(4)) == "Pacific (West)")
+        #expect(Conference.name(for: .nba(10)) == "Southwest (West)")
+        #expect(Conference.name(for: .nhl(32)) == "Atlantic (East)")
+        #expect(Conference.name(for: .nhl(30)) == "Pacific (West)")
+
+        // The conferences themselves are not qualified, and neither is a
+        // league.
+        #expect(Conference.name(for: .nhl(7)) == "Eastern")
+        #expect(Conference.name(for: .nba(7)) == "NBA")
+
+        // The NFL's own names already carry it, so nothing is added; and
+        // college football has no divisions to qualify.
+        #expect(Conference.name(for: .nfl(4)) == "AFC East")
+        #expect(Conference.name(for: .nfl(3)) == "NFC West")
+        #expect(Conference.name(for: .cfb(8)) == "SEC")
     }
 
     @Test func everyLeagueSpeaksItsOwnSport() {

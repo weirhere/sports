@@ -287,7 +287,19 @@ struct TablesScreen: View {
             .accessibilityLabel("\(group.title), \(rows.count) \(rows.count == 1 ? "table" : "tables")")
             .accessibilityValue(isExpanded ? "expanded" : "collapsed")
             .accessibilityAddTraits(.isHeader)
-            .background(Color.bgHeader)
+            // The header is the same card surface as the rows beneath it,
+            // open or shut (Andy, 2026-09-09) — a tinted bar made every
+            // collapsed league read as a control rather than as the top of
+            // its own card. Open, a hairline is what separates it from the
+            // rows; closed, there is nothing to separate it from.
+            .background(Color.bgCard)
+            .overlay(alignment: .bottom) {
+                if isExpanded {
+                    Rectangle()
+                        .fill(Color.divider)
+                        .frame(height: 1)
+                }
+            }
 
             if isExpanded {
                 ForEach(rows) { row in

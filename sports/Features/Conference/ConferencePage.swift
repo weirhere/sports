@@ -378,6 +378,54 @@ struct ConferencePage: View {
     /// Just the identity now — the tab row moved into `pinnedControls`
     /// so it can stick (Andy, 2026-09-05). This block is what scrolls
     /// away and hands the nav bar its title.
+    /// The line under the hero title: the league this page sits inside,
+    /// and how many teams the page holds.
+    ///
+    /// The league half is a link (Andy, 2026-09-09: "an affordance to
+    /// easily and quickly get to the league page"). A division is two
+    /// rungs down from its league and the only way back was the tables
+    /// hub — TeamPage has had exactly this line, pointing one rung up,
+    /// since its hero landed.
+    ///
+    /// College football gets no link and needs none: its conferences sit
+    /// directly under a division of the sport, not under a league table,
+    /// so `leagueWideId` is nil there and the line is just the count.
+    @ViewBuilder
+    private var subtitle: some View {
+        if let league = parentLeagueDestination {
+            NavigationLink(value: league) {
+                HStack(spacing: Spacing.xs) {
+                    Text(league.name)
+                    if teamCount > 0 {
+                        Text("·")
+                        Text("\(teamCount) teams")
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .font(.chipEmphasis)
+                .foregroundStyle(.textSecondary)
+            }
+            .buttonStyle(SwipeSafeButtonStyle())
+            .accessibilityLabel("\(league.name), \(teamCount) teams")
+            .accessibilityHint("Opens the league's standings")
+        } else if teamCount > 0 {
+            Text("\(teamCount) teams")
+                .font(.chipEmphasis)
+                .foregroundStyle(.textSecondary)
+        }
+    }
+
+    /// The whole-league table above this page, where there is one and this
+    /// page is not already it.
+    private var parentLeagueDestination: ConferenceDestination? {
+        guard !isLeagueWide,
+              let wide = Conference.leagueWideId(in: destination.league)
+        else { return nil }
+        let id = ConferenceID(destination.league, wide)
+        return ConferenceDestination(conference: id, name: Conference.name(for: id))
+    }
+
     private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
@@ -393,11 +441,7 @@ struct ConferencePage: View {
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    if teamCount > 0 {
-                        Text("\(teamCount) teams")
-                            .font(.chipEmphasis)
-                            .foregroundStyle(.textSecondary)
-                    }
+                    subtitle
                 }
                 Spacer(minLength: 0)
             }
@@ -463,7 +507,12 @@ struct ConferencePage: View {
     /// affordable at any size, so team pages keep their Games tab and
     /// conference pages don't.
     private var availableTabs: [Tab] {
-        guard destination.league.canTableAWholeSeason else { return [.standings] }
+        guard destination.league.canTableAWholeSeason else {
+            // A rolling window is the only slate these leagues can afford,
+            // and a window around today means nothing in a season that
+            // already ended — so a past season keeps Standings alone.
+            return selectedYear == currentSeasonYear ? [.standings, .games] : [.standings]
+        }
         return postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
     }
 
@@ -594,6 +643,31 @@ struct ConferencePage: View {
 
     // MARK: - Standings
 
+    /// A table's card header, and the way into that table's own page
+    /// (Andy, 2026-09-09) — the league page lists eight divisions, and
+    /// each card's title was the only thing naming a page you couldn't
+    /// get to from it. The same rule the Scores accordion headers follow:
+    /// the name of a group is the route to it.
+    ///
+    /// Not a link when the card *is* this page's own group — a division's
+    /// page heads its one table with its own name, and a link there would
+    /// go nowhere.
+    @ViewBuilder
+    private func tableHeader(_ table: ConferenceStandings) -> some View {
+        let title = table.divisionName(under: destination.name)
+        if let id = table.conference, id != destination.conference,
+           Conference.isKnown(id.id, in: id.league) {
+            NavigationLink(value: ConferenceDestination(conference: id,
+                                                        name: Conference.name(for: id),
+                                                        highlightTeamId: destination.highlightTeamId)) {
+                CardHeader(title: title, isLink: true)
+            }
+            .buttonStyle(SwipeSafeButtonStyle())
+        } else {
+            CardHeader(title: title)
+        }
+    }
+
     // No CardHeader here: the Standings tab already names the card
     // (Andy, 2026-08-29).
     private var standingsCard: some View {
@@ -607,7 +681,7 @@ struct ConferencePage: View {
                 ForEach(standingsTables, id: \.name) { table in
                     VStack(spacing: 0) {
                         if showsTableHeaders {
-                            CardHeader(title: table.divisionName(under: destination.name))
+                            tableHeader(table)
                         }
                         StandingsList(
                             entries: table.entries,
@@ -725,12 +799,34 @@ struct ConferencePage: View {
         gamesLoadingYears.insert(year)
         defer { gamesLoadingYears.remove(year) }
         do {
-            gamesByYear[year] = try await client.conferenceGames(
-                conferenceId: destination.conferenceId,
-                year: year == currentSeasonYear ? nil : year)
+            gamesByYear[year] = destination.league.canTableAWholeSeason
+                ? try await client.conferenceGames(
+                    conferenceId: destination.conferenceId,
+                    year: year == currentSeasonYear ? nil : year)
+                : try await rollingGames()
             gamesFailedYears.remove(year)
         } catch {
             gamesFailedYears.insert(year)
         }
+    }
+
+    /// The slate for a league whose season is too big to fetch: one
+    /// `dates=` window around today, narrowed to this page's teams.
+    ///
+    /// ESPN ignores `groups=` outside football, so the narrowing happens
+    /// here — through the same rule that decides whether a followed table
+    /// claims a game, so a division's page and a division follow can never
+    /// disagree about which games are its. A league-wide page keeps them
+    /// all, because every team's chain reaches its league.
+    private func rollingGames() async throws -> [Game] {
+        let calendar = Calendar.current
+        let window = destination.league.gamesWindow
+        let today = calendar.startOfDay(for: .now)
+        guard let from = calendar.date(byAdding: .day, value: -window.back, to: today),
+              let to = calendar.date(byAdding: .day, value: window.forward, to: today)
+        else { return [] }
+        let board = try await client.scoreboard(days: from...to, divisions: [])
+        let table = FollowedTable.conference(destination.conference)
+        return board.games.filter(table.matches)
     }
 }

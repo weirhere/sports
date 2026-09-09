@@ -907,13 +907,25 @@ nonisolated enum ESPNMapper {
         return "\(Int(wins))-\(Int(losses))-\(Int(otLosses))"
     }
 
-    /// The overall record, minus the tail the NHL appends to it.
+    /// The overall record, minus the tail the NHL appends to it — and
+    /// composed from the numbers where ESPN ships no summary at all.
+    ///
+    /// The **divisional** response (`level=3`) carries no `total`: it
+    /// sends `divisionstandings` in its place. So a division's page had a
+    /// W-L column of dashes while the conference's, off a different
+    /// request, was full. Wins and losses are in every response, and the
+    /// OT-loss form is preferred where the league keeps one, or hockey's
+    /// record would come back two numbers short.
     private static func overallRecord(_ stat: (String) -> StandingsStatDTO?,
                                       league: League) -> String? {
-        guard let summary = stat("total")?.summary else { return nil }
-        // "53-22-7, 113 PTS" → "53-22-7". The points live in their own
-        // column; repeating them inside the record reads as a typo.
-        return summary.split(separator: ",").first.map(String.init) ?? summary
+        if let summary = stat("total")?.summary {
+            // "53-22-7, 113 PTS" → "53-22-7". The points live in their own
+            // column; repeating them inside the record reads as a typo.
+            return summary.split(separator: ",").first.map(String.init) ?? summary
+        }
+        if let withOTLosses = winLossOTL(stat) { return withOTLosses }
+        guard let wins = stat("wins")?.value, let losses = stat("losses")?.value else { return nil }
+        return "\(Int(wins))-\(Int(losses))"
     }
 
     static func teamSchedule(

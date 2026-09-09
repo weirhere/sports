@@ -380,36 +380,83 @@ struct TeamPage: View {
             .frame(width: 56, height: 56)
     }
 
-    /// The conference name; the record moved into Overview's Record card,
-    /// and the placement string into the Standings tab, where it's a table
-    /// instead of a claim. Links to the full conference page when there is one.
+    /// Where this team sits, and the way there: its own group, then the
+    /// league that group belongs to.
+    ///
+    /// Both rungs are links (Andy, 2026-09-09: "include what league
+    /// they're a part of (not just what division) … link to that league
+    /// like we do for college football conferences"). A pro team's group
+    /// is its *division*, which named a race with no route to the league
+    /// above it — and the line linked at all only for college football,
+    /// because the gate asked whether the id had an FBS/FCS division
+    /// rather than whether it had a page.
+    ///
+    /// College football is unchanged: its conferences sit under a division
+    /// of the sport rather than a league table, so there is no second rung
+    /// and the line stays one link.
     @ViewBuilder
     private var conferenceLine: some View {
-        // Both divisions link now: the conference page fetches standings
-        // for its own division, and ESPN serves its Games tab off the same
-        // `groups={id}` scoreboard call either way (probed 2026-09-03:
-        // Big Sky 2026 returns 96 events). An id we can't name still
-        // renders as plain text — there's no page to send it to.
         let label = resolvedConference.map { Conference.name(for: $0) } ?? ""
-        if let id = resolvedConference, Conference.division(for: id.id, in: id.league) != nil {
-            NavigationLink(value: ConferenceDestination(conference: id,
-                                                        name: Conference.name(for: id),
-                                                        highlightTeamId: team.id)) {
-                HStack(spacing: Spacing.xs) {
-                    Text(label)
+        HStack(spacing: Spacing.xs) {
+            if let id = resolvedConference, Conference.isKnown(id.id, in: id.league) {
+                groupLink(id, label: label, showsChevron: leagueDestination == nil)
+                if let league = leagueDestination {
+                    Text("·")
+                        .font(.chipEmphasis)
+                        .foregroundStyle(.textSecondary)
+                    leagueLink(league)
+                }
+            } else if !label.isEmpty {
+                // An id we can't name renders as plain text — there's no
+                // page to send it to.
+                Text(label)
+                    .font(.chipEmphasis)
+                    .foregroundStyle(.textSecondary)
+            }
+        }
+    }
+
+    private func groupLink(_ id: ConferenceID, label: String,
+                           showsChevron: Bool) -> some View {
+        NavigationLink(value: ConferenceDestination(conference: id,
+                                                    name: Conference.name(for: id),
+                                                    highlightTeamId: team.id)) {
+            HStack(spacing: Spacing.xs) {
+                Text(label)
+                if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                 }
-                .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("View conference standings")
-        } else if !label.isEmpty {
-            Text(label)
-                .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
+            .font(.chipEmphasis)
+            .foregroundStyle(.textSecondary)
         }
+        .buttonStyle(.plain)
+        .accessibilityHint("View standings")
+    }
+
+    private func leagueLink(_ destination: ConferenceDestination) -> some View {
+        NavigationLink(value: destination) {
+            HStack(spacing: Spacing.xs) {
+                Text(destination.name)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .font(.chipEmphasis)
+            .foregroundStyle(.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("View league standings")
+    }
+
+    /// The whole-league table this team's group sits under, where the
+    /// league keeps one — every league but college football.
+    private var leagueDestination: ConferenceDestination? {
+        guard let wide = Conference.leagueWideId(in: pageLeague),
+              resolvedConference?.id != wide else { return nil }
+        let id = ConferenceID(pageLeague, wide)
+        return ConferenceDestination(conference: id, name: Conference.name(for: id),
+                                     highlightTeamId: team.id)
     }
 
     private var tabRow: some View {

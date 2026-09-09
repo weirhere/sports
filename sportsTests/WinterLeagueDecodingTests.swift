@@ -121,6 +121,62 @@ private func fixture(_ name: String) throws -> Data {
         }
     }
 
+    /// The Games tab on a league or division page narrows a `dates=`
+    /// window to that page's teams here, because ESPN ignores `groups=`
+    /// outside football. It uses the same rule that decides whether a
+    /// followed table claims a game, so a division's page and a division
+    /// follow can never disagree about which games are its.
+    @Test func aPagesSlateIsNarrowedByTheSameRuleAFollowUses() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nba-scoreboard"))
+        let games = ESPNMapper.scoreboard(from: dto, league: .nba).games
+        #expect(!games.isEmpty)
+
+        // The league's page keeps everything: every team's chain reaches
+        // its league.
+        let league = FollowedTable.conference(.nba(7))
+        #expect(games.allSatisfy(league.matches))
+
+        // A division's page keeps only the games one of its teams is in,
+        // and every game it keeps really has one.
+        let central = FollowedTable.conference(.nba(2))
+        let kept = games.filter(central.matches)
+        #expect(kept.count < games.count)
+        for game in kept {
+            let sides = [game.home.team.id, game.away.team.id]
+            #expect(sides.contains { Conference.division(forTeamId: $0, in: .nba) == 2 })
+        }
+        // And the conference above it keeps at least as many.
+        let east = games.filter(FollowedTable.conference(.nba(5)).matches)
+        #expect(east.count >= kept.count)
+    }
+
+    /// ESPN's divisional response carries no `total` — it sends
+    /// `divisionstandings` in its place — so a division's page showed a
+    /// column of dashes where its conference's, off a different request,
+    /// was full. The record composes from the numbers instead.
+    @Test func aDivisionalResponseStillYieldsAnOverallRecord() throws {
+        let expected: [(String, League, Int)] = [
+            ("nba-standings-level3", .nba, 2),
+            ("nhl-standings-level3", .nhl, 3),
+        ]
+        for (name, league, parts) in expected {
+            let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let entries = divisions.flatMap(\.entries)
+            #expect(!entries.isEmpty)
+            for entry in entries {
+                let record = try #require(entry.overallRecord, "\(entry.team.id) has no record")
+                #expect(record.split(separator: "-").count == parts)
+                #expect(!record.contains("PTS"))
+            }
+            // And every column the league's table promises finds a number.
+            for column in league.standingsColumns {
+                #expect(entries.allSatisfy { $0.value(for: column) != nil },
+                        "\(league) \(column.caption) came back empty")
+            }
+        }
+    }
+
     /// The hub lists divisions now (Andy, 2026-09-09), so a pro league's
     /// one request is the divisional one — and everything above a division
     /// has to be derivable from it, or the league row and any standing
@@ -173,9 +229,11 @@ private func fixture(_ name: String) throws -> Data {
     @Test func theHubGroupsDivisionsByTheirConference() throws {
         let expected: [(String, League, [String])] = [
             ("nba-standings-level3", .nba,
-             ["Atlantic", "Central", "Southeast", "Northwest", "Pacific", "Southwest"]),
+             ["Atlantic (East)", "Central (East)", "Southeast (East)",
+              "Northwest (West)", "Pacific (West)", "Southwest (West)"]),
             ("nhl-standings-level3", .nhl,
-             ["Atlantic", "Metropolitan", "Central", "Pacific"]),
+             ["Atlantic (East)", "Metropolitan (East)",
+              "Central (West)", "Pacific (West)"]),
         ]
         for (name, league, order) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
@@ -209,7 +267,7 @@ private func fixture(_ name: String) throws -> Data {
 
         // A division's own page: itself, with its teams in it.
         let central = divisions.divisionTables(for: .nba(2), isLeagueWide: false)
-        #expect(central.map(\.name) == ["Central"])
+        #expect(central.map(\.name) == ["Central (East)"])
         #expect(central.first?.entries.isEmpty == false)
     }
 

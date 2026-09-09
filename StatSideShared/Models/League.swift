@@ -208,6 +208,20 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// team pages keep their Games tab and conference pages don't.
     var canTableAWholeSeason: Bool { !seasonYearIsEndYear }
 
+    /// How many days either side of today a Games tab reaches for a
+    /// league whose whole season it cannot fetch.
+    ///
+    /// A week back and three weeks forward: enough to answer "when do they
+    /// play next" and "what did I miss", in **one** request of about a
+    /// megabyte — the size of a college-football Saturday. The alternative
+    /// is nine monthly requests and 24 MB for a page view, which is not a
+    /// tab, it is a download.
+    ///
+    /// Only ever used where `canTableAWholeSeason` is false, and only for
+    /// the current season: a rolling window has no meaning in a season
+    /// that already ended, so those keep Standings alone.
+    var gamesWindow: (back: Int, forward: Int) { (7, 21) }
+
     /// What a league calls its scoring periods.
     ///
     /// ESPN says the same thing in `format.regulation.periods` on the

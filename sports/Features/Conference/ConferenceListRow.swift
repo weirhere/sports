@@ -59,6 +59,11 @@ struct ConferenceListRow: View {
             .font(.teamName)
             .foregroundStyle(.textPrimary)
             .lineLimit(isStacked ? 2 : 1)
+            // The name is the row's identity; the teaser is a courtesy.
+            // Without this a long division name gave way first, so
+            // "Northwest (West)" clipped while the leader beside it sat
+            // whole.
+            .layoutPriority(1)
     }
 
     @ViewBuilder
