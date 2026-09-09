@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { siteUrl } from "@/lib/site";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { FavoritesProvider } from "@/components/providers/favorites-provider";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({
             {children}
           </FavoritesProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
