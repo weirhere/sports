@@ -401,13 +401,21 @@ struct GameDetailScreen: View {
                             LiveSituationCard(summary: summary, situation: situation)
                         }
                     }
-                    // Pre-kick, the sections below are all empty — the
-                    // game-info card carries the "what do I need to
-                    // know" load (FotMob's Preview cards, monochrome).
+                    // Pre-kick, the sections below are all empty — these
+                    // two cards carry the whole "what do I need to know"
+                    // load (FotMob's Preview cards, monochrome). When
+                    // and where to watch is one question; the ground
+                    // it's played on is another.
                     if !showsScores {
-                        card(title: "Game info") {
-                            GameInfoRows(game: game, summary: summary,
-                                         showsKickoffDetails: true)
+                        if KickoffInfoRows.hasContent(game: game, summary: summary) {
+                            card(title: "Game info") {
+                                KickoffInfoRows(game: game, summary: summary)
+                            }
+                        }
+                        if GameInfoRows.hasVenueContent(summary) {
+                            card(title: "Venue") {
+                                GameInfoRows(summary: summary)
+                            }
                         }
                     }
                     if summary.away?.linescores.isEmpty == false {
@@ -447,11 +455,12 @@ struct GameDetailScreen: View {
                                              standings: conferenceStandings)
                         }
                     }
-                    // Pre-game the info card already places the game;
-                    // once scores exist it returns as the venue card.
+                    // Pre-game the venue card sits up top with the
+                    // kickoff; once scores exist it comes back down
+                    // here, to place the game and count the crowd.
                     if showsScores, GameInfoRows.hasVenueContent(summary) {
-                        card(title: "Game info") {
-                            GameInfoRows(game: game, summary: summary)
+                        card(title: "Venue") {
+                            GameInfoRows(summary: summary)
                         }
                     }
             }
