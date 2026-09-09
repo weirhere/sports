@@ -321,6 +321,23 @@ private func game(status: GameStatus,
         #expect(row.accessibilitySummary == "Atlantic, led by Carolina at 53 and 22 and 7")
     }
 
+    /// A whole-league row teases nothing: its leader is only the best
+    /// record in the sport, and the number it used to show was an
+    /// in-group record on a row that spans every group.
+    @Test func aWholeLeagueRowSpeaksJustItsName() {
+        let okc = Team(id: "25", location: "Oklahoma City", name: "Thunder",
+                       abbreviation: "OKC", displayName: "Oklahoma City Thunder",
+                       shortDisplayName: "Thunder", logoURL: nil,
+                       conferenceId: 11, league: .nba)
+        let row = ConferenceListRow(conference: ConferenceStandings(
+            id: Conference.leagueWideId(in: .nba), name: "NBA",
+            entries: [ConferenceStanding(team: okc, conferenceRecord: "41-11",
+                                         overallRecord: "64-18", streak: nil,
+                                         gamesPlayed: 82)],
+            league: .nba))
+        #expect(row.accessibilitySummary == "NBA")
+    }
+
     @Test func preseasonSpeaksJustTheName() {
         let row = ConferenceListRow(conference: conference(entries: [
             ConferenceStanding(team: georgia, conferenceRecord: "0-0",
