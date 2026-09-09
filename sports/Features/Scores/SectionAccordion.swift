@@ -86,7 +86,8 @@ struct SectionAccordion: View {
                     .foregroundStyle(.textSecondary)
                     .frame(width: 18, height: 18)
             } else {
-                ConferenceLogo(url: section.logoURL)
+                ConferenceLogo(url: section.logoURL,
+                               league: section.league ?? .collegeFootball)
             }
             // Tighter than the row's own spacing: the caption belongs to
             // the name, not to the count that follows it.

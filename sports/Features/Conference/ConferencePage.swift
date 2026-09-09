@@ -182,7 +182,12 @@ struct ConferencePage: View {
     /// any scope that draws more than one card — an unheaded pair of
     /// tables is two rankings with no way to tell which is which.
     private var showsTableHeaders: Bool {
-        isDivisional || standingsTables.count > 1
+        // More than one table needs telling apart. One table needs a
+        // header only when it isn't this page — a division's own page
+        // would otherwise head its single table with the name already in
+        // the hero two lines above it.
+        standingsTables.count > 1
+            || standingsTables.first.map { $0.conference != destination.conference } == true
     }
 
     /// Whether those tables are the conference's divisions rather than the
@@ -396,7 +401,7 @@ struct ConferencePage: View {
             NavigationLink(value: league) {
                 HStack(spacing: Spacing.xs) {
                     Text(league.name)
-                    if teamCount > 0 {
+                    if showsTeamCount {
                         Text("·")
                         Text("\(teamCount) teams")
                     }
@@ -407,13 +412,24 @@ struct ConferencePage: View {
                 .foregroundStyle(.textSecondary)
             }
             .buttonStyle(SwipeSafeButtonStyle())
-            .accessibilityLabel("\(league.name), \(teamCount) teams")
+            .accessibilityLabel(showsTeamCount ? "\(league.name), \(teamCount) teams"
+                                               : league.name)
             .accessibilityHint("Opens the league's standings")
-        } else if teamCount > 0 {
+        } else if showsTeamCount {
             Text("\(teamCount) teams")
                 .font(.chipEmphasis)
                 .foregroundStyle(.textSecondary)
         }
+    }
+
+    /// Whether the count earns its place. A division is five teams and the
+    /// table under it is five rows — the number is right there (Andy,
+    /// 2026-09-09). A conference's sixteen and a league's thirty-two are
+    /// not countable at a glance, so those keep it.
+    private var showsTeamCount: Bool {
+        teamCount > 0
+            && Conference.tier(for: destination.conferenceId,
+                               in: destination.league) != .division
     }
 
     /// The whole-league table above this page, where there is one and this
@@ -820,13 +836,33 @@ struct ConferencePage: View {
     /// all, because every team's chain reaches its league.
     private func rollingGames() async throws -> [Game] {
         let calendar = Calendar.current
-        let window = destination.league.gamesWindow
-        let today = calendar.startOfDay(for: .now)
-        guard let from = calendar.date(byAdding: .day, value: -window.back, to: today),
-              let to = calendar.date(byAdding: .day, value: window.forward, to: today)
-        else { return [] }
-        let board = try await client.scoreboard(days: from...to, divisions: [])
+        let league = destination.league
+        let window = league.gamesWindow
+        let span = SeasonSpan.days(of: league, year: selectedYear, calendar: calendar)
         let table = FollowedTable.conference(destination.conference)
-        return board.games.filter(table.matches)
+        var start = calendar.date(byAdding: .day, value: -window.back,
+                                  to: calendar.startOfDay(for: .now)) ?? .now
+        // Walk forward a window at a time until one has games in it, the
+        // way the day strip's own `firstDayWithGames` probe does. In
+        // September the NBA's next game is three weeks past the end of the
+        // first window — a tab that says "Schedule TBA" three weeks before
+        // tip-off is answering the wrong question.
+        for _ in 0..<Self.rollingWindowProbes {
+            guard start <= span.upperBound,
+                  let end = calendar.date(byAdding: .day,
+                                          value: window.back + window.forward, to: start)
+            else { return [] }
+            let board = try await client.scoreboard(days: start...min(end, span.upperBound),
+                                                    divisions: [])
+            let games = board.games.filter(table.matches)
+            if !games.isEmpty { return games }
+            start = end
+        }
+        return []
     }
+
+    /// How many windows forward the Games tab will look before giving up.
+    /// One in season; the offseason costs at most this many, and only
+    /// until the schedule starts.
+    private static let rollingWindowProbes = 4
 }

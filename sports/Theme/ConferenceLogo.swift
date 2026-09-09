@@ -4,16 +4,20 @@ import SwiftUI
 /// (Scores' league accordions and the Tables hub's, 2026-09-06). Full color
 /// like team logos; the color budget's logo exception covers all three.
 /// A nil URL — the "Other" bucket, an unknown conference id, FCS — falls
-/// back to a football glyph so every header title indents identically.
+/// back to the sport's own glyph so every header title indents
+/// identically, and so a basketball section never wears a football.
 struct ConferenceLogo: View {
     let url: URL?
+    /// Whose glyph stands in when there's no mark. Defaults to football,
+    /// which is what every call site meant before there were four sports.
+    var league: League = .collegeFootball
 
     var body: some View {
         Group {
             if let url {
                 LogoImage(url: url, placeholder: nil)
             } else {
-                Image(systemName: "football")
+                Image(systemName: league.fallbackGlyph)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.textSecondary)
             }

@@ -108,7 +108,7 @@ struct GameRow: View {
                 }
             }
             if hasPossession(competitor) {
-                Image(systemName: "football.fill")
+                Image(systemName: game.home.team.league.fallbackGlyph)
                     .font(.system(size: 8))
                     .foregroundStyle(.textSecondary)
             }

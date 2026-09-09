@@ -7,6 +7,20 @@ import SwiftUI
 /// the two splitting one line into a pair of ellipses.
 struct ConferenceListRow: View {
     let conference: ConferenceStandings
+    /// What the row calls itself, where its own name would repeat
+    /// something already on screen — the whole-league table sitting inside
+    /// its league's own accordion, which otherwise reads "NHL" under a
+    /// header saying "NHL" (Andy, 2026-09-09).
+    var title: String? = nil
+    /// Whether the row teases its table's current leader.
+    ///
+    /// Off inside the tables hub's league accordions (Andy, 2026-09-09):
+    /// the list there is a way *into* eight or eleven tables, and a leader
+    /// beside every row is a column of numbers nobody is comparing —
+    /// they belong on the table the row opens. The Following cards keep
+    /// it, where a followed table is the thing itself rather than an index
+    /// entry for it.
+    var showsLeader: Bool = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -37,7 +51,8 @@ struct ConferenceListRow: View {
 
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
-            ConferenceLogo(url: Conference.logoURL(for: conference.conference))
+            ConferenceLogo(url: Conference.logoURL(for: conference.conference),
+                           league: conference.league)
             if isStacked {
                 VStack(alignment: .leading, spacing: 2) {
                     nameText
@@ -54,8 +69,10 @@ struct ConferenceListRow: View {
         .accessibilityLabel(accessibilitySummary)
     }
 
+    private var displayName: String { title ?? conference.name }
+
     private var nameText: some View {
-        Text(conference.name)
+        Text(displayName)
             .font(.teamName)
             .foregroundStyle(.textPrimary)
             .lineLimit(isStacked ? 2 : 1)
@@ -88,7 +105,7 @@ struct ConferenceListRow: View {
 
     /// "Ole Miss · 7-1" — the current leader, only once records exist.
     private var teaser: String? {
-        guard !isLeagueWide,
+        guard showsLeader, !isLeagueWide,
               let leader = conference.leader,
               let record = leaderRecord(leader) else { return nil }
         return "\(leader.team.location) · \(record)"
@@ -106,10 +123,10 @@ struct ConferenceListRow: View {
     /// "SEC, led by Ole Miss at 7 and 1" — or just the name preseason,
     /// and just the name for a whole-league row, which teases nothing.
     var accessibilitySummary: String {
-        guard !isLeagueWide,
+        guard showsLeader, !isLeagueWide,
               let leader = conference.leader,
-              let record = leaderRecord(leader) else { return conference.name }
+              let record = leaderRecord(leader) else { return displayName }
         let spoken = record.replacingOccurrences(of: "-", with: " and ")
-        return "\(conference.name), led by \(leader.team.location) at \(spoken)"
+        return "\(displayName), led by \(leader.team.location) at \(spoken)"
     }
 }

@@ -34,7 +34,7 @@ struct Top25Row: View {
             // polls, and confusing the moment a second one does. Same
             // `ConferenceLogo` footprint as every other row's mark, so the
             // column still lines up.
-            ConferenceLogo(url: league.logoURL)
+            ConferenceLogo(url: league.logoURL, league: league)
             Text("Top 25")
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)

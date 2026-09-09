@@ -77,6 +77,7 @@ struct TablesScreen: View {
             .map { TableGroup(id: Self.sectionId(for: $0),
                               title: $0.displayName,
                               logoURL: $0.logoURL,
+                              league: $0,
                               rows: rows(for: $0)) }
             .filter { !$0.rows.isEmpty }
     }
@@ -171,6 +172,10 @@ struct TablesScreen: View {
         return rows
     }
 
+    private func isLeagueWide(_ table: ConferenceStandings) -> Bool {
+        table.id != nil && table.id == Conference.leagueWideId(in: table.league)
+    }
+
     /// The Following section's rows, in the user's own order (Andy,
     /// 2026-09-06) — polls and conferences interleaved, since both are
     /// tables and the order is what the Scores screen reads to decide
@@ -262,7 +267,7 @@ struct TablesScreen: View {
                 withAnimation { uiState.toggleConference(sectionId) }
             } label: {
                 HStack(spacing: Spacing.sm) {
-                    ConferenceLogo(url: group.logoURL)
+                    ConferenceLogo(url: group.logoURL, league: group.league)
                     Text(group.title)
                         .font(.sectionHeader)
                         .foregroundStyle(.textPrimary)
@@ -307,7 +312,14 @@ struct TablesScreen: View {
                     case .poll(let polls, let league):
                         Top25Row(polls: polls, league: league)
                     case .conference(let conference):
-                        ConferenceListRow(conference: conference)
+                        // Inside its own league's accordion the whole-league
+                        // table would read "NHL" under a header saying
+                        // "NHL". It keeps its real name everywhere else —
+                        // the Following card, its own page — where nothing
+                        // above it has already said which league it is.
+                        ConferenceListRow(conference: conference,
+                                          title: isLeagueWide(conference) ? "Full league" : nil,
+                                          showsLeader: false)
                     }
                 }
             }
@@ -410,9 +422,9 @@ private struct TableGroup: Identifiable {
     let id: String
     let title: String
     /// The badge beside the title — the league's own mark. Optional so a
-    /// future card without one falls back to the football glyph every
-    /// conference header already uses.
+    /// card without one falls back to that sport's own glyph.
     let logoURL: URL?
+    let league: League
     let rows: [TableRow]
 
     /// `tables-league-cfb` — the UI tests' handle.
