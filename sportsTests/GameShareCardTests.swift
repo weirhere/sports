@@ -15,7 +15,8 @@ final class GameShareCardTests: XCTestCase {
 
     func testRendersEveryStatus() throws {
         let cases: [(name: String, view: GameShareCardView)] = [
-            ("pre", Self.preCard), ("live", Self.liveCard),
+            ("pre", Self.preCard), ("pre-tbd", Self.preTBDCard),
+            ("live", Self.liveCard),
             ("final", Self.finalCard), ("other", Self.otherCard),
         ]
         for (name, view) in cases {
@@ -146,7 +147,19 @@ final class GameShareCardTests: XCTestCase {
         home: .init(name: "Ohio State", record: "0-0", score: nil, rank: 1, winner: nil, logo: nil),
         statusLine: "Sat, Sep 5 at 12:30 PM\nBTN",
         showsScores: false,
-        isLive: false)
+        isLive: false,
+        kickoff: ("12:30 PM", "Sat, Sep 5"),
+        broadcast: "BTN")
+
+    /// An unannounced kickoff: "TBD" headlines and the day keeps the
+    /// caption — the inverse of the announced card, same shape.
+    private static let preTBDCard = GameShareCardView(
+        away: .init(name: "Ball State", record: "0-0", score: nil, rank: nil, winner: nil, logo: nil),
+        home: .init(name: "Ohio State", record: "0-0", score: nil, rank: 1, winner: nil, logo: nil),
+        statusLine: "Sat, Sep 5 · TBD",
+        showsScores: false,
+        isLive: false,
+        kickoff: ("TBD", "Sat, Sep 5"))
 
     private static let liveCard = GameShareCardView(
         away: .init(name: "Georgia", record: "7-0", score: 24, rank: 5, winner: nil, logo: nil),

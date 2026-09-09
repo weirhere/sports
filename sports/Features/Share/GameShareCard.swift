@@ -56,6 +56,19 @@ nonisolated enum GameHeaderState {
         }
     }
 
+    /// The pre-game kickoff split for the detail header, where the time is
+    /// the page's headline and the date its caption beneath — so the two
+    /// need no "at" joining them. Nil for every other status: those render
+    /// `statusLine` as the one line they've always been. An unannounced
+    /// kickoff puts "TBD" in the headline slot and keeps its real day.
+    static func kickoff(_ game: Game, _ summary: GameSummary?) -> (time: String, date: String?)? {
+        guard case .pre = status(game, summary) else { return nil }
+        let day = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        guard let date = game.date else { return ("TBD", nil) }
+        guard !game.timeTBD else { return ("TBD", date.formatted(day)) }
+        return (date.formatted(.dateTime.hour().minute()), date.formatted(day))
+    }
+
     static func isLive(_ game: Game, _ summary: GameSummary?) -> Bool {
         if case .live = status(game, summary) { return true }
         return false
@@ -136,6 +149,10 @@ nonisolated struct GameShareCard: Transferable, Sendable {
         return renderer.uiImage?.pngData()
     }
 
+    private var kickoff: (time: String, date: String?)? {
+        GameHeaderState.kickoff(game, summary)
+    }
+
     @MainActor
     private func cardView(awayLogo: UIImage?, homeLogo: UIImage?) -> GameShareCardView {
         let away = GameHeaderState.competitor(game.away, summary?.away)
@@ -147,6 +164,10 @@ nonisolated struct GameShareCard: Transferable, Sendable {
                         rank: summary?.home?.rank ?? game.home.rank, winner: home.winner, logo: homeLogo),
             statusLine: GameHeaderState.statusLine(game, summary),
             showsScores: GameHeaderState.showsScores(game, summary),
-            isLive: GameHeaderState.isLive(game, summary))
+            isLive: GameHeaderState.isLive(game, summary),
+            // Pre-game only, and nil everywhere else — the card renders the
+            // detail header's kickoff split, not a date-at-time phrase.
+            kickoff: kickoff,
+            broadcast: kickoff == nil ? nil : game.broadcast)
     }
 }

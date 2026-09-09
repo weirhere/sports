@@ -25,6 +25,14 @@ struct GameShareCardView: View {
     let statusLine: String
     let showsScores: Bool
     let isLive: Bool
+    /// Pre-game only: the kickoff split in two, so the time can headline
+    /// the card the way it headlines the detail header — the card's own
+    /// headline number, the per-side score, is the size it answers to.
+    /// Nil for every other status, which renders `statusLine` as before.
+    var kickoff: (time: String, date: String?)? = nil
+    /// Rides under the kickoff, where the pre-game network used to arrive
+    /// as `statusLine`'s second line.
+    var broadcast: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,11 +46,33 @@ struct GameShareCardView: View {
                             .fill(.liveAccent)
                             .frame(width: 8, height: 8)
                     }
-                    Text(statusLine)
-                        .font(.system(size: 20, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.textPrimary)
-                        .multilineTextAlignment(.center)
+                    if let kickoff {
+                        Text(kickoff.time)
+                            .font(.system(size: 36, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(.textPrimary)
+                            // The equal-thirds row would wrap it; let the
+                            // flexible sides absorb the width instead.
+                            .fixedSize()
+                        if let date = kickoff.date {
+                            Text(date)
+                                .font(.system(size: 20))
+                                .foregroundStyle(.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        if let broadcast {
+                            Text(broadcast)
+                                .font(.system(size: 17))
+                                .foregroundStyle(.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    } else {
+                        Text(statusLine)
+                            .font(.system(size: 20, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(.textPrimary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, Spacing.xl)
@@ -132,7 +162,9 @@ struct GameShareCardView: View {
         home: .init(name: "Ohio State", record: "0-0", score: nil, rank: 1, winner: nil, logo: nil),
         statusLine: "Sat, Sep 5 at 12:30 PM\nBTN",
         showsScores: false,
-        isLive: false)
+        isLive: false,
+        kickoff: ("12:30 PM", "Sat, Sep 5"),
+        broadcast: "BTN")
         .frame(width: 600)
 }
 

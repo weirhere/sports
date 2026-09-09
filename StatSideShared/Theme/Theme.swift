@@ -140,6 +140,10 @@ extension Font {
     static var scoreHero: Font { scaled(34, .semibold, relativeTo: .largeTitle).monospacedDigit() }
     static var scoreHeroLive: Font { scaled(34, .heavy, relativeTo: .largeTitle).monospacedDigit() }
     static var scoreMuted: Font { scaled(17, .regular, relativeTo: .body).monospacedDigit() }
+    /// A pre-game detail header's headline: the kickoff time takes the slot
+    /// a played game's score takes, one step down from `scoreHero` because
+    /// "12:00 PM" is twice a score's characters in the same third-of-a-row.
+    static var kickoffHero: Font { scaled(28, .semibold, relativeTo: .title1).monospacedDigit() }
     static var teamName: Font { scaled(15, .regular, relativeTo: .subheadline) }
     static var teamNameEmphasis: Font { scaled(15, .semibold, relativeTo: .subheadline) }
     static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
