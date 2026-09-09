@@ -39,7 +39,7 @@ final class AppStoreScreenshots: XCTestCase {
         let env = ProcessInfo.processInfo.environment
         // No SCREENSHOT_SEASON any more: Scores carries no season control
         // since the view-options sheet retired — the day strip is bounded
-        // by the current season and season selection lives on Tables. Any
+        // by the current season and season selection lives on Leagues. Any
         // day of this season is reachable by name; a past season is not.
         if let day = env["SCREENSHOT_DAY"] {
             // Chips are addressed by their spoken label ("Saturday,
@@ -103,7 +103,7 @@ final class AppStoreScreenshots: XCTestCase {
         }
         app.navigationBars.buttons.firstMatch.tap()
 
-        // Tables.
+        // Leagues.
         XCTAssertTrue(openRankingsPoll(in: app),
                       "The Top 25 row should push a poll with a ranked #1")
         snapshot(app, "04-rankings")
