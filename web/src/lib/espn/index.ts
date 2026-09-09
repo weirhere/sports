@@ -1,7 +1,8 @@
 export {
   scoreboard,
+  scoreboardForDays,
   rankings,
-  fbsConferences,
+  conferenceTeams,
   conferenceStandings,
   teamSchedule,
   conferenceGames,

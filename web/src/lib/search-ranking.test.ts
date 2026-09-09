@@ -11,6 +11,7 @@ import type { ConferenceTeams, Game, GameTeam, Team } from "./types";
 function makeTeam(overrides: Partial<Team> & { id: string }): Team {
   return {
     espnId: Number(overrides.id),
+    league: "cfb",
     name: "Tigers",
     school: "Somewhere",
     abbreviation: "SMW",
@@ -68,11 +69,11 @@ const arkansas = makeTeam({
 });
 
 const directory: ConferenceTeams[] = [
-  { id: "1", name: "ACC", teams: [georgiaTech] },
-  { id: "4", name: "Big 12", teams: [kansas] },
-  { id: "8", name: "SEC", teams: [arkansas, georgia] },
-  { id: "17", name: "Mountain West", teams: [sanJoseState] },
-  { id: "37", name: "Sun Belt", teams: [georgiaSouthern] },
+  { id: "1", league: "cfb", rowId: "cfb:1", name: "ACC", teams: [georgiaTech] },
+  { id: "4", league: "cfb", rowId: "cfb:4", name: "Big 12", teams: [kansas] },
+  { id: "8", league: "cfb", rowId: "cfb:8", name: "SEC", teams: [arkansas, georgia] },
+  { id: "17", league: "cfb", rowId: "cfb:17", name: "Mountain West", teams: [sanJoseState] },
+  { id: "37", league: "cfb", rowId: "cfb:37", name: "Sun Belt", teams: [georgiaSouthern] },
 ];
 
 function makeGame(
@@ -84,6 +85,7 @@ function makeGame(
   const side = (team: Team): GameTeam => ({ team, score: null });
   return {
     id,
+    league: "cfb",
     status: "scheduled",
     scheduledAt,
     venue: { name: "", city: "", state: "" },
@@ -170,7 +172,7 @@ describe("searchTeams", () => {
   it("dedupes a team appearing in more than one group", () => {
     const doubled: ConferenceTeams[] = [
       ...directory,
-      { id: "99", name: "Duplicates", teams: [georgia] },
+      { id: "99", league: "cfb", rowId: "cfb:99", name: "Duplicates", teams: [georgia] },
     ];
     const results = searchTeams("georgia", doubled);
     expect(results.filter((t) => t.id === "61")).toHaveLength(1);
@@ -179,10 +181,10 @@ describe("searchTeams", () => {
 
 describe("searchConferences", () => {
   const refs = [
-    { id: 8, name: "SEC" },
-    { id: 37, name: "Sun Belt" },
-    { id: 1, name: "ACC" },
-    { id: 12, name: "Conference USA" },
+    { league: "cfb" as const, id: 8, name: "SEC" },
+    { league: "cfb" as const, id: 37, name: "Sun Belt" },
+    { league: "cfb" as const, id: 1, name: "ACC" },
+    { league: "cfb" as const, id: 12, name: "Conference USA" },
   ];
 
   it("puts prefix matches before substring matches, alphabetical within", () => {

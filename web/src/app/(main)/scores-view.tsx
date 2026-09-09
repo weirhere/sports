@@ -21,8 +21,15 @@ import { getScoreboard } from "@/lib/api";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useLiveScores } from "@/lib/hooks/use-live-scores";
 import { useSwipe } from "@/lib/hooks/use-swipe";
+import type { League } from "@/lib/leagues";
 
 interface ScoresViewProps {
+  /**
+   * Which league's slate this is. One league still — the day strip and the
+   * cross-league slate are W2's — but stated rather than assumed, so every
+   * request and every id below is scoped to it.
+   */
+  league: League;
   initialGames: Game[];
   /** Calendar-derived week slots for the current season. */
   initialWeeks: WeekSlot[];
@@ -34,6 +41,7 @@ interface ScoresViewProps {
 }
 
 export function ScoresView({
+  league,
   initialGames,
   initialWeeks,
   initialCurrentWeekNumber,
@@ -107,6 +115,7 @@ export function ScoresView({
       }
       try {
         const board = await getScoreboard(
+          league,
           { value: slot.value, seasonType: slot.seasonType },
           year
         );
@@ -122,7 +131,7 @@ export function ScoresView({
         if (seq === fetchSeqRef.current) setLoading(false);
       }
     },
-    [cache]
+    [league, cache]
   );
 
   const handleWeekChange = useCallback(
@@ -167,8 +176,8 @@ export function ScoresView({
         // current season lands on ESPN's current week, a past season on its
         // opening regular-season week.
         const board = isCurrent
-          ? await getScoreboard()
-          : await getScoreboard({ value: 1, seasonType: 2 }, year);
+          ? await getScoreboard(league)
+          : await getScoreboard(league, { value: 1, seasonType: 2 }, year);
         if (seq !== fetchSeqRef.current) return;
 
         setWeeks(board.weeks);
@@ -210,7 +219,7 @@ export function ScoresView({
         setLoading(false);
       }
     },
-    [selectedYear, currentSeasonYear, cache, loadSlot, games]
+    [league, selectedYear, currentSeasonYear, cache, loadSlot, games]
   );
 
   // Live score polling — selected week only, never the prefetch cache.
@@ -224,7 +233,7 @@ export function ScoresView({
     [cache]
   );
 
-  useLiveScores(selectedSlot, yearParam, games, handleLiveUpdate);
+  useLiveScores(league, selectedSlot, yearParam, games, handleLiveUpdate);
 
   // ±1 neighbor prefetch once the selected week settles — fetched once
   // into the cache, never polled.
@@ -239,6 +248,7 @@ export function ScoresView({
       }
       prefetchedRef.current.add(neighbor.id);
       getScoreboard(
+        league,
         { value: neighbor.value, seasonType: neighbor.seasonType },
         yearParam
       )
@@ -250,24 +260,19 @@ export function ScoresView({
           prefetchedRef.current.delete(neighbor.id);
         });
     }
-  }, [selectedSlot, weeks, loading, yearParam, cache]);
+  }, [league, selectedSlot, weeks, loading, yearParam, cache]);
 
   // --- Sections (the game-sections engine) ---
 
-  const followedConferenceIds = useMemo(
-    () =>
-      favoriteConferences
-        .map(Number)
-        .filter((id) => Number.isFinite(id)),
-    [favoriteConferences]
-  );
-
+  // Both sets are already league-qualified keys as stored — the engine
+  // matches them against each game's own league, so no id can be read
+  // against the wrong league's table.
   const sections = useMemo(
     () =>
       buildSections(games, {
         grouping: uiState.grouping,
-        followedTeamIds: favorites,
-        followedConferenceIds,
+        followedTeamKeys: favorites,
+        followedConferenceTokens: favoriteConferences,
         liveOnly: uiState.liveOnly,
         scoreFilter: uiState.scoreFilter,
       }),
@@ -277,7 +282,7 @@ export function ScoresView({
       uiState.liveOnly,
       uiState.scoreFilter,
       favorites,
-      followedConferenceIds,
+      favoriteConferences,
     ]
   );
 

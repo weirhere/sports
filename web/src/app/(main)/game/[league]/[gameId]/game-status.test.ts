@@ -12,6 +12,7 @@ function team(id: string): Team {
   return {
     id,
     espnId: Number(id),
+    league: "cfb",
     name: "Team",
     school: `School ${id}`,
     abbreviation: "T",
@@ -25,6 +26,7 @@ function team(id: string): Team {
 function game(overrides: Partial<Game> = {}): Game {
   return {
     id: "401",
+    league: "cfb",
     status: "scheduled",
     scheduledAt: "2026-09-05T16:00Z",
     venue: { name: "Stadium", city: "City", state: "ST" },

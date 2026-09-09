@@ -17,6 +17,7 @@ import {
   relativeKickParts,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { gamePath } from "@/lib/routes";
 
 interface GameRowProps {
   game: Game;
@@ -69,7 +70,7 @@ export function GameRow({ game, timeOnly = false }: GameRowProps) {
 
   return (
     <Link
-      href={`/game/${game.id}`}
+      href={gamePath(game)}
       aria-label={accessibilitySummary(game)}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-header"
     >

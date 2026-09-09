@@ -9,6 +9,7 @@ import type { Game } from "@/lib/types";
 import { gameState, otherStatusText } from "@/lib/game-state";
 import { LiveDot } from "@/components/theme/live-dot";
 import { cn } from "@/lib/utils";
+import { gamePath } from "@/lib/routes";
 
 interface ScheduleRowProps {
   game: Game;
@@ -66,7 +67,7 @@ export function ScheduleRow({ game, teamId }: ScheduleRowProps) {
 
   return (
     <Link
-      href={`/game/${game.id}`}
+      href={gamePath(game)}
       aria-label={parts.join(", ")}
       className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-bg-header"
       suppressHydrationWarning

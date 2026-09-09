@@ -9,46 +9,62 @@ import {
   conferenceStandings,
   rankings,
 } from "@/lib/espn";
-import { cfbSeasonYear } from "@/lib/season";
+import {
+  SEASON_FLOOR,
+  displayName,
+  parseLeague,
+  seasonYear,
+  type League,
+} from "@/lib/leagues";
 import { TeamView } from "./team-view";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: Promise<{ teamId: string }>;
+  params: Promise<{ league: string; teamId: string }>;
   searchParams: Promise<{ year?: string | string[] }>;
 }
 
-/** A validated season year, or undefined (= the current season). */
-function parseYear(raw: string | string[] | undefined): number | undefined {
+/**
+ * A validated season year, or undefined (= the current season). Bounded by
+ * *this league's* clock — a college-football rollover on a hockey page
+ * would call June "next season" while the Cup was still being played for.
+ */
+function parseYear(
+  raw: string | string[] | undefined,
+  league: League
+): number | undefined {
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (!value || !/^\d{4}$/.test(value)) return undefined;
   const year = Number(value);
-  if (year < 2014 || year > cfbSeasonYear()) return undefined;
+  if (year < SEASON_FLOOR || year > seasonYear(league)) return undefined;
   return year;
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { teamId } = await params;
+  const { league: leagueParam, teamId } = await params;
+  const league = parseLeague(leagueParam);
+  if (!league) return { title: "Team | StatSide" };
   try {
-    const schedule = await teamSchedule(teamId);
+    const schedule = await teamSchedule(league, teamId);
     const school = schedule.team?.school;
     return {
       title: school
-        ? `${school} | College Football Hub`
-        : "Team | College Football Hub",
+        ? `${school} | ${displayName(league)} | StatSide`
+        : `Team | ${displayName(league)} | StatSide`,
     };
   } catch {
-    return { title: "Team | College Football Hub" };
+    return { title: "Team | StatSide" };
   }
 }
 
 export default async function TeamPage({ params, searchParams }: PageProps) {
-  const { teamId } = await params;
-  if (!/^\d+$/.test(teamId)) notFound();
+  const { league: leagueParam, teamId } = await params;
+  const league = parseLeague(leagueParam);
+  if (!league || !/^\d+$/.test(teamId)) notFound();
 
-  const currentYear = cfbSeasonYear();
-  const year = parseYear((await searchParams).year);
+  const currentYear = seasonYear(league);
+  const year = parseYear((await searchParams).year, league);
   // Nil for the current season keeps the shipped request shape (and the
   // provider's unpublished-season fallback); an explicit past year is
   // scoped exactly — a user who picked 2019 must never silently get 2018.
@@ -56,9 +72,9 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
 
   const [scheduleResult, standingsResult, rankingsResult] =
     await Promise.allSettled([
-      teamSchedule(teamId, fetchYear),
-      conferenceStandings(fetchYear),
-      rankings(),
+      teamSchedule(league, teamId, fetchYear),
+      conferenceStandings(league, { year: fetchYear }),
+      rankings(league),
     ]);
 
   // Unknown team: no identity and no games. A dead ESPN response for the
@@ -78,6 +94,7 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
 
   return (
     <TeamView
+      league={league}
       teamId={teamId}
       schedule={schedule}
       standingsGroups={standingsGroups}

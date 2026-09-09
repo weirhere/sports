@@ -6,6 +6,7 @@ function team(id: string, school: string): Team {
   return {
     id,
     espnId: Number(id),
+    league: "cfb",
     name: "Team",
     school,
     abbreviation: "T",
@@ -19,6 +20,7 @@ function team(id: string, school: string): Team {
 function game(overrides: Partial<Game> = {}): Game {
   return {
     id: "401",
+    league: "cfb",
     status: "scheduled",
     // 12:30 PM Eastern, deliberately an afternoon that is still the SAME
     // day in UTC — the timezone assertions below pick their own cases.

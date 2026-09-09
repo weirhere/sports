@@ -1,15 +1,20 @@
 "use client";
 
 // The hero's follow control — iOS `FollowPill`/`ConferenceFollowPill`: star
-// glyph + Follow/Following, ink-filled while following. Wired to the
-// favorites store with RAW ESPN ids (team ids and conference group ids are
-// both bare numeric strings).
+// glyph + Follow/Following, ink-filled while following.
+//
+// Wired to the favorites store with **league-qualified keys**, never raw
+// ESPN ids: id 5 is UAB and the Browns, and group 8 is the SEC and the AFC,
+// so a bare id would follow both at once.
 
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
+import type { League } from "@/lib/leagues";
+import { conferenceToken, followKey } from "@/lib/refs";
 
 interface FollowPillProps {
+  league: League;
   /** Raw ESPN id — team id, or the conference group id as a string. */
   id: string;
   kind: "team" | "conference";
@@ -17,7 +22,7 @@ interface FollowPillProps {
   name: string;
 }
 
-export function FollowPill({ id, kind, name }: FollowPillProps) {
+export function FollowPill({ league, id, kind, name }: FollowPillProps) {
   const {
     isFavorite,
     toggleFavorite,
@@ -25,14 +30,19 @@ export function FollowPill({ id, kind, name }: FollowPillProps) {
     toggleFavoriteConference,
   } = useFavoritesContext();
 
-  const following = kind === "team" ? isFavorite(id) : isFavoriteConference(id);
+  const key =
+    kind === "team"
+      ? followKey({ league, teamId: id })
+      : conferenceToken({ league, id: Number(id) });
+  const following =
+    kind === "team" ? isFavorite(key) : isFavoriteConference(key);
   const toggle =
     kind === "team" ? toggleFavorite : toggleFavoriteConference;
 
   return (
     <button
       type="button"
-      onClick={() => toggle(id)}
+      onClick={() => toggle(key)}
       aria-pressed={following}
       aria-label={following ? `Unfollow ${name}` : `Follow ${name}`}
       className={cn(

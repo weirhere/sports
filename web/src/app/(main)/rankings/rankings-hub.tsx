@@ -10,6 +10,8 @@ import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences
 import type { ConferenceStanding, ConferenceStandingsGroup, Poll } from "@/lib/types";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
+import { conferenceToken } from "@/lib/refs";
+import { conferencePath } from "@/lib/routes";
 
 interface RankingsHubProps {
   /** The FBS polls, filtered and in picker order (AP first when present). */
@@ -36,13 +38,15 @@ export function RankingsHub({ polls, conferences }: RankingsHubProps) {
       ? null
       : orderedIds.map((id) => ({
           id,
-          name: conferenceName(id),
+          name: conferenceName(id, "cfb"),
           leader: conferences.find((group) => group.id === String(id))
             ?.entries[0],
         }));
 
   const followedRows =
-    rows?.filter((row) => isFavoriteConference(String(row.id))) ?? [];
+    rows?.filter((row) =>
+      isFavoriteConference(conferenceToken({ league: "cfb", id: row.id }))
+    ) ?? [];
 
   if (polls.length === 0 && rows === null) {
     return (
@@ -133,11 +137,11 @@ function ConferenceRow({ row }: { row: ConferenceRowData }) {
   return (
     <div className="flex min-h-12 items-center gap-3 pr-2 card-surface">
       <Link
-        href={`/conference/${row.id}`}
+        href={conferencePath({ league: "cfb", id: row.id })}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
         aria-label={rowLabel}
       >
-        <ConferenceLogo src={conferenceLogoUrl(row.id)} name="" />
+        <ConferenceLogo src={conferenceLogoUrl(row.id, "cfb")} name="" />
         <span className="type-team-name text-text-primary">{row.name}</span>
         {teaser && (
           <span className="truncate type-meta text-text-secondary">

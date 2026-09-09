@@ -13,6 +13,7 @@ import type { GameSection } from "@/lib/game-sections";
 import { GameRow } from "./game-row";
 import { ConferenceLogo } from "./theme/conference-logo";
 import { cn } from "@/lib/utils";
+import { conferencePath } from "@/lib/routes";
 
 interface SectionAccordionProps {
   section: GameSection;
@@ -34,8 +35,8 @@ export function SectionAccordion({
   const reducedMotion = useReducedMotion();
   const isConference = section.kind === "conference";
   const conferenceHref =
-    isConference && section.conferenceId !== undefined
-      ? `/conference/${section.conferenceId}`
+    isConference && section.conference !== undefined
+      ? conferencePath(section.conference)
       : undefined;
 
   const glyph = (() => {

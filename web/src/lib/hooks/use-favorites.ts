@@ -6,7 +6,9 @@ import { migrateFavorites } from "@/lib/favorites-migration";
 const TEAM_STORAGE_KEY = "cfb-hub-favorites";
 const CONF_STORAGE_KEY = "cfb-hub-fav-conferences";
 const VERSION_KEY = "cfb-hub-favorites-version";
-const CURRENT_VERSION = "2";
+// v3 league-qualifies both sets ("cfb:130", "cfb:8") — ESPN ids collide
+// across leagues, so a bare id follows two teams at once.
+const CURRENT_VERSION = "3";
 
 function readStoredIds(key: string): string[] {
   const raw = localStorage.getItem(key);
@@ -16,6 +18,13 @@ function readStoredIds(key: string): string[] {
   return parsed.filter((id): id is string => typeof id === "string");
 }
 
+/**
+ * The follow sets, stored as **league-qualified keys** — `"cfb:130"` for a
+ * team, `"cfb:8"` for a conference. Never bare ids: ESPN id 5 is UAB and
+ * the Browns, and group 8 is the SEC and the AFC, so a bare-id set follows
+ * two things at once. Build a key with `followKey` / `conferenceToken` from
+ * `@/lib/refs`.
+ */
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoriteConferences, setFavoriteConferences] = useState<string[]>([]);
@@ -28,12 +37,11 @@ export function useFavorites() {
       let teams = readStoredIds(TEAM_STORAGE_KEY);
       let confs = readStoredIds(CONF_STORAGE_KEY);
 
-      // v2 ids are bare ESPN numeric strings. The migration is pure and
-      // idempotent, so it runs on every load — that also normalizes any
-      // legacy mock ids written after the version flag flipped (surfaces
-      // still on mock data write "t-*" ids until they go live). The version
-      // key marks the store migrated; a write-back only happens when
-      // something actually changed or the flag is missing.
+      // v3 values are league-qualified keys ("cfb:130"). The migration is
+      // pure and idempotent, so it runs on every load — that also
+      // normalizes anything a stale tab wrote in an older spelling. The
+      // version key marks the store migrated; a write-back only happens
+      // when something actually changed or the flag is missing.
       const migrated = migrateFavorites(teams, confs);
       const changed =
         migrated.teams.length !== teams.length ||
@@ -57,11 +65,11 @@ export function useFavorites() {
     setIsLoaded(true);
   }, []);
 
-  const toggleFavorite = useCallback((teamId: string) => {
+  const toggleFavorite = useCallback((key: string) => {
     setFavorites((prev) => {
-      const next = prev.includes(teamId)
-        ? prev.filter((id) => id !== teamId)
-        : [...prev, teamId];
+      const next = prev.includes(key)
+        ? prev.filter((id) => id !== key)
+        : [...prev, key];
       try {
         localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(next));
       } catch {
@@ -72,15 +80,15 @@ export function useFavorites() {
   }, []);
 
   const isFavorite = useCallback(
-    (teamId: string) => favorites.includes(teamId),
+    (key: string) => favorites.includes(key),
     [favorites]
   );
 
-  const toggleFavoriteConference = useCallback((conferenceId: string) => {
+  const toggleFavoriteConference = useCallback((token: string) => {
     setFavoriteConferences((prev) => {
-      const next = prev.includes(conferenceId)
-        ? prev.filter((id) => id !== conferenceId)
-        : [...prev, conferenceId];
+      const next = prev.includes(token)
+        ? prev.filter((id) => id !== token)
+        : [...prev, token];
       try {
         localStorage.setItem(CONF_STORAGE_KEY, JSON.stringify(next));
       } catch {
@@ -91,7 +99,7 @@ export function useFavorites() {
   }, []);
 
   const isFavoriteConference = useCallback(
-    (conferenceId: string) => favoriteConferences.includes(conferenceId),
+    (token: string) => favoriteConferences.includes(token),
     [favoriteConferences]
   );
 

@@ -5,6 +5,7 @@ import type { Game, GameStatus } from "@/lib/types";
 import type { WeekSlot } from "@/lib/season";
 import { getScoreboard } from "@/lib/api";
 import { POLL_INTERVAL_LIVE } from "@/lib/constants";
+import type { League } from "@/lib/leagues";
 
 // setTimeout's delay is a signed 32-bit int; anything larger fires
 // immediately, which would turn a far-future kickoff into a busy loop.
@@ -55,6 +56,7 @@ function delayUntilNextKickoff(games: Game[], now: number): number | undefined {
  * be passed in — the prefetch cache is never polled.
  */
 export function useLiveScores(
+  league: League,
   slot: WeekSlot | undefined,
   year: number | undefined,
   games: Game[],
@@ -82,6 +84,7 @@ export function useLiveScores(
     if (document.visibilityState !== "visible") return;
     try {
       const board = await getScoreboard(
+        league,
         { value: slot.value, seasonType: slot.seasonType },
         year
       );
@@ -89,7 +92,7 @@ export function useLiveScores(
     } catch {
       // Silently fail; the next scheduled tick retries.
     }
-  }, [slot, year]);
+  }, [league, slot, year]);
 
   useEffect(() => {
     if (!visible || slot === undefined) return;

@@ -7,13 +7,13 @@ import type { Poll } from "@/lib/types";
 import { PollView } from "./poll-view";
 
 export const metadata = {
-  title: "Top 25 | College Football Hub",
+  title: "Top 25 | College Football | StatSide",
 };
 
 export default async function PollPage() {
   let polls: Poll[] = [];
   try {
-    polls = displayedPolls(await rankings());
+    polls = displayedPolls(await rankings("cfb"));
   } catch {
     // A rankings miss renders the empty state, never a crash.
   }

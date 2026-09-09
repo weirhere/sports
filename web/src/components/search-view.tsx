@@ -22,10 +22,14 @@ import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences
 import { liveStatusText } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Game, Scoreboard, Team } from "@/lib/types";
+import { conferencePath } from "@/lib/routes";
 
+// College football's conferences are the whole conference corpus today;
+// W3/W6 widen it to every league's.
 const CONFERENCE_CORPUS: ConferenceRef[] = orderedIds.map((id) => ({
+  league: "cfb" as const,
   id,
-  name: conferenceName(id),
+  name: conferenceName(id, "cfb"),
 }));
 
 function isLive(game: Game): boolean {
@@ -69,7 +73,7 @@ function gameStatusShort(game: Game): string {
 }
 
 export function SearchView() {
-  const { conferences } = useTeamDirectory();
+  const { conferences } = useTeamDirectory("cfb");
   const { favorites } = useFavoritesContext();
   const [query, setQuery] = useState("");
   const [games, setGames] = useState<Game[]>([]);
@@ -201,10 +205,13 @@ function TeamResultRow({ team }: { team: Team }) {
 function ConferenceResultRow({ conference }: { conference: ConferenceRef }) {
   return (
     <Link
-      href={`/conference/${conference.id}`}
+      href={conferencePath(conference)}
       className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >
-      <ConferenceLogo src={conferenceLogoUrl(conference.id)} name="" />
+      <ConferenceLogo
+        src={conferenceLogoUrl(conference.id, conference.league)}
+        name=""
+      />
       <span className="type-row-name-em text-text-primary">
         {conference.name}
       </span>

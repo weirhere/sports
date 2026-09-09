@@ -18,6 +18,7 @@ import { searchTeams } from "@/lib/search-ranking";
 import { conferenceLogoUrl, orderedIds } from "@/lib/conferences";
 import { cn } from "@/lib/utils";
 import type { ConferenceTeams, Team } from "@/lib/types";
+import { conferencePath } from "@/lib/routes";
 
 const COLLAPSE_KEY = "statside.teamsBrowse.v1";
 const FOLLOWING_SECTION = "following";
@@ -63,7 +64,7 @@ function useCollapsedSections() {
 }
 
 export function TeamsBrowse() {
-  const { conferences, isLoading, error, retry } = useTeamDirectory();
+  const { conferences, isLoading, error, retry } = useTeamDirectory("cfb");
   const { favorites } = useFavoritesContext();
   const { collapsed, toggle } = useCollapsedSections();
   const [query, setQuery] = useState("");
@@ -240,7 +241,11 @@ function ConferenceSection({
   const identity = (
     <>
       <ConferenceLogo
-        src={Number.isFinite(numericId) ? conferenceLogoUrl(numericId) : null}
+        src={
+          Number.isFinite(numericId)
+            ? conferenceLogoUrl(numericId, conference.league)
+            : null
+        }
         name=""
       />
       <span className="type-section-header text-text-primary">
@@ -265,7 +270,10 @@ function ConferenceSection({
         {conference.id !== undefined ? (
           <>
             <Link
-              href={`/conference/${conference.id}`}
+              href={conferencePath({
+                league: conference.league,
+                id: conference.id,
+              })}
               aria-label={`${conference.name} standings`}
               className="flex items-center gap-2 py-2.5 pl-4 transition-colors hover:bg-bg-elevated"
             >

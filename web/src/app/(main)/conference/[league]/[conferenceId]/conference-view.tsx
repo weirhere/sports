@@ -10,7 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { conferenceLogoUrl } from "@/lib/conferences";
-import { cfbSeasonYear, seasonYears } from "@/lib/season";
+import { seasonYear, seasonYears, type League } from "@/lib/leagues";
 import type { ConferenceStandingsGroup, Game } from "@/lib/types";
 import { HeroHeader } from "@/components/hero-header";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
@@ -50,13 +50,17 @@ export function groupSeasonSlate(games: Game[]): WeekGroup[] {
   const postseason: Game[] = [];
   const undated: Game[] = [];
   for (const game of sorted) {
+    const week = game.week;
     if (game.seasonType === 3) {
       postseason.push(game);
-    } else if (game.week >= 1) {
-      const bucket = regular.get(game.week);
+    } else if (week !== undefined && week >= 1) {
+      const bucket = regular.get(week);
       if (bucket) bucket.push(game);
-      else regular.set(game.week, [game]);
+      else regular.set(week, [game]);
     } else {
+      // A league with no weeks at all (the NBA and NHL ship `week: null` on
+      // every event) files its whole slate here rather than under a Week 1
+      // that doesn't exist.
       undated.push(game);
     }
   }
@@ -78,6 +82,7 @@ export function groupSeasonSlate(games: Game[]): WeekGroup[] {
 }
 
 interface ConferenceViewProps {
+  league: League;
   conferenceId: number;
   name: string;
   /** This conference's standings group; null = the fetch failed. */
@@ -90,6 +95,7 @@ interface ConferenceViewProps {
 }
 
 export function ConferenceView({
+  league,
   conferenceId,
   name,
   standings,
@@ -102,18 +108,18 @@ export function ConferenceView({
 
   const weekGroups = useMemo(() => groupSeasonSlate(games ?? []), [games]);
   const teamCount = standings?.entries.length ?? 0;
-  const logoUrl = conferenceLogoUrl(conferenceId);
+  const logoUrl = conferenceLogoUrl(conferenceId, league);
 
   const selectYear = (year: number) => {
-    const query = year === cfbSeasonYear() ? "" : `?year=${year}`;
-    router.push(`/conference/${conferenceId}${query}`);
+    const query = year === seasonYear(league) ? "" : `?year=${year}`;
+    router.push(`/conference/${league}/${conferenceId}${query}`);
   };
 
   const seasonRow = (
     <div className="flex justify-end">
       <SeasonMenuChip
         value={displayYear}
-        years={seasonYears()}
+        years={seasonYears(league)}
         onSelect={selectYear}
       />
     </div>
@@ -163,7 +169,12 @@ export function ConferenceView({
           ) : undefined
         }
         trailing={
-          <FollowPill id={String(conferenceId)} kind="conference" name={name} />
+          <FollowPill
+            league={league}
+            id={String(conferenceId)}
+            kind="conference"
+            name={name}
+          />
         }
       >
         <HeroTabBar tabs={TABS} selected={tab} onSelect={setTab} />
@@ -183,6 +194,7 @@ export function ConferenceView({
             ) : (
               <section className="card-surface pb-1">
                 <StandingsList
+                  league={league}
                   entries={standings.entries}
                   conferenceId={conferenceId}
                   year={displayYear}

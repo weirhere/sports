@@ -12,10 +12,14 @@ import Image from "next/image";
 import { titleGameIsTopTwo } from "@/lib/conferences";
 import type { ConferenceStanding } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { teamPath } from "@/lib/routes";
+import type { League } from "@/lib/leagues";
 
 interface StandingsListProps {
   /** ESPN's standings order — tiebreaker-aware, never re-sorted. */
   entries: ConferenceStanding[];
+  /** Which league's group-id space `conferenceId` belongs to. */
+  league: League;
   /** Numeric conference group id, for the championship-cut gate. */
   conferenceId: number;
   /** The season the table describes, for the championship-cut gate. */
@@ -35,6 +39,7 @@ function spoken(recordText: string): string {
 
 export function StandingsList({
   entries,
+  league,
   conferenceId,
   year,
   highlightTeamId,
@@ -67,7 +72,7 @@ export function StandingsList({
   // carried-over order claims nothing. Gated exactly like iOS.
   const leaderRecord = entries[0]?.conferenceRecord;
   const cutIsVisible =
-    titleGameIsTopTwo(conferenceId, year) &&
+    titleGameIsTopTwo(conferenceId, year, league) &&
     entries.length > 2 &&
     entries[0].playoffSeed === 1 &&
     entries[1].playoffSeed === 2 &&
@@ -116,7 +121,7 @@ export function StandingsList({
               ))}
             <Link
               ref={isHighlighted ? highlightRef : undefined}
-              href={`/team/${standing.team.id}`}
+              href={teamPath(standing.team)}
               aria-label={label}
               className={cn(
                 "flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-bg-header",

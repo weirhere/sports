@@ -9,7 +9,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { conferenceName } from "@/lib/conferences";
-import { cfbSeasonYear, seasonYears } from "@/lib/season";
+import { seasonYear, seasonYears, type League } from "@/lib/leagues";
 import { gameState } from "@/lib/game-state";
 import type {
   ConferenceStandingsGroup,
@@ -36,6 +36,7 @@ const TABS: HeroTab[] = [
 ];
 
 interface TeamViewProps {
+  league: League;
   teamId: string;
   schedule: TeamScheduleData;
   /** All conferences' standings for the requested season; null = fetch failed. */
@@ -49,6 +50,7 @@ interface TeamViewProps {
 }
 
 export function TeamView({
+  league,
   teamId,
   schedule,
   standingsGroups,
@@ -64,15 +66,21 @@ export function TeamView({
   // payload carries none.
   const conferenceId = useMemo(() => {
     const claimed = schedule.team?.conferenceId;
-    if (claimed && claimed !== "0" && conferenceName(Number(claimed)) !== "Other") {
+    if (
+      claimed &&
+      claimed !== "0" &&
+      conferenceName(Number(claimed), league) !== "Other"
+    ) {
       return Number(claimed);
     }
     const containing = standingsGroups?.find((group) =>
       group.entries.some((entry) => entry.team.id === teamId)
     );
     const id = containing ? Number(containing.id) : Number.NaN;
-    return Number.isFinite(id) && conferenceName(id) !== "Other" ? id : undefined;
-  }, [schedule.team?.conferenceId, standingsGroups, teamId]);
+    return Number.isFinite(id) && conferenceName(id, league) !== "Other"
+      ? id
+      : undefined;
+  }, [league, schedule.team?.conferenceId, standingsGroups, teamId]);
 
   const showsStandingsTab = conferenceId !== undefined;
   const visibleTabs = showsStandingsTab ? TABS : TABS.slice(0, 2);
@@ -119,15 +127,15 @@ export function TeamView({
       : [];
 
   const selectYear = (year: number) => {
-    const query = year === cfbSeasonYear() ? "" : `?year=${year}`;
-    router.push(`/team/${teamId}${query}`);
+    const query = year === seasonYear(league) ? "" : `?year=${year}`;
+    router.push(`/team/${league}/${teamId}${query}`);
   };
 
   const seasonRow = (
     <div className="flex justify-end">
       <SeasonMenuChip
         value={displayYear}
-        years={seasonYears()}
+        years={seasonYears(league)}
         onSelect={selectYear}
       />
     </div>
@@ -166,16 +174,18 @@ export function TeamView({
         subtitle={
           conferenceId !== undefined ? (
             <Link
-              href={`/conference/${conferenceId}?team=${teamId}`}
+              href={`/conference/${league}/${conferenceId}?team=${teamId}`}
               className="inline-flex items-center gap-1 type-chip-em text-text-secondary transition-colors hover:text-text-primary"
             >
-              {conferenceName(conferenceId)}
+              {conferenceName(conferenceId, league)}
               <ChevronRight aria-hidden="true" className="h-3 w-3" />
               <span className="sr-only">, view conference standings</span>
             </Link>
           ) : undefined
         }
-        trailing={<FollowPill id={teamId} kind="team" name={school} />}
+        trailing={
+          <FollowPill league={league} id={teamId} kind="team" name={school} />
+        }
       >
         <HeroTabBar tabs={visibleTabs} selected={activeTab} onSelect={setTab} />
       </HeroHeader>
@@ -236,6 +246,7 @@ export function TeamView({
             ) : (
               <section className="card-surface pb-1">
                 <StandingsList
+                  league={league}
                   entries={standingsEntries}
                   conferenceId={conferenceId}
                   year={displayYear}

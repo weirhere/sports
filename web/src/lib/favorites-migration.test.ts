@@ -3,15 +3,15 @@ import { migrateFavorites } from "./favorites-migration";
 
 describe("migrateFavorites", () => {
   it("maps legacy mock ids to ESPN numeric strings", () => {
-    expect(migrateFavorites(["t-1", "t-3"], []).teams).toEqual(["333", "96"]);
+    expect(migrateFavorites(["t-1", "t-3"], []).teams).toEqual(["cfb:333", "cfb:96"]);
   });
 
   it("normalizes espn-prefixed ids", () => {
-    expect(migrateFavorites(["espn-333"], []).teams).toEqual(["333"]);
+    expect(migrateFavorites(["espn-333"], []).teams).toEqual(["cfb:333"]);
   });
 
   it("passes raw numeric-string ids through", () => {
-    expect(migrateFavorites(["2633"], []).teams).toEqual(["2633"]);
+    expect(migrateFavorites(["2633"], []).teams).toEqual(["cfb:2633"]);
   });
 
   it("drops unknown team ids", () => {
@@ -21,10 +21,10 @@ describe("migrateFavorites", () => {
   it("dedupes — the mock carries duplicate espnIds, first wins", () => {
     // t-20 and t-23 both map to 2628; t-5 and t-26 both map to 2305.
     expect(migrateFavorites(["t-20", "t-23", "t-5", "t-26"], []).teams).toEqual(
-      ["2628", "2305"]
+      ["cfb:2628", "cfb:2305"]
     );
     expect(migrateFavorites(["333", "espn-333", "t-1"], []).teams).toEqual([
-      "333",
+      "cfb:333",
     ]);
   });
 
@@ -34,11 +34,11 @@ describe("migrateFavorites", () => {
       ["8", "5", "179", "banana", "80", ""]
     );
     // 179 is an FCS conference id, 80 is the FBS umbrella group — both drop.
-    expect(confs).toEqual(["8", "5"]);
+    expect(confs).toEqual(["cfb:8", "cfb:5"]);
   });
 
   it("dedupes conference ids", () => {
-    expect(migrateFavorites([], ["8", "8", "1"]).confs).toEqual(["8", "1"]);
+    expect(migrateFavorites([], ["8", "8", "1"]).confs).toEqual(["cfb:8", "cfb:1"]);
   });
 
   it("is idempotent", () => {

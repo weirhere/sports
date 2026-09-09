@@ -1,10 +1,17 @@
-// Pure migration for persisted favorites: legacy mock ids ("t-1") and
-// prefixed ids ("espn-333") normalize to bare ESPN numeric-string ids;
-// conference follows are filtered to the known FBS group ids. Idempotent —
-// running it over already-migrated data is a no-op. (Wired into
-// use-favorites in a later phase; this module is deliberately pure.)
+// Pure migration for persisted favorites.
+//
+// v2 normalized legacy mock ids ("t-1") and prefixed ids ("espn-333") to
+// bare ESPN numeric-string ids, and filtered conference follows to the
+// known FBS group ids.
+//
+// v3 league-qualifies both sets: a follow becomes `"cfb:130"` and a
+// conference follow `"cfb:8"`. Every stored value predates the league axis,
+// so every one of them is college football's — the app had no other league
+// — which makes the mapping exact rather than a guess. Idempotent: an
+// already-qualified key passes through untouched.
 
-import { conferenceName } from "@/lib/conferences";
+import { FBS_GROUP_ID, collegeDivision } from "@/lib/conferences";
+import { isLeague } from "@/lib/leagues";
 
 /**
  * Frozen snapshot of the mock roster's id → ESPN id mapping
@@ -59,6 +66,12 @@ function normalizeTeamId(id: string): string | null {
   return null;
 }
 
+/** Whether a stored value already carries a league prefix. */
+function isQualified(value: string): boolean {
+  const separator = value.indexOf(":");
+  return separator > 0 && isLeague(value.slice(0, separator));
+}
+
 export function migrateFavorites(
   teams: string[],
   confs: string[]
@@ -66,22 +79,41 @@ export function migrateFavorites(
   const migratedTeams: string[] = [];
   const seenTeams = new Set<string>();
   for (const id of teams) {
+    if (isQualified(id)) {
+      if (seenTeams.has(id)) continue;
+      seenTeams.add(id);
+      migratedTeams.push(id);
+      continue;
+    }
     const normalized = normalizeTeamId(id);
-    if (normalized === null || seenTeams.has(normalized)) continue;
-    seenTeams.add(normalized);
-    migratedTeams.push(normalized);
+    if (normalized === null) continue;
+    const key = `cfb:${normalized}`;
+    if (seenTeams.has(key)) continue;
+    seenTeams.add(key);
+    migratedTeams.push(key);
   }
 
   const migratedConfs: string[] = [];
   const seenConfs = new Set<string>();
   for (const id of confs) {
+    if (isQualified(id)) {
+      if (seenConfs.has(id)) continue;
+      seenConfs.add(id);
+      migratedConfs.push(id);
+      continue;
+    }
     if (!/^\d+$/.test(id)) continue;
     // Only the 11 known FBS group ids survive; anything else (FCS
-    // conferences, junk) drops.
-    if (conferenceName(Number(id)) === "Other") continue;
-    if (seenConfs.has(id)) continue;
-    seenConfs.add(id);
-    migratedConfs.push(id);
+    // conferences, junk) drops. **Deliberately frozen at FBS**: stored
+    // follows were written against that table, so this gate must not widen
+    // as the live registry does — extend the registry, not this.
+    const numeric = Number(id);
+    if (numeric === FBS_GROUP_ID) continue;
+    if (collegeDivision(numeric, "cfb") !== "FBS") continue;
+    const token = `cfb:${id}`;
+    if (seenConfs.has(token)) continue;
+    seenConfs.add(token);
+    migratedConfs.push(token);
   }
 
   return { teams: migratedTeams, confs: migratedConfs };

@@ -9,6 +9,7 @@ import { Star } from "lucide-react";
 import { TeamLogo } from "@/components/team-logo";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import type { Team } from "@/lib/types";
+import { teamPath } from "@/lib/routes";
 
 export function TeamBrowseRow({ team }: { team: Team }) {
   const { isFavorite, toggleFavorite } = useFavoritesContext();
@@ -18,7 +19,7 @@ export function TeamBrowseRow({ team }: { team: Team }) {
   return (
     <div className="flex items-center pr-2">
       <Link
-        href={`/team/${team.id}`}
+        href={teamPath(team)}
         aria-label={fullName}
         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-[5px] transition-colors hover:bg-bg-header"
       >

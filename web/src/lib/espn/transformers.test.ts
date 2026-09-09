@@ -52,7 +52,7 @@ function makeEvent(overrides: Partial<EspnEvent> = {}): EspnEvent {
   };
 }
 
-const games = transformScoreboard(scoreboard.events ?? []);
+const games = transformScoreboard(scoreboard.events ?? [], "cfb");
 const byId = (id: string) => games.find((g) => g.id === id);
 
 describe("status mapping (state first)", () => {
@@ -103,7 +103,7 @@ describe("transformEvent", () => {
 
   it("carries the event's season type so a title game stays out of Week 1", () => {
     const event = makeEvent({ season: { year: 2026, type: 3 } });
-    expect(transformEvent(event)?.seasonType).toBe(3);
+    expect(transformEvent(event, "cfb")?.seasonType).toBe(3);
   });
 
   it("finds the record by type 'total' or name 'overall'", () => {
@@ -112,20 +112,20 @@ describe("transformEvent", () => {
       { name: "Home", type: "home", summary: "1-0" },
       { name: "YTD", type: "total", summary: "3-1" },
     ];
-    expect(transformEvent(byType)?.homeTeam.record).toBe("3-1");
+    expect(transformEvent(byType, "cfb")?.homeTeam.record).toBe("3-1");
 
     const byName = makeEvent();
     byName.competitions![0].competitors![0].records = [
       { name: "overall", summary: "2-2" },
     ];
-    expect(transformEvent(byName)?.homeTeam.record).toBe("2-2");
+    expect(transformEvent(byName, "cfb")?.homeTeam.record).toBe("2-2");
   });
 
   it("clamps curated ranks to 1…25", () => {
     const event = makeEvent();
     event.competitions![0].competitors![0].curatedRank = { current: 99 };
     event.competitions![0].competitors![1].curatedRank = { current: 14 };
-    const game = transformEvent(event);
+    const game = transformEvent(event, "cfb");
     expect(game?.homeTeam.ranking).toBeUndefined();
     expect(game?.awayTeam.ranking).toBe(14);
   });
@@ -133,22 +133,22 @@ describe("transformEvent", () => {
   it("normalizes ESPN's empty broadcast string to undefined", () => {
     const event = makeEvent();
     event.competitions![0].broadcast = "";
-    expect(transformEvent(event)?.broadcast).toBeUndefined();
+    expect(transformEvent(event, "cfb")?.broadcast).toBeUndefined();
 
     event.competitions![0].broadcasts = [{ names: ["ESPN2"] }];
-    expect(transformEvent(event)?.broadcast).toBe("ESPN2");
+    expect(transformEvent(event, "cfb")?.broadcast).toBe("ESPN2");
   });
 
   it("drops malformed events instead of throwing", () => {
-    expect(transformEvent({ id: "x" })).toBeNull();
-    expect(transformEvent(makeEvent({ id: undefined }))).toBeNull();
+    expect(transformEvent({ id: "x" }, "cfb")).toBeNull();
+    expect(transformEvent(makeEvent({ id: undefined }), "cfb")).toBeNull();
     const oneSided = makeEvent();
     oneSided.competitions![0].competitors = [
       { homeAway: "home", team: { id: "10", location: "Home U" } },
     ];
-    expect(transformEvent(oneSided)).toBeNull();
+    expect(transformEvent(oneSided, "cfb")).toBeNull();
     expect(
-      transformScoreboard([{ id: "x" }, makeEvent()]).map((g) => g.id)
+      transformScoreboard([{ id: "x" }, makeEvent()], "cfb").map((g) => g.id)
     ).toEqual(["1"]);
   });
 });
@@ -178,7 +178,7 @@ describe("transformCalendar", () => {
 });
 
 describe("transformStandings", () => {
-  const groups = transformStandings(standings);
+  const groups = transformStandings(standings, "cfb");
 
   it("orders groups tier-then-name and keeps empty conferences", () => {
     expect(groups.map((g) => g.name)).toEqual(["SEC", "American", "Sun Belt"]);
@@ -227,13 +227,13 @@ describe("transformStandings", () => {
         },
       ],
     };
-    const [sec] = transformStandings(seeded);
+    const [sec] = transformStandings(seeded, "cfb");
     expect(sec.entries.map((e) => e.team.school)).toEqual(["First", "Second"]);
   });
 });
 
 describe("transformConferenceTeams", () => {
-  const groups = transformConferenceTeams(standings);
+  const groups = transformConferenceTeams(standings, "cfb");
 
   it("keeps empty conferences — ESPN ships the Sun Belt with zero entries", () => {
     // Dropping the empty group would list 10 FBS conferences instead of 11.
@@ -252,7 +252,7 @@ describe("transformConferenceTeams", () => {
 
 describe("transformPolls", () => {
   it("maps every poll with its ranks", () => {
-    const polls = transformPolls(rankings);
+    const polls = transformPolls(rankings, "cfb");
     expect(polls).toHaveLength(2);
     expect(polls[0].name).toBe("AP Top 25");
     expect(polls[0].headline).toBe("2026 AP Poll: Preseason");
@@ -267,14 +267,14 @@ describe("transformPolls", () => {
 describe("transformTeamSchedule", () => {
   it("trusts recordSummary/standingSummary only when seasons match", () => {
     // The 2026 fixture: season.year === requestedSeason.year.
-    const current = transformTeamSchedule(schedule2026);
+    const current = transformTeamSchedule(schedule2026, "cfb");
     expect(current.year).toBe(2026);
     expect(current.record).toBe("0-0");
     expect(current.standing).toBe("1st in SEC");
 
     // The 2025 fixture: ESPN's current season is 2026, so its summaries
     // describe the wrong season and must not survive.
-    const past = transformTeamSchedule(schedule2025);
+    const past = transformTeamSchedule(schedule2025, "cfb");
     expect(past.year).toBe(2025);
     expect(past.record).toBeUndefined();
     expect(past.standing).toBeUndefined();
@@ -282,12 +282,12 @@ describe("transformTeamSchedule", () => {
 
   it("derives a past season's record from final results", () => {
     // Alabama in the trimmed 2025 events: L @ Florida State, W ULM, W Wisconsin.
-    const past = transformTeamSchedule(schedule2025);
+    const past = transformTeamSchedule(schedule2025, "cfb");
     expect(past.derivedRecord).toBe("2-1");
   });
 
   it("reads the schedule endpoint's score OBJECT", () => {
-    const past = transformTeamSchedule(schedule2025);
+    const past = transformTeamSchedule(schedule2025, "cfb");
     const opener = past.games.find((g) => g.id === "401752665");
     expect(opener?.homeTeam.score).toBe(31);
     expect(opener?.awayTeam.score).toBe(17);
@@ -296,7 +296,7 @@ describe("transformTeamSchedule", () => {
   });
 
   it("resolves the team's conference through the groups rule", () => {
-    const current = transformTeamSchedule(schedule2026);
+    const current = transformTeamSchedule(schedule2026, "cfb");
     expect(current.team?.id).toBe("333");
     // groups.isConference true → the group IS the conference (SEC, 8).
     expect(current.team?.conferenceId).toBe("8");
@@ -304,7 +304,7 @@ describe("transformTeamSchedule", () => {
   });
 
   it("sorts games by date", () => {
-    const past = transformTeamSchedule(schedule2025);
+    const past = transformTeamSchedule(schedule2025, "cfb");
     const times = past.games.map((g) => Date.parse(g.scheduledAt));
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
