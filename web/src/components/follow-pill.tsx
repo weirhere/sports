@@ -30,19 +30,22 @@ export function FollowPill({ league, id, kind, name }: FollowPillProps) {
     toggleFavoriteConference,
   } = useFavoritesContext();
 
-  const key =
-    kind === "team"
-      ? followKey({ league, teamId: id })
-      : conferenceToken({ league, id: Number(id) });
+  // Branched rather than one shared `key`: a team key and a conference
+  // token are distinct branded types, so the compiler keeps each one with
+  // the store it belongs to.
   const following =
-    kind === "team" ? isFavorite(key) : isFavoriteConference(key);
-  const toggle =
-    kind === "team" ? toggleFavorite : toggleFavoriteConference;
+    kind === "team"
+      ? isFavorite(followKey({ league, teamId: id }))
+      : isFavoriteConference(conferenceToken({ league, id: Number(id) }));
+  const toggle = () => {
+    if (kind === "team") toggleFavorite(followKey({ league, teamId: id }));
+    else toggleFavoriteConference(conferenceToken({ league, id: Number(id) }));
+  };
 
   return (
     <button
       type="button"
-      onClick={() => toggle(key)}
+      onClick={toggle}
       aria-pressed={following}
       aria-label={following ? `Unfollow ${name}` : `Follow ${name}`}
       className={cn(

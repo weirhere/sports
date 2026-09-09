@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { searchTeams } from "@/lib/search-ranking";
+import { followedTeams } from "@/lib/refs";
 import { conferenceLogoUrl, orderedIds } from "@/lib/conferences";
 import { cn } from "@/lib/utils";
 import type { ConferenceTeams, Team } from "@/lib/types";
@@ -84,14 +85,13 @@ export function TeamsBrowse() {
     });
   }, [conferences]);
 
-  const followedTeams = useMemo(() => {
-    const followedIds = new Set(favorites);
-    return conferences
-      .flatMap((conference) => conference.teams)
-      .filter((team) => followedIds.has(team.id))
-      .sort((lhs, rhs) =>
-        lhs.school.localeCompare(rhs.school, "en", { sensitivity: "base" })
-      );
+  const followed = useMemo(() => {
+    // `followedTeams` builds the league-qualified key each membership test
+    // needs — the stored set holds "cfb:228", never a bare "228".
+    const all = conferences.flatMap((conference) => conference.teams);
+    return followedTeams(new Set(favorites), all).sort((lhs, rhs) =>
+      lhs.school.localeCompare(rhs.school, "en", { sensitivity: "base" })
+    );
   }, [conferences, favorites]);
 
   // Follow boost ON — iOS parity (TeamsScreen passes the followed set to
@@ -129,9 +129,9 @@ export function TeamsBrowse() {
         )
       ) : trimmed.length === 0 ? (
         <div className="space-y-2">
-          {followedTeams.length > 0 && (
+          {followed.length > 0 && (
             <FollowingSection
-              teams={followedTeams}
+              teams={followed}
               expanded={!collapsed.has(FOLLOWING_SECTION)}
               onToggle={() => toggle(FOLLOWING_SECTION)}
             />

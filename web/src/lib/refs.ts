@@ -13,6 +13,21 @@
 
 import { LEAGUES, type League, isLeague } from "./leagues";
 
+/**
+ * The stored spelling of a followed team — `"cfb:130"`.
+ *
+ * Branded so a bare ESPN id can't reach the follow store by accident. Every
+ * value of this type comes from `followKey`, which is the only constructor;
+ * `isFavorite(team.id)` is a compile error rather than a silently
+ * half-working follow. (It was one twice: the rankings hub and the team
+ * browse row both shipped bare, 2026-09-09.)
+ */
+export type FollowKey = string & { readonly __brand: "FollowKey" };
+
+/** The stored spelling of a followed conference — `"cfb:8"`. Branded for
+ * the same reason as `FollowKey`. */
+export type ConferenceToken = string & { readonly __brand: "ConferenceToken" };
+
 export interface TeamRef {
   league: League;
   teamId: string;
@@ -25,8 +40,8 @@ export interface ConferenceRef {
 }
 
 /** The stored/URL spelling of a followed team — `"cfb:130"`, `"nfl:26"`. */
-export function followKey(ref: TeamRef): string {
-  return `${ref.league}:${ref.teamId}`;
+export function followKey(ref: TeamRef): FollowKey {
+  return `${ref.league}:${ref.teamId}` as FollowKey;
 }
 
 /**
@@ -51,8 +66,8 @@ export function parseFollowKey(raw: string): TeamRef | undefined {
 }
 
 /** The stored/URL spelling of a conference — `"cfb:8"`, `"nfl:8"`. */
-export function conferenceToken(ref: ConferenceRef): string {
-  return `${ref.league}:${ref.id}`;
+export function conferenceToken(ref: ConferenceRef): ConferenceToken {
+  return `${ref.league}:${ref.id}` as ConferenceToken;
 }
 
 export function parseConferenceToken(
@@ -99,6 +114,23 @@ export function followedTeamIds(
     parseFollowKeys(raw)
       .filter((ref) => ref.league === league)
       .map((ref) => ref.teamId)
+  );
+}
+
+/**
+ * The followed members of a team list, in the list's own order.
+ *
+ * The one shape a component reaches for — "which of these do I follow" —
+ * given a store that holds keys and a directory that holds bare ids. Having
+ * it here means the membership test is written once and tested once; a
+ * hand-rolled `new Set(favorites).has(team.id)` silently matches nothing.
+ */
+export function followedTeams<T extends { league: League; id: string }>(
+  keys: ReadonlySet<string>,
+  teams: readonly T[]
+): T[] {
+  return teams.filter((team) =>
+    keys.has(followKey({ league: team.league, teamId: team.id }))
   );
 }
 

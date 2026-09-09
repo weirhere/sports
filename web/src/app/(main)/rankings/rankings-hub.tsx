@@ -118,7 +118,10 @@ function Top25Row({ polls }: { polls: Poll[] }) {
 function ConferenceRow({ row }: { row: ConferenceRowData }) {
   const { isFavoriteConference, toggleFavoriteConference } =
     useFavoritesContext();
-  const followed = isFavoriteConference(String(row.id));
+  // League-qualified, never the bare group id: group 8 is the SEC here and
+  // the AFC in the NFL's registry.
+  const token = conferenceToken({ league: "cfb", id: row.id });
+  const followed = isFavoriteConference(token);
 
   // "Ole Miss · 7-1" — the current leader, only once records exist. A 0-0
   // "leader" is last season's carry-over, so preseason shows no teaser.
@@ -151,7 +154,7 @@ function ConferenceRow({ row }: { row: ConferenceRowData }) {
       </Link>
       <button
         type="button"
-        onClick={() => toggleFavoriteConference(String(row.id))}
+        onClick={() => toggleFavoriteConference(token)}
         aria-label={followed ? `Unfollow ${row.name}` : `Follow ${row.name}`}
         aria-pressed={followed}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-text-primary"

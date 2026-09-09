@@ -5,6 +5,7 @@
 
 import type { ConferenceTeams, Game, Team } from "@/lib/types";
 import type { League } from "./leagues";
+import { followKey } from "./refs";
 
 /** A registry conference reference — search's conference corpus rows. */
 export interface ConferenceRef {
@@ -58,11 +59,16 @@ export function teamMatchTier(query: string, team: Team): number | null {
  * Pass no follow set for a purely match-ranked list — onboarding does (iOS
  * parity: only OnboardingScreen filters unboosted; the Teams tab's filter
  * passes the followed set).
+ *
+ * `followedKeys` holds the store's **league-qualified** keys ("cfb:130"),
+ * not bare ESPN ids — pass `favorites` straight through. Dedupe keys on the
+ * same spelling, so a corpus spanning two leagues can't drop the Browns
+ * because UAB shares id 5.
  */
 export function searchTeams(
   query: string,
   conferences: ConferenceTeams[],
-  followedIds: ReadonlySet<string> = new Set()
+  followedKeys: ReadonlySet<string> = new Set()
 ): Team[] {
   const folded = foldedQuery(query);
   if (folded.length === 0) return [];
@@ -72,9 +78,10 @@ export function searchTeams(
     .flatMap((conference) => conference.teams)
     .flatMap((team) => {
       const tier = teamMatchTier(folded, team);
-      if (tier === null || seen.has(team.id)) return [];
-      seen.add(team.id);
-      return [{ team, followed: followedIds.has(team.id), tier }];
+      const key = followKey({ league: team.league, teamId: team.id });
+      if (tier === null || seen.has(key)) return [];
+      seen.add(key);
+      return [{ team, followed: followedKeys.has(key), tier }];
     })
     .sort((lhs, rhs) => {
       if (lhs.followed !== rhs.followed) return lhs.followed ? -1 : 1;
