@@ -7,6 +7,7 @@ import {
   fold,
 } from "./search-ranking";
 import type { ConferenceTeams, Game, GameTeam, Team } from "./types";
+import { followKey } from "./refs";
 
 function makeTeam(overrides: Partial<Team> & { id: string }): Team {
   return {
@@ -148,11 +149,30 @@ describe("searchTeams", () => {
   });
 
   it("boosts followed teams first when a follow set is passed", () => {
-    const results = searchTeams("georgia", directory, new Set(["59"]));
+    // The set holds the store's own league-qualified keys, which is what
+    // `favorites` contains — callers pass it straight through.
+    const results = searchTeams(
+      "georgia",
+      directory,
+      new Set([followKey({ league: "cfb", teamId: "59" })])
+    );
     expect(results.map((t) => t.school)).toEqual([
       "Georgia Tech",
       "Georgia",
       "Georgia Southern",
+    ]);
+  });
+
+  it("ignores a bare ESPN id in the follow set", () => {
+    // Pins the store's key format from this side of the boundary: the
+    // branded `FollowKey` stops a bare id reaching the store, but nothing
+    // in the type system checks a `Set<string>`. A bare "59" is not a
+    // follow, so Georgia Tech must not float.
+    const results = searchTeams("georgia", directory, new Set(["59"]));
+    expect(results.map((t) => t.school)).toEqual([
+      "Georgia",
+      "Georgia Southern",
+      "Georgia Tech",
     ]);
   });
 

@@ -3,6 +3,7 @@ import {
   conferenceToken,
   followKey,
   followedLeagues,
+  followedTeams,
   followedTeamIds,
   parseConferenceToken,
   parseFollowKey,
@@ -57,6 +58,33 @@ describe("conference tokens", () => {
 
   it("rejects a token whose league it doesn't know", () => {
     expect(parseConferenceToken("mls:8")).toBeUndefined();
+  });
+});
+
+describe("followedTeams", () => {
+  const uab = { league: "cfb" as const, id: "5", school: "UAB" };
+  const browns = { league: "nfl" as const, id: "5", school: "Cleveland" };
+
+  it("matches on the league-qualified key, not the bare id", () => {
+    // The collision that forced the league axis: ESPN id 5 is UAB *and*
+    // the Browns, so following one must never light up the other.
+    const followed = followedTeams(new Set(["cfb:5"]), [uab, browns]);
+    expect(followed).toEqual([uab]);
+  });
+
+  it("ignores a bare id in the stored set", () => {
+    // What the rankings hub and the team browse row were writing before
+    // 2026-09-09: a bare id follows nothing the UI can find again.
+    expect(followedTeams(new Set(["5"]), [uab, browns])).toEqual([]);
+  });
+
+  it("keeps the list's own order", () => {
+    const all = [browns, uab];
+    expect(followedTeams(new Set(["cfb:5", "nfl:5"]), all)).toEqual(all);
+  });
+
+  it("is empty for an empty follow set", () => {
+    expect(followedTeams(new Set(), [uab, browns])).toEqual([]);
   });
 });
 

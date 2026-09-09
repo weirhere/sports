@@ -9,11 +9,14 @@ import { Star } from "lucide-react";
 import { TeamLogo } from "@/components/team-logo";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import type { Team } from "@/lib/types";
+import { followKey } from "@/lib/refs";
 import { teamPath } from "@/lib/routes";
 
 export function TeamBrowseRow({ team }: { team: Team }) {
   const { isFavorite, toggleFavorite } = useFavoritesContext();
-  const followed = isFavorite(team.id);
+  // League-qualified, never `team.id`: id 5 is UAB and the Browns.
+  const key = followKey({ league: team.league, teamId: team.id });
+  const followed = isFavorite(key);
   const fullName = [team.school, team.name].filter(Boolean).join(" ");
 
   return (
@@ -36,7 +39,7 @@ export function TeamBrowseRow({ team }: { team: Team }) {
       </Link>
       <button
         type="button"
-        onClick={() => toggleFavorite(team.id)}
+        onClick={() => toggleFavorite(key)}
         aria-label={followed ? `Unfollow ${team.school}` : `Follow ${team.school}`}
         aria-pressed={followed}
         className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-bg-header"

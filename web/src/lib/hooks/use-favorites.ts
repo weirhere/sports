@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { migrateFavorites } from "@/lib/favorites-migration";
+import type { ConferenceToken, FollowKey } from "@/lib/refs";
 
 const TEAM_STORAGE_KEY = "cfb-hub-favorites";
 const CONF_STORAGE_KEY = "cfb-hub-fav-conferences";
@@ -23,7 +24,8 @@ function readStoredIds(key: string): string[] {
  * team, `"cfb:8"` for a conference. Never bare ids: ESPN id 5 is UAB and
  * the Browns, and group 8 is the SEC and the AFC, so a bare-id set follows
  * two things at once. Build a key with `followKey` / `conferenceToken` from
- * `@/lib/refs`.
+ * `@/lib/refs` — the branded `FollowKey`/`ConferenceToken` types make those
+ * the only way in, so a bare id won't compile.
  */
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -65,7 +67,7 @@ export function useFavorites() {
     setIsLoaded(true);
   }, []);
 
-  const toggleFavorite = useCallback((key: string) => {
+  const toggleFavorite = useCallback((key: FollowKey) => {
     setFavorites((prev) => {
       const next = prev.includes(key)
         ? prev.filter((id) => id !== key)
@@ -80,11 +82,11 @@ export function useFavorites() {
   }, []);
 
   const isFavorite = useCallback(
-    (key: string) => favorites.includes(key),
+    (key: FollowKey) => favorites.includes(key),
     [favorites]
   );
 
-  const toggleFavoriteConference = useCallback((token: string) => {
+  const toggleFavoriteConference = useCallback((token: ConferenceToken) => {
     setFavoriteConferences((prev) => {
       const next = prev.includes(token)
         ? prev.filter((id) => id !== token)
@@ -99,7 +101,7 @@ export function useFavorites() {
   }, []);
 
   const isFavoriteConference = useCallback(
-    (token: string) => favoriteConferences.includes(token),
+    (token: ConferenceToken) => favoriteConferences.includes(token),
     [favoriteConferences]
   );
 
