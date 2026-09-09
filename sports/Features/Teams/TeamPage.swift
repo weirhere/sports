@@ -404,14 +404,22 @@ struct TeamPage: View {
         let label = resolvedConference.map { Conference.name(for: $0) } ?? ""
         HStack(spacing: Spacing.xs) {
             if let id = resolvedConference, Conference.isKnown(id.id, in: id.league) {
-                // League first, then the group inside it (Andy,
-                // 2026-09-09) — widest to narrowest, which is the order
-                // the standings scope chip already walks and the order the
-                // badges are read in.
-                if let league = leagueDestination {
-                    leagueLink(league)
+                // Widest first in the pro leagues — [NBA] [Atlantic] —
+                // because the league is the identity and the division is
+                // the detail inside it.
+                //
+                // College football reads the other way (Andy, 2026-09-09):
+                // Miami is an ACC team that happens to play in FBS, not an
+                // FBS team that happens to be in the ACC. The conference is
+                // the identity there and the subdivision is the
+                // classification around it, so it goes second.
+                if pageLeague.hasCollegeDivisions {
+                    groupLink(id, label: label)
+                    leagueDestination.map(leagueLink)
+                } else {
+                    leagueDestination.map(leagueLink)
+                    groupLink(id, label: label)
                 }
-                groupLink(id, label: label)
             } else if !label.isEmpty {
                 // An id we can't name renders as plain text — there's no
                 // page to send it to.
