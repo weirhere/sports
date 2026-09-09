@@ -149,6 +149,10 @@ nonisolated struct GameShareCard: Transferable, Sendable {
         return renderer.uiImage?.pngData()
     }
 
+    private var kickoff: (time: String, date: String?)? {
+        GameHeaderState.kickoff(game, summary)
+    }
+
     @MainActor
     private func cardView(awayLogo: UIImage?, homeLogo: UIImage?) -> GameShareCardView {
         let away = GameHeaderState.competitor(game.away, summary?.away)
@@ -160,6 +164,10 @@ nonisolated struct GameShareCard: Transferable, Sendable {
                         rank: summary?.home?.rank ?? game.home.rank, winner: home.winner, logo: homeLogo),
             statusLine: GameHeaderState.statusLine(game, summary),
             showsScores: GameHeaderState.showsScores(game, summary),
-            isLive: GameHeaderState.isLive(game, summary))
+            isLive: GameHeaderState.isLive(game, summary),
+            // Pre-game only, and nil everywhere else — the card renders the
+            // detail header's kickoff split, not a date-at-time phrase.
+            kickoff: kickoff,
+            broadcast: kickoff == nil ? nil : game.broadcast)
     }
 }
