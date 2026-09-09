@@ -11,6 +11,7 @@ import { pollLabel } from "@/lib/polls";
 import type { Poll, RankedTeam } from "@/lib/types";
 import { TeamLogo } from "@/components/team-logo";
 import { cn } from "@/lib/utils";
+import { teamPath } from "@/lib/routes";
 
 /** Mirrors the iOS `UIStateStore.pollChoice` preference. */
 const POLL_CHOICE_KEY = "statside.ui.pollChoice";
@@ -107,7 +108,7 @@ function RankRow({ ranked }: { ranked: RankedTeam }) {
 
   return (
     <Link
-      href={`/team/${ranked.team.id}`}
+      href={teamPath(ranked.team)}
       aria-label={accessibilitySummary(ranked, isNew, delta)}
       className="flex items-center gap-2 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >

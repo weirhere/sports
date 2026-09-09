@@ -12,6 +12,7 @@ import { liveStatusText } from "@/lib/format";
 import { CardHeader } from "@/components/card-header";
 import { LiveDot } from "@/components/theme/live-dot";
 import { cn } from "@/lib/utils";
+import { gamePath } from "@/lib/routes";
 
 function dayLine(iso: string): string {
   const date = new Date(iso);
@@ -180,7 +181,7 @@ export function NextGameCard({ game }: { game: Game }) {
     <section className="card-surface">
       <CardHeader title={isLive ? "Current game" : "Next game"} />
       <Link
-        href={`/game/${game.id}`}
+        href={gamePath(game)}
         aria-label={gameRowLabel(game)}
         className="block transition-colors hover:bg-bg-header"
         suppressHydrationWarning

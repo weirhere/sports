@@ -139,22 +139,28 @@ export function ScoreFilterSheet({
                 </span>
               }
             />
-            {orderedIds.map((id) => (
-              <FilterRow
-                key={id}
-                label={conferenceName(id)}
-                selected={current === conferenceFilterToken(id)}
-                onClick={() => pick(conferenceFilterToken(id))}
-                mark={
-                  <span className="flex h-6 w-6 items-center justify-center">
-                    <ConferenceLogo
-                      src={conferenceLogoUrl(id)}
-                      name={conferenceName(id)}
-                    />
-                  </span>
-                }
-              />
-            ))}
+            {orderedIds.map((id) => {
+              // College football's conferences are the only ones the sheet
+              // lists today; W2 gives it every league's.
+              const ref = { league: "cfb" as const, id };
+              const token = conferenceFilterToken(ref);
+              return (
+                <FilterRow
+                  key={id}
+                  label={conferenceName(id, "cfb")}
+                  selected={current === token}
+                  onClick={() => pick(token)}
+                  mark={
+                    <span className="flex h-6 w-6 items-center justify-center">
+                      <ConferenceLogo
+                        src={conferenceLogoUrl(id, "cfb")}
+                        name={conferenceName(id, "cfb")}
+                      />
+                    </span>
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       </DialogContent>

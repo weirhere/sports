@@ -4,15 +4,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { gameSummary, EspnApiError, EspnDataError } from "@/lib/espn/provider";
+import { parseLeague } from "@/lib/leagues";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ gameId: string }> }
 ) {
   const { gameId } = await params;
+  // Event ids are per-league: a summary fetched from the wrong league's
+  // base URL 404s, so the league rides the request rather than being
+  // guessed from the id.
+  const league = parseLeague(new URL(request.url).searchParams.get("league"));
+  if (!league) {
+    return NextResponse.json({ error: "Unknown league" }, { status: 400 });
+  }
 
   try {
-    const detail = await gameSummary(gameId);
+    const detail = await gameSummary(league, gameId);
     return NextResponse.json(detail);
   } catch (err) {
     if (

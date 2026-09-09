@@ -12,9 +12,11 @@ export default async function RankingsPage() {
   // The two fetches fail independently: no poll is a screen-level error
   // only when there are no conferences either; a standings miss just hides
   // the conference rows under a healthy Top 25 row.
+  // College football is the only league with a poll, and the only one this
+  // hub lists today — W3 gives it an accordion per league.
   const [pollsResult, standingsResult] = await Promise.allSettled([
-    rankings(),
-    conferenceStandings(),
+    rankings("cfb"),
+    conferenceStandings("cfb"),
   ]);
   const polls: Poll[] =
     pollsResult.status === "fulfilled"

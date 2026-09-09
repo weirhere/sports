@@ -104,3 +104,53 @@ export function liveStatusText(input: LiveStatusInput): string | undefined {
     }
   }
 }
+
+// --- Unannounced kickoffs ----------------------------------------------
+
+/**
+ * ESPN parks a game whose kickoff hasn't been announced at **midnight
+ * Eastern** and flags it `timeValid: false`. Midnight Eastern is the
+ * *previous* calendar day everywhere west of it, so a raw parse files every
+ * TBD game a day early for Central, Mountain, Pacific, Alaska and Hawaii —
+ * four of the six US zones.
+ *
+ * The day is the only real thing in the value, so it is what survives: read
+ * the Eastern day, rebuild it as **local midnight**. Midnight rather than
+ * noon so a TBD game keeps sorting first within its day.
+ *
+ * Applied at the mapping boundary, not at the bucket: a game's date is read
+ * by the day strip, a row's day line, team schedules, shares and links
+ * alike, so one normalization beats six.
+ *
+ * Announced kickoffs are untouched — of the 30 real kickoffs in the window
+ * this was reproduced against, none differ between the Eastern and Central
+ * day, so the sentinel was the whole bug.
+ */
+export function placeholderKickoff(date: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  const [year, month, day] = [value("year"), value("month"), value("day")];
+  if (![year, month, day].every(Number.isFinite)) return date;
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * A kickoff instant as the app should hold it: re-anchored when ESPN's
+ * payload says the time is a placeholder, verbatim otherwise.
+ */
+export function parseKickoff(
+  iso: string | undefined,
+  timeTBD: boolean
+): string {
+  if (!iso) return "";
+  if (!timeTBD) return iso;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return placeholderKickoff(parsed).toISOString();
+}

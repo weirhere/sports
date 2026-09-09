@@ -6,6 +6,7 @@ function team(id: string): Team {
   return {
     id,
     espnId: Number(id),
+    league: "cfb",
     name: "Team",
     school: `School ${id}`,
     abbreviation: "T",
@@ -22,6 +23,7 @@ function detail(
 ): GameDetail {
   const game: Game = {
     id: "401",
+    league: "cfb",
     status,
     scheduledAt: "2026-09-05T16:00Z",
     venue: { name: "Stadium", city: "City", state: "ST" },

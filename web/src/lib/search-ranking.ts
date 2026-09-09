@@ -4,9 +4,11 @@
 // corpus is already loaded, so results are instant.
 
 import type { ConferenceTeams, Game, Team } from "@/lib/types";
+import type { League } from "./leagues";
 
 /** A registry conference reference — search's conference corpus rows. */
 export interface ConferenceRef {
+  league: League;
   id: number;
   name: string;
 }

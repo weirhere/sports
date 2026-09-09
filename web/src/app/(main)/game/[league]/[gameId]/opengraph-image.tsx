@@ -30,6 +30,7 @@
 import { ImageResponse } from "next/og";
 import { gameSummary } from "@/lib/espn/provider";
 import { ogCardModel, type OgCardModel, type OgCardSide } from "./og-card";
+import { displayName, parseLeague } from "@/lib/leagues";
 
 export const alt = "StatSide game card";
 export const size = { width: 1200, height: 630 };
@@ -65,7 +66,7 @@ async function interFonts() {
         weight,
         style: "normal" as const,
         data: await fetch(
-          new URL(`../../../../lib/og/fonts/${file}`, import.meta.url)
+          new URL(`../../../../../lib/og/fonts/${file}`, import.meta.url)
         ).then((res) => res.arrayBuffer()),
       }))
     );
@@ -276,7 +277,7 @@ function Card({ model, awayLogo, homeLogo }: {
 }
 
 /** The card a game we couldn't load still deserves: the brand, and no lies. */
-function FallbackCard() {
+function FallbackCard({ tagline }: { tagline: string }) {
   return (
     <div
       style={{
@@ -294,7 +295,7 @@ function FallbackCard() {
       <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -1, color: INK }}>
         StatSide
       </div>
-      <div style={{ display: "flex", fontSize: 32, color: MUTED }}>College football scores</div>
+      <div style={{ display: "flex", fontSize: 32, color: MUTED }}>{tagline}</div>
     </div>
   );
 }
@@ -302,15 +303,21 @@ function FallbackCard() {
 export default async function Image({
   params,
 }: {
-  params: Promise<{ gameId: string }>;
+  params: Promise<{ league: string; gameId: string }>;
 }) {
-  const { gameId } = await params;
+  const { league: leagueParam, gameId } = await params;
+  const league = parseLeague(leagueParam);
   const fonts = await interFonts();
   const options = { ...size, ...(fonts ? { fonts } : {}) };
+  // The fallback card names whatever league the URL claimed — it renders
+  // when the summary fetch failed, which says nothing about the league.
+  const tagline = league ? `${displayName(league)} scores` : "Live scores";
+
+  if (!league) return new ImageResponse(<FallbackCard tagline={tagline} />, options);
 
   try {
     // Next memoizes the fetch, so this shares the page's own summary call.
-    const { game } = await gameSummary(gameId);
+    const { game } = await gameSummary(league, gameId);
     const model = ogCardModel(game);
     const [awayLogo, homeLogo] = await Promise.all([
       logoData(model.away.logoUrl),
@@ -321,6 +328,6 @@ export default async function Image({
       options
     );
   } catch {
-    return new ImageResponse(<FallbackCard />, options);
+    return new ImageResponse(<FallbackCard tagline={tagline} />, options);
   }
 }

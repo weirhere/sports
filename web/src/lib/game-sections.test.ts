@@ -15,6 +15,7 @@ function team(id: string, school: string, conferenceId: string): Team {
   return {
     id,
     espnId: Number(id),
+    league: "cfb",
     name: school,
     school,
     abbreviation: school.slice(0, 3).toUpperCase(),
@@ -39,6 +40,7 @@ function game(fields: {
 }): Game {
   return {
     id: fields.id ?? `g${nextId++}`,
+    league: "cfb",
     status: fields.status ?? "scheduled",
     scheduledAt: fields.scheduledAt ?? "2026-09-05T19:30:00Z",
     venue: { name: "", city: "", state: "" },
@@ -60,8 +62,8 @@ const troy = team("2653", "Troy", "37");
 const fcsVisitor = team("2755", "Wofford", "0");
 
 const noFollows = {
-  followedTeamIds: [] as string[],
-  followedConferenceIds: [] as number[],
+  followedTeamKeys: [] as string[],
+  followedConferenceTokens: [] as string[],
 };
 
 describe("buildSections — conference grouping", () => {
@@ -69,15 +71,15 @@ describe("buildSections — conference grouping", () => {
     const g = game({ home: side(georgia, 3), away: side(michigan) });
     const sections = buildSections([g], {
       grouping: "conference",
-      followedTeamIds: ["130"],
-      followedConferenceIds: [],
+      followedTeamKeys: ["cfb:130"],
+      followedConferenceTokens: [],
     });
 
     const ids = sections.map((s) => s.id);
     expect(ids).toContain(FOLLOWING_SECTION_ID);
     expect(ids).toContain(TOP25_SECTION_ID);
-    expect(ids).toContain("conf-SEC");
-    expect(ids).toContain("conf-Big Ten");
+    expect(ids).toContain("conf-cfb:8");
+    expect(ids).toContain("conf-cfb:5");
     // The same game, never deduplicated, in all four sections.
     for (const section of sections) {
       expect(section.games.map((x) => x.id)).toContain(g.id);
@@ -90,7 +92,7 @@ describe("buildSections — conference grouping", () => {
       grouping: "conference",
       ...noFollows,
     });
-    expect(sections.map((s) => s.id)).toEqual(["conf-SEC"]);
+    expect(sections.map((s) => s.id)).toEqual(["conf-cfb:8"]);
   });
 
   it("buckets both-sides-unknown games into Other", () => {
@@ -102,8 +104,8 @@ describe("buildSections — conference grouping", () => {
       grouping: "conference",
       ...noFollows,
     });
-    expect(sections.map((s) => s.id)).toEqual(["conf-Other"]);
-    expect(sections[0].conferenceId).toBeUndefined();
+    expect(sections.map((s) => s.id)).toEqual(["conf-other"]);
+    expect(sections[0].conference).toBeUndefined();
   });
 
   it("floats followed conferences (and followed teams' conferences) above tier order", () => {
@@ -115,18 +117,18 @@ describe("buildSections — conference grouping", () => {
     // Follow the MAC (id 15) and a Big Ten team: both float above SEC.
     const sections = buildSections(games, {
       grouping: "conference",
-      followedTeamIds: ["130"],
-      followedConferenceIds: [15],
+      followedTeamKeys: ["cfb:130"],
+      followedConferenceTokens: ["cfb:15"],
     });
     const confIds = sections
       .filter((s) => s.kind === "conference")
       .map((s) => s.id);
     // Floated (tier order within: Big Ten P4, MAC G5), then the rest.
     expect(confIds).toEqual([
-      "conf-Big Ten",
-      "conf-MAC",
-      "conf-SEC",
-      "conf-Sun Belt",
+      "conf-cfb:5",
+      "conf-cfb:15",
+      "conf-cfb:8",
+      "conf-cfb:37",
     ]);
   });
 
@@ -135,8 +137,8 @@ describe("buildSections — conference grouping", () => {
     const b1gGame = game({ home: side(michigan), away: side(ohioState) });
     const sections = buildSections([b1gGame, secGame], {
       grouping: "conference",
-      followedTeamIds: [],
-      followedConferenceIds: [8],
+      followedTeamKeys: [],
+      followedConferenceTokens: ["cfb:8"],
     });
     expect(sections[0].id).toBe(FOLLOWING_SECTION_ID);
     expect(sections[0].games.map((g) => g.id)).toEqual([secGame.id]);
@@ -194,8 +196,8 @@ describe("buildSections — date grouping", () => {
     const g = game({ home: side(georgia), away: side(alabama) });
     const sections = buildSections([g], {
       grouping: "date",
-      followedTeamIds: [georgia.id],
-      followedConferenceIds: [],
+      followedTeamKeys: [`cfb:${georgia.id}`],
+      followedConferenceTokens: [],
     });
     expect(sections[0].id).toBe(FOLLOWING_SECTION_ID);
     expect(sections[1].id.startsWith(DAY_SECTION_PREFIX)).toBe(true);
@@ -228,14 +230,14 @@ describe("buildSections — filters", () => {
   it("conference filter narrows every section, Following included, and composes with liveOnly", () => {
     const sections = buildSections([liveSec, preSec, liveB1g], {
       grouping: "conference",
-      followedTeamIds: [georgia.id, michigan.id],
-      followedConferenceIds: [],
+      followedTeamKeys: [`cfb:${georgia.id}`, `cfb:${michigan.id}`],
+      followedConferenceTokens: [],
       liveOnly: true,
       scoreFilter: "conference-8",
     });
     expect(sections.map((s) => s.id)).toEqual([
       FOLLOWING_SECTION_ID,
-      "conf-SEC",
+      "conf-cfb:8",
     ]);
     for (const section of sections) {
       expect(section.games.map((g) => g.id)).toEqual([liveSec.id]);

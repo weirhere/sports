@@ -31,7 +31,21 @@ import type {
 import type { LivePhase } from "@/lib/format";
 import type { WeekSlot } from "@/lib/season";
 import { makeWeekSlot } from "@/lib/season";
-import { conferenceName, tier } from "@/lib/conferences";
+import {
+  collegeDivision,
+  conferenceName,
+  divisionForTeamId,
+  tier,
+  tierRank,
+} from "@/lib/conferences";
+import {
+  hasWeeks,
+  leagueSpec,
+  playsOnASurface,
+  seasonYearFromEspn,
+  teamLogoBase,
+  type League,
+} from "@/lib/leagues";
 import type {
   EspnScoreboardResponse,
   EspnEvent,
@@ -56,7 +70,7 @@ import type {
   EspnVenue,
 } from "./types";
 import { flexibleNumber } from "./types";
-import { ESPN_LOGO_BASE } from "@/lib/constants";
+import { parseKickoff } from "@/lib/format";
 
 // --- Small shared helpers ---
 
@@ -136,15 +150,23 @@ function statusFromName(
 
 // --- Team ---
 
-export function transformTeam(espnTeam: EspnTeam): Team | null {
+export function transformTeam(
+  espnTeam: EspnTeam,
+  league: League
+): Team | null {
   if (!espnTeam.id) return null;
   const espnId = Number(espnTeam.id);
   if (!Number.isFinite(espnId)) return null;
 
+  // College football ships the conference id inline; the pro leagues ship
+  // no group at all, so their teams are placed from the hardcoded registry
+  // — without it every pro game falls into "Other" and a followed
+  // conference matches nothing.
   const numericConferenceId =
     conferenceIdFromGroups(espnTeam.groups) ??
-    flexibleNumber(espnTeam.conferenceId);
-  const registryName = conferenceName(numericConferenceId);
+    flexibleNumber(espnTeam.conferenceId) ??
+    divisionForTeamId(espnTeam.id, league);
+  const registryName = conferenceName(numericConferenceId, league);
   const groupName =
     registryName !== "Other"
       ? registryName
@@ -153,13 +175,17 @@ export function transformTeam(espnTeam: EspnTeam): Team | null {
   return {
     id: espnTeam.id,
     espnId,
+    league,
     name: espnTeam.name ?? espnTeam.nickname ?? "",
     school: espnTeam.location ?? espnTeam.displayName ?? "—",
     abbreviation: espnTeam.abbreviation ?? "",
     conferenceId:
       numericConferenceId !== undefined ? String(numericConferenceId) : "0",
     conferenceName: groupName ?? "Independent",
-    division: "FBS",
+    // Honors the `Division` type instead of asserting FBS over everything:
+    // an FCS conference id now reads as FCS, and a pro team carries no
+    // division at all because it has none.
+    division: collegeDivision(numericConferenceId, league),
     color: espnTeam.color ? `#${espnTeam.color}` : undefined,
     altColor: espnTeam.alternateColor
       ? `#${espnTeam.alternateColor}`
@@ -167,15 +193,18 @@ export function transformTeam(espnTeam: EspnTeam): Team | null {
     logoUrl:
       espnTeam.logo ??
       espnTeam.logos?.[0]?.href ??
-      `${ESPN_LOGO_BASE}/${espnId}.png`,
+      `${teamLogoBase(league)}/${espnId}.png`,
   };
 }
 
 // --- GameTeam ---
 
-function transformGameTeam(comp: EspnCompetitor): GameTeam | null {
+function transformGameTeam(
+  comp: EspnCompetitor,
+  league: League
+): GameTeam | null {
   if (!comp.team) return null;
-  const team = transformTeam(comp.team);
+  const team = transformTeam(comp.team, league);
   if (!team) return null;
 
   const parsedScore =
@@ -211,6 +240,7 @@ function transformVenue(venue: EspnVenue | undefined): Venue {
 /** Malformed events map to null and are filtered out, never thrown. */
 export function transformEvent(
   event: EspnEvent,
+  league: League,
   context?: { seasonYear?: number }
 ): Game | null {
   const comp = event.competitions?.[0];
@@ -219,18 +249,21 @@ export function transformEvent(
   const homeComp = comp.competitors?.find((c) => c.homeAway === "home");
   const awayComp = comp.competitors?.find((c) => c.homeAway === "away");
   if (!homeComp || !awayComp) return null;
-  const homeTeam = transformGameTeam(homeComp);
-  const awayTeam = transformGameTeam(awayComp);
+  const homeTeam = transformGameTeam(homeComp, league);
+  const awayTeam = transformGameTeam(awayComp, league);
   if (!homeTeam || !awayTeam) return null;
 
   const status = comp.status ?? event.status;
   const { status: gameStatus, livePhase } = mapStatus(status);
   const possessionId = comp.situation?.possession;
 
+  const timeTBD = comp.timeValid === false;
+
   return {
     id: event.id,
+    league,
     status: gameStatus,
-    scheduledAt: event.date ?? comp.date ?? "",
+    scheduledAt: parseKickoff(event.date ?? comp.date ?? "", timeTBD),
     venue: transformVenue(comp.venue),
     homeTeam,
     awayTeam,
@@ -249,10 +282,12 @@ export function transformEvent(
             possessionId === (awayComp.id ?? awayComp.team?.id)
           ? "away"
           : undefined,
-    week: event.week?.number ?? 0,
+    // ESPN sends `week: null` on every NBA and NHL event; a 0 there would
+    // read as a real week number to anything grouping by one.
+    week: hasWeeks(league) ? (event.week?.number ?? 0) : undefined,
     seasonYear: event.season?.year ?? context?.seasonYear ?? 0,
     conferenceGame: comp.conferenceCompetition ?? false,
-    timeTBD: comp.timeValid === false,
+    timeTBD,
     seasonType: event.season?.type,
     livePhase,
     statusDetail: status?.type?.shortDetail ?? status?.type?.detail,
@@ -261,19 +296,31 @@ export function transformEvent(
 
 export function transformScoreboard(
   events: EspnEvent[],
+  league: League,
   context?: { seasonYear?: number }
 ): Game[] {
   return events
-    .map((event) => transformEvent(event, context))
+    .map((event) => transformEvent(event, league, context))
     .filter((game): game is Game => game !== null);
 }
 
 // --- Calendar → WeekSlot[] ---
 
+/**
+ * ESPN ships two different things under `leagues[].calendar`: football's
+ * labelled week periods, or — for basketball and hockey, whose
+ * `calendarType` is "day" — a flat list of ~229 ISO date strings. Only the
+ * object form carries weeks, so anything else yields no slots rather than
+ * throwing and taking the whole scoreboard down with it.
+ */
 export function transformCalendar(
   response: EspnScoreboardResponse
 ): WeekSlot[] {
-  const periods = response.leagues?.[0]?.calendar ?? [];
+  const raw = response.leagues?.[0]?.calendar;
+  const periods = Array.isArray(raw)
+    ? raw.filter((period): period is NonNullable<typeof period> =>
+        period != null && typeof period === "object")
+    : [];
   const slots: WeekSlot[] = [];
   for (const period of periods) {
     const seasonType = flexibleNumber(period.value);
@@ -302,9 +349,12 @@ export function transformCalendar(
 
 // --- Rankings ---
 
-export function transformRankedTeam(rank: EspnRank): RankedTeam | null {
+export function transformRankedTeam(
+  rank: EspnRank,
+  league: League
+): RankedTeam | null {
   if (!rank.team || rank.current === undefined) return null;
-  const team = transformTeam(rank.team);
+  const team = transformTeam(rank.team, league);
   if (!team) return null;
   return {
     rank: rank.current,
@@ -316,7 +366,10 @@ export function transformRankedTeam(rank: EspnRank): RankedTeam | null {
   };
 }
 
-export function transformPoll(ranking: EspnRanking): Poll | null {
+export function transformPoll(
+  ranking: EspnRanking,
+  league: League
+): Poll | null {
   if (!ranking.name) return null;
   return {
     id: ranking.id ?? ranking.name,
@@ -327,14 +380,17 @@ export function transformPoll(ranking: EspnRanking): Poll | null {
     // "Rankings" twice under a Rankings title.
     headline: ranking.shortHeadline ?? ranking.headline,
     ranks: (ranking.ranks ?? [])
-      .map(transformRankedTeam)
+      .map((rank) => transformRankedTeam(rank, league))
       .filter((rank): rank is RankedTeam => rank !== null),
   };
 }
 
-export function transformPolls(response: EspnRankingsResponse): Poll[] {
+export function transformPolls(
+  response: EspnRankingsResponse,
+  league: League
+): Poll[] {
   return (response.rankings ?? [])
-    .map(transformPoll)
+    .map((ranking) => transformPoll(ranking, league))
     .filter((poll): poll is Poll => poll !== null);
 }
 
@@ -353,10 +409,11 @@ function parseRecordString(record: string | undefined): {
 function transformStandingsEntry(
   entry: EspnStandingsEntry,
   groupId: number | undefined,
-  index: number
+  index: number,
+  league: League
 ): ConferenceStanding | null {
   if (!entry.team) return null;
-  const team = transformTeam(entry.team);
+  const team = transformTeam(entry.team, league);
   if (!team) return null;
 
   const stat = (type: string) => entry.stats?.find((s) => s.type === type);
@@ -378,7 +435,9 @@ function transformStandingsEntry(
       ...team,
       conferenceId: groupId !== undefined ? String(groupId) : team.conferenceId,
       conferenceName:
-        groupId !== undefined ? conferenceName(groupId) : team.conferenceName,
+        groupId !== undefined
+          ? conferenceName(groupId, league)
+          : team.conferenceName,
     },
     conferenceWins: conf.wins,
     conferenceLosses: conf.losses,
@@ -421,20 +480,11 @@ export function seedOrdered(
 
 function tierNameSort(
   a: { id?: string; name: string },
-  b: { id?: string; name: string }
+  b: { id?: string; name: string },
+  league: League
 ): number {
-  const rank = (id: string | undefined) => {
-    switch (tier(id !== undefined ? Number(id) : undefined)) {
-      case "power4":
-        return 0;
-      case "group5":
-        return 1;
-      case "independent":
-        return 2;
-      case "other":
-        return 3;
-    }
-  };
+  const rank = (id: string | undefined) =>
+    tierRank(tier(id !== undefined ? Number(id) : undefined, league));
   const [ra, rb] = [rank(a.id), rank(b.id)];
   if (ra !== rb) return ra - rb;
   return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
@@ -446,26 +496,30 @@ function tierNameSort(
  * entries and the page needs to say "Standings TBA", not error.
  */
 export function transformStandings(
-  response: EspnStandingsResponse
+  response: EspnStandingsResponse,
+  league: League
 ): ConferenceStandingsGroup[] {
   return (response.children ?? [])
     .map((group) => {
       const numericId = flexibleNumber(group.id);
-      const registryName = conferenceName(numericId);
+      const registryName = conferenceName(numericId, league);
       const name =
         registryName !== "Other"
           ? registryName
           : (group.shortName ?? group.name ?? "Conference");
       const entries = (group.standings?.entries ?? [])
-        .map((entry, index) => transformStandingsEntry(entry, numericId, index))
+        .map((entry, index) =>
+          transformStandingsEntry(entry, numericId, index, league)
+        )
         .filter((entry): entry is ConferenceStanding => entry !== null);
       return {
         id: numericId !== undefined ? String(numericId) : "",
+        league,
         name,
         entries: seedOrdered(entries),
       };
     })
-    .sort(tierNameSort);
+    .sort((a, b) => tierNameSort(a, b, league));
 }
 
 /**
@@ -477,18 +531,19 @@ export function transformStandings(
  * conference that exists.
  */
 export function transformConferenceTeams(
-  response: EspnStandingsResponse
+  response: EspnStandingsResponse,
+  league: League
 ): ConferenceTeams[] {
   return (response.children ?? [])
     .map((group) => {
       const numericId = flexibleNumber(group.id);
-      const registryName = conferenceName(numericId);
+      const registryName = conferenceName(numericId, league);
       const name =
         registryName !== "Other"
           ? registryName
           : (group.shortName ?? group.name ?? "Conference");
       const teams = (group.standings?.entries ?? [])
-        .map((entry) => (entry.team ? transformTeam(entry.team) : null))
+        .map((entry) => (entry.team ? transformTeam(entry.team, league) : null))
         .filter((team): team is Team => team !== null)
         .map((team) => ({
           ...team,
@@ -500,20 +555,26 @@ export function transformConferenceTeams(
         .sort((a, b) => (a.school < b.school ? -1 : a.school > b.school ? 1 : 0));
       return {
         id: numericId !== undefined ? String(numericId) : undefined,
+        league,
         name,
         teams,
+        // `id` alone would hand a list holding both the SEC and the AFC two
+        // rows claiming to be number 8 — which corrupts a keyed list into
+        // blank card-sized gaps.
+        rowId: numericId !== undefined ? `${league}:${numericId}` : `other-${name}`,
       };
     })
-    .sort(tierNameSort);
+    .sort((a, b) => tierNameSort(a, b, league));
 }
 
 // --- Team schedule ---
 
 function transformScheduleGameTeam(
-  comp: EspnScheduleCompetitor
+  comp: EspnScheduleCompetitor,
+  league: League
 ): GameTeam | null {
   if (!comp.team) return null;
-  const team = transformTeam(comp.team);
+  const team = transformTeam(comp.team, league);
   if (!team) return null;
 
   // Score is an OBJECT on the schedule endpoint, not a string.
@@ -538,6 +599,7 @@ function transformScheduleGameTeam(
 
 export function transformScheduleEvent(
   event: EspnScheduleEvent,
+  league: League,
   context: { seasonYear?: number; seasonType?: number }
 ): Game | null {
   const comp = event.competitions?.[0];
@@ -546,27 +608,30 @@ export function transformScheduleEvent(
   const homeComp = comp.competitors?.find((c) => c.homeAway === "home");
   const awayComp = comp.competitors?.find((c) => c.homeAway === "away");
   if (!homeComp || !awayComp) return null;
-  const homeTeam = transformScheduleGameTeam(homeComp);
-  const awayTeam = transformScheduleGameTeam(awayComp);
+  const homeTeam = transformScheduleGameTeam(homeComp, league);
+  const awayTeam = transformScheduleGameTeam(awayComp, league);
   if (!homeTeam || !awayTeam) return null;
 
   const status = comp.status;
   const { status: gameStatus, livePhase } = mapStatus(status);
 
+  const timeTBD = (event.timeValid ?? comp.timeValid) === false;
+
   return {
     id: event.id,
+    league,
     status: gameStatus,
-    scheduledAt: event.date ?? comp.date ?? "",
+    scheduledAt: parseKickoff(event.date ?? comp.date ?? "", timeTBD),
     venue: transformVenue(comp.venue),
     homeTeam,
     awayTeam,
     broadcast: nonEmpty(comp.broadcasts?.[0]?.media?.shortName),
     clock: status?.displayClock,
     quarter: status?.period || undefined,
-    week: event.week?.number ?? 0,
+    week: hasWeeks(league) ? (event.week?.number ?? 0) : undefined,
     seasonYear: context.seasonYear ?? 0,
     conferenceGame: false,
-    timeTBD: (event.timeValid ?? comp.timeValid) === false,
+    timeTBD,
     seasonType: context.seasonType,
     livePhase,
     statusDetail: status?.type?.shortDetail ?? status?.type?.detail,
@@ -596,6 +661,7 @@ function deriveRecord(teamId: string, games: Game[]): string | undefined {
  */
 export function transformTeamSchedule(
   regular: EspnScheduleResponse,
+  league: League,
   extraEvents: EspnScheduleEvent[] = []
 ): TeamScheduleData {
   const scheduleTeam = regular.team;
@@ -613,17 +679,20 @@ export function transformTeamSchedule(
       logos: scheduleTeam.logos,
       color: scheduleTeam.color,
       groups: scheduleTeam.groups,
-    });
+    }, league);
     team = mapped ?? undefined;
   }
 
-  const year = regular.requestedSeason?.year;
+  // ESPN stamps the NBA's and NHL's seasons with the year they *end* in;
+  // our axis is always the opening year.
+  const rawYear = regular.requestedSeason?.year;
+  const year = rawYear !== undefined ? seasonYearFromEspn(league, rawYear) : undefined;
   const games = [
     ...(regular.events ?? []).map((event) =>
-      transformScheduleEvent(event, { seasonYear: year, seasonType: 2 })
+      transformScheduleEvent(event, league, { seasonYear: year, seasonType: 2 })
     ),
     ...extraEvents.map((event) =>
-      transformScheduleEvent(event, { seasonYear: year, seasonType: 3 })
+      transformScheduleEvent(event, league, { seasonYear: year, seasonType: 3 })
     ),
   ]
     .filter((game): game is Game => game !== null)
@@ -660,7 +729,8 @@ export function transformTeamSchedule(
  */
 export function transformHeaderGame(
   gameId: string,
-  summary: EspnGameSummaryResponse
+  summary: EspnGameSummaryResponse,
+  league: League
 ): Game | null {
   const comp = summary.header?.competitions?.[0];
   if (!comp) return null;
@@ -670,7 +740,7 @@ export function transformHeaderGame(
       (c: EspnHeaderCompetitor) => c.homeAway === homeAway
     );
     if (!competitor?.team) return null;
-    const team = transformTeam(competitor.team);
+    const team = transformTeam(competitor.team, league);
     if (!team) return null;
     const totalRecord = competitor.record?.find((r) => r.type === "total");
     return {
@@ -692,10 +762,12 @@ export function transformHeaderGame(
   if (!homeTeam || !awayTeam) return null;
 
   const { status, livePhase } = mapStatus(comp.status);
+  const timeTBD = comp.timeValid === false;
   return {
     id: gameId,
+    league,
     status,
-    scheduledAt: comp.date ?? "",
+    scheduledAt: parseKickoff(comp.date ?? "", timeTBD),
     venue: transformVenue(comp.venue ?? summary.gameInfo?.venue),
     homeTeam,
     awayTeam,
@@ -707,10 +779,10 @@ export function transformHeaderGame(
     ),
     clock: comp.status?.displayClock,
     quarter: comp.status?.period || undefined,
-    week: 0,
+    week: undefined,
     seasonYear: 0,
     conferenceGame: comp.conferenceCompetition ?? false,
-    timeTBD: comp.timeValid === false,
+    timeTBD,
     livePhase,
     statusDetail: comp.status?.type?.shortDetail ?? comp.status?.type?.detail,
   };
@@ -771,17 +843,11 @@ function transformScoringPlay(
   };
 }
 
-/** The three offensive leader categories, one entry per category. */
-const LEADER_CATEGORIES: { name: string; label: string }[] = [
-  { name: "passingYards", label: "Passing" },
-  { name: "rushingYards", label: "Rushing" },
-  { name: "receivingYards", label: "Receiving" },
-];
-
 function transformLeaders(
   teamLeaders: EspnTeamLeaders[],
   awayTeamId: string | undefined,
-  homeTeamId: string | undefined
+  homeTeamId: string | undefined,
+  league: League
 ): LeaderCategory[] {
   function leader(
     teamId: string | undefined,
@@ -800,12 +866,32 @@ function transformLeaders(
     };
   }
 
+  // The league's preferred categories are a preference, not a requirement:
+  // where none of them match, fall back to whatever the payload actually
+  // named. A category we didn't think of beats an empty card.
+  const preferred = leagueSpec(league).leaderCategories;
   const categories: LeaderCategory[] = [];
-  for (const category of LEADER_CATEGORIES) {
+  for (const category of preferred) {
     const away = leader(awayTeamId, category.name);
     const home = leader(homeTeamId, category.name);
     if (!away && !home) continue;
     categories.push({ id: category.name, label: category.label, away, home });
+  }
+  if (categories.length > 0) return categories;
+
+  const named = new Map<string, string>();
+  for (const teamLeader of teamLeaders) {
+    for (const category of teamLeader.leaders ?? []) {
+      if (category.name && !named.has(category.name)) {
+        named.set(category.name, category.displayName ?? category.name);
+      }
+    }
+  }
+  for (const [name, label] of named) {
+    const away = leader(awayTeamId, name);
+    const home = leader(homeTeamId, name);
+    if (!away && !home) continue;
+    categories.push({ id: name, label, away, home });
   }
   return categories;
 }
@@ -815,6 +901,7 @@ export function transformGameSummary(
   game: Game,
   summary: EspnGameSummaryResponse
 ): GameDetail {
+  const league = game.league;
   const homeTeamEspnId = String(game.homeTeam.team.espnId);
   const awayTeamEspnId = String(game.awayTeam.team.espnId);
   const drives = summary.drives?.previous ?? [];
@@ -833,8 +920,16 @@ export function transformGameSummary(
     awayStats: extractTeamStats(awayBox),
     attendance: summary.gameInfo?.attendance,
     venueCapacity: venue?.capacity,
-    venueSurface:
-      venue?.grass === undefined ? undefined : venue.grass ? "grass" : "turf",
+    // ESPN ships `grass: false` for arenas too, which rendered as
+    // "Surface · Turf" on a hockey rink. The surface is only a fact about
+    // the game where the game is played on one.
+    venueSurface: !playsOnASurface(league)
+      ? undefined
+      : venue?.grass === undefined
+        ? undefined
+        : venue.grass
+          ? "grass"
+          : "turf",
     weatherCondition: summary.gameInfo?.weather?.displayValue,
     weatherTemperature:
       summary.gameInfo?.weather?.temperature != null
@@ -843,7 +938,8 @@ export function transformGameSummary(
     leaders: transformLeaders(
       summary.leaders ?? [],
       awayTeamEspnId,
-      homeTeamEspnId
+      homeTeamEspnId,
+      league
     ),
     drives: drives.map(transformDrive),
     scoringPlays: (summary.scoringPlays ?? []).map(transformScoringPlay),

@@ -28,11 +28,12 @@ import { searchTeams } from "@/lib/search-ranking";
 import { conferenceLogoUrl } from "@/lib/conferences";
 import { cn } from "@/lib/utils";
 import type { ConferenceTeams, Team } from "@/lib/types";
+import { followKey } from "@/lib/refs";
 
 export function OnboardingModal() {
   const { isFirstVisit, isLoaded: visitLoaded, markVisited } = useFirstVisit();
   const { favorites, isLoaded: favLoaded } = useFavoritesContext();
-  const { conferences, isLoading, error, retry } = useTeamDirectory();
+  const { conferences, isLoading, error, retry } = useTeamDirectory("cfb");
   const [query, setQuery] = useState("");
 
   const isOpen = visitLoaded && favLoaded && isFirstVisit;
@@ -131,7 +132,11 @@ function ConferenceSection({ conference }: { conference: ConferenceTeams }) {
     <section className="card-surface pb-1">
       <h2 className="flex items-center gap-2 bg-bg-header px-4 py-2.5 type-section-header text-text-primary">
         <ConferenceLogo
-          src={Number.isFinite(numericId) ? conferenceLogoUrl(numericId) : null}
+          src={
+            Number.isFinite(numericId)
+              ? conferenceLogoUrl(numericId, conference.league)
+              : null
+          }
           name=""
         />
         {conference.name}
@@ -146,13 +151,14 @@ function ConferenceSection({ conference }: { conference: ConferenceTeams }) {
 /** The whole row is the follow toggle; nothing here navigates. */
 function OnboardingTeamRow({ team }: { team: Team }) {
   const { isFavorite, toggleFavorite } = useFavoritesContext();
-  const followed = isFavorite(team.id);
+  const key = followKey({ league: team.league, teamId: team.id });
+  const followed = isFavorite(key);
   const fullName = [team.school, team.name].filter(Boolean).join(" ");
 
   return (
     <button
       type="button"
-      onClick={() => toggleFavorite(team.id)}
+      onClick={() => toggleFavorite(key)}
       aria-label={fullName}
       aria-pressed={followed}
       className="flex w-full items-center gap-3 px-4 py-[7px] text-left transition-colors hover:bg-bg-header"

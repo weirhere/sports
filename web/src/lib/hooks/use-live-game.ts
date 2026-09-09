@@ -70,7 +70,9 @@ export function useLiveGame(gameId: string, initialData: GameDetail) {
     async function poll() {
       if (document.hidden) return;
       try {
-        const incoming = await getGameDetail(gameId);
+        // The league rides the request: event ids are per-league, so a
+        // summary fetched from the wrong base URL 404s.
+        const incoming = await getGameDetail(initialData.game.league, gameId);
         if (!cancelled) {
           setData((prev) => mergeLiveSnapshot(prev, incoming));
         }
@@ -90,7 +92,7 @@ export function useLiveGame(gameId: string, initialData: GameDetail) {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [gameId, live]);
+  }, [gameId, live, initialData.game.league]);
 
   return data;
 }

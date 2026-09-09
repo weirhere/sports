@@ -1,7 +1,8 @@
-// Core domain types for College Football Hub
+// Core domain types for StatSide.
 // All components import from here — never from raw API types.
 
 import type { LivePhase } from "./format";
+import type { League } from "./leagues";
 import type { WeekSlot } from "./season";
 
 export type GameStatus =
@@ -14,17 +15,31 @@ export type GameStatus =
   | "cancelled"
   | "delayed";
 
+/**
+ * College football's two divisions. Only ever meaningful for `league:
+ * "cfb"` — the pro leagues have no counterpart, which is why this is
+ * optional on a team rather than a required field with a fake default.
+ */
 export type Division = "FBS" | "FCS";
 
 export interface Team {
   id: string;
   espnId: number;
+  /**
+   * Which league's id space `id` and `conferenceId` belong to.
+   *
+   * Not decoration: ESPN team ids collide across leagues (id 5 is UAB and
+   * the Browns; id 2 is Auburn and the Bills), so nothing may key, route or
+   * follow on `id` alone. Use `followKey({ league, teamId: id })`.
+   */
+  league: League;
   name: string; // e.g., "Crimson Tide"
   school: string; // e.g., "Alabama"
   abbreviation: string; // e.g., "ALA"
   conferenceId: string;
   conferenceName: string;
-  division: Division;
+  /** College football only. */
+  division?: Division;
   color?: string; // Primary brand color hex
   altColor?: string;
   logoUrl: string;
@@ -47,6 +62,9 @@ export interface Venue {
 
 export interface Game {
   id: string;
+  /** Which league's event-id space `id` belongs to. A summary fetched from
+   * the wrong league's base URL 404s, so this rides every game. */
+  league: League;
   status: GameStatus;
   scheduledAt: string; // ISO 8601
   venue: Venue;
@@ -56,7 +74,9 @@ export interface Game {
   clock?: string; // Game clock e.g., "3:42"
   quarter?: number; // Current quarter (1-4, 5=OT)
   possession?: "home" | "away";
-  week: number;
+  /** ESPN's week number, or `undefined` where the league has none — every
+   * NBA and NHL event ships `week: null`. */
+  week?: number;
   seasonYear: number;
   conferenceGame: boolean;
   /**
@@ -83,9 +103,13 @@ export interface Game {
 
 export interface Conference {
   id: string;
+  /** Which league's group-id space `id` belongs to — group 8 is the SEC
+   * here and the AFC in the NFL. */
+  league: League;
   name: string;
   shortName: string;
-  division: Division;
+  /** College football only. */
+  division?: Division;
   logoUrl?: string;
 }
 
@@ -117,15 +141,21 @@ export interface ConferenceStanding {
  */
 export interface ConferenceStandingsGroup {
   id: string;
+  league: League;
   name: string;
   entries: ConferenceStanding[];
 }
 
-/** One FBS conference with its member teams (alphabetical), for browsing. */
+/** One conference with its member teams (alphabetical), for browsing. */
 export interface ConferenceTeams {
   id?: string;
+  league: League;
   name: string;
   teams: Team[];
+  /** A row identity that can't collide across leagues — `id` alone would
+   * hand a list holding both the SEC and the AFC two rows claiming to be
+   * number 8. */
+  rowId: string;
 }
 
 export interface RankedTeam {
@@ -222,6 +252,7 @@ export interface GameDetail {
 
 /** The scoreboard response: the week strip's slots plus the slate. */
 export interface Scoreboard {
+  league: League;
   seasonYear?: number;
   seasonType?: number;
   currentWeekNumber?: number;
