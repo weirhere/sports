@@ -15,6 +15,7 @@ import { SectionAccordion } from "@/components/section-accordion";
 import { ScoresHeader } from "@/components/scores-header";
 import { ScoreFilterSheet } from "@/components/score-filter-sheet";
 import { FollowPromptCard } from "@/components/follow-prompt-card";
+import { FollowingSidebar } from "@/components/following-sidebar";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { getScoreboard } from "@/lib/api";
@@ -418,97 +419,110 @@ export function ScoresView({
 
       <OnboardingModal />
 
-      <div ref={swipeRef} className="mt-12">
-        {fetchFailed && games.length > 0 && (
-          <div className="mb-3 flex items-center justify-center gap-3 rounded-[10px] bg-bg-elevated px-4 py-2">
-            <span className="type-meta text-text-secondary">
-              Couldn&apos;t refresh
-            </span>
-            <button
-              type="button"
-              onClick={retry}
-              className="type-meta-em text-text-primary"
-            >
-              Retry
-            </button>
-          </div>
-        )}
+      {/* Two columns on desktop: the follow rail, then the slate. The
+          slate column is what the page's max width is sized around — a
+          game row wider than this puts a score a hand's width from the
+          team it belongs to. */}
+      <div className="mt-12 grid gap-[var(--sidebar-gap)] lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] lg:items-start">
+        <FollowingSidebar league={league} />
 
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
-            ))}
-          </div>
-        ) : fetchFailed && games.length === 0 ? (
-          <EmptySlate message="Couldn't load games">
-            <button
-              type="button"
-              onClick={retry}
-              className="type-team-name-em text-text-primary"
-            >
-              Retry
-            </button>
-          </EmptySlate>
-        ) : sections.length === 0 ? (
-          filtersActive ? (
-            // The narrowed-slate empty state: name what's hiding the games,
-            // and offer the whole slate back with one button.
-            <EmptySlate message={narrowedEmptyMessage}>
+        <div ref={swipeRef} className="min-w-0">
+          {fetchFailed && games.length > 0 && (
+            <div className="mb-3 flex items-center justify-center gap-3 rounded-[10px] bg-bg-elevated px-4 py-2">
+              <span className="type-meta text-text-secondary">
+                Couldn&apos;t refresh
+              </span>
               <button
                 type="button"
-                onClick={clearFilters}
-                className="type-team-name-em text-text-primary"
+                onClick={retry}
+                className="type-meta-em text-text-primary"
               >
-                Show all games
-              </button>
-            </EmptySlate>
-          ) : (
-            <EmptySlate message="No games this week">
-              {nextKickoff !== undefined && (
-                <p className="type-meta-em text-text-primary">
-                  Season kicks off{" "}
-                  {nextKickoff.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              )}
-            </EmptySlate>
-          )
-        ) : (
-          <>
-            <div className="mb-2 flex min-h-5 justify-end">
-              {/* The iOS pinch analog, scoped to on-screen sections. */}
-              <button
-                type="button"
-                onClick={() =>
-                  allCollapsed
-                    ? uiState.expandAll(sectionIds)
-                    : uiState.collapseAll(sectionIds)
-                }
-                className="type-meta text-text-secondary transition-colors hover:text-text-primary"
-              >
-                {allCollapsed ? "Expand all" : "Collapse all"}
+                Retry
               </button>
             </div>
+          )}
+
+          {loading ? (
             <div className="space-y-3">
-              {showFollowPrompt && (
-                <FollowPromptCard onDismiss={uiState.dismissFollowPrompt} />
-              )}
-              {sections.map((section) => (
-                <SectionAccordion
-                  key={section.id}
-                  section={section}
-                  isExpanded={!uiState.isCollapsed(section.id)}
-                  onToggle={() => uiState.toggleSection(section.id)}
-                  pinsHeader={section.kind === "day"}
-                />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
               ))}
             </div>
-          </>
-        )}
+          ) : fetchFailed && games.length === 0 ? (
+            <EmptySlate message="Couldn't load games">
+              <button
+                type="button"
+                onClick={retry}
+                className="type-team-name-em text-text-primary"
+              >
+                Retry
+              </button>
+            </EmptySlate>
+          ) : sections.length === 0 ? (
+            filtersActive ? (
+              // The narrowed-slate empty state: name what's hiding the games,
+              // and offer the whole slate back with one button.
+              <EmptySlate message={narrowedEmptyMessage}>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="type-team-name-em text-text-primary"
+                >
+                  Show all games
+                </button>
+              </EmptySlate>
+            ) : (
+              <EmptySlate message="No games this week">
+                {nextKickoff !== undefined && (
+                  <p className="type-meta-em text-text-primary">
+                    Season kicks off{" "}
+                    {nextKickoff.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                )}
+              </EmptySlate>
+            )
+          ) : (
+            <>
+              <div className="mb-2 flex min-h-5 justify-end">
+                {/* The iOS pinch analog, scoped to on-screen sections. */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    allCollapsed
+                      ? uiState.expandAll(sectionIds)
+                      : uiState.collapseAll(sectionIds)
+                  }
+                  className="type-meta text-text-secondary transition-colors hover:text-text-primary"
+                >
+                  {allCollapsed ? "Expand all" : "Collapse all"}
+                </button>
+              </div>
+              <div className="space-y-3">
+                {/* Desktop hides this: the follow rail beside the slate
+                    is already saying it, and one screen shouldn't ask
+                    twice. */}
+                {showFollowPrompt && (
+                  <div className="lg:hidden">
+                    <FollowPromptCard onDismiss={uiState.dismissFollowPrompt} />
+                  </div>
+                )}
+                {sections.map((section) => (
+                  <SectionAccordion
+                    key={section.id}
+                    section={section}
+                    isExpanded={!uiState.isCollapsed(section.id)}
+                    onToggle={() => uiState.toggleSection(section.id)}
+                    pinsHeader={section.kind === "day"}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,10 @@
 // names. The selected chip is the strip's one piece of filled chrome; the
 // rest stay bare text. Desktop adds end chevrons and arrow-key stepping —
 // the pointer-accelerator parity for the content swipe.
+//
+// The strip is fixed chrome but belongs to the slate, so on large screens
+// it steps past the follow rail's column and starts where the games do.
+// Scores is its only mount, which is why that offset lives here.
 
 import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -63,55 +67,57 @@ export function WeekStrip({ weeks, selectedId, onSelect }: WeekStripProps) {
 
   return (
     <div className="fixed left-0 right-0 top-14 z-40 bg-bg-recessed sm:top-16">
-      <div className="relative mx-auto max-w-7xl">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-bg-recessed to-transparent sm:left-8" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-bg-recessed to-transparent sm:right-8" />
+      <div className="mx-auto max-w-[var(--page-max)] lg:pl-[calc(var(--sidebar-w)+var(--sidebar-gap))]">
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-bg-recessed to-transparent sm:left-8" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-bg-recessed to-transparent sm:right-8" />
 
-        {/* Desktop chevrons at the strip's ends. */}
-        <button
-          type="button"
-          onClick={() => step(-1)}
-          disabled={selectedIndex <= 0}
-          aria-label="Previous week"
-          className="absolute left-0 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary disabled:opacity-30 sm:flex"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => step(1)}
-          disabled={selectedIndex === -1 || selectedIndex >= weeks.length - 1}
-          aria-label="Next week"
-          className="absolute right-0 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary disabled:opacity-30 sm:flex"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          {/* Desktop chevrons at the strip's ends. */}
+          <button
+            type="button"
+            onClick={() => step(-1)}
+            disabled={selectedIndex <= 0}
+            aria-label="Previous week"
+            className="absolute left-0 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary disabled:opacity-30 sm:flex"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => step(1)}
+            disabled={selectedIndex === -1 || selectedIndex >= weeks.length - 1}
+            aria-label="Next week"
+            className="absolute right-0 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary disabled:opacity-30 sm:flex"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
 
-        <div
-          ref={scrollRef}
-          onKeyDown={handleKeyDown}
-          className="flex gap-1 overflow-x-auto px-4 py-2 scrollbar-none sm:px-10"
-        >
-          {weeks.map((slot) => {
-            const isSelected = slot.id === selectedId;
-            return (
-              <button
-                key={slot.id}
-                ref={isSelected ? selectedRef : undefined}
-                onClick={() => onSelect(slot)}
-                aria-label={spokenLabel(slot)}
-                aria-current={isSelected ? "true" : undefined}
-                className={cn(
-                  "type-chip shrink-0 rounded-full px-3 py-1.5 whitespace-nowrap transition-colors",
-                  isSelected
-                    ? "bg-text-primary text-bg-primary"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                {compactLabel(slot)}
-              </button>
-            );
-          })}
+          <div
+            ref={scrollRef}
+            onKeyDown={handleKeyDown}
+            className="flex gap-1 overflow-x-auto px-4 py-2 scrollbar-none sm:px-10"
+          >
+            {weeks.map((slot) => {
+              const isSelected = slot.id === selectedId;
+              return (
+                <button
+                  key={slot.id}
+                  ref={isSelected ? selectedRef : undefined}
+                  onClick={() => onSelect(slot)}
+                  aria-label={spokenLabel(slot)}
+                  aria-current={isSelected ? "true" : undefined}
+                  className={cn(
+                    "type-chip shrink-0 rounded-full px-3 py-1.5 whitespace-nowrap transition-colors",
+                    isSelected
+                      ? "bg-text-primary text-bg-primary"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {compactLabel(slot)}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

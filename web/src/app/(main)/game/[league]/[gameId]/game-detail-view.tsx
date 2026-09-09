@@ -1,10 +1,16 @@
 "use client";
 
 // The game page (iOS GameDetailScreen): header on the card surface, then
-// the cards in exactly the iOS order — pre-game info, line score, scoring,
-// team stats, leaders, matchup standings, drives, venue info. Live games
-// poll every 30s through useLiveGame; a pre-game summary never demotes a
-// live snapshot (the merge lives in the hook).
+// the cards in the iOS order — line score, scoring, team stats, leaders,
+// drives. Live games poll every 30s through useLiveGame; a pre-game
+// summary never demotes a live snapshot (the merge lives in the hook).
+//
+// Desktop splits that into two columns: the game itself on the left, and
+// the context that surrounds it — where it's played, who showed up, what
+// it does to the tables — in a rail on the right. The iPhone's single
+// column keeps the same reading order, so the rail's cards land after the
+// drives rather than between them; on a phone that's still "the game,
+// then the context".
 
 import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
@@ -62,39 +68,45 @@ export function GameDetailView({
     scores && (Boolean(game.venue.name) || data.attendance !== undefined);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
-      <GameHeader game={game} />
-      {/* Pre-kick the sections below are all empty — the info card carries
-          the "what do I need to know" load. */}
-      {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
-      {hasLinescores && <LineScoreCard game={game} />}
-      {scoringPlays.length > 0 && <ScoringPlaysCard plays={scoringPlays} />}
-      {scores && hasTeamStats(data.awayStats, data.homeStats) && (
-        <TeamStatsCard
-          awayTeam={game.awayTeam}
-          homeTeam={game.homeTeam}
-          awayStats={data.awayStats}
-          homeStats={data.homeStats}
-        />
-      )}
-      {leaders.length > 0 && (
-        <LeadersCard
-          leaders={leaders}
-          awayTeam={game.awayTeam}
-          homeTeam={game.homeTeam}
-        />
-      )}
-      {standingsVisible && (
-        <MatchupStandingsCard
-          away={game.awayTeam.team}
-          home={game.homeTeam.team}
-          standings={standings}
-        />
-      )}
-      {drives.length > 0 && <DrivesCard drives={drives} game={game} />}
-      {/* Pre-game the info card already places the game; once scores exist
-          it returns as the venue card. */}
-      {venueVisible && <GameInfoCard game={game} detail={data} mode="venue" />}
+    <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
+      <div className="flex min-w-0 flex-col gap-2">
+        <GameHeader game={game} />
+        {hasLinescores && <LineScoreCard game={game} />}
+        {scoringPlays.length > 0 && <ScoringPlaysCard plays={scoringPlays} />}
+        {scores && hasTeamStats(data.awayStats, data.homeStats) && (
+          <TeamStatsCard
+            awayTeam={game.awayTeam}
+            homeTeam={game.homeTeam}
+            awayStats={data.awayStats}
+            homeStats={data.homeStats}
+          />
+        )}
+        {leaders.length > 0 && (
+          <LeadersCard
+            leaders={leaders}
+            awayTeam={game.awayTeam}
+            homeTeam={game.homeTeam}
+          />
+        )}
+        {drives.length > 0 && <DrivesCard drives={drives} game={game} />}
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-2">
+        {/* Pre-kick every section on the left is empty, so this card
+            carries the whole "what do I need to know" load; once scores
+            exist it returns as the venue card. */}
+        {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
+        {venueVisible && (
+          <GameInfoCard game={game} detail={data} mode="venue" />
+        )}
+        {standingsVisible && (
+          <MatchupStandingsCard
+            away={game.awayTeam.team}
+            home={game.homeTeam.team}
+            standings={standings}
+          />
+        )}
+      </div>
     </div>
   );
 }
