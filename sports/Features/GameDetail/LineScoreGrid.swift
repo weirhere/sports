@@ -1,8 +1,15 @@
 import SwiftUI
 
-/// Per-quarter line score, including OT columns when present.
+/// Per-period line score, including OT (and shootout) columns when
+/// present. What a period is called and how many there are is the
+/// league's.
 struct LineScoreGrid: View {
     let summary: GameSummary
+    var league: League = .collegeFootball
+    /// Whether a period past the overtime would be a shootout rather than
+    /// a second overtime — true only for a hockey game that isn't a
+    /// playoff game.
+    var allowsShootout: Bool = false
 
     var body: some View {
         Grid(horizontalSpacing: Spacing.lg, verticalSpacing: Spacing.sm) {
@@ -29,11 +36,13 @@ struct LineScoreGrid: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// "1 2 3 4" plus "OT", "2OT", … past regulation.
+    /// "1 2 3 4" plus "OT", "2OT", … past regulation — three columns
+    /// rather than four in hockey, and an "SO" column where a shootout is
+    /// what a fifth one means.
     private var periodLabels: [String] {
         let count = max(summary.away?.linescores.count ?? 0, summary.home?.linescores.count ?? 0)
-        return (1...max(count, 1)).map { period in
-            period <= 4 ? "\(period)" : (period == 5 ? "OT" : "\(period - 4)OT")
+        return (1...max(count, 1)).map {
+            PeriodLabel.short($0, in: league, allowsShootout: allowsShootout)
         }
     }
 

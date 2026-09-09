@@ -122,7 +122,7 @@ struct PollScreen: View {
             // Declaration order is left-to-right, so the season sits left
             // of Follow (Andy, 2026-09-05).
             ToolbarItemGroup(placement: .topBarTrailing) {
-                SeasonMenuChip(current: year, seasons: availableSeasons, style: .bar,
+                SeasonMenuChip(current: year, seasons: availableSeasons, league: league, style: .bar,
                                onSelect: { select(year: $0) })
                 PollFollowPill(league: league)
             }

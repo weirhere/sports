@@ -48,7 +48,7 @@ nonisolated enum GameHeaderState {
             }
             return game.broadcast.map { "\(kick)\n\($0)" } ?? kick
         case .live:
-            return merged.liveStatusText ?? "Live"
+            return merged.liveStatusText(in: game.home.team.league) ?? "Live"
         case .final(let detail):
             return detail ?? "Final"
         case .other(let detail):

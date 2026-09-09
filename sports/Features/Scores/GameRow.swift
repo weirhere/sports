@@ -271,7 +271,7 @@ struct GameRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: Spacing.xs) {
                     LiveDot()
-                    Text(game.status.liveStatusText ?? "Live")
+                    Text(game.status.liveStatusText(in: game.home.team.league) ?? "Live")
                         .font(.rowMetaMedium)
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
@@ -325,7 +325,7 @@ struct GameRow: View {
     private var liveClockLine: some View {
         HStack(spacing: Spacing.sm) {
             LiveDot()
-            Text(game.status.liveStatusText ?? "Live")
+            Text(game.status.liveStatusText(in: game.home.team.league) ?? "Live")
                 .font(.metaEmphasis)
                 .foregroundStyle(.textPrimary)
         }

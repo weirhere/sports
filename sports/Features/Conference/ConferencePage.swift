@@ -38,7 +38,9 @@ struct ConferencePage: View {
     /// The Postseason tab's round. Session-scoped like the team filter,
     /// and guarded the same way — see `activePostseasonRound`.
     @State private var postseasonRound: String?
-    @State private var selectedYear = CFBSeason.year()
+    /// Seeded in `init` from the page's own league — a college-football
+    /// rollover applied to a hockey page would call June "next season".
+    @State private var selectedYear: Int
     /// The Games tab's team filter — a member's team id, nil for the whole
     /// slate. Kept across season switches: `activeTeamFilter` drops it
     /// wherever the team isn't in that season's conference, so flipping to
@@ -48,7 +50,9 @@ struct ConferencePage: View {
     /// How the Games tab heads its cards. Weeks is the season's own clock
     /// and stays the default; Date is the other answer, and both off is
     /// one chronological card (Andy, 2026-09-05).
-    @State private var grouping: ConferenceSlate.Grouping = .week
+    /// Seeded in `init`: Weeks where the league has them, Date where it
+    /// doesn't.
+    @State private var grouping: ConferenceSlate.Grouping
     /// How wide the Standings tab tables its teams — the whole league, its
     /// conferences, or its divisions (Andy, 2026-09-06). Session-scoped
     /// like the season chip and the team filter beside it.
@@ -89,7 +93,7 @@ struct ConferencePage: View {
     /// In-progress games for the standings dots — current season only; a
     /// past season's table gets no live claims.
     private var liveGames: [Game] {
-        guard selectedYear == CFBSeason.year() else { return [] }
+        guard selectedYear == currentSeasonYear else { return [] }
         return liveBoard?.boardGames.filter(\.isLive) ?? []
     }
 
@@ -101,6 +105,11 @@ struct ConferencePage: View {
         // The widest view of the page's own level: the league's table on
         // the league page, its 16 on a conference page.
         _scope = State(initialValue: StandingsScope.default(for: destination.conference))
+        _selectedYear = State(initialValue: SeasonYear.year(for: destination.league))
+        // Weeks is a football clock. The NBA and NHL send `week: null` on
+        // every event, so a Weeks toggle there files a whole season under
+        // one unheaded card — Date leads instead.
+        _grouping = State(initialValue: destination.league.hasWeeks ? .week : .day)
     }
 
     /// The scopes this page can offer, from where it sits in its league's
@@ -204,7 +213,7 @@ struct ConferencePage: View {
     /// skip the merge outright; nothing in them can be live.
     private var games: [Game]? {
         guard let slate = gamesByYear[selectedYear] else { return nil }
-        guard selectedYear == CFBSeason.year() else { return slate }
+        guard selectedYear == currentSeasonYear else { return slate }
         return Game.merging(slate, withLive: liveBoard?.boardGames ?? [])
     }
 
@@ -251,11 +260,15 @@ struct ConferencePage: View {
         activeTeamFilter.flatMap { id in filterableTeams.first { $0.id == id }?.location }
     }
 
-    /// Newest first, floored at 2014 — the CFP era, matching the Scores and
-    /// TeamPage selectors.
+    /// Newest first, floored at the league's own floor — the CFP era for
+    /// all four, matching the TeamPage selector.
     private var availableSeasons: [Int] {
-        Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+        Array(stride(from: currentSeasonYear,
+                     through: destination.league.seasonFloor, by: -1))
     }
+
+    /// The season "now" belongs to, on this page's league's clock.
+    private var currentSeasonYear: Int { SeasonYear.year(for: destination.league) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -354,7 +367,7 @@ struct ConferencePage: View {
             // with the page's identity rather than above one pane's cards.
             // Declaration order is left-to-right — season, then follow.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+                SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: destination.league,
                                style: .bar, onSelect: { select(year: $0) })
                 ConferenceFollowPill(conference: destination.conference)
             }
@@ -442,8 +455,18 @@ struct ConferencePage: View {
     /// conference whose teams made no bowl, and every season before
     /// December, show two tabs exactly as they always did. A tab that would
     /// open on "no games" is worse than no tab.
+    ///
+    /// Games only where a whole season is affordable to fetch. College
+    /// football's is ~950 events, which one `dates=` window carries; the
+    /// NBA's is ~1,300 and it does not — probed live 2026-09-08, a
+    /// season-long request returns exactly 900 events and 12 MB, silently
+    /// truncating in February, and `groups=` is ignored outside football
+    /// so there is no narrow fetch to fall back on. A team's season is
+    /// affordable at any size, so team pages keep their Games tab and
+    /// conference pages don't.
     private var availableTabs: [Tab] {
-        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        guard destination.league.canTableAWholeSeason else { return [.standings] }
+        return postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
     }
 
     /// The postseason is already in hand: the Games tab fetches the whole
@@ -491,7 +514,8 @@ struct ConferencePage: View {
                             onToggle: { toggle(grouping: $0) },
                             teams: filterableTeams,
                             teamSelection: activeTeamFilter,
-                            onSelectTeam: { teamFilter = $0 })
+                            onSelectTeam: { teamFilter = $0 },
+                            league: destination.league)
         } else if availableScopes.count > 1 {
             // The Standings tab's own control: how wide the table is
             // (Andy, 2026-09-06). Only the NFL's pages have one — college
@@ -705,7 +729,7 @@ struct ConferencePage: View {
         do {
             gamesByYear[year] = try await client.conferenceGames(
                 conferenceId: destination.conferenceId,
-                year: year == CFBSeason.year() ? nil : year)
+                year: year == currentSeasonYear ? nil : year)
             gamesFailedYears.remove(year)
         } catch {
             gamesFailedYears.insert(year)

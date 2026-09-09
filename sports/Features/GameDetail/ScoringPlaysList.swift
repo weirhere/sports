@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Chronological scoring plays with quarter markers. Every row says whose
+/// Chronological scoring plays with period markers. Every row says whose
 /// score it was, twice over: the team's mark leads the row, and that
 /// side's number carries the weight in the running score.
 struct ScoringPlaysList: View {
     let summary: GameSummary
+    /// Whose game this is — what a period is called, and whether a fifth
+    /// one is a shootout.
+    var league: League = .collegeFootball
+    var allowsShootout: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption) private var markerWidth: CGFloat = 40
@@ -18,7 +22,7 @@ struct ScoringPlaysList: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(summary.scoringPlays.enumerated()), id: \.element.id) { index, play in
                 if periodMarker(at: index) {
-                    Text(PeriodLabel.text(play.period))
+                    Text(PeriodLabel.text(play.period, in: league, allowsShootout: allowsShootout))
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
                         .padding(.horizontal, Spacing.lg)

@@ -75,12 +75,18 @@ struct SlateControlRow: View {
     var teams: [Team] = []
     var teamSelection: String?
     var onSelectTeam: (String?) -> Void = { _ in }
+    /// Whose slate this is. A league with no weeks shows no Weeks chip:
+    /// the NBA and NHL send `week: null` on every event, so the toggle
+    /// would file a whole season under one unheaded card.
+    var league: League = .collegeFootball
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            SlateToggleChip(title: "Weeks", isOn: grouping == .week,
-                            hint: "Groups the games by week") {
-                onToggle(.week)
+            if league.hasWeeks {
+                SlateToggleChip(title: "Weeks", isOn: grouping == .week,
+                                hint: "Groups the games by week") {
+                    onToggle(.week)
+                }
             }
             SlateToggleChip(title: "Date", isOn: grouping == .day,
                             hint: "Groups the games by day") {

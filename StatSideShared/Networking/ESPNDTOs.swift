@@ -368,6 +368,10 @@ nonisolated struct SummaryResponseDTO: Decodable {
     let boxscore: BoxscoreDTO?
     let scoringPlays: [ScoringPlayDTO]?
     let drives: DrivesDTO?
+    /// The flat play feed. Football nests its plays inside drives and
+    /// ships this too; basketball and hockey ship only this, because
+    /// neither has a possession long enough to be worth grouping by.
+    let plays: LossyArray<PlayDTO>?
     let leaders: LossyArray<SummaryTeamLeadersDTO>?
     let gameInfo: GameInfoDTO?
 }
@@ -404,6 +408,14 @@ nonisolated struct PlayDTO: Decodable {
     let homeScore: Int?
     let start: PlayEndpointDTO?
     let end: PlayEndpointDTO?
+    /// Who made the play. Football reads the side off the drive it sits
+    /// in; a flat feed has no drive, and a goals card with no mark beside
+    /// the row can't say whose goal it was.
+    let team: TeamRefDTO?
+}
+
+nonisolated struct TeamRefDTO: Decodable {
+    let id: String?
 }
 
 nonisolated struct PlayEndpointDTO: Decodable {

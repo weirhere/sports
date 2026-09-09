@@ -131,7 +131,9 @@ struct PlayByPlayList: View {
     private func playList(_ drive: Drive) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(plays(drive)) { play in
-                playRow(play)
+                PlayRow(play: play, summary: summary,
+                        // Past the drive's mark, clearing the hairline.
+                        indent: Spacing.lg + logoSize + Spacing.md)
             }
         }
         // A hairline down the leading edge ties the plays to the drive
@@ -145,99 +147,6 @@ struct PlayByPlayList: View {
         .padding(.bottom, Spacing.xs)
     }
 
-    /// The clock sits in the gutter the scoring list uses; the down line
-    /// heads the play, and the narration follows it. At accessibility
-    /// sizes the gutter can't survive beside the text, so it stacks.
-    @ViewBuilder
-    private func playRow(_ play: Play) -> some View {
-        let content = Group {
-            if isStacked {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: Spacing.sm) {
-                        clockText(play)
-                        downText(play)
-                        Spacer(minLength: Spacing.sm)
-                        scoreText(play)
-                    }
-                    playText(play)
-                }
-            } else {
-                HStack(alignment: .top, spacing: Spacing.sm) {
-                    clockText(play)
-                        .frame(minWidth: clockWidth, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
-                            downText(play)
-                            Spacer(minLength: Spacing.sm)
-                            scoreText(play)
-                        }
-                        playText(play)
-                    }
-                }
-            }
-        }
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Indented past the drive's mark so the plays read as its
-            // children, clearing the hairline.
-            .padding(.leading, Spacing.lg + logoSize + Spacing.md)
-            .padding(.trailing, Spacing.lg)
-            .padding(.vertical, 5)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilitySummary(for: play))
-    }
-
-    @ViewBuilder
-    private func clockText(_ play: Play) -> some View {
-        if let clock = play.clock {
-            Text(clock)
-                .font(.meta.monospacedDigit())
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-    }
-
-    /// "1st & 10 at IU 5", falling back to the play's own type when ESPN
-    /// gives no down — kickoffs, extra points, and the like.
-    @ViewBuilder
-    private func downText(_ play: Play) -> some View {
-        if let line = play.downDistanceText ?? play.typeText {
-            Text(line)
-                .font(.metaEmphasis)
-                .foregroundStyle(.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func playText(_ play: Play) -> some View {
-        Text(play.text ?? "")
-            .font(.meta)
-            .foregroundStyle(play.isScoringPlay ? .textPrimary : .textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// Only scoring plays carry the running score — every other row would
-    /// repeat the number above it. Weight marks the side that scored, the
-    /// scoring list's rule, so the budget stays at three colors. A play
-    /// the mapper couldn't attribute emphasizes neither number.
-    @ViewBuilder
-    private func scoreText(_ play: Play) -> some View {
-        if play.isScoringPlay, let away = play.awayScore, let home = play.homeScore {
-            (number(away, emphasized: play.scoringSide == .away)
-             + Text("–").font(.meta).foregroundStyle(Color.textSecondary)
-             + number(home, emphasized: play.scoringSide == .home))
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-    }
-
-    private func number(_ value: Int, emphasized: Bool) -> Text {
-        Text("\(value)")
-            .font((emphasized ? Font.metaEmphasis : .meta).monospacedDigit())
-            .foregroundStyle(emphasized ? Color.textPrimary : Color.textSecondary)
-    }
-
     /// One spoken sentence: "Miami, punt, 5 plays, 20 yards, 2:39".
     /// Internal, not private, so the label shape is unit-testable.
     func accessibilitySummary(for drive: Drive) -> String {
@@ -248,18 +157,10 @@ struct PlayByPlayList: View {
         return parts.joined(separator: ", ")
     }
 
-    /// "1st & 10 at IU 5, 12:16, Shotgun #15 F.Mendoza pass complete…" —
-    /// the down first, because it's the context the narration assumes.
+    /// The play's own sentence, which `PlayRow` owns now that two lists
+    /// render it. Kept here so the label shape stays reachable from where
+    /// the drive's is tested.
     func accessibilitySummary(for play: Play) -> String {
-        var parts: [String] = []
-        if let line = play.downDistanceText ?? play.typeText { parts.append(line) }
-        if let clock = play.clock { parts.append(clock) }
-        if let text = play.text, !text.isEmpty { parts.append(text) }
-        if play.isScoringPlay, let away = play.awayScore, let home = play.homeScore {
-            let awayName = summary.away?.team.location ?? "Away"
-            let homeName = summary.home?.team.location ?? "Home"
-            parts.append("\(awayName) \(away), \(homeName) \(home)")
-        }
-        return parts.joined(separator: ", ")
+        PlayRow.accessibilitySummary(for: play, in: summary)
     }
 }

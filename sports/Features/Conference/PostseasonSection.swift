@@ -486,7 +486,7 @@ private struct BracketMatchCard: View {
             if let detail, detail.localizedCaseInsensitiveContains("OT") { return "Final/OT" }
             return "Final"
         case .live:
-            return game.status.liveStatusText ?? "Live"
+            return game.status.liveStatusText(in: game.home.team.league) ?? "Live"
         case .pre:
             guard let date = game.date else { return "TBD" }
             if game.timeTBD {

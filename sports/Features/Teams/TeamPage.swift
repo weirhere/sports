@@ -86,11 +86,19 @@ struct TeamPage: View {
         currentSeasonYear.flatMap { schedules[$0] }
     }
 
-    /// Newest first, floored at 2014 — the CFP era, matching the Scores
-    /// header's selector.
+    /// Newest first, floored at the league's own floor — the CFP era for
+    /// all four, matching the ConferencePage selector.
     private var availableSeasons: [Int] {
-        Array(stride(from: CFBSeason.year(), through: 2014, by: -1))
+        Array(stride(from: seasonNow, through: pageLeague.seasonFloor, by: -1))
     }
+
+    /// The season "now" belongs to, on this page's league's clock. A
+    /// college-football rollover applied to a hockey page would call June
+    /// "next season" while the Stanley Cup was still being played for.
+    ///
+    /// Distinct from `currentSeasonYear`, which is the season the *loaded
+    /// schedule* turned out to describe.
+    private var seasonNow: Int { SeasonYear.year(for: pageLeague) }
 
     /// The selected season's payload wins (groups is season-scoped, so a
     /// realignment year reads correctly under the season chip), then the
@@ -439,7 +447,7 @@ struct TeamPage: View {
     // MARK: - Tab content
 
     /// The chip's year before the first schedule load pins it.
-    private var standingsYear: Int { selectedYear ?? CFBSeason.year() }
+    private var standingsYear: Int { selectedYear ?? seasonNow }
     /// The tables with something in them — one, or a division each.
     private var selectedStandings: [ConferenceStandings] {
         tables(for: scope).filter { !$0.entries.isEmpty }
@@ -519,7 +527,7 @@ struct TeamPage: View {
     @ViewBuilder
     private var seasonChip: some View {
         if let selectedYear, tab != .overview {
-            SeasonMenuChip(current: selectedYear, seasons: availableSeasons,
+            SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
                            style: .bar, onSelect: { select(year: $0) })
         }
     }
@@ -688,7 +696,7 @@ struct TeamPage: View {
             let loaded = try await client.teamSchedule(teamId: team.id)
             // Register the result under the year it really is, so
             // explicitly re-picking the fallback season is a cache hit.
-            let year = loaded.year ?? CFBSeason.year()
+            let year = loaded.year ?? seasonNow
             schedules[year] = loaded
             currentSeasonYear = year
             selectedYear = year

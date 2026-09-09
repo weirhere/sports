@@ -207,3 +207,200 @@ private func fixture(_ name: String) throws -> Data {
         #expect(ESPNMapper.teamSchedule(from: dto, league: .nfl).year == 2026)
     }
 }
+
+@Suite struct WinterSummaryDecoding {
+
+    /// **The regression this fixture exists for.** Football splits its box
+    /// score into named groups; basketball ships one group with
+    /// `name: null`, because there is only one table to ship. The mapper
+    /// required a name, so every NBA box score was dropped on the floor —
+    /// and silently, since an empty box score is exactly how the tab hides
+    /// itself for a game that has none.
+    @Test func theNBABoxScoreSurvivesItsUnnamedGroup() throws {
+        let raw = try #require(try JSONSerialization.jsonObject(
+            with: fixture("nba-summary")) as? [String: Any])
+        let players = try #require(
+            (raw["boxscore"] as? [String: Any])?["players"] as? [[String: Any]])
+        let groups = try #require(players.first?["statistics"] as? [[String: Any]])
+        // The premise: ESPN really does send one group with no name.
+        #expect(groups.count == 1)
+        #expect(groups.first?["name"] == nil)
+
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nba)
+        #expect(summary.boxScore.count == 2)
+        let category = try #require(summary.boxScore.first?.categories.first)
+        // Columns come from the payload's own labels, which is what makes
+        // a basketball box score work with no schema of ours at all.
+        #expect(category.columns.contains("PTS"))
+        #expect(category.columns.contains("REB"))
+        #expect(!category.players.isEmpty)
+        #expect(category.players.allSatisfy { $0.stats.count == category.columns.count })
+    }
+
+    /// Hockey names its groups, and ships one ("skaters") with nobody in
+    /// it — which the existing empty-group rule already drops.
+    @Test func theNHLBoxScoreKeepsItsNamedGroupsAndDropsTheEmptyOne() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nhl)
+        let labels = summary.boxScore.first?.categories.map(\.label) ?? []
+        #expect(labels.contains { $0.lowercased().contains("forward") })
+        #expect(labels.contains { $0.lowercased().contains("goalie") })
+        #expect(!labels.contains { $0.lowercased() == "skaters" })
+    }
+
+    /// No drives means no Gamecast strip and no drive log — the football
+    /// cards retire themselves, which is the whole reason they could.
+    @Test func aWinterSummaryHasNoDrivesAndKeepsItsPlays() throws {
+        for (name, league) in [("nba-summary", League.nba), ("nhl-summary", .nhl)] {
+            let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture(name))
+            let summary = ESPNMapper.gameSummary(from: dto, league: league)
+            #expect(summary.drives.isEmpty)
+            #expect(summary.currentDrive == nil)
+            #expect(summary.situation == nil)
+            #expect(summary.plays.count > 100, "\(league) should carry a flat play feed")
+            #expect(summary.plays.allSatisfy { $0.period != nil })
+        }
+    }
+
+    /// Football's plays live inside its drives, so the flat feed stays
+    /// empty there — carrying them twice would print the same rows in two
+    /// places.
+    @Test func aFootballSummaryKeepsItsPlaysInItsDrives() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self,
+                                           from: fixture("summary-final-live"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .collegeFootball)
+        #expect(!summary.drives.isEmpty)
+        #expect(summary.plays.isEmpty)
+    }
+
+    /// A goal is an event, so hockey gets the Scoring slot — derived from
+    /// the play feed, because ESPN ships no `scoringPlays` for it. Every
+    /// row has to know whose goal it was, which is what `PlayDTO.team`
+    /// was decoded for.
+    @Test func hockeyGoalsBecomeTheScoringCard() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        #expect(dto.scoringPlays?.isEmpty != false, "ESPN ships none for the NHL")
+
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nhl)
+        #expect(!summary.scoringPlays.isEmpty)
+        #expect(summary.scoringPlays.allSatisfy { $0.teamId != nil })
+        #expect(League.nhl.scoringCardTitle == "Goals")
+    }
+
+    /// Basketball scores ~98 times a game. A chronological list of every
+    /// bucket is the box score with worse formatting, so there is no card
+    /// and nothing is derived for one.
+    @Test func basketballGetsNoScoringCard() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nba)
+        #expect(summary.scoringPlays.isEmpty)
+        #expect(League.nba.scoringCardTitle == nil)
+        // The plays themselves are still there — the Plays tab wants them.
+        #expect(summary.plays.contains { $0.isScoringPlay })
+    }
+
+    /// Leaders come from the league's own categories, and a running score
+    /// still attributes the side that scored.
+    @Test func leadersAndScoringSidesComeThroughForBothLeagues() throws {
+        let expected: [(String, League, Set<String>)] = [
+            ("nba-summary", .nba, ["points", "rebounds", "assists"]),
+            ("nhl-summary", .nhl, ["goals", "assists", "points"]),
+        ]
+        for (name, league, categories) in expected {
+            let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture(name))
+            let summary = ESPNMapper.gameSummary(from: dto, league: league)
+            #expect(!summary.leaders.isEmpty)
+            #expect(Set(summary.leaders.map(\.id)).isSubset(of: categories))
+            #expect(summary.leaders.contains { $0.away?.headshotURL != nil })
+        }
+    }
+
+    /// A goal is attributed by the side whose number went up — never by
+    /// the play's own team, because that is the rule a pick six breaks in
+    /// football and a shootout breaks here.
+    ///
+    /// This fixture is a shootout game on purpose. Every shootout attempt
+    /// arrives flagged as a scoring play, and none of them moves the score
+    /// (the winner is awarded one goal at the end), so they are correctly
+    /// attributed to nobody. The invariant is the conditional one: a play
+    /// is attributed exactly when the running score advanced.
+    @Test func aGoalIsAttributedByTheScoreThatMoved() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nhl)
+        let scoring = summary.plays.filter(\.isScoringPlay)
+        #expect(!scoring.isEmpty)
+
+        var away = 0
+        var home = 0
+        var advanced = 0
+        for play in summary.plays {
+            guard let a = play.awayScore, let h = play.homeScore else { continue }
+            if play.isScoringPlay {
+                let moved = a > away || h > home
+                #expect((play.scoringSide != nil) == moved)
+                if moved { advanced += 1 }
+            }
+            away = a
+            home = h
+        }
+        #expect(advanced > 0, "some goal has to have moved the score")
+        // And the shootout is why this fixture was chosen: some scoring
+        // play here genuinely didn't.
+        #expect(advanced < scoring.count)
+    }
+
+    /// The compare card was silently empty for these leagues, because the
+    /// stat names it asked for are football's.
+    @Test func theCompareCardFindsEachLeaguesOwnStats() throws {
+        for (name, league) in [("nba-summary", League.nba), ("nhl-summary", .nhl)] {
+            let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture(name))
+            let summary = ESPNMapper.gameSummary(from: dto, league: league)
+            #expect(!summary.teamStats.isEmpty, "\(league) compare card found nothing")
+        }
+    }
+}
+
+@Suite struct PeriodLabelTests {
+
+    @Test func aPeriodIsCalledWhateverItsLeagueCallsIt() {
+        #expect(PeriodLabel.text(1, in: .nba) == "1ST QUARTER")
+        #expect(PeriodLabel.text(4, in: .nba) == "4TH QUARTER")
+        #expect(PeriodLabel.text(1, in: .nhl) == "1ST PERIOD")
+        #expect(PeriodLabel.text(3, in: .nhl) == "3RD PERIOD")
+        #expect(PeriodLabel.text(1, in: .collegeFootball) == "1ST QUARTER")
+        #expect(PeriodLabel.text(nil, in: .nhl) == "—")
+    }
+
+    /// Hockey plays three periods, so its overtime is the fourth — where
+    /// football's and basketball's is the fifth.
+    @Test func overtimeStartsWhereRegulationEnds() {
+        #expect(PeriodLabel.text(4, in: .nhl) == "OVERTIME")
+        #expect(PeriodLabel.text(5, in: .nba) == "OVERTIME")
+        #expect(PeriodLabel.text(6, in: .nba) == "2OT")
+        #expect(PeriodLabel.text(5, in: .collegeFootball) == "OVERTIME")
+    }
+
+    /// The NHL settles a regular-season tie in a shootout after the
+    /// overtime, which arrives as period 5 (`Final/SO`, verified live).
+    /// A playoff period 5 is a second overtime, so the label is only ever
+    /// offered where the game could actually have one.
+    @Test func aFifthHockeyPeriodIsAShootoutOnlyInTheRegularSeason() {
+        #expect(PeriodLabel.text(5, in: .nhl, allowsShootout: true) == "SHOOTOUT")
+        #expect(PeriodLabel.text(5, in: .nhl, allowsShootout: false) == "2OT")
+        #expect(PeriodLabel.short(5, in: .nhl, allowsShootout: true) == "SO")
+        #expect(PeriodLabel.short(4, in: .nhl) == "OT")
+        #expect(PeriodLabel.short(2, in: .nhl) == "2")
+    }
+
+    /// The live status line says P2 in hockey where it says Q2 in
+    /// football, and it never says "shootout" — a shootout arrives as a
+    /// final, never as a running clock.
+    @Test func theLiveClockUsesTheLeaguesOwnPeriodLetter() {
+        #expect(GameStatus.periodLabel(2, in: .nhl) == "P2")
+        #expect(GameStatus.periodLabel(2, in: .nba) == "Q2")
+        #expect(GameStatus.periodLabel(4, in: .nhl) == "OT")
+        #expect(GameStatus.periodLabel(5, in: .nhl) == "2OT")
+        #expect(GameStatus.periodLabel(5, in: .nba) == "OT")
+    }
+}

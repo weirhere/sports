@@ -19,27 +19,34 @@ struct SeasonMenuChip: View {
 
     let current: Int
     let seasons: [Int]
+    /// Whose season this is. Football names a season by the year it opens
+    /// and renders "2026"; the NBA and NHL name it by the year it ends and
+    /// render "2026-27", which is ESPN's own spelling and the only one
+    /// that isn't ambiguous about which winter you're looking at.
+    var league: League = .collegeFootball
     var style: Style = .chrome
     let onSelect: (Int) -> Void
+
+    private func label(_ year: Int) -> String { league.seasonLabel(year) }
 
     var body: some View {
         Menu {
             Picker("Season", selection: Binding(get: { current }, set: onSelect)) {
                 ForEach(seasons, id: \.self) { year in
-                    Text(String(year)).tag(year)
+                    Text(label(year)).tag(year)
                 }
             }
         } label: {
             label
         }
         .disabled(seasons.isEmpty)
-        .accessibilityLabel("Season, \(String(current))")
+        .accessibilityLabel("Season, \(label(current))")
         // A stable handle for the screenshot flow, which has to reach the
         // chip wherever it rides — the Scores strip, a hero toolbar, or a
         // tab pane. Matching the spoken label instead would break every
         // time the wording moves.
         .accessibilityIdentifier("season-chip")
-        .accessibilityValue(String(current))
+        .accessibilityValue(label(current))
     }
 
     @ViewBuilder
@@ -66,7 +73,7 @@ struct SeasonMenuChip: View {
 
     private var content: some View {
         HStack(spacing: Spacing.xs) {
-            Text(String(current))
+            Text(label(current))
                 .font(.chip)
                 .lineLimit(1)
                 .fixedSize()

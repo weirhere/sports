@@ -143,7 +143,7 @@ nonisolated extension WidgetGame {
             let day = date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
             return (day, time)
         case .live:
-            return (game.status.liveStatusText ?? "Live", nil)
+            return (game.status.liveStatusText(in: game.home.team.league) ?? "Live", nil)
         case .final(let detail):
             if let detail, detail.localizedCaseInsensitiveContains("OT") { return ("FINAL OT", nil) }
             return ("FINAL", nil)
