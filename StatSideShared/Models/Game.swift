@@ -6,6 +6,12 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// ESPN publishes a placeholder kickoff (midnight ET, `timeValid: false`)
     /// until a game's time is announced. True means `date`'s day is real but
     /// its clock time is noise — render "TBD", never "12:00 AM".
+    ///
+    /// That day is real *in Eastern*, which is not where most readers are:
+    /// midnight ET is the previous calendar day everywhere west of it. The
+    /// mapper re-anchors the placeholder to the reader's own day before it
+    /// ever reaches this struct (`DayFormat.placeholderKickoff`), so `date`
+    /// here always names the right day in the local calendar.
     var timeTBD: Bool = false
     let name: String?
     let shortName: String?

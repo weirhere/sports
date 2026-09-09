@@ -69,6 +69,33 @@ nonisolated enum DayFormat {
                       parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
+    /// A placeholder kickoff's real day, as a local start-of-day.
+    ///
+    /// ESPN parks an unannounced kickoff at midnight Eastern of the game's
+    /// own day (`timeValid: false`) — a sentinel, not an instant. Read in
+    /// any zone west of Eastern that lands on the *previous* calendar day,
+    /// so every TBD game filed a day early for Central, Mountain, Pacific,
+    /// Alaska and Hawaii — four of the six US zones. Verified live
+    /// 2026-09-08: 41 of 71 games in one Saturday window, every one of them
+    /// at the identical instant `2026-09-26T04:00Z`.
+    ///
+    /// The day is the only real thing in the value, so it is what survives:
+    /// read the Eastern day, rebuild it as local midnight. Midnight rather
+    /// than noon so a TBD game keeps sorting first within its day, which is
+    /// what it already did for the Eastern readers who never saw the bug.
+    ///
+    /// Applied once, at the mapping boundary, so every surface downstream —
+    /// the day strip's buckets, a row's day line, the widget, a share, a
+    /// deep link's `?day=` — inherits the right day without knowing why.
+    static func placeholderKickoff(_ date: Date, calendar: Calendar = .current) -> Date {
+        var easternCalendar = Calendar(identifier: .gregorian)
+        easternCalendar.timeZone = eastern
+        let parts = easternCalendar.dateComponents([.year, .month, .day], from: date)
+        // A day we can't rebuild is worse than one an hour off: keep the
+        // instant rather than dropping the game off the strip entirely.
+        return calendar.date(from: parts) ?? date
+    }
+
     /// ESPN publishes every scoreboard on the US Eastern clock.
     static let eastern = TimeZone(identifier: "America/New_York") ?? .gmt
 }
