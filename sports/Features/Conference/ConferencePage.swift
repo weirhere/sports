@@ -398,23 +398,19 @@ struct ConferencePage: View {
     @ViewBuilder
     private var subtitle: some View {
         if let league = parentLeagueDestination {
-            NavigationLink(value: league) {
-                HStack(spacing: Spacing.xs) {
-                    Text(league.name)
-                    if showsTeamCount {
-                        Text("·")
-                        Text("\(teamCount) teams")
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+            HStack(spacing: Spacing.xs) {
+                NavigationLink(value: league) {
+                    HeaderLinkBadge(title: league.name)
                 }
-                .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
+                .buttonStyle(SwipeSafeButtonStyle())
+                .accessibilityLabel(league.name)
+                .accessibilityHint("Opens the league's standings")
+                if showsTeamCount {
+                    Text("\(teamCount) teams")
+                        .font(.chipEmphasis)
+                        .foregroundStyle(.textSecondary)
+                }
             }
-            .buttonStyle(SwipeSafeButtonStyle())
-            .accessibilityLabel(showsTeamCount ? "\(league.name), \(teamCount) teams"
-                                               : league.name)
-            .accessibilityHint("Opens the league's standings")
         } else if showsTeamCount {
             Text("\(teamCount) teams")
                 .font(.chipEmphasis)

@@ -820,9 +820,12 @@ nonisolated enum ESPNMapper {
     /// kept so the page can render "Standings TBA". Never sorted from
     /// records here: tiebreakers aren't derivable.
     static func conferenceStandings(from dto: StandingsResponseDTO,
-                                    league: League = .collegeFootball) -> [ConferenceStandings] {
-        standingsGroups(in: dto)
-            .map { standings(from: $0.group, parentId: $0.parentId, league: league) }
+                                    league: League = .collegeFootball,
+                                    now: Date = .now) -> [ConferenceStandings] {
+        let played = seasonHasStarted(dto, now: now)
+        return standingsGroups(in: dto)
+            .map { standings(from: $0.group, parentId: $0.parentId,
+                             league: league, played: played) }
             .sorted { lhs, rhs in
                 let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
                                 Conference.tier(for: rhs.id, in: league))
@@ -845,20 +848,41 @@ nonisolated enum ESPNMapper {
     /// division's *name*, never the division. A group with no parent at
     /// either source is dropped: that one is a conference, not a division.
     static func divisionStandings(from dto: StandingsResponseDTO,
-                                  league: League = .collegeFootball) -> [ConferenceStandings] {
-        allStandingsGroups(in: dto).compactMap { group, payloadParent in
+                                  league: League = .collegeFootball,
+                                  now: Date = .now) -> [ConferenceStandings] {
+        let played = seasonHasStarted(dto, now: now)
+        return allStandingsGroups(in: dto).compactMap { group, payloadParent in
             let id = group.id?.value
             guard let parent = Conference.parent(of: id, in: league) ?? payloadParent,
                   parent != id else { return nil }
-            return standings(from: group, parentId: parent, league: league)
+            return standings(from: group, parentId: parent, league: league, played: played)
         }
         .sorted { $0.name < $1.name }
     }
 
     /// One group's table. Shared so a conference, a division, and a
     /// `level=3` response all read their entries the same way.
+    /// Whether anyone has played a game in the season this response says
+    /// it is for.
+    ///
+    /// ESPN rolls its season *pointer* the moment the last one ends and
+    /// keeps serving the old table underneath it: probed live 2026-09-08,
+    /// the NBA standings were stamped 2026-27 and full of 2025-26 results
+    /// three weeks before a ball was tipped. So the stamp is no use and
+    /// the start date is: a season that opens in the future has no
+    /// numbers, whatever numbers came with it (Andy, 2026-09-09 — "we
+    /// shouldn't be showing any stats for teams in leagues whose season
+    /// hasn't started yet").
+    ///
+    /// True when ESPN ships no date at all, which is every football
+    /// response we have ever read — absence must never blank a table.
+    static func seasonHasStarted(_ dto: StandingsResponseDTO, now: Date = .now) -> Bool {
+        guard let start = ESPNDate.parse(dto.season?.startDate) else { return true }
+        return start <= now
+    }
+
     private static func standings(from group: StandingsGroupDTO, parentId: Int?,
-                                  league: League) -> ConferenceStandings {
+                                  league: League, played: Bool = true) -> ConferenceStandings {
         let id = group.id?.value
         let name = Conference.tier(for: id, in: league) == .other
             ? (group.shortName ?? group.name ?? "Conference")
@@ -867,6 +891,18 @@ nonisolated enum ESPNMapper {
             guard let mapped = team(from: entry.team, league: league) else { return nil }
             func stat(_ type: String) -> StandingsStatDTO? {
                 entry.stats?.first { $0.type == type }
+            }
+            guard played else {
+                // The roster still stands — who is in this division is
+                // true all summer. Only the numbers are last season's.
+                return ConferenceStanding(
+                    team: Team(
+                        id: mapped.id, location: mapped.location, name: mapped.name,
+                        abbreviation: mapped.abbreviation, displayName: mapped.displayName,
+                        shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
+                        conferenceId: id, league: league
+                    ),
+                    conferenceRecord: nil, overallRecord: nil, streak: nil)
             }
             return ConferenceStanding(
                 team: Team(

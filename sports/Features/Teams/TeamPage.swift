@@ -399,13 +399,14 @@ struct TeamPage: View {
         let label = resolvedConference.map { Conference.name(for: $0) } ?? ""
         HStack(spacing: Spacing.xs) {
             if let id = resolvedConference, Conference.isKnown(id.id, in: id.league) {
-                groupLink(id, label: label, showsChevron: leagueDestination == nil)
+                // League first, then the group inside it (Andy,
+                // 2026-09-09) — widest to narrowest, which is the order
+                // the standings scope chip already walks and the order the
+                // badges are read in.
                 if let league = leagueDestination {
-                    Text("·")
-                        .font(.chipEmphasis)
-                        .foregroundStyle(.textSecondary)
                     leagueLink(league)
                 }
+                groupLink(id, label: label)
             } else if !label.isEmpty {
                 // An id we can't name renders as plain text — there's no
                 // page to send it to.
@@ -416,20 +417,11 @@ struct TeamPage: View {
         }
     }
 
-    private func groupLink(_ id: ConferenceID, label: String,
-                           showsChevron: Bool) -> some View {
+    private func groupLink(_ id: ConferenceID, label: String) -> some View {
         NavigationLink(value: ConferenceDestination(conference: id,
                                                     name: Conference.name(for: id),
                                                     highlightTeamId: team.id)) {
-            HStack(spacing: Spacing.xs) {
-                Text(label)
-                if showsChevron {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                }
-            }
-            .font(.chipEmphasis)
-            .foregroundStyle(.textSecondary)
+            HeaderLinkBadge(title: label)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View standings")
@@ -437,13 +429,7 @@ struct TeamPage: View {
 
     private func leagueLink(_ destination: ConferenceDestination) -> some View {
         NavigationLink(value: destination) {
-            HStack(spacing: Spacing.xs) {
-                Text(destination.name)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-            }
-            .font(.chipEmphasis)
-            .foregroundStyle(.textSecondary)
+            HeaderLinkBadge(title: destination.name)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View league standings")

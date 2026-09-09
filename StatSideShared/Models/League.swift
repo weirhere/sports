@@ -222,6 +222,15 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// that already ended, so those keep Standings alone.
     var gamesWindow: (back: Int, forward: Int) { (7, 21) }
 
+    /// Whether the surface underfoot is a fact about the game.
+    ///
+    /// Football is played on grass or turf and which one is a real
+    /// difference. Basketball and hockey are played indoors on a floor and
+    /// on ice — ESPN still ships `grass: false` for their arenas, which we
+    /// were rendering as "Surface · Turf" on a hockey rink (Andy,
+    /// 2026-09-09: "nba and nhl games aren't played on turf").
+    var playsOnASurface: Bool { !seasonYearIsEndYear }
+
     /// What a league calls its scoring periods.
     ///
     /// ESPN says the same thing in `format.regulation.periods` on the

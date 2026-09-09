@@ -212,6 +212,18 @@ nonisolated struct LogoDTO: Decodable {
 nonisolated struct StandingsResponseDTO: Decodable {
     let name: String?
     let children: [StandingsGroupDTO]?
+    let season: StandingsSeasonDTO?
+}
+
+/// The season a standings response says it is for.
+///
+/// Its `year` cannot be trusted to describe the *numbers*: probed live
+/// 2026-09-08, ESPN's NBA standings stamp the upcoming 2026-27 season on
+/// a table still full of 2025-26 results. `startDate` can — a season that
+/// opens in three weeks has been played by nobody.
+nonisolated struct StandingsSeasonDTO: Decodable {
+    let year: Int?
+    let startDate: String?
 }
 
 nonisolated struct StandingsGroupDTO: Decodable {

@@ -90,6 +90,14 @@ private func fixture(_ name: String) throws -> Data {
 
 @Suite struct WinterStandingsDecoding {
 
+    /// The fixtures were captured in the offseason, when ESPN stamps the
+    /// *next* season on the last one's table — so anything reading their
+    /// numbers has to say it is reading them from inside that season, or
+    /// the season gate blanks them, correctly.
+    static let inSeason = Calendar.current.date(
+        from: DateComponents(year: 2027, month: 1, day: 15)) ?? .now
+
+
     @Test func bothStandingsMapOntoTheRegistrysConferences() throws {
         let expected: [(String, League, [Int])] = [
             ("nba-standings", .nba, [5, 6]),
@@ -97,7 +105,7 @@ private func fixture(_ name: String) throws -> Data {
         ]
         for (name, league, ids) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let tables = ESPNMapper.conferenceStandings(from: dto, league: league)
+            let tables = ESPNMapper.conferenceStandings(from: dto, league: league, now: Self.inSeason)
             #expect(tables.map(\.id) == ids)
             #expect(tables.allSatisfy { !$0.entries.isEmpty })
             #expect(tables.map(\.name) == ["Eastern", "Western"])
@@ -111,7 +119,7 @@ private func fixture(_ name: String) throws -> Data {
         ]
         for (name, league, count) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league, now: Self.inSeason)
             #expect(divisions.count == count)
             for division in divisions {
                 let parent = try #require(division.parentId)
@@ -150,6 +158,44 @@ private func fixture(_ name: String) throws -> Data {
         #expect(east.count >= kept.count)
     }
 
+    /// ESPN rolls its season pointer the moment the last one ends and
+    /// keeps serving the old table underneath it — the NBA standings were
+    /// stamped 2026-27 and full of 2025-26 results three weeks before a
+    /// ball was tipped. The stamp is no use; the start date is.
+    @Test func aSeasonThatHasNotOpenedCarriesNoStats() throws {
+        for name in ["nba-standings", "nhl-standings",
+                     "nba-standings-level3", "nhl-standings-level3"] {
+            let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
+            let start = try #require(ESPNDate.parse(dto.season?.startDate),
+                                     "\(name) should say when its season opens")
+
+            // Before the opener: teams, no numbers.
+            let before = calendar(daysBefore: 1, of: start)
+            #expect(!ESPNMapper.seasonHasStarted(dto, now: before))
+
+            // After it: the table reads as it always did.
+            let after = calendar(daysAfter: 1, of: start)
+            #expect(ESPNMapper.seasonHasStarted(dto, now: after))
+        }
+    }
+
+    /// A response with no start date at all — every football one we have
+    /// ever read — must never blank a table.
+    @Test func aResponseWithNoStartDateIsTreatedAsUnderway() throws {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nfl-standings"))
+        #expect(ESPNMapper.seasonHasStarted(dto))
+        let tables = ESPNMapper.conferenceStandings(from: dto, league: .nfl)
+        #expect(tables.contains { $0.entries.contains { $0.overallRecord != nil } })
+    }
+
+    private func calendar(daysBefore days: Int, of date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: -days, to: date) ?? date
+    }
+
+    private func calendar(daysAfter days: Int, of date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: days, to: date) ?? date
+    }
+
     /// ESPN's divisional response carries no `total` — it sends
     /// `divisionstandings` in its place — so a division's page showed a
     /// column of dashes where its conference's, off a different request,
@@ -161,7 +207,7 @@ private func fixture(_ name: String) throws -> Data {
         ]
         for (name, league, parts) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league, now: Self.inSeason)
             let entries = divisions.flatMap(\.entries)
             #expect(!entries.isEmpty)
             for entry in entries {
@@ -188,7 +234,7 @@ private func fixture(_ name: String) throws -> Data {
         ]
         for (name, league, conferenceIds) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league, now: Self.inSeason)
 
             // Folded: one row per conference, with every division's teams.
             let conferences = divisions.foldingDivisions()
@@ -216,7 +262,7 @@ private func fixture(_ name: String) throws -> Data {
         for (name, league) in [("nba-standings-level3", League.nba),
                                ("nhl-standings-level3", .nhl)] {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            for division in ESPNMapper.divisionStandings(from: dto, league: league) {
+            for division in ESPNMapper.divisionStandings(from: dto, league: league, now: Self.inSeason) {
                 #expect(division.leader != nil, "\(division.name) has no leader")
                 #expect(Conference.tier(for: division.id, in: league) == .division)
             }
@@ -237,7 +283,7 @@ private func fixture(_ name: String) throws -> Data {
         ]
         for (name, league, order) in expected {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let divisions = ESPNMapper.divisionStandings(from: dto, league: league)
+            let divisions = ESPNMapper.divisionStandings(from: dto, league: league, now: Self.inSeason)
             let conferenceOrder = Conference.topLevelIds(in: league)
             let grouped = divisions.sorted { lhs, rhs in
                 let l = lhs.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
@@ -255,7 +301,7 @@ private func fixture(_ name: String) throws -> Data {
     @Test func aDivisionPageShowsItsOwnTable() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self,
                                            from: fixture("nba-standings-level3"))
-        let divisions = ESPNMapper.divisionStandings(from: dto, league: .nba)
+        let divisions = ESPNMapper.divisionStandings(from: dto, league: .nba, now: Self.inSeason)
 
         // The league's page: every division.
         #expect(divisions.divisionTables(for: .nba(7), isLeagueWide: true).count == 6)
@@ -277,7 +323,7 @@ private func fixture(_ name: String) throws -> Data {
     @Test func everyLeaguesColumnsFindTheirNumbers() throws {
         for (name, league) in [("nba-standings", League.nba), ("nhl-standings", .nhl)] {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
-            let table = try #require(ESPNMapper.conferenceStandings(from: dto, league: league).first)
+            let table = try #require(ESPNMapper.conferenceStandings(from: dto, league: league, now: Self.inSeason).first)
             let leader = try #require(table.entries.first)
             for column in league.standingsColumns {
                 #expect(leader.value(for: column) != nil,
@@ -288,7 +334,7 @@ private func fixture(_ name: String) throws -> Data {
 
     @Test func theNHLRecordIsComposedNotTakenFromTheSummary() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nhl-standings"))
-        let table = try #require(ESPNMapper.conferenceStandings(from: dto, league: .nhl).first)
+        let table = try #require(ESPNMapper.conferenceStandings(from: dto, league: .nhl, now: Self.inSeason).first)
         let leader = try #require(table.entries.first)
         // ESPN's own `total` summary here is "53-22-7, 113 PTS".
         #expect(leader.winLossOTL?.split(separator: "-").count == 3)
@@ -302,7 +348,7 @@ private func fixture(_ name: String) throws -> Data {
     /// it the 32-team table came back East's seeds then West's.
     @Test func theNHLLeagueTableRanksOnPoints() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nhl-standings"))
-        let tables = ESPNMapper.conferenceStandings(from: dto, league: .nhl)
+        let tables = ESPNMapper.conferenceStandings(from: dto, league: .nhl, now: Self.inSeason)
         let league = try #require(tables.leagueTable(in: .nhl))
 
         #expect(league.entries.count == 32)
@@ -313,7 +359,7 @@ private func fixture(_ name: String) throws -> Data {
 
     @Test func theNBALeagueTableStillRanksOnWinPercentage() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nba-standings"))
-        let tables = ESPNMapper.conferenceStandings(from: dto, league: .nba)
+        let tables = ESPNMapper.conferenceStandings(from: dto, league: .nba, now: Self.inSeason)
         let league = try #require(tables.leagueTable(in: .nba))
 
         #expect(league.entries.count == 30)
