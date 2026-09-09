@@ -1129,7 +1129,15 @@ nonisolated enum ESPNMapper {
             }
         }
         guard league.scoringCardTitle != nil else { return [] }
-        return flatPlays.filter(\.isScoringPlay).map { play in
+        // Only plays that actually moved the game score. A hockey
+        // shootout is the reason: ESPN flags every attempt as a scoring
+        // play and stamps it with the *shootout tally* rather than the
+        // game score (1-2 on all three attempts of a 2-2 game, verified
+        // live), so a plain `isScoringPlay` filter listed three goals
+        // whose running score went nowhere and disagreed with the header.
+        // A shootout is worth one goal, awarded at the end, and the line
+        // score's SO column is where it belongs.
+        return flatPlays.filter { $0.isScoringPlay && $0.scoringSide != nil }.map { play in
             ScoringPlay(
                 id: play.id,
                 period: play.period,

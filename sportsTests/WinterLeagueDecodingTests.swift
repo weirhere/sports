@@ -286,6 +286,16 @@ private func fixture(_ name: String) throws -> Data {
         #expect(!summary.scoringPlays.isEmpty)
         #expect(summary.scoringPlays.allSatisfy { $0.teamId != nil })
         #expect(League.nhl.scoringCardTitle == "Goals")
+
+        // The four real goals of a 2-2 game, and none of the three
+        // shootout attempts: ESPN flags every attempt as a scoring play
+        // and stamps it with the shootout tally rather than the game
+        // score, so listing them put three goals on the card whose
+        // running score went nowhere. A shootout is one goal, awarded at
+        // the end, and the line score's SO column is where it shows.
+        #expect(summary.scoringPlays.count == 4)
+        #expect(summary.scoringPlays.allSatisfy { ($0.period ?? 0) <= 4 })
+        #expect(summary.plays.filter(\.isScoringPlay).count == 7)
     }
 
     /// Basketball scores ~98 times a game. A chronological list of every

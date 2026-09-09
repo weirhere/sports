@@ -322,6 +322,11 @@ final class LeagueScoreboards {
             guard !Task.isCancelled, let found, found != self.selectedDay else { return }
             // The user may have moved while the probe was out; their choice wins.
             guard self.selectedDay == from else { return }
+            // Let go of the handle before selecting. `show(day:)` cancels
+            // the snap task, and this *is* the snap task — so without
+            // this the move cancels its own fetch, and every league comes
+            // back `-999 cancelled` on the day the app just chose.
+            self.snapTask = nil
             await self.select(day: found)
         }
     }
