@@ -22,44 +22,71 @@ async function fetchDirectory(league: League): Promise<ConferenceTeams[]> {
   return data.conferences ?? [];
 }
 
-export function useTeamDirectory(league: League): {
+/**
+ * One or more leagues' directories, merged.
+ *
+ * A list rather than a single league because the Scores slate spans all
+ * four now: a rail scoped to college football would silently drop a
+ * followed NFL team rather than name it. Each league is still fetched and
+ * cached separately — a college-football-only follow set costs exactly one
+ * request, as it always did.
+ */
+export function useTeamDirectory(leagues: League | readonly League[]): {
   conferences: ConferenceTeams[];
   isLoading: boolean;
   error: string | null;
   retry: () => void;
 } {
-  const [conferences, setConferences] = useState<ConferenceTeams[]>(
-    () => cached.get(league) ?? []
+  // A stable key so a fresh array literal per render doesn't re-fetch.
+  const wanted = Array.isArray(leagues) ? leagues : [leagues as League];
+  const key = wanted.join(",");
+
+  const [conferences, setConferences] = useState<ConferenceTeams[]>(() =>
+    wanted.every((l) => cached.has(l))
+      ? wanted.flatMap((l) => cached.get(l) ?? [])
+      : []
   );
-  const [isLoading, setIsLoading] = useState(!cached.has(league));
+  const [isLoading, setIsLoading] = useState(
+    () => !wanted.every((l) => cached.has(l))
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const hit = cached.get(league);
-    if (hit !== undefined) {
-      setConferences(hit);
+    const list = key.length > 0 ? (key.split(",") as League[]) : [];
+    if (list.every((l) => cached.has(l))) {
+      setConferences(list.flatMap((l) => cached.get(l) ?? []));
       setIsLoading(false);
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      // Concurrent consumers of the same league share one request.
-      let pending = inflight.get(league);
-      if (pending === undefined) {
-        pending = fetchDirectory(league);
-        inflight.set(league, pending);
-      }
-      const result = await pending;
-      cached.set(league, result);
-      setConferences(result);
+      const results = await Promise.all(
+        list.map(async (l) => {
+          const hit = cached.get(l);
+          if (hit !== undefined) return hit;
+          // Concurrent consumers of the same league share one request.
+          let pending = inflight.get(l);
+          if (pending === undefined) {
+            pending = fetchDirectory(l);
+            inflight.set(l, pending);
+          }
+          try {
+            const result = await pending;
+            cached.set(l, result);
+            return result;
+          } finally {
+            inflight.delete(l);
+          }
+        })
+      );
+      setConferences(results.flat());
     } catch {
       setError("Couldn't load teams.");
     } finally {
-      inflight.delete(league);
       setIsLoading(false);
     }
-  }, [league]);
+  }, [key]);
 
   useEffect(() => {
     void load();

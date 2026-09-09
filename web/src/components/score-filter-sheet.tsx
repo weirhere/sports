@@ -1,10 +1,13 @@
 "use client";
 
-// The Scores view-options sheet — the iOS `ScoreFilterSheet`: grouping
-// (by date / by conference), the season menu (moved in from the old navbar
-// portal), and the ESPN-style slate filter — all games, Top 25, then every
-// FBS conference in the app's browsing order. A conference tap selects and
-// dismisses; grouping and season apply in place.
+// The Scores view-options sheet — the iOS `ScoreFilterSheet`: the season
+// menu and the ESPN-style slate filter — all games, Top 25, then every FBS
+// conference in the app's browsing order. A conference tap selects and
+// dismisses; the season applies in place.
+//
+// The grouping segmented control retired with the week strip (iOS,
+// 2026-09-05): the day is the axis now, and the by-conference view is what
+// the league accordions already are.
 
 import { Check, Trophy } from "lucide-react";
 import {
@@ -15,8 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { ConferenceLogo } from "./theme/conference-logo";
 import { SeasonMenuChip } from "./season-menu-chip";
-import { seasonYears } from "@/lib/season";
-import type { ScoresGrouping } from "@/lib/game-sections";
 import { conferenceFilterToken } from "@/lib/game-sections";
 import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences";
 import { cn } from "@/lib/utils";
@@ -24,12 +25,11 @@ import { cn } from "@/lib/utils";
 interface ScoreFilterSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The active slate filter token ("top25" | "conference-8") or null. */
+  /** The active slate filter token ("top25" | "conference-cfb:8") or null. */
   current: string | null;
   onSelect: (filter: string | null) => void;
-  grouping: ScoresGrouping;
-  onSetGrouping: (grouping: ScoresGrouping) => void;
   selectedYear: number;
+  availableSeasons: number[];
   onYearChange: (year: number) => void;
 }
 
@@ -38,9 +38,8 @@ export function ScoreFilterSheet({
   onOpenChange,
   current,
   onSelect,
-  grouping,
-  onSetGrouping,
   selectedYear,
+  availableSeasons,
   onYearChange,
 }: ScoreFilterSheetProps) {
   const pick = (filter: string | null) => {
@@ -65,42 +64,11 @@ export function ScoreFilterSheet({
         </DialogHeader>
 
         <div className="max-h-[70vh] overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {/* View */}
-          <p className="type-chip-em mb-2 text-text-primary">View</p>
-          <div
-            role="radiogroup"
-            aria-label="Grouping"
-            className="flex rounded-[10px] bg-bg-elevated p-1"
-          >
-            {(
-              [
-                ["date", "By date"],
-                ["conference", "By conference"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={grouping === value}
-                onClick={() => onSetGrouping(value)}
-                className={cn(
-                  "type-chip flex-1 rounded-lg py-1.5 transition-colors",
-                  grouping === value
-                    ? "bg-bg-card text-text-primary shadow-card"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <span className="type-chip text-text-primary">Season</span>
             <SeasonMenuChip
               value={selectedYear}
-              years={seasonYears()}
+              years={availableSeasons}
               onSelect={onYearChange}
             />
           </div>

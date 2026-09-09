@@ -189,7 +189,7 @@ function TeamResultRow({ team }: { team: Team }) {
       aria-label={label}
       className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >
-      <TeamLogo espnId={team.espnId} teamName="" size="sm" />
+      <TeamLogo team={team} teamName="" size="sm" />
       <span className="truncate type-row-name-em text-text-primary">
         {team.school}
       </span>
@@ -230,8 +230,8 @@ function GameResultRow({ game }: { game: Game }) {
       className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >
       <span className="flex shrink-0 items-center gap-1">
-        <TeamLogo espnId={away.espnId} teamName="" size="sm" />
-        <TeamLogo espnId={home.espnId} teamName="" size="sm" />
+        <TeamLogo team={away} teamName="" size="sm" />
+        <TeamLogo team={home} teamName="" size="sm" />
       </span>
       <span className="min-w-0 flex-1 truncate type-row-name text-text-primary">
         {away.school} at {home.school}

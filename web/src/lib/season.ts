@@ -1,25 +1,17 @@
-// Season and week-slot logic — a faithful port of the iOS app's `CFBSeason`
-// and `WeekLogic` (StatSideShared/Models/CFBSeason.swift, Week.swift).
-
-/**
- * The college football season a date belongs to. January belongs to the
- * previous season (bowls/CFP); from February the upcoming season is the one
- * that matters.
- */
-export function cfbSeasonYear(now: Date = new Date()): number {
-  const year = now.getFullYear();
-  return now.getMonth() === 0 ? year - 1 : year;
-}
-
-/** Selectable seasons, newest first, down to the 2014 CFP-era floor. */
-export function seasonYears(now: Date = new Date()): number[] {
-  const current = cfbSeasonYear(now);
-  const years: number[] = [];
-  for (let year = current; year >= 2014; year -= 1) {
-    years.push(year);
-  }
-  return years;
-}
+// Week slots — still decoded, no longer navigated by.
+//
+// The **week-rollover machinery retired with the week strip** (iOS,
+// 2026-09-05): `defaultWeekSelection`, its Sunday tie-break and the
+// season-year helpers all went, because the day strip left them with zero
+// callers. They can't come back unchanged either — a week strip is only ever
+// honest about one league at a time, so a future week surface would be
+// per-league and re-derived.
+//
+// What stays is the shape: ESPN still ships `leagues[].calendar` on a plain
+// scoreboard request, `Scoreboard.weeks` still carries it, and a football
+// league's own pages still group a season by week. The season *clock* lives
+// in `@/lib/leagues` now, per league — a college-football rollover would call
+// June "next season" while the Stanley Cup was still being played for.
 
 /**
  * One slot in the week strip, parsed from ESPN's calendar. Regular-season
@@ -56,64 +48,4 @@ export function makeWeekSlot(fields: {
     id: `${fields.seasonType}-${fields.value}`,
     isPostseason: fields.seasonType === 3,
   };
-}
-
-function parseSlotDate(value: string | undefined): Date | undefined {
-  if (!value) return undefined;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-export function weekSlotContains(slot: WeekSlot, date: Date): boolean {
-  const start = parseSlotDate(slot.startDate);
-  const end = parseSlotDate(slot.endDate);
-  if (!start || !end) return false;
-  return date >= start && date < end;
-}
-
-/**
- * The strip's default selection — a line-for-line port of the iOS
- * `WeekLogic.defaultSelection`. ESPN's current week wins, except on
- * Sundays: Sunday is catch-up + poll day, so we pin to the week whose
- * Saturday just finished (the slot containing yesterday) even if ESPN has
- * already flipped forward. Rolls over Monday morning.
- */
-export function defaultWeekSelection(
-  slots: WeekSlot[],
-  currentWeekNumber: number | undefined,
-  currentSeasonType: number | undefined,
-  today: Date = new Date()
-): WeekSlot | undefined {
-  if (slots.length === 0) return undefined;
-  if (today.getDay() === 0) {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    // The Bowls and CFP slots overlap for the whole playoff (Dec 18 → Jan
-    // 28 both sit inside Bowls' range), so several slots can contain
-    // yesterday. ESPN's current slot breaks the tie when it qualifies;
-    // first-containing keeps the September behavior, where ESPN's
-    // flipped-forward week never contains yesterday.
-    const containing = slots.filter((slot) => weekSlotContains(slot, yesterday));
-    if (currentSeasonType !== undefined && currentWeekNumber !== undefined) {
-      const current = containing.find(
-        (slot) =>
-          slot.seasonType === currentSeasonType &&
-          slot.value === currentWeekNumber
-      );
-      if (current) return current;
-    }
-    if (containing.length > 0) return containing[0];
-  }
-  if (currentSeasonType !== undefined && currentWeekNumber !== undefined) {
-    const slot = slots.find(
-      (s) => s.seasonType === currentSeasonType && s.value === currentWeekNumber
-    );
-    if (slot) return slot;
-  }
-  const containingToday = slots.find((slot) => weekSlotContains(slot, today));
-  if (containingToday) return containingToday;
-  const first = slots[0];
-  const firstStart = parseSlotDate(first.startDate);
-  if (firstStart && today < firstStart) return first;
-  return slots[slots.length - 1];
 }

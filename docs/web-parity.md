@@ -40,7 +40,7 @@ commits `b54903b`…`a9ee85d`). Since then iOS has merged ~35 PRs carrying **89
 decision rows**. One of them shipped on web — the OpenGraph card (#109) — and it
 was built web-first.
 
-Put plainly: **`web/` is StatSide 1.x. iOS is 2.1.1.** The dividing line is the
+Put plainly: **`web/` was StatSide 1.x; W1 and W2 have landed.** The dividing line is the
 league axis. The web app is hardcoded to one league:
 
 - `src/lib/constants.ts` pins `ESPN_API_BASE` to `football/college-football`.
@@ -99,32 +99,61 @@ pasted threads. `next.config.ts` redirects the three bare-id entity routes to
 college football's — exact, not a guess, since that was the only league the web
 app had — and unfurlers follow 3xx and read the destination's og: tags.
 
-## W2 — Scores
+## W2 — Scores  ✅ shipped 2026-09-09
+
+Verified live: the strip runs July 1 → June 30 (the NFL's Hall of Fame floor
+to the NBA/NHL's June), a Saturday shows 11 college-football conference
+sections in tier order plus the NHL's preseason, following Michigan and the
+Big Ten puts Following first and *moves* the Big Ten section up rather than
+cloning it, and picking 2019 lands on August 1 — the Hall of Fame Game — via
+the snap-forward probe rather than on the season's nominal July start.
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-05 | **The day replaces the week as the unit of time**; `DayStrip`, swipe = ±1 day | pending |
-| 2026-09-05 | Five-day `dates=` window per league, centred on the shown day | pending |
-| 2026-09-05 | Section assembly moves up to a cross-league `LeagueScoreboards`; `ScoresGrouping` retires | pending |
-| 2026-09-05 | The app never opens on a dead screen (`firstDayWithGames` probes forward) | pending |
-| 2026-09-05 | The slate filter narrows league sections and leaves Following alone | pending |
-| 2026-09-05 | The Scores league scope retires app-wide; search tiebreak becomes `preferredLeague` | pending |
-| 2026-09-05 | The Scores header keeps Live and nothing else | pending |
-| 2026-09-06 | College football breaks down by conference; the NFL stays one accordion | pending |
-| 2026-09-08 | `League.slateSplitsByConference` — CFB is the only one that splits | pending |
-| 2026-09-09 | The NFL's slate stays one accordion (division sections built and reverted) | pending |
-| 2026-09-06 | Following is your teams; a followed table gets hoisted instead | pending |
-| 2026-09-06 | League accordions wear their league's mark | pending |
-| 2026-09-07 | Scores section headers tag their league ("ACC CFB") | pending |
-| 2026-09-06 | Day chips carry their month; yesterday and tomorrow get their names | pending |
-| 2026-09-06 | The Today jump leaves the strip for a floating, inverted button | pending |
-| 2026-09-07 | The Today button appears only once the Today chip is off the strip | pending |
-| 2026-09-06 | A calendar sheet joins the day strip | pending |
-| 2026-09-07 | A day swipe commits its day on the frame the thumb lifts | pending |
-| 2026-09-08 | The day fetch debounces 250ms; a cancelled request is never the error banner | pending |
-| 2026-09-05 | The week-rollover machinery retires with the week strip | pending |
-| 2026-09-06 | `SwipeSafeButtonStyle` — full-width rows must not fire on a swipe | n/a — pointer-events; the web's own swipe needs the equivalent guard, tracked in W2 |
-| 2026-09-01 | Sections pipeline memoizes; sorts once up front | differs — React memo, not `@Observable`; revisit if the web profiles slow |
+| 2026-09-05 | **The day replaces the week as the unit of time**; `DayStrip`, swipe = ±1 day | shipped |
+| 2026-09-05 | Five-day `dates=` window per league, centred on the shown day | shipped |
+| 2026-09-05 | Section assembly moves up to a cross-league model; `ScoresGrouping` retires | shipped |
+| 2026-09-05 | The app never opens on a dead screen (`firstDayWithGames` probes forward) | shipped |
+| 2026-09-05 | The slate filter narrows league sections and leaves Following alone | shipped |
+| 2026-09-05 | The Scores league scope retires; search tiebreak becomes `preferredLeague` | shipped |
+| 2026-09-05 | The Scores header keeps Live and the funnel, nothing else | shipped |
+| 2026-09-06 | College football breaks down by conference; the NFL stays one accordion | shipped |
+| 2026-09-08 | `League.slateSplitsByConference` — CFB is the only one that splits | shipped |
+| 2026-09-09 | The NFL's slate stays one accordion (division sections built and reverted) | shipped — never built the division shape |
+| 2026-09-06 | Following is your teams; a followed table gets hoisted instead | shipped |
+| 2026-09-06 | League accordions wear their league's mark | shipped |
+| 2026-09-07 | Scores section headers tag their league ("ACC CFB") | shipped |
+| 2026-09-06 | Day chips carry their month; yesterday and tomorrow get their names | shipped |
+| 2026-09-06 | The Today jump leaves the strip for a floating, inverted button | shipped |
+| 2026-09-07 | The Today button appears only once the Today chip is off the strip | shipped |
+| 2026-09-06 | A calendar sheet joins the day strip | shipped |
+| 2026-09-07 | A day swipe commits its day on the frame the thumb lifts | shipped |
+| 2026-09-08 | The day fetch debounces 250ms; a cancelled request is never the error banner | shipped |
+| 2026-09-05 | The week-rollover machinery retires with the week strip | shipped — `WeekSlot` stays, the rollover rule goes |
+| 2026-09-06 | `SwipeSafeButtonStyle` — full-width rows must not fire on a swipe | shipped — `useSwipe` swallows the click a drag leaves behind |
+| 2026-09-06 | Followed tables lead in the user's own drag order | shipped — the *order* is honored; the drag UI is W3 |
+| 2026-09-01 | Sections pipeline memoizes; sorts once up front | differs — React `useMemo`, not `@Observable`; revisit if the web profiles slow |
+
+**Not a parity row, fixed on the way:** `TeamLogo` built its URL from a bare
+ESPN id against a hardcoded **college** bucket, so every pro team wore
+whichever college program shared its number — New England (NFL 17) rendered
+Claremont-Mudd-Scripps and Seattle (26) rendered UCLA. It now takes the whole
+team and prefers the payload's own mark; the dark-variant derivation was
+generalized off `ncaa` to every league bucket at the same time (all four
+verified 200, including the NHL's nested `500-dark/scoreboard/` path). Caught
+by Andy, 2026-09-09.
+
+**Merged with #112 on the way**, not around it: Andy's follow rail landed on
+main mid-wave. The rail now resolves its team rows against *every league the
+follow set touches* rather than the slate's one — with four leagues on the
+page, a college-football-only directory silently dropped a followed NFL team
+instead of naming it — and the day strip inherited the week strip's
+`lg:pl-[calc(var(--sidebar-w)+var(--sidebar-gap))]` step so its chips still
+start where the games do. The `FollowPromptCard` still hides at rail width.
+
+**Deferred to W3 with the hub:** poll follows (`followedPollLeagues` is wired
+through the section engine and fed an empty list — the Leagues hub is where a
+poll is followed from), and the drag UI for reordering followed tables.
 
 ## W3 — Leagues hub (today's Rankings tab)
 

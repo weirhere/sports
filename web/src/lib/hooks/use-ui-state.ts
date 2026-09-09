@@ -1,34 +1,42 @@
 "use client";
 
 // Persisted Scores UI state — the web `UIStateStore` (iOS
-// sports/Stores/UIStateStore.swift). One localStorage key carries the
-// grouping, the Live and slate filters (persisted per the 2026-08-29
-// decision), collapsed section ids, and the follow-prompt dismissal.
+// sports/Stores/UIStateStore.swift). One localStorage key carries the Live
+// and slate filters (persisted per the 2026-08-29 decision), collapsed
+// section ids, the followed-table order, and the follow-prompt dismissal.
 //
 // COLLAPSED ids are stored, not expanded ones, so a section never seen
 // before defaults open — the iOS "Following + Top 25 open by default"
 // semantics generalized to everything-open on web.
+//
+// The **grouping** retired with the week strip (iOS, 2026-09-05): the day is
+// the axis now, and the by-conference view is what the league accordions
+// already are. A stored `grouping` from an older build is simply ignored.
 
 import { useCallback, useEffect, useState } from "react";
-import type { ScoresGrouping } from "@/lib/game-sections";
 import { isValidScoreFilterToken } from "@/lib/game-sections";
 
 const STORAGE_KEY = "statside.ui.v1";
 
 interface StoredUIState {
   collapsedSections: string[];
-  grouping: ScoresGrouping;
   liveOnly: boolean;
-  /** `"top25"` | `"conference-8"` | null. */
+  /** `"top25"` | `"conference-cfb:8"` | null. */
   scoreFilter: string | null;
+  /**
+   * Followed tables in the order they lead the Scores page — one list, one
+   * order, both screens (iOS, 2026-09-06). A set saved before the order
+   * existed falls back to the hub's own tier order, so nothing migrates.
+   */
+  tableOrder: string[];
   followPromptDismissed: boolean;
 }
 
 const DEFAULTS: StoredUIState = {
   collapsedSections: [],
-  grouping: "date",
   liveOnly: false,
   scoreFilter: null,
+  tableOrder: [],
   followPromptDismissed: false,
 };
 
@@ -45,11 +53,14 @@ function sanitize(raw: unknown): StoredUIState {
     isValidScoreFilterToken(record.scoreFilter)
       ? record.scoreFilter
       : null;
+  const tableOrder = Array.isArray(record.tableOrder)
+    ? record.tableOrder.filter((id): id is string => typeof id === "string")
+    : [];
   return {
     collapsedSections: collapsed,
-    grouping: record.grouping === "conference" ? "conference" : "date",
     liveOnly: record.liveOnly === true,
     scoreFilter: filter,
+    tableOrder,
     followPromptDismissed: record.followPromptDismissed === true,
   };
 }
@@ -89,8 +100,8 @@ export function useUIState() {
     []
   );
 
-  const setGrouping = useCallback(
-    (grouping: ScoresGrouping) => update({ grouping }),
+  const setTableOrder = useCallback(
+    (tableOrder: string[]) => update({ tableOrder }),
     [update]
   );
   const setLiveOnly = useCallback(
@@ -149,8 +160,8 @@ export function useUIState() {
 
   return {
     isLoaded,
-    grouping: state.grouping,
-    setGrouping,
+    tableOrder: state.tableOrder,
+    setTableOrder,
     liveOnly: state.liveOnly,
     setLiveOnly,
     scoreFilter: state.scoreFilter,

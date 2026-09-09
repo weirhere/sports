@@ -117,7 +117,7 @@ function RankRow({ ranked }: { ranked: RankedTeam }) {
         {ranked.rank}
       </span>
       <TeamLogo
-        espnId={ranked.team.espnId}
+        team={ranked.team}
         teamName={ranked.team.school}
         size="sm"
         className="shrink-0"

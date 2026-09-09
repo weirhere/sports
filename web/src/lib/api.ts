@@ -1,5 +1,6 @@
 import type { GameDetail, Scoreboard } from "./types";
 import type { League } from "./leagues";
+import { dayId } from "./day";
 
 const BASE = "/api";
 
@@ -27,6 +28,27 @@ export async function getScoreboard(
   }
   // Only meaningful alongside a week; the route drops it otherwise.
   if (year !== undefined) params.set("year", String(year));
+  return fetchJson(`${BASE}/scoreboard?${params}`);
+}
+
+/**
+ * One league's slate over a span of local days — the Scores screen's only
+ * scoreboard request.
+ *
+ * The caller asks for five days to answer for three: ESPN reads `dates=` on
+ * the Eastern clock, and the two-day margin absorbs the ET-to-local offset
+ * for every time zone.
+ */
+export async function getScoreboardDays(
+  league: League,
+  start: Date,
+  end: Date
+): Promise<Scoreboard> {
+  const params = new URLSearchParams({
+    league,
+    start: dayId(start),
+    end: dayId(end),
+  });
   return fetchJson(`${BASE}/scoreboard?${params}`);
 }
 

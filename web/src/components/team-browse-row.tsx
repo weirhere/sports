@@ -27,7 +27,7 @@ export function TeamBrowseRow({ team }: { team: Team }) {
         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-[5px] transition-colors hover:bg-bg-header"
       >
         {/* Decorative — the row's text carries the name. */}
-        <TeamLogo espnId={team.espnId} teamName="" size="sm" />
+        <TeamLogo team={team} teamName="" size="sm" />
         <span className="truncate type-row-name-em text-text-primary">
           {team.school}
         </span>
