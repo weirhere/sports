@@ -1,20 +1,24 @@
 import SwiftUI
 
-/// The standings tables' column captions — # / TEAM / CONF (or DIV) / OVR
-/// — shared by the full tables (StandingsList) and the game page's matchup
-/// slice so the two record columns always read the same way.
+/// The standings tables' column captions — # / TEAM, then whatever numeric
+/// columns the league keeps — shared by the full tables (StandingsList) and
+/// the game page's matchup slice so the two always read the same way.
 ///
-/// The in-group column is the conference record in college football and
-/// the *division* record in the NFL, whose payload carries no conference
-/// record at all. Labelling a division record "CONF" would be a small lie
-/// in a table whose whole job is being exact.
+/// Which columns those are is `League.standingsColumns`, because the
+/// leagues disagree about what a standing is: football shows a conference
+/// record beside the overall, the NBA win percentage and games back, the
+/// NHL games played, its three-number record and the points it is actually
+/// ranked on.
+///
 /// Visual-only: rows speak themselves as sentences, so VoiceOver skips it.
 struct StandingsColumnCaptions: View {
     var league: League = .collegeFootball
     // Mirror ConferenceStandingRow's column metrics so captions align
     // with the numbers beneath them.
     @ScaledMetric(relativeTo: .subheadline) private var positionWidth: CGFloat = 16
-    @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 44
+    /// Scales the columns' own base widths with the text size, one metric
+    /// for all of them so they stay in proportion.
+    @ScaledMetric(relativeTo: .subheadline) private var scale: CGFloat = 1
 
     var body: some View {
         HStack(spacing: Spacing.md) {
@@ -22,10 +26,10 @@ struct StandingsColumnCaptions: View {
                 .frame(minWidth: positionWidth, alignment: .trailing)
             Text("TEAM")
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(League.inGroupRecordCaption(league))
-                .frame(minWidth: recordWidth, alignment: .trailing)
-            Text("OVR")
-                .frame(minWidth: recordWidth, alignment: .trailing)
+            ForEach(league.standingsColumns) { column in
+                Text(column.caption)
+                    .frame(minWidth: column.width * scale, alignment: .trailing)
+            }
         }
         .font(.meta)
         .foregroundStyle(.textSecondary)

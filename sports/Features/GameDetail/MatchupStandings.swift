@@ -37,9 +37,7 @@ struct MatchupStandings: View {
             conference.entries.contains { $0.team.id == away.id || $0.team.id == home.id }
         }
         let seasonUnderway = standings.contains { conference in
-            conference.entries.contains { entry in
-                entry.overallRecord != nil && entry.overallRecord != "0-0"
-            }
+            conference.entries.contains(where: \.hasPlayed)
         }
         return knowsASide && seasonUnderway
     }

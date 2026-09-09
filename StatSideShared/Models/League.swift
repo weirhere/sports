@@ -306,18 +306,6 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
-    /// What a standings table calls its in-group record column.
-    ///
-    /// Superseded by `League.standingsColumns` in the standings pass;
-    /// kept here until every call site moves, so the tree stays green.
-    static func inGroupRecordCaption(_ league: League) -> String { "CONF" }
-
-    /// The long form, for a card row rather than a table column.
-    static func inGroupRecordLabel(_ league: League) -> String { "Conference" }
-
-    /// The spoken form, for the row's VoiceOver sentence.
-    static func inGroupRecordSpoken(_ league: League) -> String { "in conference" }
-
     /// The path component ESPN files this league's team marks under, e.g.
     /// `/i/teamlogos/ncaa/500/130.png` vs `/i/teamlogos/nhl/500/tor.png`.
     /// All four publish a `500-dark` twin (NBA and NHL verified live

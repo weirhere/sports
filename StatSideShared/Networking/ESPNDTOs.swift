@@ -48,14 +48,32 @@ nonisolated struct LossyArray<Element: Decodable>: Decodable {
 // MARK: - Scoreboard
 
 nonisolated struct ScoreboardDTO: Decodable {
-    let leagues: [LeagueDTO]?
+    /// Lossy, like `events`: one league object we can't read must never
+    /// cost the whole slate.
+    let leagues: LossyArray<LeagueDTO>?
     let season: SeasonDTO?
     let week: WeekRefDTO?
     let events: LossyArray<EventDTO>?
 }
 
 nonisolated struct LeagueDTO: Decodable {
-    let calendar: [CalendarPeriodDTO]?
+    /// ESPN ships two different calendars under one key, and which one you
+    /// get depends on the league *and* the request.
+    ///
+    /// Football's is a list of labelled periods with week entries inside —
+    /// what `weekSlots` reads. Basketball's and hockey's is a flat list of
+    /// **ISO date strings**, one per game day (229 of them for a season),
+    /// because `calendarType` there is "day" rather than "list". A single
+    /// `dates=` request returns it; a date *range* returns an empty array,
+    /// which is why this shape stayed hidden until a one-day fixture was
+    /// captured.
+    ///
+    /// Lossy, so the string form decodes to no periods rather than
+    /// throwing. It threw before, and because `leagues` was a plain array
+    /// the throw took the entire scoreboard with it — every event of a
+    /// single-day NBA or NHL request, lost to a field nothing reads for
+    /// those leagues.
+    let calendar: LossyArray<CalendarPeriodDTO>?
 }
 
 nonisolated struct CalendarPeriodDTO: Decodable {

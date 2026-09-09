@@ -607,7 +607,7 @@ nonisolated enum ESPNMapper {
     }
 
     static func weekSlots(from dto: ScoreboardDTO) -> [WeekSlot] {
-        let periods = dto.leagues?.first?.calendar ?? []
+        let periods = dto.leagues?.elements.first?.calendar?.elements ?? []
         return periods.flatMap { period -> [WeekSlot] in
             guard let type = period.value?.value, type == 2 || type == 3 else { return [] }
             return (period.entries ?? []).compactMap { entry in
@@ -881,15 +881,39 @@ nonisolated enum ESPNMapper {
                 // matched a payload, so the column has always held the
                 // conference record and now says so.
                 conferenceRecord: stat("vsconf")?.summary,
-                overallRecord: stat("total")?.summary,
+                overallRecord: overallRecord(stat, league: league),
                 streak: stat("streak")?.displayValue,
                 playoffSeed: stat("playoffseed")?.value.map(Int.init),
-                winPercent: stat("winpercent")?.value
+                winPercent: stat("winpercent")?.value,
+                winLossOTL: winLossOTL(stat),
+                gamesPlayed: stat("gamesplayed")?.value.map(Int.init),
+                points: stat("points")?.value.map(Int.init),
+                gamesBehind: stat("gamesbehind")?.displayValue
             )
         }
         return ConferenceStandings(id: id, name: name,
                                    entries: ConferenceStandings.seedOrdered(entries),
                                    league: league, parentId: parentId)
+    }
+
+    /// Hockey's three-number record, composed rather than taken from the
+    /// payload: ESPN's `total` summary for the NHL is "53-22-7, 113 PTS",
+    /// which is a sentence and not a column. Nil unless all three numbers
+    /// are there, so a half-built string can never reach a table.
+    private static func winLossOTL(_ stat: (String) -> StandingsStatDTO?) -> String? {
+        guard let wins = stat("wins")?.value,
+              let losses = stat("losses")?.value,
+              let otLosses = stat("otlosses")?.value else { return nil }
+        return "\(Int(wins))-\(Int(losses))-\(Int(otLosses))"
+    }
+
+    /// The overall record, minus the tail the NHL appends to it.
+    private static func overallRecord(_ stat: (String) -> StandingsStatDTO?,
+                                      league: League) -> String? {
+        guard let summary = stat("total")?.summary else { return nil }
+        // "53-22-7, 113 PTS" → "53-22-7". The points live in their own
+        // column; repeating them inside the record reads as a typo.
+        return summary.split(separator: ",").first.map(String.init) ?? summary
     }
 
     static func teamSchedule(

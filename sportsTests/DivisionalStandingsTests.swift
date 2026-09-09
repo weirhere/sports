@@ -213,10 +213,14 @@ import Testing
     /// that ESPN shipped only a division record there. It ships both, and
     /// the mapper reads `vsconf`.
     @Test func theInGroupColumnNamesWhatItHolds() {
-        #expect(League.inGroupRecordCaption(.collegeFootball) == "CONF")
-        #expect(League.inGroupRecordCaption(.nfl) == "CONF")
-        #expect(League.inGroupRecordSpoken(.collegeFootball) == "in conference")
-        #expect(League.inGroupRecordSpoken(.nfl) == "in conference")
+        for league in [League.collegeFootball, .nfl] {
+            let inGroup = league.standingsColumns.first { $0.field == .inGroupRecord }
+            #expect(inGroup?.caption == "CONF")
+            #expect(inGroup?.spoken == "in conference")
+        }
+        // The NHL ships no conference record at all, so it keeps no
+        // column that would sit permanently empty.
+        #expect(!League.nhl.standingsColumns.contains { $0.field == .inGroupRecord })
     }
 
     /// The NFL's `vsconf` reaches the same column college football's does,
