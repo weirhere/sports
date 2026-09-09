@@ -651,8 +651,22 @@ nonisolated enum ESPNMapper {
             // normalized here so every `if let broadcast` surface stays
             // honest instead of rendering an empty TV line.
             broadcast: nonEmpty(competition.broadcast)
-                ?? nonEmpty(competition.broadcasts?.first?.names?.first)
+                ?? nonEmpty(broadcastName(from: competition.broadcasts))
         )
+    }
+
+    /// Which of ESPN's listed broadcasts a row names.
+    ///
+    /// The national feed where there is one, whatever order the array
+    /// came in. Football lists it first and hockey does not — an NHL game
+    /// leads with the home market's regional channel ("The Spot - MTN"),
+    /// which is both the wrong answer for most viewers and twice the
+    /// length of the column it has to fit. We can't know which market
+    /// someone is in; we can know which feed everyone can get.
+    static func broadcastName(from broadcasts: [BroadcastDTO]?) -> String? {
+        guard let broadcasts, !broadcasts.isEmpty else { return nil }
+        let national = broadcasts.first { $0.market?.lowercased() == "national" }
+        return (national ?? broadcasts.first)?.names?.first
     }
 
     private static func nonEmpty(_ string: String?) -> String? {

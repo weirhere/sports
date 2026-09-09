@@ -158,6 +158,28 @@ private func fixture(_ name: String) throws -> Data {
         #expect(east.count >= kept.count)
     }
 
+    /// Football lists its national broadcast first and hockey does not —
+    /// an NHL game leads with the home market's regional channel, which is
+    /// the wrong answer for anyone outside that market and twice the
+    /// length of the column it has to fit.
+    @Test func aRowNamesTheNationalFeedWhereThereIsOne() {
+        let national = ESPNMapper.broadcastName(from: [
+            BroadcastDTO(market: "home", names: ["The Spot - MTN"]),
+            BroadcastDTO(market: "national", names: ["NHL Net"]),
+        ])
+        #expect(national == "NHL Net")
+
+        // No national feed: the first listed is all there is.
+        let regional = ESPNMapper.broadcastName(from: [
+            BroadcastDTO(market: "home", names: ["NESN+"]),
+            BroadcastDTO(market: "away", names: ["MNMT2"]),
+        ])
+        #expect(regional == "NESN+")
+
+        #expect(ESPNMapper.broadcastName(from: []) == nil)
+        #expect(ESPNMapper.broadcastName(from: nil) == nil)
+    }
+
     /// ESPN rolls its season pointer the moment the last one ends and
     /// keeps serving the old table underneath it — the NBA standings were
     /// stamped 2026-27 and full of 2025-26 results three weeks before a

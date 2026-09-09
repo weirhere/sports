@@ -85,10 +85,16 @@ struct WidgetHeader: View {
 /// pushed its scores further left than a row reading "FOX" and the score
 /// column zig-zagged down the list. The app's `GameRow` pins the same
 /// column at 80pt for the same reason (Andy, 2026-09-05).
+///
+/// 84pt rather than 64 since hockey arrived (Andy, 2026-09-09): football's
+/// networks are three to five characters ("FOX", "ESPN") and the NHL's
+/// regional ones are fourteen to sixteen ("The Spot - MTN", "FanDuel SN
+/// South"), which truncated mid-name. The 20pt comes out of the team
+/// block, which spends it on two- and three-letter abbreviations.
 struct WidgetGameRow: View {
     let game: WidgetGame
 
-    @ScaledMetric(relativeTo: .caption2) private var statusWidth: CGFloat = 64
+    @ScaledMetric(relativeTo: .caption2) private var statusWidth: CGFloat = 84
 
     var body: some View {
         // sm rather than the app's md on each side of the divider: the
