@@ -34,7 +34,7 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-bg-primary">
-      <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:h-16">
+      <div className="mx-auto flex h-14 max-w-[var(--page-max)] items-center px-4 sm:h-16">
         {/* Back button on entity pages; wordmark or title on top-level */}
         {showBack ? (
           <>
