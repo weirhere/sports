@@ -56,6 +56,19 @@ nonisolated enum GameHeaderState {
         }
     }
 
+    /// The pre-game kickoff split for the detail header, where the time is
+    /// the page's headline and the date its caption beneath — so the two
+    /// need no "at" joining them. Nil for every other status: those render
+    /// `statusLine` as the one line they've always been. An unannounced
+    /// kickoff puts "TBD" in the headline slot and keeps its real day.
+    static func kickoff(_ game: Game, _ summary: GameSummary?) -> (time: String, date: String?)? {
+        guard case .pre = status(game, summary) else { return nil }
+        let day = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        guard let date = game.date else { return ("TBD", nil) }
+        guard !game.timeTBD else { return ("TBD", date.formatted(day)) }
+        return (date.formatted(.dateTime.hour().minute()), date.formatted(day))
+    }
+
     static func isLive(_ game: Game, _ summary: GameSummary?) -> Bool {
         if case .live = status(game, summary) { return true }
         return false

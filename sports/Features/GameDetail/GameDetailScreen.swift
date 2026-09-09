@@ -218,9 +218,27 @@ struct GameDetailScreen: View {
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
 
-    /// The header's "where do I watch" line, live only — gated on the
-    /// summary-fresher status so it retires the moment the game goes final.
-    private var liveBroadcast: String? { isLiveNow ? game.broadcast : nil }
+    /// The header's "where do I watch" line — live, or pre-game, where the
+    /// kickoff split left the network without the second line it used to
+    /// ride in on. Gated on the summary-fresher status so it retires the
+    /// moment the game goes final.
+    private var headerBroadcast: String? {
+        (isLiveNow || kickoff != nil) ? game.broadcast : nil
+    }
+
+    /// Pre-game only: the kickoff time and its date, rendered as two lines.
+    private var kickoff: (time: String, date: String?)? {
+        GameHeaderState.kickoff(game, summary)
+    }
+
+    /// What VoiceOver hears where the header shows its status — the split
+    /// kickoff read back as one sentence.
+    private var headerStatusSpoken: String {
+        guard let kickoff else {
+            return statusLine.replacingOccurrences(of: "\n", with: ", ")
+        }
+        return [kickoff.date, kickoff.time].compactMap { $0 }.joined(separator: ", ")
+    }
 
     /// Past-season games (pushed from a flipped team schedule) must not
     /// wear the current season's standings.
@@ -286,15 +304,33 @@ struct GameDetailScreen: View {
                 if showsScores, let awayScore = away.score, let homeScore = home.score {
                     scoreLine(away: (awayScore, away.winner), home: (homeScore, home.winner))
                 }
-                Text(statusLine)
-                    .font(.metaEmphasis)
-                    .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
-                    .multilineTextAlignment(.center)
+                // Before kickoff the time IS the headline — it takes the
+                // slot the score takes once there is one, with the date as
+                // its caption rather than a phrase joined on with "at".
+                if let kickoff {
+                    Text(kickoff.time)
+                        .font(.kickoffHero)
+                        .foregroundStyle(.textPrimary)
+                        // Same reason the score line keeps its intrinsic
+                        // width: the equal-thirds header would wrap it.
+                        .fixedSize()
+                    if let date = kickoff.date {
+                        Text(date)
+                            .font(.teamName)
+                            .foregroundStyle(.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    Text(statusLine)
+                        .font(.metaEmphasis)
+                        .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
+                        .multilineTextAlignment(.center)
+                }
                 // Live is the one state with no other network surface —
-                // pre-game has the info card (and statusLine's own second
-                // line), finals have nothing left to tune into. Detail
-                // screen only: the share card's status stays score-shaped.
-                if let broadcast = liveBroadcast {
+                // pre-game has the info card, finals have nothing left to
+                // tune into. Detail screen only: the share card's status
+                // stays score-shaped.
+                if let broadcast = headerBroadcast {
                     Text(broadcast)
                         .font(.meta)
                         .foregroundStyle(.textSecondary)
@@ -302,11 +338,11 @@ struct GameDetailScreen: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.top, showsScores ? 0 : Spacing.md)
+            .padding(.top, showsScores ? 0 : Spacing.sm)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-                ([statusLine.replacingOccurrences(of: "\n", with: ", ")]
-                    + (liveBroadcast.map { ["on \($0)"] } ?? []))
+                ([headerStatusSpoken]
+                    + (headerBroadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
             headerSide(home)
         }

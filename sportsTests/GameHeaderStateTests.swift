@@ -10,6 +10,14 @@ private func competitor(_ name: String, score: Int?, isHome: Bool) -> Competitor
     )
 }
 
+private func preGame(date: Date?, timeTBD: Bool = false, broadcast: String? = nil) -> Game {
+    Game(id: "g", date: date, timeTBD: timeTBD, name: nil, shortName: nil,
+         weekNumber: 1, status: .pre(detail: nil),
+         home: competitor("Seattle", score: nil, isHome: true),
+         away: competitor("New England", score: nil, isHome: false),
+         broadcast: broadcast)
+}
+
 private func game(status: GameStatus) -> Game {
     Game(id: "g", date: nil, name: nil, shortName: nil, weekNumber: 1, status: status,
          home: competitor("Tennessee", score: 17, isHome: true),
@@ -102,5 +110,42 @@ private let liveQ3 = GameStatus.live(displayClock: "5:24", period: 3, detail: ni
     @Test func finalSnapshotUnderALiveSummaryKeepsPolling() {
         #expect(GameHeaderState.isLive(game(status: .final(detail: "Final")),
                                        summary(status: liveQ3)))
+    }
+
+    /// The detail header's pre-game split: time in the headline slot, date
+    /// beneath it, so the two never need an "at" joining them.
+    @Test func kickoffSplitsTimeFromDate() {
+        var parts = DateComponents()
+        parts.year = 2026; parts.month = 9; parts.day = 9
+        parts.hour = 20; parts.minute = 20
+        let date = Calendar.current.date(from: parts)!
+        let split = GameHeaderState.kickoff(preGame(date: date), nil)
+        #expect(split?.time == date.formatted(.dateTime.hour().minute()))
+        #expect(split?.date == date.formatted(
+            .dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+    }
+
+    /// An unannounced kickoff has no time to headline, but its day is real
+    /// (re-anchored at the mapper), so the caption keeps it.
+    @Test func kickoffKeepsItsDayWhenTheTimeIsTBD() {
+        let split = GameHeaderState.kickoff(preGame(date: .now, timeTBD: true), nil)
+        #expect(split?.time == "TBD")
+        #expect(split?.date != nil)
+    }
+
+    @Test func kickoffWithNoDateIsAllTBD() {
+        let split = GameHeaderState.kickoff(preGame(date: nil), nil)
+        #expect(split?.time == "TBD")
+        #expect(split?.date == nil)
+    }
+
+    /// Every other status keeps the one status line it has always had —
+    /// the split is pre-game's alone.
+    @Test func kickoffIsNilOnceTheGameIsUnderway() {
+        #expect(GameHeaderState.kickoff(game(status: liveQ3), nil) == nil)
+        #expect(GameHeaderState.kickoff(game(status: .final(detail: "Final")), nil) == nil)
+        // The merge rules: a live snapshot under a pre summary is live.
+        #expect(GameHeaderState.kickoff(game(status: liveQ3),
+                                        summary(status: .pre(detail: nil))) == nil)
     }
 }
