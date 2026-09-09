@@ -440,12 +440,11 @@ struct TeamPage: View {
         .accessibilityHint("View league standings")
     }
 
-    /// The whole-league table this team's group sits under, where the
-    /// league keeps one — every league but college football.
+    /// The list this team's group sits in: a pro league's whole-league
+    /// table, or the college-football division its conference plays in.
     private var leagueDestination: ConferenceDestination? {
-        guard let wide = Conference.leagueWideId(in: pageLeague),
-              resolvedConference?.id != wide else { return nil }
-        let id = ConferenceID(pageLeague, wide)
+        guard let own = resolvedConference,
+              let id = Conference.root(above: own) else { return nil }
         return ConferenceDestination(conference: id, name: Conference.name(for: id),
                                      highlightTeamId: team.id)
     }

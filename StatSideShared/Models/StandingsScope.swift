@@ -57,6 +57,10 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
     /// belong to a conference and nothing else — offers none, exactly as
     /// its conference pages do.
     static func scopes(forTeamIn conference: ConferenceID) -> [StandingsScope] {
+        // Same rule as a conference page's: a rung only counts where there
+        // is a table at it. College football's chain reaches FBS, which is
+        // a group but not a table — a 136-team standing isn't a thing.
+        guard Conference.leagueWideId(in: conference.league) != nil else { return [] }
         let levels = Set(Conference.chain(for: conference).compactMap {
             scope(at: Conference.tier(for: $0.id, in: $0.league))
         })

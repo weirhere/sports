@@ -443,13 +443,11 @@ struct ConferencePage: View {
                                in: destination.league) != .division
     }
 
-    /// The whole-league table above this page, where there is one and this
-    /// page is not already it.
+    /// The list this page belongs to: a pro league's whole-league table,
+    /// or — since 2026-09-09 — the college-football division a conference
+    /// plays in, so the SEC can say FBS and get there.
     private var parentLeagueDestination: ConferenceDestination? {
-        guard !isLeagueWide,
-              let wide = Conference.leagueWideId(in: destination.league)
-        else { return nil }
-        let id = ConferenceID(destination.league, wide)
+        guard let id = Conference.root(above: destination.conference) else { return nil }
         return ConferenceDestination(conference: id, name: Conference.name(for: id))
     }
 

@@ -155,6 +155,21 @@ nonisolated enum Conference {
         return divisionRootNames[id] != nil
     }
 
+    /// The list this group belongs to, and the page above it: a pro
+    /// league's whole-league table, or the college-football division a
+    /// conference plays in.
+    ///
+    /// Nil for the roots themselves — nothing sits above FBS or the NFL —
+    /// and for an id we can't place.
+    static func root(above conference: ConferenceID) -> ConferenceID? {
+        guard !isDivisionRoot(conference.id, in: conference.league) else { return nil }
+        if let wide = leagueWideId(in: conference.league) {
+            return wide == conference.id ? nil : ConferenceID(conference.league, wide)
+        }
+        guard let division = division(for: conference.id, in: conference.league) else { return nil }
+        return divisionRoot(division)
+    }
+
     /// One pro league's group hierarchy, hardcoded because the scoreboard
     /// payload carries none of it.
     ///
@@ -481,8 +496,12 @@ nonisolated enum Conference {
         if let parent = parent(of: conference.id, in: conference.league) {
             chain.append(ConferenceID(conference.league, parent))
         }
-        if let wide = leagueWideId(in: conference.league), wide != conference.id {
-            chain.append(ConferenceID(conference.league, wide))
+        // The list the whole thing sits in: a pro league's own table, or —
+        // since FBS and FCS became groups (2026-09-09) — the college
+        // football division a conference plays in, which is what makes an
+        // FBS follow claim every FBS game.
+        if let root = root(above: chain.last ?? conference), root != conference {
+            chain.append(root)
         }
         return chain
     }

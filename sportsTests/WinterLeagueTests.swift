@@ -211,6 +211,45 @@ import Testing
         #expect(StandingsScope.default(for: .cfb(80)) == .conference)
     }
 
+    /// Every group knows the list it belongs to, which is what the header
+    /// badge links to: a pro conference or division sits under its
+    /// league's table, a college-football conference under FBS or FCS.
+    @Test func everyGroupKnowsTheListAboveIt() {
+        // College football: a conference points at its division.
+        #expect(Conference.root(above: .cfb(8)) == Conference.divisionRoot(.fbs))
+        #expect(Conference.root(above: .cfb(20)) == Conference.divisionRoot(.fcs))
+        // And the roots themselves have nothing above them.
+        #expect(Conference.root(above: .cfb(80)) == nil)
+        #expect(Conference.root(above: .cfb(81)) == nil)
+
+        // The pro leagues: both rungs point at the whole-league table.
+        #expect(Conference.root(above: .nfl(8)) == .nfl(9))
+        #expect(Conference.root(above: .nfl(4)) == .nfl(9))
+        #expect(Conference.root(above: .nba(1)) == .nba(7))
+        #expect(Conference.root(above: .nhl(32)) == .nhl(9))
+        #expect(Conference.root(above: .nfl(9)) == nil)
+
+        // An id nothing can place points nowhere.
+        #expect(Conference.root(above: .cfb(999)) == nil)
+    }
+
+    /// A follow only means anything if the walk-up reaches it. Following
+    /// FBS has to claim every FBS game, which it can only do if a
+    /// conference's chain runs through its division.
+    @Test func aTeamsChainReachesItsDivisionRoot() {
+        #expect(Conference.chain(for: .cfb(8)) == [.cfb(8), Conference.divisionRoot(.fbs)])
+        #expect(Conference.chain(for: .cfb(20)) == [.cfb(20), Conference.divisionRoot(.fcs)])
+        // The root itself is the end of its own chain.
+        #expect(Conference.chain(for: .cfb(80)) == [.cfb(80)])
+        // The pro leagues are unchanged: division, conference, league.
+        #expect(Conference.chain(for: .nfl(4)) == [.nfl(4), .nfl(8), .nfl(9)])
+
+        // And FBS is a group, not a table — a college-football team page
+        // still offers no standings scope, however far its chain reaches.
+        #expect(StandingsScope.scopes(forTeamIn: .cfb(8)).isEmpty)
+        #expect(!StandingsScope.scopes(forTeamIn: .nfl(4)).isEmpty)
+    }
+
     @Test func everyLeagueSpeaksItsOwnSport() {
         #expect(League.nba.sportSegment == "basketball")
         #expect(League.nhl.sportSegment == "hockey")

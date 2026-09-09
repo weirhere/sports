@@ -193,7 +193,6 @@ struct TablesScreen: View {
     private func followableTables(in league: League) -> [ConferenceStandings] {
         var seen: Set<ConferenceID?> = []
         return (tables(in: league) + conferences(in: league))
-            .filter { !isDivisionRoot($0) }
             .filter { seen.insert($0.conference).inserted }
     }
 
@@ -359,11 +358,7 @@ struct TablesScreen: View {
                         // above it has already said which league it is.
                         ConferenceListRow(conference: conference,
                                           title: isLeagueWide(conference) ? "Full league" : nil,
-                                          showsLeader: false,
-                                          // FBS and FCS are ids no team
-                                          // carries, so a follow there
-                                          // would match no game.
-                                          showsFollow: !isDivisionRoot(conference))
+                                          showsLeader: false)
                     }
                 }
             }
