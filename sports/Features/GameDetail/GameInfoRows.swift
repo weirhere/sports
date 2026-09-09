@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// The "Game info" card's body, shared by both of the card's lives: the
-/// pre-kick one that carries the whole "what do I need to know" load
-/// (kickoff, where to watch, the forecast) and the played one that just
-/// places the game and counts the crowd.
+/// The Venue card's body: where the game is played, what it's played on,
+/// and how full the place was. Kickoff, the network and the forecast are
+/// `KickoffInfoRows`' card; these are the ground's own facts.
 ///
 /// The venue is the card's headline — name in ink, city beneath it in
 /// meta gray (FotMob's treatment) — and the crowd numbers below it are
@@ -11,14 +10,10 @@ import SwiftUI
 /// always shown; attendance joins it the moment ESPN publishes one, and
 /// the pair earns a fill meter in ink, never color.
 struct GameInfoRows: View {
-    let game: Game
     let summary: GameSummary
-    /// Pre-kick only. Once a game has scores, kickoff time, the network,
-    /// and the forecast are answered questions.
-    var showsKickoffDetails: Bool = false
 
-    /// Whether the played-game card has anything to say — its gate, the
-    /// `MatchupStandings.hasContent` precedent.
+    /// Whether the card has anything to say about the ground itself —
+    /// its gate, the `MatchupStandings.hasContent` precedent.
     static func hasVenueContent(_ summary: GameSummary) -> Bool {
         summary.venue != nil || summary.attendance != nil
             || summary.venueCapacity != nil || surface(of: summary) != nil
@@ -35,54 +30,11 @@ struct GameInfoRows: View {
 
     private var surface: String? { Self.surface(of: summary) }
 
-    private var weatherLine: String {
-        [summary.weatherTemperature.map { "\($0)°" }, summary.weatherCondition]
-            .compactMap { $0 }.joined(separator: " · ")
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if showsKickoffDetails {
-                if let date = game.date {
-                    infoRow("calendar",
-                            game.timeTBD
-                                ? "\(GameRow.relativeKickParts(date, weekday: .abbreviated).day) · Kickoff TBD"
-                                : GameRow.relativeKick(date, weekday: .abbreviated))
-                }
-                if let broadcast = game.broadcast {
-                    infoRow("tv", broadcast)
-                }
-                if game.date != nil || game.broadcast != nil,
-                   Self.hasVenueContent(summary) {
-                    zoneDivider
-                }
-            }
             venueZone
-            if showsKickoffDetails, !weatherLine.isEmpty {
-                if Self.hasVenueContent(summary) {
-                    zoneDivider
-                }
-                infoRow("cloud.sun", weatherLine)
-            }
         }
         .padding(.vertical, Spacing.xs)
-    }
-
-    /// One icon-led line — the card's original row shape, kept for the
-    /// facts that are a single sentence each.
-    private func infoRow(_ symbol: String, _ text: String) -> some View {
-        HStack(spacing: Spacing.md) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.textSecondary)
-                .frame(width: 20)
-            Text(text)
-                .font(.teamName)
-                .foregroundStyle(.textPrimary)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 7)
     }
 
     private var zoneDivider: some View {
@@ -115,8 +67,17 @@ struct GameInfoRows: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, 7)
             .accessibilityElement(children: .combine)
+            if hasCrowdContent {
+                zoneDivider
+            }
         }
         crowdRows
+    }
+
+    /// Whether anything sits below the venue block — the divider's gate,
+    /// so a card with a stadium and nothing else keeps its single row.
+    private var hasCrowdContent: Bool {
+        summary.attendance != nil || summary.venueCapacity != nil || surface != nil
     }
 
     /// Attendance and capacity, FotMob's pairing: once attendance is
