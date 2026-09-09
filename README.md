@@ -1,12 +1,14 @@
 # StatSide
 
-A college football scores app for iPhone. One sport, done fast, in black and white.
+A sports scores app for iPhone. Four leagues, done fast, in black and white.
 
-The target user checks scores twenty times on a fall Saturday and is tired of ad-stuffed everything-apps where college football is one tab among thirty. Speed and focus are the product: the landing screen answers "what's the state of college football right now" in one thumb, one scroll.
+The target user checks scores twenty times on a fall Saturday and is tired of ad-stuffed everything-apps where their sport is one tab among thirty. Speed and focus are the product: the landing screen answers "what's the state of the day" in one thumb, one scroll.
 
-**Scores** — your followed teams first, then Top 25, then every conference, as accordions. Games appear in every section they belong to; sections are complete rather than deduplicated. **Rankings** — AP, Coaches, and CFP once it exists. **Teams** — browse or search, follow, see a schedule. Plus a home-screen widget for your next game and a local reminder 30 minutes before kickoff.
+College football, the NFL, the NBA and the NHL. Football owns July through February; basketball and hockey own October through June — which is what turned a fall app into a year-round one.
 
-Week is the unit of time, not the day — fans think in weeks, and a date scroller would spend most of the season showing empty Tuesdays.
+**Scores** — your followed teams first, then the tables you follow, then the day's slate: college football broken down by conference, the other three leagues a section each. Games appear in every section they belong to; sections are complete rather than deduplicated. **Tables** — the Top 25 poll, and standings for every conference and division. **Teams** — the teams you follow, with a sheet to add more. Plus a home-screen widget for your next game and a local reminder 30 minutes before it starts.
+
+The **day** is the unit of time. It was the week until two leagues had two calendars: a week strip can only ever be honest about one league at a time, and a day is the only unit every sport agrees on.
 
 ## Requirements
 

@@ -67,7 +67,7 @@ The week strip retired on 2026-09-05 — the day is the Scores screen's axis, be
 
 1. **Following** — any game where either competitor ∈ `FollowingStore.teamKeys`. **Teams only**: a conference or poll follow is a *table* follow and hoists a section instead (2026-09-06). Cross-league, ordered live → upcoming → final, then by clock.
 2. **Followed tables** — `FollowingStore.orderedTables`, in the order the user dragged them into on the Tables hub. A college-football conference already in the stack *moves* here; a poll or an NFL group, which the stack has no counterpart for, gains a section.
-3. **The slate** — college football as one section per conference (`team.conferenceId`, Power 4 → Group of 5 → Independents → FCS → "Other" for both-sides-unknown, alphabetical within a tier), then the NFL as one section. Conference buckets follow the *fetched* divisions, so FCS only appears once someone follows an FCS conference.
+3. **The slate** — college football as one section per conference (`team.conferenceId`, Power 4 → Group of 5 → Independents → FCS → "Other" for both-sides-unknown, alphabetical within a tier), then one section each for the NFL, the NBA and the NHL. Which shape a league takes is `League.slateSplitsByConference`, not a branch per league. Conference buckets follow the *fetched* divisions, so FCS only appears once someone follows an FCS conference.
 
 `GameSection.table` is what makes a hoist a move rather than a clone; everything else intentionally appears in multiple sections. Within a section: chronological. The Live toggle collapses each section to in-progress games and hides the empty ones. Every section but Following defaults open (`UIStateStore.defaultsOpen`).
 
@@ -95,7 +95,15 @@ Project sets `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. `ESPNClient` should be
 
 ## API reference (shapes verified live 2026-07-21)
 
-Base: `https://site.api.espn.com/apis/site/v2/sports/football/college-football`
+Base: `https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}` — `football/college-football`, `football/nfl`, `basketball/nba`, `hockey/nhl`. The sport segment is `League.sportSegment`; everything below is shape-identical across all four unless noted.
+
+**What the winter leagues differ on** (verified live 2026-09-08):
+- `season.year` is the year the season *ends*: `season=2027` is Oct 2026 → Jun 2027, `displayName` "2026-27". `League.espnSeason(for:)` translates at the query string; our own axis is always the opening year.
+- `week` is null and there is no week calendar. `leagues[].calendar` is a flat list of ~229 **ISO date strings** on a single-day request and an empty array on a date range — never the labelled periods football sends. It is decoded leniently because the string form used to throw and take the whole scoreboard with it.
+- Scoreboard team objects carry **no** conference or group id, exactly like the NFL's. `Conference`'s hardcoded team→division tables are what stop every game falling into "Other".
+- A season-long `dates=` window returns at most 900 events (~12 MB) and truncates silently, and `groups=` is ignored — so conference pages have no Games tab there. `/teams/{id}/schedule` still returns a whole 82-game season in one request.
+- `/rankings` is a 404. There are no drives and no `scoringPlays`, but there is a flat `plays[]` with `period.number` on every entry.
+- Standings: the NBA ships `winpercent`/`gamesbehind`, the NHL `points`/`gamesplayed`/`otlosses` and **no `vsconf`** at all.
 
 ### `/scoreboard?groups=80&limit=300&week={n}&seasontype={2|3}`
 - Top level: `leagues[]`, `season{type,year}`, `week{number}`, `events[]`
