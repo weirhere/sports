@@ -190,6 +190,29 @@ private func fixture(_ name: String) throws -> Data {
         }
     }
 
+    /// Division scope is three questions wearing one name, and the third
+    /// was answered wrong: a division's own page asked for its *children*
+    /// and found none, so every one of them said "Standings TBA" while the
+    /// hub row that pushed it was teasing that division's leader.
+    @Test func aDivisionPageShowsItsOwnTable() throws {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self,
+                                           from: fixture("nba-standings-level3"))
+        let divisions = ESPNMapper.divisionStandings(from: dto, league: .nba)
+
+        // The league's page: every division.
+        #expect(divisions.divisionTables(for: .nba(7), isLeagueWide: true).count == 6)
+
+        // A conference's page: the ones under it. The East has three.
+        let east = divisions.divisionTables(for: .nba(5), isLeagueWide: false)
+        #expect(east.count == 3)
+        #expect(east.allSatisfy { $0.parentId == 5 })
+
+        // A division's own page: itself, with its teams in it.
+        let central = divisions.divisionTables(for: .nba(2), isLeagueWide: false)
+        #expect(central.map(\.name) == ["Central"])
+        #expect(central.first?.entries.isEmpty == false)
+    }
+
     /// The NHL keeps no conference record and ranks on points; the NBA
     /// keeps win percentage and games back. Each table's columns have to
     /// find numbers in the payload the league actually ships.

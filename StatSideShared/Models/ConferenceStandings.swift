@@ -95,6 +95,22 @@ nonisolated extension Array where Element == ConferenceStandings {
         league == .nhl ? entry.points.map(Double.init) : entry.winPercent
     }
 
+    /// The division tables a page shows at Division scope, out of every
+    /// division its league has.
+    ///
+    /// Three different questions wearing one scope. A **league's** page
+    /// shows them all. A **conference's** page shows the ones under it. A
+    /// **division's** own page shows *itself* — it is one of these tables
+    /// rather than a parent of them, and asking for its children finds
+    /// nothing, which is how every division page said "Standings TBA"
+    /// while the row that pushed it was teasing that division's leader.
+    func divisionTables(for conference: ConferenceID,
+                        isLeagueWide: Bool) -> [ConferenceStandings] {
+        guard !isLeagueWide else { return self }
+        if let own = first(where: { $0.conference == conference }) { return [own] }
+        return filter { $0.parentId == conference.id && $0.league == conference.league }
+    }
+
     /// One row per conference, divisions folded into their parent — the Sun
     /// Belt, not "Sun Belt - East" and "Sun Belt - West" — for lists that
     /// name conferences rather than table them. The standings themselves

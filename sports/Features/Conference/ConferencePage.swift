@@ -152,10 +152,8 @@ struct ConferencePage: View {
             let own = mine.filter { $0.parentId == nil }
             return own.isEmpty ? mine : own
         case .division:
-            let divisions = divisionsByYear[selectedYear] ?? []
-            return isLeagueWide
-                ? divisions
-                : divisions.filter { $0.parentId == destination.conferenceId }
+            return (divisionsByYear[selectedYear] ?? [])
+                .divisionTables(for: destination.conference, isLeagueWide: isLeagueWide)
         }
     }
 

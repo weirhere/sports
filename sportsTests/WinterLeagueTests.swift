@@ -107,18 +107,31 @@ import Testing
         #expect(Conference.chain(for: .nba(4)) == [.nba(4), .nba(6), .nba(7)])
     }
 
-    /// ESPN publishes no conference marks for either league, so the rows
-    /// wear the league's shield rather than the football glyph. A league
-    /// that *does* publish them and is missing one still shows nothing.
-    @Test func markLessConferencesWearTheirLeaguesShield() {
-        #expect(Conference.logoURL(for: .nba(5)) == League.nba.logoURL)
+    /// A division wears its conference's mark, which is how a row says
+    /// which half of the league it belongs to — the AFC's shield on AFC
+    /// East, the Eastern Conference's on the Atlantic.
+    @Test func divisionsWearTheirConferencesMark() {
+        #expect(Conference.logoURL(for: .nba(5))?.absoluteString.hasSuffix("/nba/500/east.png") == true)
+        #expect(Conference.logoURL(for: .nba(6))?.absoluteString.hasSuffix("/nba/500/west.png") == true)
+        // Atlantic (1) sits under the East, Pacific (4) under the West.
+        #expect(Conference.logoURL(for: .nba(1)) == Conference.logoURL(for: .nba(5)))
+        #expect(Conference.logoURL(for: .nba(4)) == Conference.logoURL(for: .nba(6)))
+        #expect(Conference.logoURL(for: .nfl(8))?.absoluteString.hasSuffix("/afc.png") == true)
+        #expect(Conference.logoURL(for: .nfl(4)) == Conference.logoURL(for: .nfl(8)))
+    }
+
+    /// The NHL publishes no conference marks at all, so its rows wear the
+    /// league's shield rather than the football glyph. A league that
+    /// *does* publish them and is missing one still shows nothing.
+    @Test func aLeagueWithNoConferenceMarksWearsItsOwnShield() {
+        #expect(Conference.logoURL(for: .nhl(7)) == League.nhl.logoURL)
         #expect(Conference.logoURL(for: .nhl(8)) == League.nhl.logoURL)
         // A division inherits its conference's, which is the league's here.
         #expect(Conference.logoURL(for: .nhl(32)) == League.nhl.logoURL)
-        // The NFL publishes AFC and NFC marks, so its divisions inherit
-        // those and an unknown id still gets nothing.
-        #expect(Conference.logoURL(for: .nfl(8))?.absoluteString.hasSuffix("/afc.png") == true)
         #expect(Conference.logoURL(for: .nba(999)) == nil)
+        // FCS's United Athletic is one missing mark in a league that
+        // publishes the rest — still nothing, never a stand-in.
+        #expect(Conference.logoURL(for: .cfb(177)) == nil)
     }
 
     /// The shapes these leagues do *not* have, asserted so nothing quietly

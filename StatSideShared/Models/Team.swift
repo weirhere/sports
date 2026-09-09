@@ -202,10 +202,13 @@ nonisolated enum Conference {
             17: 1, 18: 1, 19: 9, 20: 1, 21: 4, 22: 11, 23: 4, 24: 10,
             25: 11, 26: 11, 27: 9, 28: 1, 29: 10, 30: 9,
         ],
-        // ESPN publishes no NBA conference marks under any bucket
-        // (`nba_conf` 404s, probed 2026-09-08); the rows wear the league
-        // shield instead.
-        conferenceSlugs: [:]
+        // The Eastern and Western Conference marks, filed beside the team
+        // logos rather than in a `nba_conf` bucket — which is where the
+        // 2026-09-08 probe looked, found nothing, and wrongly concluded
+        // they didn't exist. Both verified 200, and both publish a
+        // `500-dark` twin. The divisions inherit them by the parent walk,
+        // which is what lets a row say which conference it is in.
+        conferenceSlugs: [5: "east", 6: "west"]
     )
 
     /// Ids read live from `apis/v2/sports/hockey/nhl/standings` and the
@@ -227,6 +230,9 @@ nonisolated enum Conference {
             26: 32, 27: 31, 28: 31, 29: 33, 30: 31, 37: 30,
             124292: 30, 129764: 31,
         ],
+        // The NHL publishes no conference marks anywhere — every bucket
+        // and spelling probed 2026-09-09. Its divisions wear the league
+        // shield, which is the fallback for a league that has none.
         conferenceSlugs: [:]
     )
 
