@@ -11,6 +11,7 @@ import type {
   ConferenceStandingsGroup,
   ConferenceTeams,
   GameDetail,
+  Team,
   TeamScheduleData,
 } from "@/lib/types";
 import {
@@ -24,12 +25,17 @@ import {
 } from "@/lib/leagues";
 import type {
   EspnScoreboardResponse,
+  EspnCoreCollection,
+  EspnCoreRanking,
   EspnRankingsResponse,
+  EspnTeamsResponse,
   EspnStandingsResponse,
   EspnScheduleResponse,
   EspnGameSummaryResponse,
 } from "./types";
 import {
+  coreRankingUrl,
+  coreWeeksUrl,
   dayWindowUrl,
   gameSummaryUrl,
   rankingsUrl,
@@ -37,10 +43,14 @@ import {
   seasonWindowUrl,
   standingsUrl,
   teamScheduleUrl,
+  teamsUrl,
 } from "./endpoints";
 import { addDays, startOfDay } from "@/lib/day";
+import { FBS_GROUP_ID } from "@/lib/conferences";
 import { tableMatches, type FollowedTable } from "@/lib/followed-tables";
 import {
+  transformCoreRanking,
+  transformTeamDirectory,
   transformScoreboard,
   transformCalendar,
   transformPolls,
@@ -176,13 +186,126 @@ export async function scoreboard(
 }
 
 /** The league's polls. College football is the only one that has any. */
-export async function rankings(league: League): Promise<Poll[]> {
+export async function rankings(
+  league: League,
+  year?: number
+): Promise<Poll[]> {
   if (!hasPoll(league)) return [];
-  const data = await fetchJson<EspnRankingsResponse>(
-    rankingsUrl(league),
-    REVALIDATE.rankings
+  // The site endpoint is latest-only: it ignores `season`, `week`, `year`
+  // and `dates` alike and always answers with the newest poll it has (probed
+  // live 2026-09-05). So it can speak for the season in progress and nothing
+  // else — a past season goes to the core API instead.
+  if (year === undefined || year === leagueSeasonYear(league)) {
+    const data = await fetchJson<EspnRankingsResponse>(
+      rankingsUrl(league),
+      REVALIDATE.rankings
+    );
+    return transformPolls(data, league);
+  }
+  return finalRankings(league, year);
+}
+
+/** Poll ids in ESPN's core API: AP, Coaches, CFP. */
+const CORE_POLL_AP = 1;
+const CORE_POLL_COACHES = 2;
+const CORE_POLL_CFP = 21;
+
+/**
+ * A finished season's closing polls, from ESPN's core API — the one surface
+ * that carries a season/week axis for rankings.
+ *
+ * Two shapes' worth, not one: the AP and Coaches polls end in the postseason
+ * (`types/3/weeks/1`, headlined "Final Rankings"), while the CFP's last table
+ * is selection day's — the final week of the *regular* season, since a
+ * postseason CFP table is a 404. All three resolve for every season back to
+ * the 2014 floor (verified live 2026-09-05).
+ *
+ * A poll that doesn't come back is dropped rather than failing the season;
+ * all three missing is the season failing. An **empty directory** is the same
+ * failure as no poll at all — it would name none of the 25, and a retry beats
+ * a table of dashes.
+ */
+async function finalRankings(league: League, year: number): Promise<Poll[]> {
+  const [directory, ap, coaches, cfp] = await Promise.all([
+    teamDirectory(league),
+    coreRanking(league, { year, seasonType: 3, week: 1, rankingId: CORE_POLL_AP }),
+    coreRanking(league, {
+      year,
+      seasonType: 3,
+      week: 1,
+      rankingId: CORE_POLL_COACHES,
+    }),
+    finalCfpRanking(league, year),
+  ]);
+  const found = [ap, coaches, cfp].filter(
+    (ranking): ranking is EspnCoreRanking => ranking !== undefined
   );
-  return transformPolls(data, league);
+  if (found.length === 0 || directory.size === 0) {
+    throw new EspnDataError(`No rankings for ${year}`);
+  }
+  return found
+    .map((ranking) => transformCoreRanking(ranking, league, directory))
+    .filter((poll): poll is Poll => poll !== null);
+}
+
+/**
+ * The CFP's closing table, whose week is the season's last *regular* one —
+ * 15 or 16 depending on the year, so it is read off the weeks collection
+ * rather than assumed.
+ */
+async function finalCfpRanking(
+  league: League,
+  year: number
+): Promise<EspnCoreRanking | undefined> {
+  const weeks = await fetchJson<EspnCoreCollection>(
+    coreWeeksUrl(league, { year, seasonType: 2 }),
+    REVALIDATE.rankings
+  ).catch(() => undefined);
+  const last = weeks?.count;
+  if (!last || last <= 0) return undefined;
+  return coreRanking(league, {
+    year,
+    seasonType: 2,
+    week: last,
+    rankingId: CORE_POLL_CFP,
+  });
+}
+
+function coreRanking(
+  league: League,
+  params: { year: number; seasonType: number; week: number; rankingId: number }
+): Promise<EspnCoreRanking | undefined> {
+  return fetchJson<EspnCoreRanking>(
+    coreRankingUrl(league, params),
+    REVALIDATE.rankings
+  ).catch(() => undefined);
+}
+
+/**
+ * Every team ESPN knows, by id — one request, cached like a directory
+ * because that is what it is. Team names don't change inside a session.
+ */
+async function teamDirectory(league: League): Promise<Map<string, Team>> {
+  const data = await fetchJson<EspnTeamsResponse>(
+    teamsUrl(league),
+    REVALIDATE.conferences
+  ).catch(() => undefined);
+  return transformTeamDirectory(data, league);
+}
+
+/**
+ * A whole division's season — every FBS game, which is what makes the Top
+ * 25's Games tab a filter over one slate rather than 25 schedule fetches.
+ *
+ * ESPN reads the FBS group as a conference, so this is `conferenceGames`
+ * against group 80 — the same two-request season window, split at November 1
+ * because a full FBS season is ~950 events against a 900 cap.
+ */
+export async function seasonGames(
+  league: League,
+  year?: number
+): Promise<Game[]> {
+  return conferenceGames(league, FBS_GROUP_ID, year);
 }
 
 /** A league's conferences with alphabetical rosters, for browsing. */

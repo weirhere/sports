@@ -99,6 +99,13 @@ export interface Game {
   livePhase?: LivePhase;
   /** ESPN's status detail string — the degrade path for status lines. */
   statusDetail?: string;
+  /**
+   * ESPN's printed headline for the fixture. College football names its
+   * playoff rounds here and nowhere else — its whole postseason is one
+   * `seasontype=3` week, so "Quarterfinal at the Allstate Sugar Bowl" is
+   * the only thing separating a quarterfinal from a bowl.
+   */
+  headline?: string;
 }
 
 export interface Conference {

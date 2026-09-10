@@ -232,18 +232,18 @@ polls).
 | 2026-09-08 | Standings columns are per league; the ranking key follows | shipped |
 | 2026-09-06 | Championship cut marked with a leading-edge bar plus a keyed legend | shipped |
 | 2026-09-05 | `SlateControlRow` — Weeks / Date toggles + a Team dropdown | shipped — W4b |
-| 2026-09-05 | The Top 25 becomes an entity page with Standings and Games tabs | pending — W4c |
-| 2026-09-05 | `PollScreen` moves onto the entity template; the picker becomes a chip | pending — W4c |
+| 2026-09-05 | The Top 25 becomes an entity page with Standings and Games tabs | shipped — W4c |
+| 2026-09-05 | `PollScreen` moves onto the entity template; the picker becomes a chip | shipped — W4c |
 | 2026-09-05 | ConferencePage's Games tab gains a team filter | shipped — W4b |
 | 2026-09-06 | The preseason gets its own cards; the season opens in July | shipped — W4b |
 | 2026-09-06 | Team pages fetch the preseason and split Games into a card per phase | shipped — W4b |
 | 2026-09-08 | A Games tab opens on the next game — earlier cards fold behind one row | shipped — W4b |
 | 2026-09-08 | A Games tab is affordable per team, not per conference (NBA/NHL) | shipped — W4b, as the iOS **code** has it rather than as the row reads. See below |
-| 2026-09-06 | The postseason becomes its own tab, drawn as a bracket | pending — W4c |
-| 2026-09-06 | Bracket connectors are earned, never assumed; byes are synthesised | pending — W4c |
-| 2026-09-06 | The postseason tab is the playoff only; the Pro Bowl hangs beneath | pending — W4c |
-| 2026-09-08 | No Postseason tab for NBA/NHL this pass | pending — W4c |
-| 2026-09-05 | Past-season polls come from the core API | pending — W4c |
+| 2026-09-06 | The postseason becomes its own tab, drawn as a bracket | shipped — W4c |
+| 2026-09-06 | Bracket connectors are earned, never assumed; byes are synthesised | shipped — W4c |
+| 2026-09-06 | The postseason tab is the playoff only; the Pro Bowl hangs beneath | shipped — W4c |
+| 2026-09-08 | No Postseason tab for NBA/NHL this pass | shipped — W4c |
+| 2026-09-05 | Past-season polls come from the core API | shipped — W4c |
 | 2026-09-06 | The Top 25 wears college football's mark, not a trophy | shipped — in W3, with the hub row |
 
 ### W4b — the Games tabs  ✅ shipped 2026-09-09
@@ -288,6 +288,64 @@ filter, a whole season — instead of a rolling window, and it means
 is per **group**, not per league. That is a product change, and it belongs on
 iOS first. Logged in BACKLOG.md rather than taken here, because shipping it on
 web alone would open exactly the divergence this epic exists to close.
+
+### W4c — the bracket, the Top 25, past-season polls  ✅ shipped 2026-09-09
+
+**The Top 25 is an entity, so it gets the entity page.** Hero mark — college
+football's own, not a trophy, because "Top 25" never said whose — title, the
+poll's own ESPN headline as the subtitle, the season chip beside the follow
+pill on the toolbar row, and Standings / Games / Postseason tabs. The poll
+picker becomes a menu chip in the pane's control strip: AP, Coaches and CFP
+are the same 25 teams read by different voters, so they filter one table
+rather than splitting the page. The table itself adopts the standings tables'
+column language — `#` / TEAM / OVR plus a `MOV` column, which is the one thing
+a poll has that a standings table doesn't. The Games tab is the division's
+whole season filtered to the poll's own teams, by the app's "any ranked
+participant" rule.
+
+**Past seasons come from ESPN's core API**, the only surface with a season
+axis for rankings — the site API's `/rankings` ignores `season`, `week`, `year`
+and `dates` alike. The AP and Coaches polls end in the postseason
+(`types/3/weeks/1`, "Final Rankings"); the CFP's last table is selection day's,
+at the final week of the *regular* season, read off the weeks collection
+rather than assumed. Its ranks name their team by `$ref` alone, so they are
+resolved against a one-request `/teams` directory; a rank the directory can't
+name is dropped, and an empty directory fails the season rather than tabling
+dashes.
+
+**The postseason is a bracket, not a list.** A round of games is a list; a
+bracket is a *shape*, and the shape is the information. Match cards in two
+columns, the selected round beside the one it feeds, joined by hairline
+elbows, with a round chip row and a threshold swipe between rounds.
+
+The connectors are the part worth naming: **a line is drawn only where a
+completed game's winner actually turns up in a later game.** ESPN publishes no
+bracket tree, so the alternative is assuming games 1 and 2 feed the next
+round's game 1 — wrong the moment a format reseeds, and wrong invisibly. So an
+unplayed round draws nothing and wires itself up as results land, and a team
+that reached a round without playing the previous one gets a **bye** entry of
+its own rather than appearing from nowhere. Each next-round game sits level
+with the midpoint of its own sources, which is what stops a winner's line
+crossing the column to reach it.
+
+Verified against the real 2025 CFP: four first-round games and four byes
+resolving into four quarterfinals, then the bracket-ordered pairing that
+reorders the left column out of calendar order — MIA/OSU beside MISS/UGA
+because both feed the same semifinal. The NFL's four rounds land the same way,
+with the **Pro Bowl beneath the final** rather than taking a round chip of its
+own: it is filed as `seasontype=3` week 4, and a chip would put an all-star
+game between the conference championships and the Super Bowl. College
+football's bowls stay out of the bracket entirely — a quarterfinal played *at*
+a bowl is a quarterfinal, and a bowl feeds nothing.
+
+The NBA and NHL name no round, so the tab never appears for them: their
+playoffs are best-of-seven *series*, and reading advancement off "a winner
+turns up later" would draw a line per game of a series. The deferral is
+explicit rather than accidental.
+
+**One bug fixed on the way**: `Game.headline` wasn't decoded at all, and it is
+the *only* place a college-football playoff round is named — the whole
+postseason files under one `seasontype=3` week, bowls and bracket together.
 
 **Three bugs fixed on the way, none of them a parity row.**
 
