@@ -308,6 +308,21 @@ describe("transformTeamSchedule", () => {
     const times = past.games.map((g) => Date.parse(g.scheduledAt));
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
+
+  it("stamps each phase's events with its own season type", () => {
+    // The three phases arrive as three separate requests, and each one has
+    // to say which it is: a preseason game filed as postseason reads as a
+    // game that counted, in the wrong card, at the wrong end of the season.
+    const events = schedule2025.events ?? [];
+    const withPhases = transformTeamSchedule(schedule2025, "cfb", {
+      preseason: events.slice(0, 1),
+      postseason: events.slice(1, 2),
+    });
+    const types = withPhases.games.map((game) => game.seasonType);
+    expect(types.filter((type) => type === 1)).toHaveLength(1);
+    expect(types.filter((type) => type === 3)).toHaveLength(1);
+    expect(types.filter((type) => type === 2)).toHaveLength(events.length);
+  });
 });
 
 describe("a season that hasn't opened has no numbers", () => {

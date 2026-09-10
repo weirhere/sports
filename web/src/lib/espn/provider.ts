@@ -38,6 +38,8 @@ import {
   standingsUrl,
   teamScheduleUrl,
 } from "./endpoints";
+import { addDays, startOfDay } from "@/lib/day";
+import { tableMatches, type FollowedTable } from "@/lib/followed-tables";
 import {
   transformScoreboard,
   transformCalendar,
@@ -306,10 +308,10 @@ async function fetchSchedule(
       REVALIDATE.schedule
     ).catch(() => undefined),
   ]);
-  return transformTeamSchedule(regular, league, [
-    ...(preseason?.events ?? []),
-    ...(postseason?.events ?? []),
-  ]);
+  return transformTeamSchedule(regular, league, {
+    preseason: preseason?.events,
+    postseason: postseason?.events,
+  });
 }
 
 /**
@@ -332,8 +334,10 @@ export async function conferenceGames(
   conferenceId: number,
   year?: number
 ): Promise<Game[]> {
-  if (!canTableAWholeSeason(league)) return [];
   const seasonYear = year ?? leagueSeasonYear(league);
+  if (!canTableAWholeSeason(league)) {
+    return rollingConferenceGames(league, conferenceId, seasonYear);
+  }
   const span = seasonSpan(league, seasonYear);
   const split = new Date(seasonYear, 10, 1); // November 1
   const halves: [Date, Date][] =
@@ -365,6 +369,61 @@ export async function conferenceGames(
     }
   }
   return games;
+}
+
+/** How many windows forward a Games tab looks before giving up. */
+const ROLLING_WINDOW_PROBES = 4;
+
+/**
+ * The slate for a league whose season is too big to fetch whole: one
+ * `dates=` window around today, narrowed to this page's teams.
+ *
+ * A season-long request for the NBA returns exactly **900 events and 12 MB**
+ * and truncates silently in February (probed live 2026-09-08), and ESPN
+ * ignores `groups=` outside football — so there is no narrow fetch to fall
+ * back on and the narrowing happens here. It runs through the same rule
+ * that decides whether a followed table claims a game, so a division's page
+ * and a division follow can never disagree about which games are its; a
+ * league-wide page keeps them all, because every team's chain reaches its
+ * league.
+ *
+ * A week back and three weeks forward answers "when do they play next" and
+ * "what did I miss" in one request of about a megabyte. The alternative is
+ * nine monthly requests and 24 MB for a page view, which is not a tab, it is
+ * a download.
+ *
+ * The window walks forward until one has games in it, the way the day
+ * strip's own probe does: in September the NBA's next game is three weeks
+ * past the end of the first window, and a tab saying "Schedule TBA" three
+ * weeks before tip-off answers the wrong question. A finished season reads
+ * from its **opening** instead of from today, which is nowhere near it.
+ */
+async function rollingConferenceGames(
+  league: League,
+  conferenceId: number,
+  year: number
+): Promise<Game[]> {
+  const span = seasonSpan(league, year);
+  const table: FollowedTable = {
+    kind: "conference",
+    ref: { league, id: conferenceId },
+  };
+  const isCurrent = year === leagueSeasonYear(league);
+  let start = isCurrent ? addDays(startOfDay(new Date()), -7) : span.start;
+
+  for (let probe = 0; probe < ROLLING_WINDOW_PROBES; probe += 1) {
+    if (start > span.end) return [];
+    const end = addDays(start, 28);
+    const board = await scoreboardForDays(
+      league,
+      start,
+      end > span.end ? span.end : end
+    );
+    const games = board.games.filter((game) => tableMatches(table, game));
+    if (games.length > 0) return games;
+    start = end;
+  }
+  return [];
 }
 
 export async function gameSummary(
