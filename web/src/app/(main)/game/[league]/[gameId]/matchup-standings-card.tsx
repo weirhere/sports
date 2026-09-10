@@ -5,6 +5,7 @@
 // conference table.
 
 import Link from "next/link";
+import { conferencePath } from "@/lib/routes";
 import type {
   ConferenceStanding,
   ConferenceStandingsGroup,
@@ -145,7 +146,9 @@ function StandingRow({ slot }: { slot: Slot }) {
   const { standing, position, group } = slot;
   return (
     <Link
-      href={`/conference/${group.id}`}
+      // League-qualified: group 8 is the SEC here and the AFC in the NFL,
+      // so a bare `/conference/8` is two different tables.
+      href={conferencePath({ league: group.league, id: Number(group.id) })}
       aria-label={spokenSummary(slot)}
       className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-bg-header"
     >

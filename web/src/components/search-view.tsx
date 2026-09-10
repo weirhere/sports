@@ -22,7 +22,7 @@ import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences
 import { liveStatusText } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Game, Scoreboard, Team } from "@/lib/types";
-import { conferencePath } from "@/lib/routes";
+import { conferencePath, teamPath } from "@/lib/routes";
 
 // College football's conferences are the whole conference corpus today;
 // W3/W6 widen it to every league's.
@@ -185,7 +185,7 @@ function TeamResultRow({ team }: { team: Team }) {
   const label = [team.school, team.name].filter(Boolean).join(" ");
   return (
     <Link
-      href={`/team/${team.id}`}
+      href={teamPath(team)}
       aria-label={label}
       className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >

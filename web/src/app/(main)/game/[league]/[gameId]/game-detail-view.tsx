@@ -26,10 +26,16 @@ import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
 } from "@/components/slate-control-row";
-import { seasonYear } from "@/lib/leagues";
+import { scoringCardTitle, seasonYear } from "@/lib/leagues";
 import { showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
-import { GameInfoCard } from "./game-info-card";
+import {
+  GameInfoCard,
+  VenueCard,
+  gameInfoHasContent,
+  venueHasContent,
+} from "./game-info-cards";
+import { LiveSituationCard } from "./live-situation-card";
 import { LineScoreCard } from "./line-score-card";
 import { ScoringPlaysCard } from "./scoring-plays-card";
 import { TeamStatsCard, hasTeamStats } from "./team-stats-card";
@@ -103,8 +109,11 @@ export function GameDetailView({
       standings
     );
 
-  const venueVisible =
-    scores && (Boolean(game.venue.name) || data.attendance !== undefined);
+  const venueVisible = venueHasContent(game, data);
+  const infoVisible = gameInfoHasContent(game, data, standings);
+  // "Scoring" in football, "Goals" in hockey, and no card at all in
+  // basketball — ~98 buckets a game is the box score with worse formatting.
+  const scoringTitle = scoringCardTitle(game.league);
 
   const showsTabs = tabs.length > 1;
 
@@ -128,9 +137,20 @@ export function GameDetailView({
         // right. The iPhone's single column keeps the same reading order.
         <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
+            {/* The Gamecast strip leads while a game is live: the down, the
+                spot and the last play are what the page is being opened for
+                at 3:30 on a Saturday. It is built from the drive in
+                progress, which ESPN drops at final — so it retires itself. */}
+            {data.situation && (
+              <LiveSituationCard game={game} situation={data.situation} />
+            )}
             {hasLinescores && <LineScoreCard game={game} />}
-            {scoringPlays.length > 0 && (
-              <ScoringPlaysCard plays={scoringPlays} />
+            {scoringPlays.length > 0 && scoringTitle && (
+              <ScoringPlaysCard
+                plays={scoringPlays}
+                title={scoringTitle}
+                game={game}
+              />
             )}
             {scores && hasTeamStats(data.awayStats, data.homeStats) && (
               <TeamStatsCard
@@ -150,13 +170,14 @@ export function GameDetailView({
           </div>
 
           <div className="flex min-w-0 flex-col gap-2">
-            {/* Pre-kick every section on the left is empty, so this card
-                carries the whole "what do I need to know" load; once scores
-                exist it returns as the venue card. */}
-            {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
-            {venueVisible && (
-              <GameInfoCard game={game} detail={data} mode="venue" />
+            {/* Pre-kick every section on the left is empty, so these two
+                carry the whole "what do I need to know" load. One card was
+                answering two questions: when and where to watch is one, the
+                ground it's played on is another. */}
+            {!scores && infoVisible && (
+              <GameInfoCard game={game} detail={data} standings={standings} />
             )}
+            {venueVisible && <VenueCard game={game} detail={data} />}
             {standingsVisible && (
               <MatchupStandingsCard
                 away={game.awayTeam.team}

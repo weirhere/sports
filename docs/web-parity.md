@@ -380,13 +380,13 @@ not a conference with the division's id).
 | 2026-09-05 | Box-score columns carried from the payload, never named in code | shipped — W5a |
 | 2026-09-06 | A **Plays tab**; the Drives card moves into it | shipped — W5a |
 | 2026-09-08 | Plays group by **period** where a league has no drives | shipped — W5a |
-| 2026-09-06 | A live game gets the **Gamecast strip** | pending — W5b |
-| 2026-09-09 | A pre-game header leads with the kickoff time (`kickoffHero`) | pending — W5b |
-| 2026-09-09 | The Game info card splits in two — Game info and **Venue** | pending — W5b |
-| 2026-09-09 | The Game info card leads with a **league row** of tappable table badges | pending — W5b |
-| 2026-09-06 | Venue gets capacity from the core API, plus an attendance meter | pending — W5b |
+| 2026-09-06 | A live game gets the **Gamecast strip** | shipped — W5b (needs an eyes-on check on a live game) |
+| 2026-09-09 | A pre-game header leads with the kickoff time (`kickoffHero`) | shipped — W5b |
+| 2026-09-09 | The Game info card splits in two — Game info and **Venue** | shipped — W5b |
+| 2026-09-09 | The Game info card leads with a **league row** of tappable table badges | shipped — W5b |
+| 2026-09-06 | Venue gets capacity from the core API, plus an attendance meter | **n/a** — ESPN ships no capacity anywhere. The meter shipped; the fetch did not. See below |
 | 2026-09-05 | Scoring rows say whose points those were three ways | shipped — W5a, on the play rows; the Scoring card is W5b |
-| 2026-09-08 | A derived scoring play is one that moved the game score; hockey → "Goals" | pending — W5b |
+| 2026-09-08 | A derived scoring play is one that moved the game score; hockey → "Goals" | shipped — W5b |
 | 2026-09-08 | A period is called whatever its league calls it; the hockey-5 rule | shipped — W5a |
 
 **Split in two**, like W4: **W5a** (the tab shell, the box score, the Plays
@@ -433,6 +433,70 @@ and basketball, three periods in hockey, then OVERTIME and counting — except a
 **hockey period 5, which is a shootout in the regular season and a second
 overtime in the playoffs**, so the label is only offered where the game could
 have one.
+
+### W5b — the Summary pane's cards  ✅ shipped 2026-09-10
+
+**The pre-game header leads with the kickoff.** The time takes the slot a
+played game's score takes, the date drops beneath it, and the network gets a
+third line of its own — the split left it without the second line it used to
+ride in on. "Wed, Sep 9 at 8:20 PM" set in the page's quietest type answered
+its one question in a whisper while the space between the logos sat empty.
+TBD inverts for free: "TBD" headlines and the real day keeps the caption.
+
+**Game info splits from Venue.** One card was answering two questions — when
+and where to watch is one, the ground it's played on is another — and the
+second half only existed pre-kick, which is what left the played-game card
+titled after a card it no longer resembled. The weather rides with the
+kickoff: it is the other thing that stops mattering once the game starts.
+
+**Game info leads with a league row**: the league's mark in the icon gutter,
+then a tappable badge per table the game counts toward — the widest page
+first, then each side's conference. A conference game contributes **one**
+conference badge, not two, because the badges are the tables the game appears
+in and both sides share one.
+
+**The Gamecast strip** leads the pane while a game is live: possession, the
+down, the spot, the drive so far and the last play, over a monochrome field
+bar whose ticks every ten yards are what turn a bar into a field. Monochrome
+because the header already carries the live dot. It is built from
+`drives.current`'s last play — the down it *left behind*, since the strip
+describes what happens next — and ESPN drops that object the moment a game
+ends, so the card retires itself with no clock check.
+
+**A derived scoring play is one that moved the game score.** ESPN ships
+`scoringPlays` for football and none at all for hockey, so hockey's card is
+picked out of the flat feed — and only plays whose running score actually
+changed, because ESPN flags every shootout attempt as a scoring play and
+stamps it with the *shootout tally* rather than the game score. The card is
+"Goals" in hockey and doesn't exist in basketball.
+
+### Two things W5b could not mirror
+
+**ESPN ships no venue capacity — anywhere.** The 2026-09-06 iOS decision says
+capacity "comes from the core API's venue resource (`/venues/{id}`), memoized
+per venue for the client's life", and the row it was written to fix — a
+Capacity line that "has never rendered once" — is still not rendering,
+because the core resource has **no `capacity` key at all**. Probed live
+2026-09-10: a core venue object is `id`, `guid`, `fullName`, `address`,
+`grass`, `indoor`, `images` and nothing else; twelve college-football venues
+sampled from the collection returned capacity on **zero** of them, and an NFL
+venue (Lumen Field) the same. The site API's `gameInfo.venue` carries no
+capacity in any of the three leagues either — while `attendance` is present
+in all three (93,033 / 68,744 / 17,956).
+
+So the web ships the **card** — attendance leading, the fill meter, the
+capacity slot wired behind its optional field so it lights up if ESPN ever
+ships one — and **not** the per-venue fetch, which would cost a request per
+venue per session to learn nothing. iOS is making that request today. Logged
+in BACKLOG.md.
+
+**A summary payload places no team in a conference.** Every game-detail team
+arrives with `conferenceId: "0"` (verified live), so the league row had
+nothing to build a conference badge from and rendered empty. The web resolves
+a side from the **standings the page already fetched** — a third place to
+look, after the payload's own id and the pro registry's division map. iOS's
+`GameLeagueRow` has only the first two, so the same row is likely empty on a
+college-football game there; worth an eyes-on check.
 
 ## W6 — Teams tab, search, onboarding
 

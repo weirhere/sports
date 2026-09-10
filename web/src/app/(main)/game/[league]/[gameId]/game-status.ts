@@ -5,6 +5,7 @@
 
 import type { Game, GameStatus } from "@/lib/types";
 import { liveStatusText } from "@/lib/format";
+import { gameState } from "@/lib/game-state";
 
 export function isLiveStatus(status: GameStatus): boolean {
   return (
@@ -105,4 +106,27 @@ export function quarterMarkerLabel(period: number | undefined): string {
     default:
       return `${period - 4}OT`;
   }
+}
+
+/**
+ * The pre-game header's headline, split in two.
+ *
+ * A pre-game page's one question is *when*, so the time takes the slot a
+ * played game's score takes and the date drops beneath it (iOS, 2026-09-09).
+ * The "at" goes with the join — the two parts are returned separately so
+ * nothing has to phrase them as a sentence.
+ *
+ * TBD inverts cleanly for free: "TBD" headlines and the real day keeps the
+ * caption, where the old single line said "Wed, Sep 9 · TBD".
+ */
+export function kickoffHero(
+  game: Game
+): { time: string; date?: string } | undefined {
+  if (showsScores(game) || gameState(game.status) !== "pre") return undefined;
+  const parsed = Date.parse(game.scheduledAt);
+  if (Number.isNaN(parsed)) return { time: "TBD" };
+  const date = new Date(parsed);
+  const day = kickoffDayText(game.scheduledAt);
+  if (game.timeTBD) return { time: "TBD", date: day };
+  return { time: kickoffTimeText(date.toISOString()), date: day };
 }
