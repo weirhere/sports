@@ -22,6 +22,11 @@ import type {
   Poll,
   GameDetail,
   GameDrive,
+  PlayItem,
+  ScoringSide,
+  BoxScoreTeam,
+  BoxScoreCategory,
+  BoxScorePlayer,
   LeaderCategory,
   GameLeader,
   ScoringPlayItem,
@@ -68,8 +73,10 @@ import type {
   EspnScheduleResponse,
   EspnScheduleEvent,
   EspnScheduleCompetitor,
+  EspnBoxscore,
   EspnBoxscoreTeam,
   EspnDrive,
+  EspnPlay,
   EspnScoringPlay,
   EspnTeamLeaders,
   EspnVenue,
@@ -1064,7 +1071,139 @@ function transformDrive(drive: EspnDrive, index: number): GameDrive {
     isScore: drive.isScore ?? false,
     summary: drive.description,
     quarter: drive.start?.period?.number,
+    plays: transformPlays(drive.plays ?? []),
   };
+}
+
+/**
+ * A play feed, stamped with **whose points** each scoring play was.
+ *
+ * The side is read off the change in the running score rather than off the
+ * team that ran the play: a pick six and a kick return both score for the
+ * side that wasn't on offense. A scoring play whose numbers ESPN didn't ship
+ * gets no side rather than a guessed one.
+ */
+export function transformPlays(plays: EspnPlay[]): PlayItem[] {
+  const mapped: PlayItem[] = [];
+  let previousAway: number | undefined;
+  let previousHome: number | undefined;
+
+  for (const [index, play] of plays.entries()) {
+    const away = play.awayScore;
+    const home = play.homeScore;
+    let scoringSide: ScoringSide | undefined;
+    if (play.scoringPlay === true && away !== undefined && home !== undefined) {
+      if (previousAway !== undefined && previousHome !== undefined) {
+        if (away > previousAway) scoringSide = "away";
+        else if (home > previousHome) scoringSide = "home";
+      }
+    }
+    mapped.push({
+      id: play.id ?? `play-${index}`,
+      text: nonEmpty(play.text),
+      downDistanceText: nonEmpty(play.start?.downDistanceText),
+      nextDownDistanceText: nonEmpty(play.end?.shortDownDistanceText),
+      possessionText: nonEmpty(play.end?.possessionText),
+      yardsToEndzone: play.end?.yardsToEndzone,
+      clock: nonEmpty(play.clock?.displayValue),
+      period: play.period?.number,
+      typeText: nonEmpty(play.type?.text),
+      isScoringPlay: play.scoringPlay ?? false,
+      awayScore: away,
+      homeScore: home,
+      scoringSide,
+      teamId: nonEmpty(play.team?.id),
+    });
+    if (away !== undefined) previousAway = away;
+    if (home !== undefined) previousHome = home;
+  }
+  return mapped;
+}
+
+/**
+ * The **player** box score, one entry per team.
+ *
+ * The columns come from the payload's own `labels[]` and are never named
+ * here, because the column set changes during the game: a live `passing`
+ * group ships five columns and the same group ships six once the game is
+ * final (QBR only lands at the end). A row whose stat count doesn't match
+ * the header would put every number under the wrong column, so it is
+ * **dropped rather than rendered as a lie** — and so is a totals row.
+ */
+export function transformBoxScore(
+  boxscore: EspnBoxscore | undefined,
+  league: League
+): BoxScoreTeam[] {
+  const teams: BoxScoreTeam[] = [];
+  for (const entry of boxscore?.players ?? []) {
+    const teamId = entry.team?.id;
+    if (!teamId) continue;
+    const categories: BoxScoreCategory[] = [];
+    for (const group of entry.statistics ?? []) {
+      // Football splits its box score into named groups (passing, rushing,
+      // …). Basketball ships **one** group with `name: null`, because there
+      // is only one table to ship — and requiring a name dropped every NBA
+      // box score on the floor. The columns are what a box score is; the
+      // name is only how a section is labelled when there are several.
+      const name = group.name ?? group.text ?? "players";
+      const columns = group.labels ?? [];
+      if (columns.length === 0) continue;
+
+      const players: BoxScorePlayer[] = [];
+      for (const row of group.athletes ?? []) {
+        const athlete = row.athlete;
+        const playerName = athlete?.displayName ?? athlete?.shortName;
+        if (!athlete || !playerName || !row.stats) continue;
+        if (row.stats.length !== columns.length) continue;
+        players.push({
+          id: athlete.id ?? `${teamId}-${playerName}`,
+          name: playerName,
+          jersey: nonEmpty(athlete.jersey),
+          headshotUrl: nonEmpty(athlete.headshot?.href),
+          stats: row.stats,
+        });
+      }
+      // ESPN ships every category for every game whether or not anyone
+      // recorded one. An interception group with no interceptions isn't a
+      // section, it's noise.
+      if (players.length === 0) continue;
+
+      const totals = group.totals ?? [];
+      categories.push({
+        id: name,
+        label: boxScoreCategoryLabel(name, group.text, entry.team, league),
+        columns,
+        players,
+        totals: totals.length === columns.length ? totals : [],
+      });
+    }
+    if (categories.length > 0) teams.push({ teamId, categories });
+  }
+  return teams;
+}
+
+/**
+ * ESPN's group text is the team-prefixed "Miami Passing"; the card header
+ * already says whose table this is, so the prefix comes off. Falls back to
+ * un-camel-casing the group name ("kickReturns" → "Kick Returns").
+ */
+function boxScoreCategoryLabel(
+  name: string,
+  text: string | undefined,
+  team: EspnTeam | undefined,
+  league: League
+): string {
+  for (const prefix of [team?.displayName, team?.location, team?.name]) {
+    if (prefix && text?.startsWith(prefix)) {
+      const stripped = text.slice(prefix.length).trim();
+      if (stripped.length > 0) return stripped;
+    }
+  }
+  if (text && text.trim().length > 0 && name === "players") return text.trim();
+  // Basketball's one unnamed group needs a heading of its own.
+  if (name === "players") return league === "nhl" ? "Skaters" : "Players";
+  const spaced = name.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function transformScoringPlay(
@@ -1182,5 +1321,10 @@ export function transformGameSummary(
     ),
     drives: drives.map(transformDrive),
     scoringPlays: (summary.scoringPlays ?? []).map(transformScoringPlay),
+    boxScore: transformBoxScore(summary.boxscore, league),
+    // Only ever populated where a league has no drives to group by:
+    // football's plays live inside its drives, and carrying them twice
+    // would print the same rows in two places.
+    plays: drives.length > 0 ? [] : transformPlays(summary.plays ?? []),
   };
 }

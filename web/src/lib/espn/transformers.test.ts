@@ -21,6 +21,8 @@ import {
   transformConferenceTeams,
   transformPolls,
   transformTeamSchedule,
+  transformBoxScore,
+  transformPlays,
 } from "./transformers";
 
 const scoreboard = scoreboardJson as unknown as EspnScoreboardResponse;
@@ -380,5 +382,196 @@ describe("a season that hasn't opened has no numbers", () => {
     expect(transformStandings(undated, "nba")[0].entries[0].conferenceRecord).toBe(
       "36-16"
     );
+  });
+});
+
+describe("the box score carries its own columns", () => {
+  // The whole rule: a live `passing` group ships five columns and the same
+  // group ships six once the game is final (QBR only lands at the end), so a
+  // schema named in code misaligns every row mid-game.
+  const group = (over: Record<string, unknown> = {}) => ({
+    name: "passing",
+    text: "Miami Passing",
+    labels: ["C/ATT", "YDS", "TD"],
+    athletes: [
+      {
+        athlete: { id: "1", displayName: "A. Quarterback", jersey: "5" },
+        stats: ["11/19", "162", "2"],
+      },
+    ],
+    totals: ["15/26", "199", "2"],
+    ...over,
+  });
+
+  it("reads the columns off the payload", () => {
+    const teams = transformBoxScore(
+      { players: [{ team: { id: "2390", displayName: "Miami" }, statistics: [group()] }] },
+      "cfb"
+    );
+    expect(teams).toHaveLength(1);
+    expect(teams[0].categories[0].columns).toEqual(["C/ATT", "YDS", "TD"]);
+    expect(teams[0].categories[0].players[0].stats).toEqual(["11/19", "162", "2"]);
+  });
+
+  it("drops a row whose stat count doesn't match the header", () => {
+    const teams = transformBoxScore(
+      {
+        players: [
+          {
+            team: { id: "2390" },
+            statistics: [
+              group({
+                athletes: [
+                  { athlete: { id: "1", displayName: "Short" }, stats: ["11/19", "162"] },
+                  { athlete: { id: "2", displayName: "Right" }, stats: ["9/12", "88", "1"] },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      "cfb"
+    );
+    expect(teams[0].categories[0].players.map((p) => p.name)).toEqual(["Right"]);
+  });
+
+  it("drops a totals row that doesn't match, keeping the category", () => {
+    const teams = transformBoxScore(
+      {
+        players: [
+          { team: { id: "2390" }, statistics: [group({ totals: ["15/26", "199"] })] },
+        ],
+      },
+      "cfb"
+    );
+    expect(teams[0].categories[0].totals).toEqual([]);
+    expect(teams[0].categories[0].players).toHaveLength(1);
+  });
+
+  it("keeps a group ESPN gave no name — basketball ships exactly one", () => {
+    // Requiring a name dropped every NBA box score on the floor, invisibly,
+    // since an empty box score is how the tab hides itself.
+    const teams = transformBoxScore(
+      {
+        players: [
+          {
+            team: { id: "2" },
+            statistics: [
+              {
+                labels: ["MIN", "PTS", "REB"],
+                athletes: [
+                  { athlete: { id: "9", displayName: "A. Guard" }, stats: ["34", "28", "5"] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      "nba"
+    );
+    expect(teams[0].categories[0].label).toBe("Players");
+    expect(teams[0].categories[0].players).toHaveLength(1);
+  });
+
+  it("strips the team prefix ESPN puts on a group heading", () => {
+    const teams = transformBoxScore(
+      {
+        players: [
+          { team: { id: "2390", displayName: "Miami" }, statistics: [group()] },
+        ],
+      },
+      "cfb"
+    );
+    expect(teams[0].categories[0].label).toBe("Passing");
+  });
+
+  it("drops a category nobody recorded anything in", () => {
+    // ESPN ships all ten for every game — an interception group with no
+    // interceptions isn't a section, it's noise.
+    const teams = transformBoxScore(
+      {
+        players: [
+          {
+            team: { id: "2390" },
+            statistics: [group({ athletes: [] }), group({ name: "rushing", text: undefined })],
+          },
+        ],
+      },
+      "cfb"
+    );
+    expect(teams[0].categories.map((c) => c.id)).toEqual(["rushing"]);
+  });
+
+  it("un-camel-cases a group name with no heading", () => {
+    const teams = transformBoxScore(
+      {
+        players: [
+          {
+            team: { id: "2390" },
+            statistics: [group({ name: "kickReturns", text: undefined })],
+          },
+        ],
+      },
+      "cfb"
+    );
+    expect(teams[0].categories[0].label).toBe("Kick Returns");
+  });
+});
+
+describe("a scoring play says whose points those were", () => {
+  const play = (over: Record<string, unknown>) => ({
+    id: String(Math.random()),
+    scoringPlay: false,
+    ...over,
+  });
+
+  it("reads the side off the change in the running score", () => {
+    // Not off the team that ran the play: a pick six and a kick return both
+    // score for the side that wasn't on offense.
+    const plays = transformPlays([
+      play({ awayScore: 0, homeScore: 0 }),
+      play({ scoringPlay: true, awayScore: 7, homeScore: 0 }),
+      play({ scoringPlay: true, awayScore: 7, homeScore: 7 }),
+    ]);
+    expect(plays.map((p) => p.scoringSide)).toEqual([
+      undefined,
+      "away",
+      "home",
+    ]);
+  });
+
+  it("claims no side for a scoring play with no numbers to read", () => {
+    const plays = transformPlays([
+      play({ awayScore: 0, homeScore: 0 }),
+      play({ scoringPlay: true }),
+    ]);
+    expect(plays[1].scoringSide).toBeUndefined();
+  });
+
+  it("claims no side for the very first play, having nothing to compare", () => {
+    const plays = transformPlays([
+      play({ scoringPlay: true, awayScore: 7, homeScore: 0 }),
+    ]);
+    expect(plays[0].scoringSide).toBeUndefined();
+  });
+
+  it("carries the spot and the down a play left behind", () => {
+    const plays = transformPlays([
+      play({
+        text: "pass complete for 11 yards",
+        period: { number: 2 },
+        clock: { displayValue: "5:24" },
+        start: { downDistanceText: "1st & 10 at IU 5" },
+        end: { shortDownDistanceText: "2nd & 4", possessionText: "WSU 26", yardsToEndzone: 26 },
+      }),
+    ]);
+    expect(plays[0]).toMatchObject({
+      period: 2,
+      clock: "5:24",
+      downDistanceText: "1st & 10 at IU 5",
+      nextDownDistanceText: "2nd & 4",
+      possessionText: "WSU 26",
+      yardsToEndzone: 26,
+    });
   });
 });

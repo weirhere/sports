@@ -180,6 +180,39 @@ export function leagueSpec(league: League): LeagueSpec {
   return SPECS[league];
 }
 
+/**
+ * What a league calls its scoring periods — four quarters in football and
+ * basketball, three periods in hockey.
+ */
+export function periodFormat(league: League): {
+  regulationCount: number;
+  longName: string;
+  shortName: string;
+} {
+  return league === "nhl"
+    ? { regulationCount: 3, longName: "PERIOD", shortName: "P" }
+    : { regulationCount: 4, longName: "QUARTER", shortName: "Q" };
+}
+
+/**
+ * What the Summary tab calls its derived-scoring card, where it has one.
+ *
+ * Basketball gets none: ~98 buckets a game is the box score with worse
+ * formatting. Hockey's is "Goals" — and ESPN ships no `scoringPlays` for it,
+ * so the card is derived off the play feed instead.
+ */
+export function scoringCardTitle(league: League): string | undefined {
+  switch (league) {
+    case "cfb":
+    case "nfl":
+      return "Scoring";
+    case "nhl":
+      return "Goals";
+    case "nba":
+      return undefined;
+  }
+}
+
 /** ESPN's site API base for one league. */
 export function apiBase(league: League): string {
   const { sportSegment, pathSegment } = SPECS[league];

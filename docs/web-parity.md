@@ -376,18 +376,63 @@ not a conference with the division's id).
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-05 | Game detail becomes tabbed — Summary / Box score | pending |
-| 2026-09-05 | Box-score columns carried from the payload, never named in code | pending |
-| 2026-09-06 | A **Plays tab**; the Drives card moves into it | pending |
-| 2026-09-08 | Plays group by **period** where a league has no drives | pending |
-| 2026-09-06 | A live game gets the **Gamecast strip** | pending |
-| 2026-09-09 | A pre-game header leads with the kickoff time (`kickoffHero`) | pending |
-| 2026-09-09 | The Game info card splits in two — Game info and **Venue** | pending |
-| 2026-09-09 | The Game info card leads with a **league row** of tappable table badges | pending |
-| 2026-09-06 | Venue gets capacity from the core API, plus an attendance meter | pending |
-| 2026-09-05 | Scoring rows say whose points those were three ways | pending |
-| 2026-09-08 | A derived scoring play is one that moved the game score; hockey → "Goals" | pending |
-| 2026-09-08 | A period is called whatever its league calls it; the hockey-5 rule | pending |
+| 2026-09-05 | Game detail becomes tabbed — Summary / Box score | shipped — W5a |
+| 2026-09-05 | Box-score columns carried from the payload, never named in code | shipped — W5a |
+| 2026-09-06 | A **Plays tab**; the Drives card moves into it | shipped — W5a |
+| 2026-09-08 | Plays group by **period** where a league has no drives | shipped — W5a |
+| 2026-09-06 | A live game gets the **Gamecast strip** | pending — W5b |
+| 2026-09-09 | A pre-game header leads with the kickoff time (`kickoffHero`) | pending — W5b |
+| 2026-09-09 | The Game info card splits in two — Game info and **Venue** | pending — W5b |
+| 2026-09-09 | The Game info card leads with a **league row** of tappable table badges | pending — W5b |
+| 2026-09-06 | Venue gets capacity from the core API, plus an attendance meter | pending — W5b |
+| 2026-09-05 | Scoring rows say whose points those were three ways | shipped — W5a, on the play rows; the Scoring card is W5b |
+| 2026-09-08 | A derived scoring play is one that moved the game score; hockey → "Goals" | pending — W5b |
+| 2026-09-08 | A period is called whatever its league calls it; the hockey-5 rule | shipped — W5a |
+
+**Split in two**, like W4: **W5a** (the tab shell, the box score, the Plays
+tab and the per-league period rules those panes need) and **W5b** (the Summary
+pane's own cards — the Gamecast strip, the kickoff hero, the Game info /
+Venue split with its league badge row, venue capacity and the attendance
+meter, and the derived-scoring rules).
+
+### W5a — the tab shell, the box score, the Plays tab  ✅ shipped 2026-09-09
+
+**Summary / Plays / Box score**, and a tab only exists where its data does: a
+pre-kick game, or one ESPN hasn't filled in, shows Summary alone and **no tab
+row at all** — pixel-identical to what it showed before either tab existed.
+Plays sits in the middle because chronology comes before rosters. The Drives
+card moved *into* it rather than being copied: leaving it on Summary would
+print the same rows in two tabs.
+
+**Box-score columns come from the payload, never from code.** ESPN ships its
+own `labels[]`, and the set changes during the game — a live `passing` group
+has five columns and the same group has six once the game is final, because
+QBR only lands at the end. So a row whose stat count doesn't match the header
+is dropped rather than rendered with every number under the wrong column, and
+so is a totals row that doesn't match. Two things the port got right that iOS
+had to fix after the fact: **a group with no name is kept** (basketball ships
+exactly one, unnamed, and requiring a name dropped every NBA box score
+invisibly), and a category nobody recorded anything in is dropped, since ESPN
+ships all ten for every game.
+
+**The Plays tab groups by what the league is played in.** Football's plays
+live inside their drives, so it is one card of drive accordion rows, newest
+first, each expanding in place. Basketball and hockey ship no drives at all
+and a flat feed of ~490 plays, so the **period** is the only rung they have —
+the same accordion, with the last period open. `All plays` / `Scoring` are the
+Games tabs' own toggle language: two answers to one question.
+
+**A scoring play says whose points those were** — read off the change in the
+running score rather than off the team that ran the play, because a pick six
+and a kick return both score for the side that wasn't on offence. Weight
+marks the side, so the colour budget stays at three; a play whose numbers
+ESPN didn't ship emphasises neither number rather than guessing.
+
+**A period is called whatever its league calls it**: four quarters in football
+and basketball, three periods in hockey, then OVERTIME and counting — except a
+**hockey period 5, which is a shootout in the regular season and a second
+overtime in the playoffs**, so the label is only offered where the game could
+have one.
 
 ## W6 — Teams tab, search, onboarding
 
