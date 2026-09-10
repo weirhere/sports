@@ -2,10 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { migrateFavorites } from "@/lib/favorites-migration";
+import { isLeague, type League } from "@/lib/leagues";
 import type { ConferenceToken, FollowKey } from "@/lib/refs";
 
 const TEAM_STORAGE_KEY = "cfb-hub-favorites";
 const CONF_STORAGE_KEY = "cfb-hub-fav-conferences";
+/**
+ * Followed polls, stored as bare **league** tokens (`"cfb"`).
+ *
+ * Keyed by league rather than a flag because the NFL has no poll today and
+ * a league that grows one must need no migration. Deliberately outside the
+ * migration and the version key: the set is new, so there is nothing to
+ * migrate, and a value that isn't a league is dropped on read.
+ */
+const POLL_STORAGE_KEY = "cfb-hub-fav-polls";
 const VERSION_KEY = "cfb-hub-favorites-version";
 // v3 league-qualifies both sets ("cfb:130", "cfb:8") — ESPN ids collide
 // across leagues, so a bare id follows two teams at once.
@@ -30,6 +40,7 @@ function readStoredIds(key: string): string[] {
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoriteConferences, setFavoriteConferences] = useState<string[]>([]);
+  const [favoritePolls, setFavoritePolls] = useState<League[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -61,6 +72,7 @@ export function useFavorites() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFavorites(teams);
       setFavoriteConferences(confs);
+      setFavoritePolls(readStoredIds(POLL_STORAGE_KEY).filter(isLeague));
     } catch {
       // Ignore localStorage errors
     }
@@ -105,6 +117,25 @@ export function useFavorites() {
     [favoriteConferences]
   );
 
+  const toggleFavoritePoll = useCallback((league: League) => {
+    setFavoritePolls((prev) => {
+      const next = prev.includes(league)
+        ? prev.filter((id) => id !== league)
+        : [...prev, league];
+      try {
+        localStorage.setItem(POLL_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  }, []);
+
+  const isFavoritePoll = useCallback(
+    (league: League) => favoritePolls.includes(league),
+    [favoritePolls]
+  );
+
   return {
     favorites,
     toggleFavorite,
@@ -112,6 +143,9 @@ export function useFavorites() {
     favoriteConferences,
     toggleFavoriteConference,
     isFavoriteConference,
+    favoritePolls,
+    toggleFavoritePoll,
+    isFavoritePoll,
     isLoaded,
   };
 }

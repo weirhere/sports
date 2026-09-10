@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import {
   canTableAWholeSeason,
+  hasCollegeDivisions,
   hasPoll,
   seasonSpan,
   seasonYear as leagueSeasonYear,
@@ -217,6 +218,31 @@ export async function conferenceStandings(
     REVALIDATE.standings
   );
   return transformStandings(data, league);
+}
+
+/**
+ * Every table a league's hub row lists, in one request.
+ *
+ * The pro leagues ask for the **divisional** response (`level=3`) and fold
+ * the conferences back out of it, rather than asking for both: the hub
+ * lists divisions now (a division is the race a team is actually in, where
+ * a conference is a seeding pool), and folding costs nothing where a second
+ * request would cost three more on every hub load.
+ *
+ * College football asks the shipped response — its conferences have no
+ * divisions to reach for, and its two *divisions* (FBS and FCS) are
+ * separate `group=` requests the caller makes side by side so either can
+ * fail alone.
+ */
+export async function hubStandings(
+  league: League,
+  options?: { year?: number; group?: number }
+): Promise<ConferenceStandingsGroup[]> {
+  return conferenceStandings(league, {
+    year: options?.year,
+    group: options?.group,
+    level: hasCollegeDivisions(league) ? undefined : 3,
+  });
 }
 
 /**

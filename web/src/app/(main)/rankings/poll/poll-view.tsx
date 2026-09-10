@@ -12,6 +12,7 @@ import type { Poll, RankedTeam } from "@/lib/types";
 import { TeamLogo } from "@/components/team-logo";
 import { cn } from "@/lib/utils";
 import { teamPath } from "@/lib/routes";
+import { FollowPill } from "@/components/follow-pill";
 
 /** Mirrors the iOS `UIStateStore.pollChoice` preference. */
 const POLL_CHOICE_KEY = "statside.ui.pollChoice";
@@ -55,6 +56,14 @@ export function PollView({ polls }: { polls: Poll[] }) {
 
   return (
     <div className="flex flex-col gap-2">
+      {/* The Top 25 is followable (iOS, 2026-09-05) — a third follow set,
+          keyed by league so a league that grows a poll needs no migration.
+          A followed poll leads the Scores page under Following and still
+          repeats inside its league's accordion on the hub. */}
+      <div className="flex items-center justify-between px-1 pt-1">
+        <h1 className="type-team-name-em text-text-primary">Top 25</h1>
+        <FollowPill league="cfb" kind="poll" name="Top 25" />
+      </div>
       {polls.length > 1 && (
         <div className="flex items-center gap-2 px-1 py-1">
           {polls.map((poll) => {

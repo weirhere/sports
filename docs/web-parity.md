@@ -155,22 +155,62 @@ start where the games do. The `FollowPromptCard` still hides at rail width.
 through the section engine and fed an empty list — the Leagues hub is where a
 poll is followed from), and the drag UI for reordering followed tables.
 
-## W3 — Leagues hub (today's Rankings tab)
+## W3 — Leagues hub  ✅ shipped 2026-09-09
+
+Verified live: College Football's card holds 28 rows — the Top 25, the FBS
+root, its eleven conferences in tier order, the FCS root and its fourteen —
+and the NFL's holds its own 32-team table above eight divisions grouped
+AFC-then-NFC. Following a poll and three conferences, dragging the SEC from
+last to second, and reloading Scores put Top 25 → Big Ten → SEC at the head
+of a Saturday: one list, one order, both screens.
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-09 | The tab is renamed **Leagues** and takes a trophy icon | pending |
-| 2026-09-05 | One accordion per league, each a browse card with persisted collapse | pending |
-| 2026-09-09 | Pro-league accordions list **divisions**, not conferences | pending |
-| 2026-09-06 | FCS folds inside College Football — one card, no second header | pending |
-| 2026-09-05 | A divisional conference is one row (`foldingDivisions()`) | pending |
-| 2026-09-05 | The NFL gets a whole-league row, built by merging tables already fetched | pending |
-| 2026-09-05 | The Top 25 is followable — a third follow set, keyed by league | pending |
-| 2026-09-06 | A followed thing gets a card, not a row | pending |
-| 2026-09-06 | Followed tables are drag-reorderable; that order leads Scores | pending |
-| 2026-09-07 | The reorder is a hand-rolled drag, not a system drag session | pending |
-| 2026-09-09 | A conference row's leader teaser falls back to the overall record; a league row shows none | pending |
-| 2026-09-09 | NBA divisions wear their conference's mark | pending |
+| 2026-09-09 | The tab is renamed **Leagues** and takes a trophy icon | shipped |
+| 2026-09-05 | One accordion per league, each a browse card with persisted collapse | shipped |
+| 2026-09-09 | Pro-league accordions list **divisions**, not conferences | shipped |
+| 2026-09-06 | FCS folds inside College Football — one card, no second header | shipped |
+| 2026-09-05 | A divisional conference is one row (`foldingDivisions()`) | shipped |
+| 2026-09-05 | The NFL gets a whole-league row, built by merging tables already fetched | shipped |
+| 2026-09-05 | The Top 25 is followable — a third follow set, keyed by league | shipped |
+| 2026-09-06 | A followed thing gets a card, not a row | shipped |
+| 2026-09-06 | Followed tables are drag-reorderable; that order leads Scores | shipped |
+| 2026-09-07 | The reorder is a hand-rolled drag, not a system drag session | shipped |
+| 2026-09-09 | A conference row's teaser falls back to the overall record; a league row shows none | shipped |
+| 2026-09-09 | NBA divisions wear their conference's mark | shipped — via the registry's parent walk |
+| — | The season-not-started rule (see below) | shipped |
+
+**The route keeps its name.** `/rankings` still serves the hub, exactly as
+iOS kept `TablesScreen` and `Tab.tables` — only the words on screen moved.
+Nothing that was linked stops resolving.
+
+**Two things fixed on the way, neither a parity row.**
+
+The standings transformer read **one depth** of ESPN's group tree. That was
+fine for the shipped response and wrong for two shapes it now has to handle:
+a `level=3` request nests divisions under conferences, and college
+football's *divisional era* did the same on the plain response — which is
+why iOS still shows "Standings TBA" on a 2019 AAC page (`CLAUDE.md`,
+2026-08-31, logged there as a known edge). The web now walks the whole tree,
+takes parentage from the registry first and the payload's nesting second,
+and drops a group that is purely a container so an empty "AFC" can't appear
+beside the real one.
+
+And **a season that hasn't opened has no numbers.** ESPN rolls its season
+pointer the moment the last one ends and keeps serving the old table
+underneath it: probed live 2026-09-09, the NBA standings were stamped
+2026-27 and full of 2025-26 results three weeks before a ball was tipped, so
+every NBA row on the hub was teasing last season's leader. The roster still
+stands — who is in a division is true all summer — so the fix keeps the
+teams and drops the records.
+
+> **A gap in this ledger, found by using it.** That last rule exists in the
+> iOS app (`ESPNMapper.seasonHasStarted`) but has **no row in CLAUDE.md's
+> decisions log**, so the audit that built this file never saw it. The
+> ledger is only ever as complete as the log it mirrors, and the CI check
+> can only enforce that the log and the ledger grow together — not that a
+> shipped behavior reached the log in the first place. Worth knowing before
+> treating a `pending`-free wave as proof of parity.
 
 ## W4 — Entity pages (conference, team, Top 25)
 

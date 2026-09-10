@@ -64,6 +64,7 @@ export function ScoresView({ seed }: ScoresViewProps) {
   const {
     favorites,
     favoriteConferences,
+    favoritePolls,
     isLoaded: favoritesLoaded,
   } = useFavoritesContext();
 
@@ -78,12 +79,10 @@ export function ScoresView({ seed }: ScoresViewProps) {
     () =>
       orderedTables({
         followedConferenceTokens: favoriteConferences,
-        // Poll follows are W3's — the Leagues hub is where a poll is
-        // followed from. A conference follow already hoists here.
-        followedPollLeagues: [],
+        followedPollLeagues: favoritePolls,
         order: uiState.tableOrder,
       }),
-    [favoriteConferences, uiState.tableOrder]
+    [favoriteConferences, favoritePolls, uiState.tableOrder]
   );
 
   const sections = useMemo(

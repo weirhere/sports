@@ -160,6 +160,13 @@ export interface EspnSituation {
 export interface EspnStandingsResponse {
   name?: string;
   children?: EspnStandingsGroup[];
+  /**
+   * ESPN rolls its season *pointer* the moment the last one ends and keeps
+   * serving the old table underneath it — probed live 2026-09-09, the NBA
+   * standings were stamped 2026-27 and full of 2025-26 results three weeks
+   * before a ball was tipped. So the stamp is no use and `startDate` is.
+   */
+  season?: { year?: number; startDate?: string; displayName?: string };
 }
 
 export interface EspnStandingsGroup {
@@ -167,6 +174,11 @@ export interface EspnStandingsGroup {
   name?: string;
   shortName?: string;
   abbreviation?: string;
+  /**
+   * A `level=3` request nests divisions under their conference. The
+   * shipped response stops at the conferences and carries none of these.
+   */
+  children?: EspnStandingsGroup[];
   standings?: {
     entries?: EspnStandingsEntry[];
   };
