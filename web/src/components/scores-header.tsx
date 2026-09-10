@@ -1,15 +1,16 @@
 "use client";
 
-// The Scores header controls — the iOS `ScoresHeader` grouped capsule
+// The Scores slate controls — the iOS `ScoresHeader` grouped capsule
 // (FotMob's tap-target language): one bg-elevated capsule holding the Live
-// pill and the view-options funnel. The wordmark half of the iOS header is
-// already the nav bar's job on "/", so rather than mounting a second header
-// this component renders the capsule INTO the nav bar's right slot — one
-// header, wordmark left, controls right. (The old season-selector portal is
-// gone; the season menu lives in the filter sheet now.)
+// pill and the view-options funnel.
+//
+// It rendered into the nav bar's right slot until 2026-09-10, on the
+// reasoning that "/" already had a header and shouldn't grow a second one.
+// True, but it put the day's two scopes a header away from the day itself —
+// and left the strip below to carry the alignment alone. Both now sit in
+// `ScoresControlCard`, one row apart, and the nav bar is the wordmark and
+// the site nav again.
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { ListFilter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,21 +76,4 @@ export function ScoresHeaderControls({
       </button>
     </div>
   );
-}
-
-/**
- * Mounts the controls into the nav bar's right slot so "/" keeps exactly
- * one header row.
- */
-export function ScoresHeader(props: ScoresHeaderProps) {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    // The slot only exists post-hydration; the one-time lookup-and-set is
-    // the same pattern use-favorites documents for post-hydration reads.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTarget(document.getElementById("navbar-right-slot"));
-    return () => setTarget(null);
-  }, []);
-  if (target === null) return null;
-  return createPortal(<ScoresHeaderControls {...props} />, target);
 }

@@ -609,6 +609,52 @@ to be pushed to 196.
 
 ---
 
+## Web-originated decisions
+
+Rows that started here rather than on iOS. They carry a status too — the iOS
+side is the one that may be pending, and `n/a` cuts both ways: a shape that
+answers a desktop problem has nothing to port to a phone.
+
+| Date | Decision | iOS status |
+|---|---|---|
+| 2026-09-09 | The game page's OpenGraph card (`statside.co`) | shipped — it has always been web-first |
+| 2026-09-10 | The Scores day strip, the Live/funnel capsule and collapse-all move into one sticky card at the top of the slate column | **n/a** — the phone has no follow rail, so it has no gap to close |
+
+### The Scores control card  ✅ shipped 2026-09-10
+
+Andy, from a FotMob side-by-side: *"move the date controls, live affordance,
+filters, etc into a card container so that leagues can be top aligned to that
+rather than having an awkward amount of space above the[m] and to the left of
+the date controls."*
+
+The three controls lived in three places, and none of them was the column they
+scope. The day strip was `position: fixed`, inset past the follow rail
+(`lg:pl-[calc(var(--sidebar-w)+var(--sidebar-gap))]`) so its chips began where
+the games did. The Live pill and the view funnel portalled into the nav bar's
+right slot. Collapse-all floated in a bare row above the first accordion. The
+cost was geometric and paid twice: the rail's width of dead air to the left of
+the strip, and the strip's height of dead air above **every** card on the page,
+because the grid carried an `mt-12` to clear chrome it didn't contain.
+
+In the column's own flow all of that goes. The rail top-aligns to the card
+(both measured at 76px at rest, both stuck at the nav bar's 64px), and the
+leagues below sit where cards sit. `ChromePortal` stays — the floating Today
+button still needs to escape the route template's transform — but the strip no
+longer does, because it is no longer fixed.
+
+**Sticky, not merely in flow.** The day is the screen's axis and a Saturday
+slate is ten thousand pixels long; the way to the next day must not be a scroll
+back to the top. It tucks flush under the nav bar in both sizes (56px on a
+phone, 64px from `sm` up), so no slit of scrolling content shows between them.
+
+**Outside the swipe element, deliberately.** The day swipe reads a pointer
+drag across the slate, and the strip scrolls horizontally under the same
+finger — inside the swipe ref, dragging the strip would scroll it *and* step
+the day. The card is the column's first child and the swipe ref moved to the
+sibling below it.
+
+---
+
 ## Rows that are `n/a`, recorded so they stay decided
 
 | iOS date | Decision | Why no web analog |

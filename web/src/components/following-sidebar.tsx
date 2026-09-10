@@ -84,9 +84,13 @@ export function FollowingSidebar() {
     favoriteConferences.length === 0;
 
   return (
+    // Sticky flush under the nav bar, which is the only chrome above it
+    // now: the day strip used to be fixed between the two, and the rail had
+    // to clear its height as well (2026-09-10). The rail only exists at
+    // `lg`, where the bar is always h-16.
     <aside
       aria-label="Following"
-      className="hidden lg:sticky lg:top-[7.5rem] lg:block lg:self-start"
+      className="hidden lg:sticky lg:top-16 lg:block lg:self-start"
     >
       <div className="flex flex-col gap-3">
         {teamsVisible && (
