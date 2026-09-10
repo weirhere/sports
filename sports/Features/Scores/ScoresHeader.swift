@@ -20,9 +20,13 @@ struct ScoresHeader: View {
     let onToggleLive: () -> Void
     let onOpenCalendar: () -> Void
 
+    #if DEBUG
+    @State private var showsActivityDebug = false
+    #endif
+
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            Wordmark()
+            wordmark
             Spacer(minLength: 0)
             // FotMob's grouped-capsule chrome (Andy, 2026-08-29): the
             // capsule carries the tap target, the pills paint their own
@@ -37,6 +41,20 @@ struct ScoresHeader: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.sm)
+    }
+
+    /// The wordmark, plus — in DEBUG only — the way into the Live Activity
+    /// harness. A long-press on the masthead: no chrome, no release
+    /// surface, and nothing a user can reach by accident.
+    @ViewBuilder
+    private var wordmark: some View {
+        #if DEBUG && canImport(ActivityKit)
+        Wordmark()
+            .onLongPressGesture(minimumDuration: 0.6) { showsActivityDebug = true }
+            .sheet(isPresented: $showsActivityDebug) { LiveActivityDebugSheet() }
+        #else
+        Wordmark()
+        #endif
     }
 
     /// The season at a glance, one tap from the day you're on. Never

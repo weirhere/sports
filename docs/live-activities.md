@@ -1,6 +1,6 @@
 # Live Activities — the decision, and what it actually costs
 
-**Status:** open question for Andy. No code exists. Written 2026-09-05, prompted by Gabe Santiago asking for Live Activities. Backlog: E9.
+**Status:** **answered 2026-09-10 — yes, path 3.** Andy: *"lets build this."* Written 2026-09-05, prompted by Gabe Santiago asking for Live Activities; the design that will ride on it was drawn 2026-09-10 (Figma, `↳ Live Activities`). Backlog: E9 closed the decision, E12 is the build.
 
 ## Why this doc exists
 
@@ -69,3 +69,33 @@ Is StatSide willing to run a small always-on service — an APNs-capable Worker 
 - **No** → Live Activities stay iced, and the Icebox line gets the honest reason: not "no push story", but "the only version that works needs a service we've chosen not to run."
 - **Yes** → this becomes a real epic, and it should be sequenced with Open question #6, not ahead of it.
 - **Not yet** → the doc stands; revisit when the licensing answer forces the proxy question anyway.
+
+## Answered — 2026-09-10
+
+**Yes, path 3.** Recorded here rather than only in the decisions log because the
+next person to read this doc should not have to reconstruct which way it went.
+
+What that commits to, restated so it isn't rediscovered later:
+
+- **An always-on service.** Broadcast push channels, one channel per *game*, an
+  APNs key and `aps-environment`. No per-user state, ever — the moment the
+  service needs a device token store it has become path 2, and path 2 was
+  rejected on economics, not on taste.
+- **One ESPN poll per live game**, whoever is watching. That is the concession
+  the polite-guest rule makes, and it holds only while load stays a function of
+  the slate rather than the install base. ~60 concurrent games is the Saturday
+  ceiling.
+- **An operational commitment with nobody on call.** If the service dies
+  mid-Saturday, cards freeze at a wrong score. The client is therefore required
+  to carry a stale state that stops claiming to be current — see the design.
+
+What it does **not** commit to, and what E12 deliberately sequences second: the
+service itself. The client half of this feature — the ActivityKit surface, the
+card, the Dynamic Island ladder, the entry point — is identical under paths 2
+and 3, needs no server to build, and can be reviewed on a device driven by local
+updates. It ships behind the service, not before it, because §"Why it fails"
+above still applies to a local-only build put in front of users.
+
+**Still to sequence with Open question #6**, per the recommendation above: the
+service is the same shape of infrastructure as the CFBD caching proxy, and
+standing up two of them separately would be the expensive way to do it.

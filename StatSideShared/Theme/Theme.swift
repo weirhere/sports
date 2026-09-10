@@ -144,6 +144,13 @@ extension Font {
     /// a played game's score takes, one step down from `scoreHero` because
     /// "12:00 PM" is twice a score's characters in the same third-of-a-row.
     static var kickoffHero: Font { scaled(28, .semibold, relativeTo: .title1).monospacedDigit() }
+    /// The Live Activity's headline number — the score once there is one,
+    /// the kickoff time before. Deliberately between `score` (17) and
+    /// `scoreHero` (34): the lock-screen card is the widget's size rather
+    /// than the detail header's, so it starts from the row scale (the
+    /// widget's 2026-09-06 lesson), but its single number still has to
+    /// outrank everything beside it on a card a fan reads at arm's length.
+    static var activityHero: Font { scaled(22, .semibold, relativeTo: .title3).monospacedDigit() }
     static var teamName: Font { scaled(15, .regular, relativeTo: .subheadline) }
     static var teamNameEmphasis: Font { scaled(15, .semibold, relativeTo: .subheadline) }
     static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
