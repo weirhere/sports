@@ -25,11 +25,10 @@ import {
   type LeagueScoreboardsSeed,
 } from "@/lib/hooks/use-league-scoreboards";
 import { ChromePortal } from "@/components/chrome-portal";
-import { DayStrip } from "@/components/day-strip";
 import { DayCalendarSheet } from "@/components/day-calendar-sheet";
 import { TodayButton } from "@/components/today-button";
 import { SectionAccordion } from "@/components/section-accordion";
-import { ScoresHeader } from "@/components/scores-header";
+import { ScoresControlCard } from "@/components/scores-control-card";
 import { ScoreFilterSheet } from "@/components/score-filter-sheet";
 import { FollowPromptCard } from "@/components/follow-prompt-card";
 import { FollowingSidebar } from "@/components/following-sidebar";
@@ -175,12 +174,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
 
   return (
     <div>
-      <ScoresHeader
-        liveOnly={uiState.liveOnly}
-        onToggleLive={handleToggleLive}
-        filterLabel={filterLabel}
-        onOpenFilter={() => setFilterSheetOpen(true)}
-      />
       <ScoreFilterSheet
         open={filterSheetOpen}
         onOpenChange={setFilterSheetOpen}
@@ -191,18 +184,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
         onYearChange={selectSeason}
       />
 
-      {/* Both of these are `position: fixed`, so they mount outside the
-          route template — a transformed ancestor would become their
-          containing block for the length of the page-entrance animation and
-          anchor them to it rather than to the viewport. */}
-      <ChromePortal>
-        <DayStrip
-          days={days}
-          selectedDay={selectedDay}
-          onSelect={selectDay}
-          onOpenCalendar={() => setCalendarOpen(true)}
-        />
-      </ChromePortal>
       <DayCalendarSheet
         open={calendarOpen}
         onOpenChange={setCalendarOpen}
@@ -217,76 +198,88 @@ export function ScoresView({ seed }: ScoresViewProps) {
       {/* Two columns on desktop: the follow rail, then the slate. The slate
           column is what the page's max width is sized around — a game row
           wider than this puts a score a hand's width from the team it
-          belongs to (#112). The swipe ref sits on the inner column rather
-          than the grid, so a drag across the rail is a drag across links,
-          not the day. */}
-      <div className="mt-12 grid gap-[var(--sidebar-gap)] lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] lg:items-start">
+          belongs to (#112). Both columns start at the same top edge, which
+          is the control card's — the day strip used to be fixed chrome
+          above them, and the grid had to clear its height. */}
+      <div className="grid gap-[var(--sidebar-gap)] lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] lg:items-start">
         <FollowingSidebar />
 
-        <div ref={swipeRef} className="min-w-0">
-          {error !== null && games.length > 0 && (
-            <div className="mb-3 flex items-center justify-center gap-3 rounded-[10px] bg-bg-elevated px-4 py-2">
-              <span className="type-meta text-text-secondary">
-                Couldn&apos;t refresh
-              </span>
-              <button
-                type="button"
-                onClick={refresh}
-                className="type-meta-em text-text-primary"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {!isLoaded ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
-              ))}
-            </div>
-          ) : error !== null && games.length === 0 ? (
-            <EmptySlate message="Couldn't load games">
-              <button
-                type="button"
-                onClick={refresh}
-                className="type-team-name-em text-text-primary"
-              >
-                Retry
-              </button>
-            </EmptySlate>
-          ) : sections.length === 0 ? (
-            filtersActive ? (
-              // The narrowed-slate empty state: name what's hiding the games,
-              // and offer the whole slate back with one button.
-              <EmptySlate message={narrowedEmptyMessage}>
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="type-team-name-em text-text-primary"
-                >
-                  Show all games
-                </button>
-              </EmptySlate>
-            ) : (
-              <EmptySlate message={`No games on ${daySectionTitle(selectedDay)}`} />
-            )
-          ) : (
-            <>
-              <div className="mb-2 flex min-h-5 justify-end">
-                {/* The iOS pinch analog, scoped to on-screen sections. */}
-                <button
-                  type="button"
-                  onClick={() =>
+        <div className="min-w-0">
+          {/* The card is the column's top edge, which is what the rail
+              beside it aligns to. Outside the swipe ref on purpose: the day
+              strip scrolls horizontally under the same finger, and a drag
+              that scrolled the strip must not also step the day. */}
+          <ScoresControlCard
+            days={days}
+            selectedDay={selectedDay}
+            onSelectDay={selectDay}
+            onOpenCalendar={() => setCalendarOpen(true)}
+            liveOnly={uiState.liveOnly}
+            onToggleLive={handleToggleLive}
+            filterLabel={filterLabel}
+            onOpenFilter={() => setFilterSheetOpen(true)}
+            allCollapsed={allCollapsed}
+            onToggleCollapseAll={
+              sectionIds.length > 0
+                ? () =>
                     allCollapsed
                       ? uiState.expandAll(sectionIds)
                       : uiState.collapseAll(sectionIds)
-                  }
-                  className="type-meta text-text-secondary transition-colors hover:text-text-primary"
+                : null
+            }
+          />
+
+          <div ref={swipeRef} className="mt-3">
+            {error !== null && games.length > 0 && (
+              <div className="mb-3 flex items-center justify-center gap-3 rounded-[10px] bg-bg-elevated px-4 py-2">
+                <span className="type-meta text-text-secondary">
+                  Couldn&apos;t refresh
+                </span>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="type-meta-em text-text-primary"
                 >
-                  {allCollapsed ? "Expand all" : "Collapse all"}
+                  Retry
                 </button>
               </div>
+            )}
+
+            {!isLoaded ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
+                ))}
+              </div>
+            ) : error !== null && games.length === 0 ? (
+              <EmptySlate message="Couldn't load games">
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="type-team-name-em text-text-primary"
+                >
+                  Retry
+                </button>
+              </EmptySlate>
+            ) : sections.length === 0 ? (
+              filtersActive ? (
+                // The narrowed-slate empty state: name what's hiding the games,
+                // and offer the whole slate back with one button.
+                <EmptySlate message={narrowedEmptyMessage}>
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="type-team-name-em text-text-primary"
+                  >
+                    Show all games
+                  </button>
+                </EmptySlate>
+              ) : (
+                <EmptySlate
+                  message={`No games on ${daySectionTitle(selectedDay)}`}
+                />
+              )
+            ) : (
               <div className="space-y-3">
                 {showFollowPrompt && (
                   // Hidden at rail width: the rail is already saying it, and
@@ -304,15 +297,20 @@ export function ScoresView({ seed }: ScoresViewProps) {
                   />
                 ))}
               </div>
-            </>
-          )}
+            )}
 
-          {/* Bottom clearance for the floating Today button, so the last
-              row is never underneath it. Only where the button exists. */}
-          {showsTodayJump && <div aria-hidden="true" className="h-14" />}
+            {/* Bottom clearance for the floating Today button, so the last
+                row is never underneath it. Only where the button exists. */}
+            {showsTodayJump && <div aria-hidden="true" className="h-14" />}
+          </div>
         </div>
       </div>
 
+      {/* `position: fixed`, so it mounts outside the route template — a
+          transformed ancestor would become its containing block for the
+          length of the page-entrance animation and anchor it to that rather
+          than to the viewport. The day strip needed the same escape until it
+          moved into the control card and stopped being fixed at all. */}
       {showsTodayJump && (
         <ChromePortal>
           <TodayButton onClick={selectToday} />
