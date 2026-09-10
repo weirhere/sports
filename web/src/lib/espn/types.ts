@@ -71,6 +71,13 @@ export interface EspnCompetition {
   broadcasts?: EspnBroadcast[];
   situation?: EspnSituation;
   conferenceCompetition?: boolean;
+  /**
+   * ESPN's printed headline for the fixture — "College Football Playoff
+   * Quarterfinal at the Allstate Sugar Bowl". It is the *only* place a
+   * college-football playoff round is named: the whole postseason files
+   * under `seasontype=3` week 1, bowls and playoff alike.
+   */
+  notes?: { type?: string; headline?: string }[];
 }
 
 export interface EspnVenue {
@@ -402,4 +409,46 @@ export interface EspnRank {
   trend?: string;
   recordSummary?: string;
   team?: EspnTeam;
+}
+
+/**
+ * A ranking as the **core** API publishes it — the past-season surface.
+ *
+ * Two shapes differ from the site API's and both matter: the record is an
+ * object with its own `summary`, and the team is a bare `$ref` URL with no
+ * name, no abbreviation and no mark. Resolving that ref is what the team
+ * directory is for.
+ */
+export interface EspnCoreRanking {
+  id?: string;
+  name?: string;
+  shortName?: string;
+  type?: string;
+  headline?: string;
+  shortHeadline?: string;
+  ranks?: EspnCoreRank[];
+}
+
+export interface EspnCoreRank {
+  current?: number;
+  previous?: number;
+  points?: number;
+  firstPlaceVotes?: number;
+  trend?: string;
+  record?: { summary?: string };
+  team?: { $ref?: string };
+}
+
+/** A core-API collection envelope — `count` is what a weeks probe reads. */
+export interface EspnCoreCollection {
+  count?: number;
+}
+
+/** The site API's team directory: `sports[].leagues[].teams[].team`. */
+export interface EspnTeamsResponse {
+  sports?: {
+    leagues?: {
+      teams?: { team?: EspnTeam }[];
+    }[];
+  }[];
 }

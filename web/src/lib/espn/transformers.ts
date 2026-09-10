@@ -59,6 +59,8 @@ import type {
   EspnRanking,
   EspnRank,
   EspnRankingsResponse,
+  EspnCoreRanking,
+  EspnTeamsResponse,
   EspnStandingsResponse,
   EspnStandingsGroup,
   EspnStandingsEntry,
@@ -294,6 +296,9 @@ export function transformEvent(
     seasonType: event.season?.type,
     livePhase,
     statusDetail: status?.type?.shortDetail ?? status?.type?.detail,
+    // The only place a college-football playoff round is named — its whole
+    // postseason is one `seasontype=3` week, bowls and bracket together.
+    headline: comp.notes?.[0]?.headline,
   };
 }
 
@@ -385,6 +390,74 @@ export function transformPoll(
     ranks: (ranking.ranks ?? [])
       .map((rank) => transformRankedTeam(rank, league))
       .filter((rank): rank is RankedTeam => rank !== null),
+  };
+}
+
+/**
+ * Every team ESPN knows, by id — the site API's `/teams` directory.
+ *
+ * The core API's ranks carry their team as a `$ref` and nothing else, so the
+ * names and marks have to come from somewhere. One request answers for all
+ * 762 of them (FCS included), which is why flipping through past seasons
+ * costs one request per poll and no more.
+ */
+export function transformTeamDirectory(
+  response: EspnTeamsResponse | undefined,
+  league: League
+): Map<string, Team> {
+  const byId = new Map<string, Team>();
+  for (const sport of response?.sports ?? []) {
+    for (const leagueEntry of sport.leagues ?? []) {
+      for (const entry of leagueEntry.teams ?? []) {
+        const team = entry.team ? transformTeam(entry.team, league) : null;
+        if (team) byId.set(team.id, team);
+      }
+    }
+  }
+  return byId;
+}
+
+/** The team id out of a core-API `$ref` — ".../teams/84?lang=en". */
+export function teamIdFromRef(ref: string | undefined): string | undefined {
+  const match = ref ? /\/teams\/(\d+)/.exec(ref) : null;
+  return match ? match[1] : undefined;
+}
+
+/**
+ * A core-API ranking, resolved against the team directory.
+ *
+ * A rank whose team the directory can't name is **dropped**: a table of
+ * dashes is worse than a shorter table, and an empty directory is treated by
+ * the caller as the season failing rather than as a poll of nothing.
+ */
+export function transformCoreRanking(
+  ranking: EspnCoreRanking,
+  league: League,
+  teams: Map<string, Team>
+): Poll | null {
+  if (!ranking.name) return null;
+  const ranks: RankedTeam[] = [];
+  for (const rank of ranking.ranks ?? []) {
+    if (rank.current === undefined) continue;
+    const id = teamIdFromRef(rank.team?.$ref);
+    const team = id ? teams.get(id) : undefined;
+    if (!team) continue;
+    ranks.push({
+      rank: rank.current,
+      team,
+      record: rank.record?.summary ?? "",
+      previousRank: rank.previous,
+      votes: rank.points ?? 0,
+      firstPlaceVotes: rank.firstPlaceVotes,
+    });
+  }
+  return {
+    id: ranking.id ?? ranking.name,
+    name: ranking.name,
+    shortName: ranking.shortName,
+    type: ranking.type,
+    headline: ranking.shortHeadline ?? ranking.headline,
+    ranks,
   };
 }
 

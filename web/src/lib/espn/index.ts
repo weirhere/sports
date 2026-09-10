@@ -2,6 +2,7 @@ export {
   scoreboard,
   scoreboardForDays,
   rankings,
+  seasonGames,
   conferenceTeams,
   conferenceStandings,
   hubStandings,

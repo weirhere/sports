@@ -31,9 +31,15 @@ import {
   toggledGrouping,
 } from "@/components/slate-control-row";
 import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
+import { PostseasonSection } from "@/components/postseason-section";
+import {
+  defaultRound,
+  postseasonExhibition,
+  postseasonRounds,
+} from "@/lib/postseason";
 
 // Ordered — Standings first and the entry default (FotMob's Leagues order).
-const TABS: HeroTab[] = [
+const BASE_TABS: HeroTab[] = [
   { id: "standings", label: "Standings" },
   { id: "games", label: "Games" },
 ];
@@ -97,6 +103,7 @@ export function ConferenceView({
     hasWeeks(league) ? "week" : "day"
   );
   const [teamChoice, setTeamChoice] = useState<string | undefined>();
+  const [roundChoice, setRoundChoice] = useState<string | undefined>();
 
   // The filter's roster: the conference's own members, from the season's
   // standings — the one list that says who *belongs* rather than who showed
@@ -136,6 +143,32 @@ export function ConferenceView({
     return own.reduce((total, table) => total + table.entries.length, 0);
   }, [allTables, conferenceRef]);
   const logoUrl = conferenceLogoUrl(conferenceId, league);
+
+  // The postseason is already in hand: the Games tab fetches the whole
+  // season, so splitting the bracket out costs no request. A tab that would
+  // open on "no games" is worse than no tab, so it appears only where this
+  // season's slate actually has a playoff — and never for the NBA or NHL,
+  // whose best-of-seven series this single-elimination bracket can't model.
+  const rounds = useMemo(
+    () => postseasonRounds(games ?? [], league),
+    [games, league]
+  );
+  const exhibition = useMemo(
+    () => postseasonExhibition(games ?? [], league),
+    [games, league]
+  );
+  // A picked round survives a season switch only where the new season has one
+  // by that name — the season chip's own disproof rule.
+  const activeRound =
+    roundChoice && rounds.some((round) => round.name === roundChoice)
+      ? roundChoice
+      : defaultRound(rounds);
+
+  const tabs: HeroTab[] =
+    rounds.length > 0
+      ? [...BASE_TABS, { id: "postseason", label: "Postseason" }]
+      : BASE_TABS;
+  const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
 
   const selectYear = (year: number) => {
     const query = year === seasonYear(league) ? "" : `?year=${year}`;
@@ -204,9 +237,14 @@ export function ConferenceView({
             />
           </>
         }
-        tabs={<HeroTabBar tabs={TABS} selected={tab} onSelect={setTab} />}
+        tabs={<HeroTabBar tabs={tabs} selected={activeTab} onSelect={setTab} />}
         controls={
-          tab === "standings" ? (
+          activeTab === "postseason" ? (
+            // The Postseason tab brings its own control — the round chips,
+            // inside the pane where the bracket is. A second row of chrome
+            // above them was just noise.
+            undefined
+          ) : activeTab === "standings" ? (
             <StandingsScopeChip
               scopes={scopes}
               selection={scope}
@@ -230,11 +268,11 @@ export function ConferenceView({
 
       <div
         role="tabpanel"
-        id={`panel-${tab}`}
-        aria-labelledby={`tab-${tab}`}
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
         className="flex flex-col gap-2 py-2"
       >
-        {tab === "standings" &&
+        {activeTab === "standings" &&
           (allTables === null ? (
             retryRow("Couldn't load standings.")
           ) : scopedTables.length === 0 ? (
@@ -269,7 +307,7 @@ export function ConferenceView({
             ))
           ))}
 
-        {tab === "games" && (
+        {activeTab === "games" && (
           <>
             {games === null ? (
               retryRow("Couldn't load the schedule.")
@@ -297,6 +335,15 @@ export function ConferenceView({
               </section>
             )}
           </>
+        )}
+
+        {activeTab === "postseason" && (
+          <PostseasonSection
+            rounds={rounds}
+            exhibition={exhibition}
+            selection={activeRound}
+            onSelectRound={setRoundChoice}
+          />
         )}
       </div>
     </div>

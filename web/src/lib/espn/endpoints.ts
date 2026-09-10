@@ -8,6 +8,7 @@ import {
   apiBase,
   espnSeason,
   hasCollegeDivisions,
+  leaguePath,
   standingsApiBase,
   type League,
 } from "@/lib/leagues";
@@ -175,6 +176,50 @@ export function teamScheduleUrl(
   url.searchParams.set("season", String(espnSeason(league, params.year)));
   url.searchParams.set("seasontype", String(params.seasonType));
   return url.toString();
+}
+
+/**
+ * ESPN's **core** API — the one surface with a season axis for rankings.
+ *
+ * The site API's `/rankings` is latest-only: it ignores `season`, `week`,
+ * `year` and `dates` alike and always answers with the newest poll it has
+ * (probed live 2026-09-05), so it can speak for the season in progress and
+ * nothing else.
+ */
+const CORE_BASE = "https://sports.core.api.espn.com/v2/sports";
+
+function coreLeagueBase(league: League): string {
+  return `${CORE_BASE}/${leaguePath(league)}/seasons`;
+}
+
+/**
+ * One published ranking table. `rankingId` is the poll: 1 AP, 2 Coaches,
+ * 21 CFP.
+ *
+ * The AP and Coaches polls end in the postseason (`types/3/weeks/1`,
+ * headlined "Final Rankings"); the CFP's last table is selection day's — the
+ * final week of the *regular* season, since a postseason CFP table is a 404.
+ */
+export function coreRankingUrl(
+  league: League,
+  params: { year: number; seasonType: number; week: number; rankingId: number }
+): string {
+  return (
+    `${coreLeagueBase(league)}/${params.year}` +
+    `/types/${params.seasonType}/weeks/${params.week}/rankings/${params.rankingId}`
+  );
+}
+
+/** How many weeks a season type has — the CFP's closing week is 15 or 16
+ *  depending on the year, so it is read off rather than assumed. */
+export function coreWeeksUrl(
+  league: League,
+  params: { year: number; seasonType: number }
+): string {
+  return (
+    `${coreLeagueBase(league)}/${params.year}` +
+    `/types/${params.seasonType}/weeks?limit=1`
+  );
 }
 
 /** The league's full team directory — one request, no conference data. */

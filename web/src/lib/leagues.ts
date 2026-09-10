@@ -187,6 +187,15 @@ export function apiBase(league: League): string {
 }
 
 /**
+ * The league's own path under ESPN's sport hierarchy — "football/nfl",
+ * "basketball/nba". Every base URL is this plus a host.
+ */
+export function leaguePath(league: League): string {
+  const { sportSegment, pathSegment } = SPECS[league];
+  return `${sportSegment}/leagues/${pathSegment}`;
+}
+
+/**
  * The standings API base — `apis/v2`, not `site/v2`. Conference membership
  * lives here; the `/teams` endpoint carries no conference data.
  */
