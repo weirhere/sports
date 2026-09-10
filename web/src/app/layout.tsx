@@ -9,9 +9,11 @@ export const metadata: Metadata = {
   // Absolute URLs for anything read off-site: a link preview is built by
   // the recipient's server, which can't resolve a relative og:image.
   metadataBase: siteUrl(),
-  title: "College Football Hub",
+  // The 1.x name and the 1.x promise: the app has covered four leagues
+  // since 2.0, and the tab it was named after is the Leagues hub now.
+  title: "StatSide",
   description:
-    "A modern, elegant college football scores and schedule app. Track games, conferences, and your favorite teams.",
+    "Fast, focused scores for college football, the NFL, the NBA and the NHL. Follow your teams, tables and games.",
   openGraph: {
     siteName: "StatSide",
   },

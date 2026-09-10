@@ -1,7 +1,7 @@
 import { SearchView } from "@/components/search-view";
 
 export const metadata = {
-  title: "Search | College Football Hub",
+  title: "Search | StatSide",
 };
 
 export default function SearchPage() {

@@ -18,19 +18,41 @@ import {
   searchGames,
   type ConferenceRef,
 } from "@/lib/search-ranking";
-import { conferenceLogoUrl, conferenceName, orderedIds } from "@/lib/conferences";
+import {
+  childrenOf,
+  conferenceLogoUrl,
+  conferenceName,
+  leagueWideId,
+  topLevelIds,
+} from "@/lib/conferences";
+import { LEAGUES } from "@/lib/leagues";
+import { addDays, dayId, startOfDay } from "@/lib/day";
 import { liveStatusText } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Game, Scoreboard, Team } from "@/lib/types";
-import { conferencePath, teamPath } from "@/lib/routes";
+import { conferencePath, gamePath, teamPath } from "@/lib/routes";
+import { followKey } from "@/lib/refs";
 
-// College football's conferences are the whole conference corpus today;
-// W3/W6 widen it to every league's.
-const CONFERENCE_CORPUS: ConferenceRef[] = orderedIds.map((id) => ({
-  league: "cfb" as const,
-  id,
-  name: conferenceName(id, "cfb"),
-}));
+/**
+ * Every group anyone could search for, across all four leagues: a league's
+ * top-level conferences plus the divisions beneath them, and college
+ * football's FBS/FCS roots.
+ *
+ * It was college football's eleven conferences alone until now — so a search
+ * for "AFC East" or "Pacific" found nothing at all, in an app that has shown
+ * four leagues since 2.0.
+ */
+const CONFERENCE_CORPUS: ConferenceRef[] = LEAGUES.flatMap((league) => {
+  const ids = new Set<number>(topLevelIds(league));
+  for (const id of topLevelIds(league)) {
+    for (const child of childrenOf(id, league)) ids.add(child);
+  }
+  const wide = leagueWideId(league);
+  if (wide !== undefined) ids.add(wide);
+  return [...ids]
+    .map((id) => ({ league, id, name: conferenceName(id, league) }))
+    .filter((entry) => entry.name !== "Other");
+});
 
 function isLive(game: Game): boolean {
   return (
@@ -73,23 +95,35 @@ function gameStatusShort(game: Game): string {
 }
 
 export function SearchView() {
-  const { conferences } = useTeamDirectory("cfb");
+  // Every league's directory. It was college football's alone, so the tab
+  // could not find an NFL, NBA or NHL team at all — the league axis landed
+  // in 2.0 and search's corpus never widened with it.
+  const { conferences } = useTeamDirectory(LEAGUES);
   const { favorites } = useFavoritesContext();
   const [query, setQuery] = useState("");
   const [games, setGames] = useState<Game[]>([]);
 
-  // The CURRENT week's slate, fetched once on mount — no params, and no
-  // refetching per keystroke (the filter is entirely client-side).
+  // The days around today, every league, fetched once on mount — no
+  // refetching per keystroke, since the filter is entirely client-side.
+  //
+  // The old call was a bare `/api/scoreboard` with no league at all, which
+  // the route answers with a **400** — so this section has been empty since
+  // the league axis landed.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/scoreboard")
-      .then((res) => (res.ok ? (res.json() as Promise<Scoreboard>) : null))
-      .then((board) => {
-        if (!cancelled && board) setGames(board.games ?? []);
-      })
-      .catch(() => {
-        // A missing slate just leaves the This Week section empty.
-      });
+    const today = startOfDay(new Date());
+    const window = `start=${dayId(addDays(today, -1))}&end=${dayId(addDays(today, 5))}`;
+    Promise.all(
+      LEAGUES.map((league) =>
+        fetch(`/api/scoreboard?league=${league}&${window}`)
+          .then((res) => (res.ok ? (res.json() as Promise<Scoreboard>) : null))
+          .catch(() => null)
+      )
+    ).then((boards) => {
+      if (cancelled) return;
+      // A league that missed costs its own games, not the section.
+      setGames(boards.flatMap((board) => board?.games ?? []));
+    });
     return () => {
       cancelled = true;
     };
@@ -136,8 +170,16 @@ export function SearchView() {
         <div className="space-y-2">
           {teamResults.length > 0 && (
             <ResultSection title="Teams">
+              {/* Keyed on the follow key, never the bare id: the Browns and
+                  UAB are both ESPN team 5, so `team.id` hands two different
+                  teams one React identity and the row keeps the previous
+                  team's state as the query changes — a Bills row wearing
+                  Auburn's mark. */}
               {teamResults.map((team) => (
-                <TeamResultRow key={team.id} team={team} />
+                <TeamResultRow
+                  key={followKey({ league: team.league, teamId: team.id })}
+                  team={team}
+                />
               ))}
             </ResultSection>
           )}
@@ -145,7 +187,8 @@ export function SearchView() {
             <ResultSection title="Conferences">
               {conferenceResults.map((conference) => (
                 <ConferenceResultRow
-                  key={conference.id}
+                  // Group 8 is the SEC here and the AFC in the NFL.
+                  key={`${conference.league}-${conference.id}`}
                   conference={conference}
                 />
               ))}
@@ -226,7 +269,9 @@ function GameResultRow({ game }: { game: Game }) {
   const home = game.homeTeam.team;
   return (
     <Link
-      href={`/game/${game.id}`}
+      // League-qualified: a summary fetched from the wrong league's base
+      // URL 404s, so the event id never travels alone.
+      href={gamePath(game)}
       className="flex items-center gap-3 px-4 py-[7px] transition-colors hover:bg-bg-header"
     >
       <span className="flex shrink-0 items-center gap-1">
