@@ -62,6 +62,7 @@ import type {
   EspnStandingsResponse,
   EspnStandingsGroup,
   EspnStandingsEntry,
+  EspnStandingsStat,
   EspnScheduleResponse,
   EspnScheduleEvent,
   EspnScheduleCompetitor,
@@ -431,6 +432,43 @@ export function seasonHasStarted(
   return !Number.isFinite(start) || start <= now.getTime();
 }
 
+/**
+ * The overall record, in whatever shape the league writes one — "13-2" in
+ * football and basketball, "50-23-9" in hockey, where a game lost in
+ * overtime is still worth a point.
+ *
+ * **Composed from the counts, not read off `total`.** Two reasons, both
+ * probed live 2026-09-09: a `level=3` response ships no `total` for the NBA
+ * at all (only `wins` and `losses`), so a divisional page lost its W-L
+ * column entirely; and the NHL's `total` is a *sentence* — "50-23-9, 109
+ * PTS" — which is prose, not a column. `total.summary` stays the fallback
+ * for a payload that ships no counts.
+ */
+function composedRecord(
+  stat: (type: string) => EspnStandingsStat | undefined,
+  league: League
+): string | undefined {
+  const count = (type: string) => {
+    const raw = stat(type);
+    const value = raw?.value ?? (raw?.displayValue ? Number(raw.displayValue) : undefined);
+    return value != null && Number.isFinite(value) ? Math.trunc(value) : undefined;
+  };
+  const wins = count("wins");
+  const losses = count("losses");
+  if (wins !== undefined && losses !== undefined) {
+    if (league === "nhl") {
+      const otLosses = count("otlosses") ?? count("overtimelosses") ?? 0;
+      return `${wins}-${losses}-${otLosses}`;
+    }
+    return `${wins}-${losses}`;
+  }
+  const total = stat("total");
+  // Never the displayValue for hockey — that one is the sentence.
+  return (
+    total?.summary ?? (league === "nhl" ? undefined : total?.displayValue)
+  ) ?? undefined;
+}
+
 function transformStandingsEntry(
   entry: EspnStandingsEntry,
   groupId: number | undefined,
@@ -446,8 +484,7 @@ function transformStandingsEntry(
 
   const conferenceRecord =
     stat("vsconf")?.summary ?? stat("vsconf")?.displayValue ?? undefined;
-  const overallRecord =
-    stat("total")?.summary ?? stat("total")?.displayValue ?? undefined;
+  const overallRecord = composedRecord(stat, league);
   const streak = stat("streak")?.displayValue;
   const rawSeed = stat("playoffseed")?.value;
   const playoffSeed = rawSeed != null ? Math.trunc(rawSeed) : undefined;
@@ -457,6 +494,11 @@ function transformStandingsEntry(
   // East's seeds then West's.
   const winPercent = stat("winpercent")?.value ?? undefined;
   const points = stat("points")?.value ?? undefined;
+  const gamesPlayed = stat("gamesplayed")?.value ?? undefined;
+  // ESPN already writes these the way a table shows them: ".732" with the
+  // zero stripped, and "-" for the leader's games back.
+  const winPercentText = stat("winpercent")?.displayValue;
+  const gamesBehind = stat("gamesbehind")?.displayValue;
 
   const conf = parseRecordString(conferenceRecord);
   const overall = parseRecordString(overallRecord);
@@ -503,6 +545,9 @@ function transformStandingsEntry(
     playoffSeed,
     winPercent,
     points: points != null ? Math.trunc(points) : undefined,
+    gamesPlayed: gamesPlayed != null ? Math.trunc(gamesPlayed) : undefined,
+    gamesBehind,
+    winPercentText,
   };
 }
 

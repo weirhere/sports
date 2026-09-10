@@ -4,7 +4,7 @@
 // client shell owns tab choice only.
 
 import { notFound } from "next/navigation";
-import { conferenceStandings, conferenceGames } from "@/lib/espn";
+import { hubStandings, conferenceGames } from "@/lib/espn";
 import { conferenceName } from "@/lib/conferences";
 import {
   SEASON_FLOOR,
@@ -72,20 +72,15 @@ export default async function ConferencePage({
   const highlightTeamId =
     highlightRaw && /^\d+$/.test(highlightRaw) ? highlightRaw : undefined;
 
+  // The divisional response where the league nests, so the scope chip has
+  // divisions to show without a second request.
   const [standingsResult, gamesResult] = await Promise.allSettled([
-    conferenceStandings(league, { year: fetchYear }),
+    hubStandings(league, { year: fetchYear }),
     conferenceGames(league, numericId, fetchYear),
   ]);
 
-  const group =
-    standingsResult.status === "fulfilled"
-      ? (standingsResult.value.find((g) => g.id === String(numericId)) ?? {
-          id: String(numericId),
-          league,
-          name: conferenceName(numericId, league),
-          entries: [],
-        })
-      : null;
+  const allTables =
+    standingsResult.status === "fulfilled" ? standingsResult.value : null;
   const games = gamesResult.status === "fulfilled" ? gamesResult.value : null;
 
   return (
@@ -93,7 +88,7 @@ export default async function ConferencePage({
       league={league}
       conferenceId={numericId}
       name={conferenceName(numericId, league)}
-      standings={group}
+      allTables={allTables}
       games={games}
       displayYear={year ?? currentYear}
       highlightTeamId={highlightTeamId}

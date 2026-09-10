@@ -238,11 +238,27 @@ export async function hubStandings(
   league: League,
   options?: { year?: number; group?: number }
 ): Promise<ConferenceStandingsGroup[]> {
-  return conferenceStandings(league, {
-    year: options?.year,
-    group: options?.group,
-    level: hasCollegeDivisions(league) ? undefined : 3,
-  });
+  if (hasCollegeDivisions(league)) {
+    // College football's conferences nest only in a divisional era, and
+    // the shipped response already carries those divisions.
+    return conferenceStandings(league, {
+      year: options?.year,
+      group: options?.group,
+    });
+  }
+
+  // **Both** responses, in parallel. The divisional one is what the hub
+  // lists and what a Division scope tables — but its conference groups
+  // arrive empty, so folding them back up produces a table whose entries
+  // are each division's in turn. That table ranks *nothing* across them,
+  // and printing a place column over it is exactly the tiebreaker
+  // guesswork the standings contract forbids. The shipped response has the
+  // real conference order, so that is what a Conference scope shows.
+  const [conferences, divisions] = await Promise.all([
+    conferenceStandings(league, { year: options?.year }),
+    conferenceStandings(league, { year: options?.year, level: 3 }),
+  ]);
+  return [...conferences, ...divisions];
 }
 
 /**

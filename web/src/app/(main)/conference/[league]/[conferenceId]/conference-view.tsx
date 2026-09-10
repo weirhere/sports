@@ -18,6 +18,14 @@ import { SeasonMenuChip } from "@/components/season-menu-chip";
 import { FollowPill } from "@/components/follow-pill";
 import { CardHeader } from "@/components/card-header";
 import { StandingsList } from "@/components/standings-list";
+import { StandingsScopeChip } from "@/components/standings-scope-chip";
+import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
+import {
+  defaultScope,
+  scopesFor,
+  type StandingsScope,
+} from "@/lib/standings-scope";
+import { gamePath } from "@/lib/routes";
 import { GameMatchupRow, gameRowLabel } from "@/components/next-game-card";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 
@@ -85,8 +93,12 @@ interface ConferenceViewProps {
   league: League;
   conferenceId: number;
   name: string;
-  /** This conference's standings group; null = the fetch failed. */
-  standings: ConferenceStandingsGroup | null;
+  /**
+   * Every table the league returned, at whatever depth — the scope chip is
+   * a *view* of one fetch, so a page holds them all and shows a slice.
+   * Null = the fetch failed.
+   */
+  allTables: ConferenceStandingsGroup[] | null;
   /** The season's full conference slate; null = the fetch failed. */
   games: Game[] | null;
   displayYear: number;
@@ -98,7 +110,7 @@ export function ConferenceView({
   league,
   conferenceId,
   name,
-  standings,
+  allTables,
   games,
   displayYear,
   highlightTeamId,
@@ -106,8 +118,36 @@ export function ConferenceView({
   const router = useRouter();
   const [tab, setTab] = useState("standings");
 
+  const conferenceRef = useMemo(
+    () => ({ league, id: conferenceId }),
+    [league, conferenceId]
+  );
+
+  // Which scopes this page offers comes from where it sits in the league's
+  // own hierarchy: the league page all three, a conference page the two
+  // below it, and anything that nests nothing — every college-football
+  // conference — none, which is what hides the control.
+  const scopes = useMemo(() => scopesFor(conferenceRef), [conferenceRef]);
+  const baseScope = useMemo(
+    () => defaultScope(scopes, "conference"),
+    [scopes]
+  );
+  const [scopeChoice, setScopeChoice] = useState<StandingsScope | undefined>();
+  const scope = scopeChoice ?? baseScope ?? "conference";
+  const setScope = (next: StandingsScope) => setScopeChoice(next);
+
+  const scopedTables = useMemo(
+    () => (allTables ? tablesAtScope(allTables, conferenceRef, scope) : []),
+    [allTables, conferenceRef, scope]
+  );
+
   const weekGroups = useMemo(() => groupSeasonSlate(games ?? []), [games]);
-  const teamCount = standings?.entries.length ?? 0;
+  // The hero count sums every division, however the tables are sliced.
+  const teamCount = useMemo(() => {
+    if (!allTables) return 0;
+    const own = tablesAtScope(allTables, conferenceRef, "conference");
+    return own.reduce((total, table) => total + table.entries.length, 0);
+  }, [allTables, conferenceRef]);
   const logoUrl = conferenceLogoUrl(conferenceId, league);
 
   const selectYear = (year: number) => {
@@ -115,15 +155,6 @@ export function ConferenceView({
     router.push(`/conference/${league}/${conferenceId}${query}`);
   };
 
-  const seasonRow = (
-    <div className="flex justify-end">
-      <SeasonMenuChip
-        value={displayYear}
-        years={seasonYears(league)}
-        onSelect={selectYear}
-      />
-    </div>
-  );
 
   const retryRow = (message: string) => (
     <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
@@ -169,16 +200,35 @@ export function ConferenceView({
           ) : undefined
         }
         trailing={
-          <FollowPill
-            league={league}
-            id={String(conferenceId)}
-            kind="conference"
-            name={name}
-          />
+          <>
+            {/* The season scopes every tab, so it sits beside the page's
+                identity rather than above one pane's cards (iOS,
+                2026-09-05). */}
+            <SeasonMenuChip
+              value={displayYear}
+              years={seasonYears(league)}
+              onSelect={selectYear}
+            />
+            <FollowPill
+              league={league}
+              id={String(conferenceId)}
+              kind="conference"
+              name={name}
+            />
+          </>
         }
-      >
-        <HeroTabBar tabs={TABS} selected={tab} onSelect={setTab} />
-      </HeroHeader>
+        tabs={<HeroTabBar tabs={TABS} selected={tab} onSelect={setTab} />}
+        controls={
+          tab === "standings" ? (
+            <StandingsScopeChip
+              scopes={scopes}
+              selection={scope}
+              base={baseScope ?? scope}
+              onSelect={setScope}
+            />
+          ) : undefined
+        }
+      />
 
       <div
         role="tabpanel"
@@ -186,28 +236,43 @@ export function ConferenceView({
         aria-labelledby={`tab-${tab}`}
         className="flex flex-col gap-2 py-2"
       >
-        {tab === "standings" && (
-          <>
-            {seasonRow}
-            {standings === null ? (
-              retryRow("Couldn't load standings.")
-            ) : (
-              <section className="card-surface pb-1">
+        {tab === "standings" &&
+          (allTables === null ? (
+            retryRow("Couldn't load standings.")
+          ) : scopedTables.length === 0 ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              Standings TBA
+            </section>
+          ) : (
+            // One card per table. A divisional conference keeps its
+            // divisions **separate** (iOS, 2026-09-05): merging them
+            // numbered teams 1 through 14 across two divisions ESPN never
+            // ranked against each other, which is exactly the tiebreaker
+            // guesswork the standings contract forbids, printed as a place
+            // column.
+            scopedTables.map((table) => (
+              <section key={table.id} className="card-surface pb-1">
+                {scopedTables.length > 1 && (
+                  <CardHeader title={divisionShortName(table, name)} />
+                )}
                 <StandingsList
                   league={league}
-                  entries={standings.entries}
-                  conferenceId={conferenceId}
+                  entries={table.entries}
+                  conferenceId={Number(table.id)}
                   year={displayYear}
+                  // The top-two cut is suppressed whenever the tables are
+                  // divisions: in a divisional format the division winners
+                  // meet, so a per-division footnote would claim the wrong
+                  // thing.
+                  showsCut={scopedTables.length === 1 && !table.spansDivisions}
                   highlightTeamId={highlightTeamId}
                 />
               </section>
-            )}
-          </>
-        )}
+            ))
+          ))}
 
         {tab === "games" && (
           <>
-            {seasonRow}
             {games === null ? (
               retryRow("Couldn't load the schedule.")
             ) : weekGroups.length === 0 ? (
@@ -224,7 +289,7 @@ export function ConferenceView({
                         <div className="ml-4 border-t border-divider" />
                       )}
                       <Link
-                        href={`/game/${game.id}`}
+                        href={gamePath(game)}
                         aria-label={gameRowLabel(game)}
                         className="block transition-colors hover:bg-bg-header"
                         suppressHydrationWarning

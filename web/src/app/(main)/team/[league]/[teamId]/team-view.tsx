@@ -8,7 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { conferenceName } from "@/lib/conferences";
+import { conferenceName, divisionForTeamId } from "@/lib/conferences";
 import { seasonYear, seasonYears, type League } from "@/lib/leagues";
 import { gameState } from "@/lib/game-state";
 import type {
@@ -27,6 +27,13 @@ import {
   teamRecordCardHasContent,
 } from "@/components/team-record-card";
 import { StandingsList } from "@/components/standings-list";
+import { StandingsScopeChip } from "@/components/standings-scope-chip";
+import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
+import {
+  defaultScope,
+  scopesForTeamIn,
+  type StandingsScope,
+} from "@/lib/standings-scope";
 
 // Ordered — the ordinal is the tab walk (Overview → Games → Standings).
 const TABS: HeroTab[] = [
@@ -120,26 +127,42 @@ export function TeamView({
     ? (ownStanding?.overallRecord ?? schedule.record ?? schedule.derivedRecord)
     : schedule.derivedRecord;
 
-  const standingsEntries =
-    conferenceId !== undefined
-      ? (standingsGroups?.find((group) => group.id === String(conferenceId))
-          ?.entries ?? [])
-      : [];
+  // A team page's chip scopes outward: Division is the team's own four,
+  // Conference its sixteen, League the whole thirty-two — every scope a
+  // table with the team's own row in it. It opens on the conference,
+  // which is what the tab has always shown.
+  const conferenceRef = useMemo(() => {
+    // Anchor on the team's **most specific** group. A pro team belongs to
+    // a division inside a conference inside a league, and the chain out
+    // from a division is what offers all three scopes — anchoring on the
+    // conference loses the Division rung entirely, which is the one a
+    // division race is actually about.
+    const division = divisionForTeamId(teamId, league);
+    if (division !== undefined) return { league, id: division };
+    return conferenceId !== undefined ? { league, id: conferenceId } : undefined;
+  }, [league, teamId, conferenceId]);
+  const scopes = useMemo(
+    () => (conferenceRef ? scopesForTeamIn(conferenceRef) : []),
+    [conferenceRef]
+  );
+  const baseScope = useMemo(() => defaultScope(scopes, "team"), [scopes]);
+  const [scopeChoice, setScopeChoice] = useState<StandingsScope | undefined>();
+  const scope = scopeChoice ?? baseScope ?? "conference";
+  const setScope = (next: StandingsScope) => setScopeChoice(next);
+
+  const scopedTables = useMemo(
+    () =>
+      standingsGroups && conferenceRef
+        ? tablesAtScope(standingsGroups, conferenceRef, scope)
+        : [],
+    [standingsGroups, conferenceRef, scope]
+  );
 
   const selectYear = (year: number) => {
     const query = year === seasonYear(league) ? "" : `?year=${year}`;
     router.push(`/team/${league}/${teamId}${query}`);
   };
 
-  const seasonRow = (
-    <div className="flex justify-end">
-      <SeasonMenuChip
-        value={displayYear}
-        years={seasonYears(league)}
-        onSelect={selectYear}
-      />
-    </div>
-  );
 
   const retryRow = (message: string) => (
     <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
@@ -184,11 +207,41 @@ export function TeamView({
           ) : undefined
         }
         trailing={
-          <FollowPill league={league} id={teamId} kind="team" name={school} />
+          <>
+            {/* Overview is the exception it always was and shows no chip:
+                its record card is pinned to the current season. */}
+            {activeTab !== "overview" && (
+              <SeasonMenuChip
+                value={displayYear}
+                years={seasonYears(league)}
+                onSelect={selectYear}
+              />
+            )}
+            <FollowPill league={league} id={teamId} kind="team" name={school} />
+          </>
         }
-      >
-        <HeroTabBar tabs={visibleTabs} selected={activeTab} onSelect={setTab} />
-      </HeroHeader>
+        tabs={
+          <HeroTabBar
+            tabs={visibleTabs}
+            selected={activeTab}
+            onSelect={setTab}
+          />
+        }
+        controls={
+          activeTab === "standings" ? (
+            // A team page scopes **out** into what contains it, where a
+            // conference page scopes down into what it contains — so the
+            // ink rule reads the other way: only a narrowed table wears
+            // the fill, and scoping out stays as quiet as the default.
+            <StandingsScopeChip
+              scopes={scopes}
+              selection={scope}
+              base={baseScope ?? scope}
+              onSelect={setScope}
+            />
+          ) : undefined
+        }
+      />
 
       <div
         role="tabpanel"
@@ -219,7 +272,6 @@ export function TeamView({
 
         {activeTab === "games" && (
           <>
-            {seasonRow}
             <section className="card-surface pb-1">
               <CardHeader title="Schedule" />
               {schedule.games.length > 0 ? (
@@ -238,24 +290,36 @@ export function TeamView({
           </>
         )}
 
-        {activeTab === "standings" && conferenceId !== undefined && (
-          <>
-            {seasonRow}
-            {standingsGroups === null ? (
-              retryRow("Couldn't load standings.")
-            ) : (
-              <section className="card-surface pb-1">
+        {activeTab === "standings" &&
+          conferenceRef !== undefined &&
+          (standingsGroups === null ? (
+            retryRow("Couldn't load standings.")
+          ) : scopedTables.length === 0 ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              Standings TBA
+            </section>
+          ) : (
+            scopedTables.map((table) => (
+              <section key={table.id} className="card-surface pb-1">
+                {scopedTables.length > 1 && (
+                  <CardHeader
+                    title={divisionShortName(
+                      table,
+                      conferenceName(conferenceRef.id, league)
+                    )}
+                  />
+                )}
                 <StandingsList
                   league={league}
-                  entries={standingsEntries}
-                  conferenceId={conferenceId}
+                  entries={table.entries}
+                  conferenceId={Number(table.id)}
                   year={displayYear}
+                  showsCut={scopedTables.length === 1 && !table.spansDivisions}
                   highlightTeamId={teamId}
                 />
               </section>
-            )}
-          </>
-        )}
+            ))
+          ))}
       </div>
     </div>
   );

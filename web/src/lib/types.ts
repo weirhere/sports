@@ -138,6 +138,12 @@ export interface ConferenceStanding {
   winPercent?: number;
   /** Standings points, which is what the NHL ranks on instead. */
   points?: number;
+  /** Games played — the NHL's leading column. */
+  gamesPlayed?: number;
+  /** ESPN's own "games back" string, "-" for the leader. */
+  gamesBehind?: string;
+  /** ESPN's own zero-stripped win percentage, ".732". */
+  winPercentText?: string;
 }
 
 /**

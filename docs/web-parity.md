@@ -212,31 +212,64 @@ teams and drops the records.
 > shipped behavior reached the log in the first place. Worth knowing before
 > treating a `pending`-free wave as proof of parity.
 
-## W4 — Entity pages (conference, team, Top 25)
+## W4 — Entity pages
+
+**Split into three, because it isn't one PR.** W4 carries 21 decision rows
+against ~3,400 lines of iOS source — three to four times W2 or W3 — so it
+lands as **W4a** (the template and the standings language), **W4b** (the
+Games tabs), and **W4c** (the bracket, the Top 25 entity page, past-season
+polls).
+
+### W4a — the template and the standings language  ✅ shipped 2026-09-09
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-05 | The tab row and its filter chips are **sticky** | pending |
-| 2026-09-05 | The season chip moves to the toolbar row on every entity page | pending |
-| 2026-09-05 | `SlateControlRow` — Weeks / Date toggles + a Team dropdown, on every Games tab | pending |
-| 2026-09-05 | The Top 25 becomes an entity page with Standings and Games tabs | pending |
-| 2026-09-05 | `PollScreen` moves onto the entity template; the poll picker becomes a chip | pending |
-| 2026-09-05 | A divisional conference keeps its divisions as separate tables | pending |
-| 2026-09-05 | ConferencePage's Games tab gains a team filter | pending |
-| 2026-09-06 | NFL standings gain a League / Conference / Division scope filter | pending |
-| 2026-09-07 | A team page's Standings tab gets the scope chip (scoping *out*, not down) | pending |
-| 2026-09-08 | Standings columns are per league; the ranking key follows | pending |
-| 2026-09-06 | Championship cut marked with a leading-edge bar plus a keyed legend | pending |
-| 2026-09-06 | The preseason gets its own cards; the season opens in July | pending |
-| 2026-09-06 | Team pages fetch the preseason and split Games into a card per phase | pending |
-| 2026-09-08 | A Games tab opens on the next game — earlier cards fold behind one row | pending |
-| 2026-09-08 | A Games tab is affordable per team, not per conference (NBA/NHL) | pending |
-| 2026-09-06 | The postseason becomes its own tab, drawn as a bracket | pending |
-| 2026-09-06 | Bracket connectors are earned, never assumed; byes are synthesised | pending |
-| 2026-09-06 | The postseason tab is the playoff only; the Pro Bowl hangs beneath the final | pending |
-| 2026-09-08 | No Postseason tab for NBA/NHL this pass (best-of-seven series) | pending |
-| 2026-09-05 | Past-season polls come from the core API, resolved against a team directory | pending |
-| 2026-09-06 | The Top 25 wears college football's mark, not a trophy | pending |
+| 2026-09-05 | The tab row and its filter chips are **sticky** | shipped |
+| 2026-09-05 | The season chip moves to the toolbar row on every entity page | shipped |
+| 2026-09-05 | A divisional conference keeps its divisions as separate tables | shipped |
+| 2026-09-06 | NFL standings gain a League / Conference / Division scope filter | shipped |
+| 2026-09-07 | A team page's Standings tab gets the scope chip (scoping *out*) | shipped |
+| 2026-09-08 | Standings columns are per league; the ranking key follows | shipped |
+| 2026-09-06 | Championship cut marked with a leading-edge bar plus a keyed legend | shipped |
+| 2026-09-05 | `SlateControlRow` — Weeks / Date toggles + a Team dropdown | pending — W4b, with the Games tabs it controls |
+| 2026-09-05 | The Top 25 becomes an entity page with Standings and Games tabs | pending — W4c |
+| 2026-09-05 | `PollScreen` moves onto the entity template; the picker becomes a chip | pending — W4c |
+| 2026-09-05 | ConferencePage's Games tab gains a team filter | pending — W4b |
+| 2026-09-06 | The preseason gets its own cards; the season opens in July | pending — W4b |
+| 2026-09-06 | Team pages fetch the preseason and split Games into a card per phase | pending — W4b |
+| 2026-09-08 | A Games tab opens on the next game — earlier cards fold behind one row | pending — W4b |
+| 2026-09-08 | A Games tab is affordable per team, not per conference (NBA/NHL) | pending — W4b |
+| 2026-09-06 | The postseason becomes its own tab, drawn as a bracket | pending — W4c |
+| 2026-09-06 | Bracket connectors are earned, never assumed; byes are synthesised | pending — W4c |
+| 2026-09-06 | The postseason tab is the playoff only; the Pro Bowl hangs beneath | pending — W4c |
+| 2026-09-08 | No Postseason tab for NBA/NHL this pass | pending — W4c |
+| 2026-09-05 | Past-season polls come from the core API | pending — W4c |
+| 2026-09-06 | The Top 25 wears college football's mark, not a trophy | shipped — in W3, with the hub row |
+
+**Three bugs fixed on the way, none of them a parity row.**
+
+**A folded conference table ranked nothing and said otherwise.** A `level=3`
+response ships its conference groups *empty*, so deriving a conference table
+from its divisions produces entries that are each division's list in turn —
+and printing a place column over that is exactly the tiebreaker guesswork the
+standings contract forbids. Two changes: an entity page now fetches the
+shipped response **and** the divisional one, so a conference ESPN actually
+ranks keeps its own order; and where no real table came back, the page shows
+**one card per division** rather than a merge. That second path is what gives
+a 2019 conference page real standings at all — iOS still shows "Standings
+TBA" there (`CLAUDE.md`, 2026-08-31, logged as a known edge).
+
+**The NBA lost its W-L column on any divisional page.** ESPN ships no `total`
+stat at `level=3`, only `wins` and `losses` — and the NHL's `total` is a
+*sentence* ("50-23-9, 109 PTS"), not a column. The record is composed from
+the counts now, per league, with `total.summary` as the fallback.
+
+**A team page's scope chip had no Division rung.** It anchored on the team's
+*conference*, so the chain out of it reached only conference and league — the
+division race, which is the thing the scope exists for, was missing. It
+anchors on the team's own division now, and a scope resolves the anchor to
+the rung it names (asking a division for "Conference" means the one above it,
+not a conference with the division's id).
 
 ## W5 — Game detail
 
