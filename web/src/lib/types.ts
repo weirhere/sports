@@ -265,6 +265,81 @@ export interface GameDrive {
   isScore: boolean;
   summary?: string;
   quarter?: number;
+  /** Chronological, as ESPN ships them. Empty leaves a drive row
+   *  unexpandable rather than opening onto nothing. */
+  plays?: PlayItem[];
+}
+
+/** Which side of the matchup a scoring play's points belong to. Read off the
+ *  change in the running score rather than off the drive's team: a pick six
+ *  and a kick return both score for the side that wasn't on offense. */
+export type ScoringSide = "away" | "home";
+
+/**
+ * One play. Football's live inside their drive; every other league's arrive
+ * in a flat feed, because ESPN ships no drives for them — carrying football's
+ * twice would print the same rows in two places.
+ */
+export interface PlayItem {
+  id: string;
+  /** ESPN's own narration. */
+  text?: string;
+  /** The down the play began on, ESPN's string: "1st & 10 at IU 5". */
+  downDistanceText?: string;
+  /** The down the play *left* behind, short form: "2nd & 4". */
+  nextDownDistanceText?: string;
+  /** Where the ball sits after the play — "WSU 26". */
+  possessionText?: string;
+  /** Distance from the offense's target end zone once the play ended. */
+  yardsToEndzone?: number;
+  clock?: string;
+  period?: number;
+  /** "Pass Reception", "Field Goal Good". */
+  typeText?: string;
+  isScoringPlay: boolean;
+  awayScore?: number;
+  homeScore?: number;
+  /** Stamped at the transform boundary from the change in the running
+   *  score. Absent on every non-scoring play, and on a scoring play whose
+   *  numbers ESPN didn't ship. */
+  scoringSide?: ScoringSide;
+  /** Whose play it was, where the payload says — the flat feed only. */
+  teamId?: string;
+}
+
+/**
+ * One team's player box score.
+ *
+ * ESPN ships a category per stat group with its own column headers, and we
+ * carry those headers through rather than naming columns ourselves —
+ * **because the column set changes during the game**. A live `passing` group
+ * has five columns and the same group has six once the game is final (QBR
+ * only lands at the end), so anything hardcoded would misalign every row
+ * mid-game, which is the one thing a stats table must never do.
+ */
+export interface BoxScoreTeam {
+  teamId: string;
+  categories: BoxScoreCategory[];
+}
+
+export interface BoxScoreCategory {
+  /** ESPN's group name: "passing", "kickReturns". */
+  id: string;
+  /** "Passing", "Kick Returns". */
+  label: string;
+  columns: string[];
+  players: BoxScorePlayer[];
+  /** ESPN's team totals row. Empty when it doesn't match `columns`. */
+  totals: string[];
+}
+
+export interface BoxScorePlayer {
+  id: string;
+  name: string;
+  jersey?: string;
+  headshotUrl?: string;
+  /** Positionally paired with the owning category's `columns`. */
+  stats: string[];
 }
 
 export interface GameDetail {
@@ -280,6 +355,11 @@ export interface GameDetail {
   leaders?: LeaderCategory[];
   drives?: GameDrive[];
   scoringPlays?: ScoringPlayItem[];
+  /** One entry per team. Empty is what hides the Box score tab. */
+  boxScore?: BoxScoreTeam[];
+  /** The flat play feed, oldest first — only ever populated for leagues
+   *  with no drives to group by. */
+  plays?: PlayItem[];
 }
 
 /** The scoreboard response: the week strip's slots plus the slate. */

@@ -1,9 +1,16 @@
 "use client";
 
-// The game page (iOS GameDetailScreen): header on the card surface, then
-// the cards in the iOS order — line score, scoring, team stats, leaders,
-// drives. Live games poll every 30s through useLiveGame; a pre-game
-// summary never demotes a live snapshot (the merge lives in the hook).
+// The game page (iOS GameDetailScreen): header on the card surface, then a
+// tab row and the cards in the iOS order — line score, scoring, team stats,
+// leaders. Live games poll every 30s through useLiveGame; a pre-game summary
+// never demotes a live snapshot (the merge lives in the hook).
+//
+// **Summary / Plays / Box score**, and a tab only exists where its data does:
+// a pre-kick game, or one ESPN hasn't filled in, shows Summary alone and no
+// tab row at all — pixel-identical to what it showed before either tab
+// existed. Plays sits in the middle because chronology comes before rosters,
+// and the Drives card lives inside it: leaving it on Summary would print the
+// same rows in two tabs.
 //
 // Desktop splits that into two columns: the game itself on the left, and
 // the context that surrounds it — where it's played, who showed up, what
@@ -13,7 +20,12 @@
 // then the context".
 
 import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
+import { useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
+import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
+import {
+  SlateToggleChip,
+} from "@/components/slate-control-row";
 import { seasonYear } from "@/lib/leagues";
 import { showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
@@ -26,7 +38,8 @@ import {
   MatchupStandingsCard,
   matchupStandingsHasContent,
 } from "./matchup-standings-card";
-import { DrivesCard } from "./drives-card";
+import { BoxScoreList } from "./box-score-list";
+import { DrivePlayList, PeriodPlayList } from "./play-lists";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
@@ -42,6 +55,10 @@ export function GameDetailView({
   const data = useLiveGame(initialData.game.id, initialData);
   const { game } = data;
   const scores = showsScores(game);
+  const [tab, setTab] = useState("summary");
+  // Two answers to one question, the Games tabs' own control language: All
+  // plays or Scoring, so turning one on turns the other off.
+  const [scoringOnly, setScoringOnly] = useState(false);
 
   const hasLinescores =
     (game.awayTeam.linescores?.length ?? 0) > 0 ||
@@ -49,6 +66,24 @@ export function GameDetailView({
   const scoringPlays = data.scoringPlays ?? [];
   const leaders = data.leaders ?? [];
   const drives = data.drives ?? [];
+  const plays = data.plays ?? [];
+  const boxScore = data.boxScore ?? [];
+
+  // Football's plays live inside its drives; every other league's arrive
+  // flat. Which list the Plays tab renders follows from that.
+  const hasPlays = drives.length > 0 || plays.length > 0;
+  const tabs: HeroTab[] = [
+    { id: "summary", label: "Summary" },
+    ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
+    ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
+  ];
+  // A tab whose data went away between polls falls back rather than
+  // rendering an empty pane.
+  const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "summary";
+  const hasScoringPlays =
+    drives.length > 0
+      ? drives.some((drive) => (drive.plays ?? []).some((p) => p.isScoringPlay))
+      : plays.some((play) => play.isScoringPlay);
 
   // Past-season games (reached by direct link) must not wear the current
   // season's standings — the fetch is always the current tables.
@@ -71,46 +106,107 @@ export function GameDetailView({
   const venueVisible =
     scores && (Boolean(game.venue.name) || data.attendance !== undefined);
 
+  const showsTabs = tabs.length > 1;
+
   return (
-    <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
-      <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex w-full flex-col gap-2">
+      {/* The header sits on the card surface, and the tab row with it —
+          headers match the cards on every entity page. */}
+      <div className="flex flex-col">
         <GameHeader game={game} />
-        {hasLinescores && <LineScoreCard game={game} />}
-        {scoringPlays.length > 0 && <ScoringPlaysCard plays={scoringPlays} />}
-        {scores && hasTeamStats(data.awayStats, data.homeStats) && (
-          <TeamStatsCard
-            awayTeam={game.awayTeam}
-            homeTeam={game.homeTeam}
-            awayStats={data.awayStats}
-            homeStats={data.homeStats}
-          />
+        {showsTabs && (
+          <div className="-mt-2 rounded-b-[10px] bg-bg-card px-4">
+            <HeroTabBar tabs={tabs} selected={activeTab} onSelect={setTab} />
+          </div>
         )}
-        {leaders.length > 0 && (
-          <LeadersCard
-            leaders={leaders}
-            awayTeam={game.awayTeam}
-            homeTeam={game.homeTeam}
-          />
-        )}
-        {drives.length > 0 && <DrivesCard drives={drives} game={game} />}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2">
-        {/* Pre-kick every section on the left is empty, so this card
-            carries the whole "what do I need to know" load; once scores
-            exist it returns as the venue card. */}
-        {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
-        {venueVisible && (
-          <GameInfoCard game={game} detail={data} mode="venue" />
-        )}
-        {standingsVisible && (
-          <MatchupStandingsCard
-            away={game.awayTeam.team}
-            home={game.homeTeam.team}
-            standings={standings}
-          />
-        )}
-      </div>
+      {activeTab === "summary" && (
+        // Desktop splits the summary into two columns: the game itself on
+        // the left, and the context that surrounds it — where it's played,
+        // who showed up, what it does to the tables — in a rail on the
+        // right. The iPhone's single column keeps the same reading order.
+        <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            {hasLinescores && <LineScoreCard game={game} />}
+            {scoringPlays.length > 0 && (
+              <ScoringPlaysCard plays={scoringPlays} />
+            )}
+            {scores && hasTeamStats(data.awayStats, data.homeStats) && (
+              <TeamStatsCard
+                awayTeam={game.awayTeam}
+                homeTeam={game.homeTeam}
+                awayStats={data.awayStats}
+                homeStats={data.homeStats}
+              />
+            )}
+            {leaders.length > 0 && (
+              <LeadersCard
+                leaders={leaders}
+                awayTeam={game.awayTeam}
+                homeTeam={game.homeTeam}
+              />
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-2">
+            {/* Pre-kick every section on the left is empty, so this card
+                carries the whole "what do I need to know" load; once scores
+                exist it returns as the venue card. */}
+            {!scores && <GameInfoCard game={game} detail={data} mode="pre" />}
+            {venueVisible && (
+              <GameInfoCard game={game} detail={data} mode="venue" />
+            )}
+            {standingsVisible && (
+              <MatchupStandingsCard
+                away={game.awayTeam.team}
+                home={game.homeTeam.team}
+                standings={standings}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "plays" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SlateToggleChip
+              title="All plays"
+              isOn={!scoringOnly}
+              hint="Shows every play"
+              onToggle={() => setScoringOnly(false)}
+            />
+            <SlateToggleChip
+              title="Scoring"
+              isOn={scoringOnly}
+              hint="Shows only the plays that scored"
+              onToggle={() => setScoringOnly(true)}
+            />
+          </div>
+          {scoringOnly && !hasScoringPlays ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No scoring plays yet.
+            </section>
+          ) : drives.length > 0 ? (
+            <DrivePlayList
+              drives={drives}
+              game={game}
+              scoringOnly={scoringOnly}
+            />
+          ) : (
+            <PeriodPlayList
+              plays={plays}
+              game={game}
+              scoringOnly={scoringOnly}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === "boxScore" && (
+        <BoxScoreList boxScore={boxScore} game={game} />
+      )}
     </div>
   );
 }

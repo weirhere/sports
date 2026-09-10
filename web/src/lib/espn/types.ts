@@ -291,6 +291,8 @@ export interface EspnGameSummaryResponse {
   drives?: EspnDrives;
   leaders?: EspnTeamLeaders[];
   gameInfo?: EspnGameInfo;
+  /** The flat play feed — basketball and hockey, which ship no drives. */
+  plays?: EspnPlay[];
 }
 
 export interface EspnHeaderCompetition {
@@ -317,6 +319,62 @@ export interface EspnHeaderCompetitor {
 
 export interface EspnBoxscore {
   teams?: EspnBoxscoreTeam[];
+  /** The **player** box score — one entry per team, each a list of stat
+   *  groups carrying their own column headers. */
+  players?: EspnBoxscorePlayers[];
+}
+
+export interface EspnBoxscorePlayers {
+  team?: EspnTeam;
+  statistics?: EspnBoxscoreGroup[];
+}
+
+export interface EspnBoxscoreGroup {
+  /** "passing", "rushing" — **null for basketball**, which ships one
+   *  unnamed group because there is only one table to ship. */
+  name?: string;
+  /** "Miami Passing" — the team-prefixed heading. */
+  text?: string;
+  /** The column headers. The whole point: they change during the game. */
+  labels?: string[];
+  athletes?: EspnBoxscoreAthlete[];
+  totals?: string[];
+}
+
+export interface EspnBoxscoreAthlete {
+  athlete?: {
+    id?: string;
+    displayName?: string;
+    shortName?: string;
+    jersey?: string;
+    headshot?: { href?: string };
+  };
+  stats?: string[];
+}
+
+/** One play, in a drive or in the flat feed. */
+export interface EspnPlay {
+  id?: string;
+  text?: string;
+  clock?: { displayValue?: string };
+  period?: { number?: number };
+  type?: { text?: string; abbreviation?: string };
+  scoringPlay?: boolean;
+  awayScore?: number;
+  homeScore?: number;
+  team?: { id?: string };
+  start?: EspnPlaySpot;
+  end?: EspnPlaySpot;
+}
+
+export interface EspnPlaySpot {
+  down?: number;
+  distance?: number;
+  yardLine?: number;
+  downDistanceText?: string;
+  shortDownDistanceText?: string;
+  possessionText?: string;
+  yardsToEndzone?: number;
 }
 
 export interface EspnBoxscoreTeam {
@@ -356,6 +414,7 @@ export interface EspnDrive {
   timeElapsed?: { displayValue?: string };
   yards?: number;
   offensivePlays?: number;
+  plays?: EspnPlay[];
 }
 
 export interface EspnTeamLeaders {
