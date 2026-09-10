@@ -170,6 +170,13 @@ struct GameDetailScreen: View {
         .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            #if canImport(ActivityKit)
+            ToolbarItem(placement: .topBarTrailing) {
+                // Renders nothing until path 3's service exists — see
+                // LiveActivityController.isAvailable.
+                GameActivityPinButton(game: game, summary: summary)
+            }
+            #endif
             ToolbarItem(placement: .topBarTrailing) {
                 // Not a ShareLink: only UIActivityItemSource can hand
                 // Messages the score card as the link's preview image.
@@ -583,5 +590,27 @@ struct GameDetailScreen: View {
         if let loaded = await standingsFetch {
             conferenceStandings = loaded
         }
+        await refreshPinnedActivity()
+    }
+
+    /// Keeps a pinned card in step with what this screen just fetched.
+    ///
+    /// Deliberately riding the existing 30s poll rather than opening a
+    /// loop of its own: no new ESPN request source, and the cadence is
+    /// already the polite-guest floor. It also means the card is only
+    /// this fresh while the screen is open — which is exactly why path 3's
+    /// service is the thing that makes the feature real, and why
+    /// `isAvailable` stays false until it exists.
+    private func refreshPinnedActivity() async {
+        #if canImport(ActivityKit)
+        guard LiveActivityController.isAvailable else { return }
+        let controller = LiveActivityController()
+        guard controller.isActive(gameId: game.id) else { return }
+        await controller.update(game: game, summary: summary)
+        // A game that finished while the page sat open retires its own
+        // card on the widget's spent rule, so nothing is left claiming a
+        // clock is running.
+        await controller.endIfSpent(game: game)
+        #endif
     }
 }

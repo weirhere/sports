@@ -18,9 +18,36 @@ import ActivityKit
 final class LiveActivityController {
     private let log = Logger(subsystem: "com.andyryanweir.sports", category: "liveactivity")
 
-    /// Live only while a game is genuinely being pushed. Flipping this on
-    /// without the service is the mistake the doc exists to prevent.
-    static var isAvailable: Bool { false }
+    /// Whether the feature is offered to users at all.
+    ///
+    /// False until path 3's broadcast service exists. Flipping it on
+    /// without the service ships the local-only version the doc rejects on
+    /// the merits, which is the one mistake this whole epic is sequenced to
+    /// avoid. DEBUG builds may switch it on to look at the real entry
+    /// point — the `data.provider` / `poll.interval` pattern.
+    static var isAvailable: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "liveactivity.enabled") { return true }
+        #endif
+        return false
+    }
+
+    /// Whether this game could have a card *if* the feature were on —
+    /// independent of the gate above, so the rule is testable on its own.
+    ///
+    /// Pre-game and live qualify. A finished game does not: the card's
+    /// whole job is the part of the day the game is still happening, and
+    /// starting one on a final would put a dead result on the lock screen
+    /// with nothing left to say. A game already spent doesn't qualify
+    /// either — same rule the widget clears results on.
+    static func isStartable(_ game: Game, summary: GameSummary? = nil,
+                            now: Date = .now) -> Bool {
+        guard !GameSelection.isSpent(game, now: now) else { return false }
+        switch GameHeaderState.status(game, summary) {
+        case .pre, .live: return true
+        case .final, .other: return false
+        }
+    }
 
     /// Whether the OS will let us show one at all. Separate from
     /// `isAvailable`: the user can switch activities off in Settings, and a

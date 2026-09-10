@@ -142,5 +142,50 @@ private let halftime = GameStatus.live(displayClock: "0:00", period: 2, detail: 
         #expect(GameActivityAttributes.Phase.pre.isLive == false)
         #expect(GameActivityAttributes.Phase.final.isLive == false)
     }
+
+    // MARK: - What the pin button is offered for
+
+    @Test func offersPreGameAndLive() {
+        #expect(LiveActivityController.isStartable(game(status: .pre(detail: nil), date: .now)))
+        #expect(LiveActivityController.isStartable(game(status: playing, date: .now)))
+        #expect(LiveActivityController.isStartable(game(status: halftime, date: .now)))
+    }
+
+    /// A finished game gets no card. Its whole job is the part of the day
+    /// the game is still happening; starting one on a final would put a
+    /// dead result on the lock screen with nothing left to say.
+    @Test func refusesAFinishedGame() {
+        #expect(LiveActivityController.isStartable(
+            game(status: .final(detail: "Final"), date: .now)) == false)
+        #expect(LiveActivityController.isStartable(
+            game(status: .other(detail: "Postponed"), date: .now)) == false)
+    }
+
+    /// Yesterday's kickoff that ESPN never flipped off `pre` is spent —
+    /// the widget's rule, reused rather than reinvented, so the two
+    /// surfaces can't disagree about when a fixture stops being today's.
+    @Test func refusesASpentGame() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        #expect(LiveActivityController.isStartable(
+            game(status: .pre(detail: nil), date: yesterday), now: .now) == false)
+    }
+
+    /// But a live game is never suppressed by a clock heuristic, however
+    /// old its kickoff looks — `isSpent` exempts live games on purpose,
+    /// and the pin control inherits that rather than second-guessing it.
+    @Test func aLongRunningLiveGameStaysStartable() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        #expect(LiveActivityController.isStartable(game(status: playing, date: yesterday)))
+    }
+
+    /// A flaky pre-game summary against a live snapshot must not make a
+    /// live game look startable-as-pre — the merge rule, one surface out.
+    @Test func offerFollowsTheMergedStatus() {
+        let liveGame = game(status: playing, date: .now)
+        let stalePre = GameSummary(home: nil, away: nil, status: .pre(detail: nil),
+                                   scoringPlays: [], drives: [], teamStats: [],
+                                   leaders: [], venue: nil, attendance: nil)
+        #expect(LiveActivityContent.state(for: liveGame, summary: stalePre).phase == .live)
+    }
 }
 #endif

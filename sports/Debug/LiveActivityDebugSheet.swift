@@ -18,6 +18,7 @@ struct LiveActivityDebugSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var controller = LiveActivityController()
     @State private var note = ""
+    @State private var featureEnabled = UserDefaults.standard.bool(forKey: "liveactivity.enabled")
 
     private var isRunning: Bool { controller.isActive(gameId: DebugGame.id) }
 
@@ -36,6 +37,26 @@ struct LiveActivityDebugSheet: View {
                 } footer: {
                     Text("Lock the simulator (⌘L) to see the card. Long-press the "
                          + "Dynamic Island for the expanded state.")
+                }
+
+                Section {
+                    // A Button rather than a Toggle: a SwiftUI switch does
+                    // not take a synthesized tap, so a Toggle here can't be
+                    // driven from a script the way every other row can.
+                    button(featureEnabled ? "Offering it — turn off" : "Offer the pin button",
+                           featureEnabled ? "checkmark.circle.fill" : "circle") {
+                        featureEnabled.toggle()
+                        UserDefaults.standard.set(featureEnabled, forKey: "liveactivity.enabled")
+                        note = featureEnabled
+                            ? "Pin control is now in the game-detail toolbar."
+                            : "Pin control hidden again."
+                    }
+                } header: {
+                    Text("Entry point")
+                } footer: {
+                    Text("Puts the real pin control in the game-detail toolbar. Off in "
+                         + "every release build regardless — the feature does not reach "
+                         + "users until the broadcast service exists.")
                 }
 
                 Section("Start") {
