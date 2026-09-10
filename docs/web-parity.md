@@ -498,6 +498,12 @@ look, after the payload's own id and the pro registry's division map. iOS's
 `GameLeagueRow` has only the first two, so the same row is likely empty on a
 college-football game there; worth an eyes-on check.
 
+## Post-W7 — decisions since the waves
+
+| iOS date | Decision | Status |
+|---|---|---|
+| 2026-09-10 | A season is fetched in as many windows as it takes; every conference page gets a Games tab | pending — the web deliberately shipped the rolling window in W4b; this is the follow-up it was logged for |
+
 ## W6 — Teams tab, search, onboarding
 
 | iOS date | Decision | Status |

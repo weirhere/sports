@@ -525,22 +525,15 @@ struct ConferencePage: View {
     /// December, show two tabs exactly as they always did. A tab that would
     /// open on "no games" is worse than no tab.
     ///
-    /// Games only where a whole season is affordable to fetch. College
-    /// football's is ~950 events, which one `dates=` window carries; the
-    /// NBA's is ~1,300 and it does not — probed live 2026-09-08, a
-    /// season-long request returns exactly 900 events and 12 MB, silently
-    /// truncating in February, and `groups=` is ignored outside football
-    /// so there is no narrow fetch to fall back on. A team's season is
-    /// affordable at any size, so team pages keep their Games tab and
-    /// conference pages don't.
+    /// Every page gets a Games tab now, whatever its league: the client
+    /// splits a season into as many windows as it takes, so the width of
+    /// the group stopped being the question (2026-09-10). What used to gate
+    /// this — "the NBA's season is 1,300 events and `groups=` is ignored
+    /// outside football" — was half measurement and half mistake: the
+    /// measurement was of an *unscoped* request, and `groups=` narrows the
+    /// slate in every league we cover.
     private var availableTabs: [Tab] {
-        guard destination.league.canTableAWholeSeason else {
-            // A rolling window is the only slate these leagues can afford.
-            // A past season gets one too (Andy, 2026-09-09) — anchored at
-            // its opening rather than at today, which is outside it.
-            return [.standings, .games]
-        }
-        return postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
     }
 
     /// The postseason is already in hand: the Games tab fetches the whole
@@ -826,58 +819,12 @@ struct ConferencePage: View {
         gamesLoadingYears.insert(year)
         defer { gamesLoadingYears.remove(year) }
         do {
-            gamesByYear[year] = destination.league.canTableAWholeSeason
-                ? try await client.conferenceGames(
-                    conferenceId: destination.conferenceId,
-                    year: year == currentSeasonYear ? nil : year)
-                : try await rollingGames()
+            gamesByYear[year] = try await client.conferenceGames(
+                conferenceId: destination.conferenceId,
+                year: year == currentSeasonYear ? nil : year)
             gamesFailedYears.remove(year)
         } catch {
             gamesFailedYears.insert(year)
         }
     }
-
-    /// The slate for a league whose season is too big to fetch: one
-    /// `dates=` window around today, narrowed to this page's teams.
-    ///
-    /// ESPN ignores `groups=` outside football, so the narrowing happens
-    /// here — through the same rule that decides whether a followed table
-    /// claims a game, so a division's page and a division follow can never
-    /// disagree about which games are its. A league-wide page keeps them
-    /// all, because every team's chain reaches its league.
-    private func rollingGames() async throws -> [Game] {
-        let calendar = Calendar.current
-        let league = destination.league
-        let window = league.gamesWindow
-        let span = SeasonSpan.days(of: league, year: selectedYear, calendar: calendar)
-        let table = FollowedTable.conference(destination.conference)
-        // The current season reads from around today; a finished one reads
-        // from its opening, because "a week back" is nowhere near it.
-        var start = selectedYear == currentSeasonYear
-            ? calendar.date(byAdding: .day, value: -window.back,
-                            to: calendar.startOfDay(for: .now)) ?? .now
-            : span.lowerBound
-        // Walk forward a window at a time until one has games in it, the
-        // way the day strip's own `firstDayWithGames` probe does. In
-        // September the NBA's next game is three weeks past the end of the
-        // first window — a tab that says "Schedule TBA" three weeks before
-        // tip-off is answering the wrong question.
-        for _ in 0..<Self.rollingWindowProbes {
-            guard start <= span.upperBound,
-                  let end = calendar.date(byAdding: .day,
-                                          value: window.back + window.forward, to: start)
-            else { return [] }
-            let board = try await client.scoreboard(days: start...min(end, span.upperBound),
-                                                    divisions: [])
-            let games = board.games.filter(table.matches)
-            if !games.isEmpty { return games }
-            start = end
-        }
-        return []
-    }
-
-    /// How many windows forward the Games tab will look before giving up.
-    /// One in season; the offseason costs at most this many, and only
-    /// until the schedule starts.
-    private static let rollingWindowProbes = 4
 }

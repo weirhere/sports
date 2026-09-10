@@ -194,34 +194,6 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// always will be (probed 2026-09-08).
     var hasPoll: Bool { self == .collegeFootball }
 
-    /// Whether a conference or league page can afford to table its whole
-    /// season on a Games tab.
-    ///
-    /// College football's season is ~950 events, which one `dates=` window
-    /// carries. The NBA's is ~1,300 and it does not: probed live
-    /// 2026-09-08, `dates=20251001-20260630&limit=900` returns exactly 900
-    /// events and **12 MB**, silently truncating at February 20 — and
-    /// adding `groups=5` returns the identical 900, because ESPN ignores
-    /// the group filter outside football, so there is no narrow fetch to
-    /// fall back on either. A team's season is affordable at any size
-    /// (`/teams/{id}/schedule` returns all 82 games in one request), so
-    /// team pages keep their Games tab and conference pages don't.
-    var canTableAWholeSeason: Bool { !seasonYearIsEndYear }
-
-    /// How many days either side of today a Games tab reaches for a
-    /// league whose whole season it cannot fetch.
-    ///
-    /// A week back and three weeks forward: enough to answer "when do they
-    /// play next" and "what did I miss", in **one** request of about a
-    /// megabyte — the size of a college-football Saturday. The alternative
-    /// is nine monthly requests and 24 MB for a page view, which is not a
-    /// tab, it is a download.
-    ///
-    /// Only ever used where `canTableAWholeSeason` is false, and only for
-    /// the current season: a rolling window has no meaning in a season
-    /// that already ended, so those keep Standings alone.
-    var gamesWindow: (back: Int, forward: Int) { (7, 21) }
-
     /// Whether the surface underfoot is a fact about the game.
     ///
     /// Football is played on grass or turf and which one is a real
