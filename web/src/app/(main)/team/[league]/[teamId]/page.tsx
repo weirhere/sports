@@ -4,11 +4,7 @@
 // per-year cache); the client shell owns tab choice only.
 
 import { notFound } from "next/navigation";
-import {
-  teamSchedule,
-  conferenceStandings,
-  rankings,
-} from "@/lib/espn";
+import { teamSchedule, hubStandings, rankings } from "@/lib/espn";
 import {
   SEASON_FLOOR,
   displayName,
@@ -73,7 +69,9 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   const [scheduleResult, standingsResult, rankingsResult] =
     await Promise.allSettled([
       teamSchedule(league, teamId, fetchYear),
-      conferenceStandings(league, { year: fetchYear }),
+      // The divisional response, so the scope chip can reach a team's
+      // own division without a second request.
+      hubStandings(league, { year: fetchYear }),
       rankings(league),
     ]);
 

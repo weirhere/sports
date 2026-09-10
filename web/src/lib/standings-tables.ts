@@ -7,6 +7,7 @@
 // league's own single table. None of those is a second request.
 
 import {
+  conferenceChain,
   conferenceName,
   isKnownConference,
   leagueWideId,
@@ -16,6 +17,7 @@ import {
 } from "./conferences";
 import type { League } from "./leagues";
 import { conferenceToken, sameConference, type ConferenceRef } from "./refs";
+import type { StandingsScope } from "./standings-scope";
 import type { ConferenceStanding, ConferenceStandingsGroup } from "./types";
 
 export function tableRef(
@@ -72,16 +74,41 @@ export function foldingDivisions(
 ): ConferenceStandingsGroup[] {
   const folded: ConferenceStandingsGroup[] = [];
   const mergedParents = new Set<string>();
+  // A conference that arrived as a real table of its own is never
+  // rebuilt from its divisions: ESPN's own order for it encodes
+  // tiebreakers, where a merge is each division's list in turn and ranks
+  // nothing across them.
+  const real = new Set(
+    tables
+      .filter((table) => table.parentId === undefined && table.entries.length > 0)
+      .map((table) => conferenceToken({ league: table.league, id: Number(table.id) }))
+  );
+
+  // Conferences that have divisions in this list. An empty container —
+  // which is how `level=3` ships them — must not shadow the merge that
+  // replaces it.
+  const hasDivisions = new Set(
+    tables
+      .filter((table) => table.parentId !== undefined)
+      .map((table) =>
+        conferenceToken({ league: table.league, id: table.parentId! })
+      )
+  );
 
   for (const table of tables) {
     const parentId = table.parentId;
     if (parentId === undefined || tier(parentId, table.league) === "other") {
+      const own = conferenceToken({
+        league: table.league,
+        id: Number(table.id),
+      });
+      if (table.entries.length === 0 && hasDivisions.has(own)) continue;
       folded.push(table);
       continue;
     }
     const parent: ConferenceRef = { league: table.league, id: parentId };
     const token = conferenceToken(parent);
-    if (mergedParents.has(token)) continue;
+    if (mergedParents.has(token) || real.has(token)) continue;
     mergedParents.add(token);
     const divisions = tables.filter(
       (other) =>
@@ -261,4 +288,118 @@ export function findTable(
 export function isFollowable(table: ConferenceStandingsGroup): boolean {
   const ref = tableRef(table);
   return ref !== undefined && isKnownConference(ref.id, ref.league);
+}
+
+/**
+ * The tables a page shows at one scope.
+ *
+ * `division` is three different questions wearing one scope. A **league**
+ * page shows every division. A **conference** page shows the ones under it.
+ * A **division's own** page shows *itself* — it is one of these tables
+ * rather than a parent of them, and asking for its children finds nothing,
+ * which is how every division page said "Standings TBA" while the row that
+ * pushed it was teasing that division's leader.
+ */
+export function tablesAtScope(
+  tables: readonly ConferenceStandingsGroup[],
+  anchor: ConferenceRef,
+  scope: StandingsScope
+): ConferenceStandingsGroup[] {
+  // A scope names a **rung**, so the anchor is resolved to it first. A
+  // conference page anchors on its own group and only ever scopes down, so
+  // this is a no-op there — but a *team* page anchors on the team's
+  // division and asking it for "Conference" means the conference above,
+  // not a conference with the division's id.
+  const ref = resolveToRung(anchor, scope);
+  const wide = isLeagueWideId(ref);
+  switch (scope) {
+    case "league": {
+      // Fold first: a `level=3` response carries only divisions, so the
+      // conferences `leagueTable` merges have to be derived before they
+      // can be merged again. Folding a shipped response is a no-op.
+      const merged = leagueTable(conferencesOf(tables, ref.league), ref.league);
+      return merged ? [merged] : [];
+    }
+    case "conference": {
+      const conferences = conferencesOf(tables, ref.league);
+      if (wide) return conferences;
+      const own = conferences.filter((table) =>
+        sameConference(tableRef(table), ref)
+      );
+      // **A divisional conference keeps its divisions as separate tables**
+      // (iOS, 2026-09-05). Where the fold had to merge — no real
+      // conference table came back, so its entries are each division's in
+      // turn — one card per division is the only honest answer: a merged
+      // table numbers teams 1 through 14 across divisions ESPN never
+      // ranked against each other, which is tiebreaker guesswork printed
+      // as a place column. A conference ESPN *does* rank keeps its own
+      // table, because that order is real.
+      if (own.length === 1 && own[0].spansDivisions) {
+        return tablesAtScope(tables, ref, "division");
+      }
+      return own;
+    }
+    case "division": {
+      const divisions = tables.filter(
+        (table) => table.league === ref.league && table.parentId !== undefined
+      );
+      if (wide) return divisionsIn(tables, ref.league);
+      // The page's own table, where the page *is* a division.
+      const own = divisions.find((table) =>
+        sameConference(tableRef(table), ref)
+      );
+      if (own) return [own];
+      return divisions.filter((table) => table.parentId === ref.id);
+    }
+  }
+}
+
+/**
+ * The link in this group's own chain that sits at the rung a scope names,
+ * or the group itself where the chain doesn't reach it.
+ */
+function resolveToRung(
+  ref: ConferenceRef,
+  scope: StandingsScope
+): ConferenceRef {
+  if (scope === "division") return ref;
+  const wanted = scope === "league" ? "league" : "conference";
+  const link = conferenceChain(ref).find(
+    (step) => tier(step.id, step.league) === wanted
+  );
+  return link ?? ref;
+}
+
+/** One row per conference, whatever depth the response arrived at. */
+function conferencesOf(
+  tables: readonly ConferenceStandingsGroup[],
+  league: League
+): ConferenceStandingsGroup[] {
+  return foldingDivisions(tables.filter((table) => table.league === league));
+}
+
+function isLeagueWideId(ref: ConferenceRef): boolean {
+  return leagueWideId(ref.league) === ref.id;
+}
+
+/**
+ * A division table's own short name — "East", not "Sun Belt - East".
+ *
+ * ESPN writes the conference into every division's name, which is right in
+ * a list of every division and repetitive on the page that already says it.
+ */
+export function divisionShortName(
+  table: ConferenceStandingsGroup,
+  parentName: string
+): string {
+  // ESPN writes "{Conference} - {Division}", and its conference half is
+  // often longer than our registry's name for the same group ("American
+  // Athletic" vs "American") — so the separator is what to cut on, not the
+  // parent's name.
+  const dash = table.name.indexOf(" - ");
+  if (dash !== -1) return table.name.slice(dash + 3);
+  // The registry's own spelling — "AFC East" under "AFC".
+  const spaced = `${parentName} `;
+  if (table.name.startsWith(spaced)) return table.name.slice(spaced.length);
+  return table.name;
 }
