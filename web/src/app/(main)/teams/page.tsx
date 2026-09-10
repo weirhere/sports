@@ -1,14 +1,15 @@
-import { TeamsBrowse } from "./teams-browse";
+import { TeamsList } from "./teams-list";
 
 export const metadata = {
-  title: "Teams | College Football Hub",
+  title: "Teams | StatSide",
 };
 
 /**
- * The Teams tab: browse and search the FBS by conference, fed by the live
- * team directory (/api/teams). All state is client-side — follows, section
- * collapse, and the inline filter — so the page itself is just the shell.
+ * The Teams tab: the teams you follow, one card each, with an Add teams sheet
+ * over the whole directory. Browsing by conference is the Leagues hub's job
+ * and finding one team by name is search's; this tab is the handful that are
+ * yours (iOS, 2026-09-05). All state is client-side, so the page is a shell.
  */
 export default function TeamsPage() {
-  return <TeamsBrowse />;
+  return <TeamsList />;
 }

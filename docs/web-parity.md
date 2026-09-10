@@ -502,10 +502,58 @@ college-football game there; worth an eyes-on check.
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-05 | The Teams tab becomes the follow list — one card per followed team | pending |
-| 2026-09-05 | Joining a team moves into an **Add teams sheet** over the whole directory | pending |
-| 2026-09-06 | A followed team gets a card; the shortlist interleaves across leagues | pending |
-| 2026-09-06 | Search results key on `followKey` — the Browns/UAB collision | pending |
+| 2026-09-05 | The Teams tab becomes the follow list — one card per followed team | shipped — W6 |
+| 2026-09-05 | Joining a team moves into an **Add teams sheet** over the whole directory | shipped — W6 |
+| 2026-09-06 | A followed team gets a card; the shortlist interleaves across leagues | shipped — W6 |
+| 2026-09-06 | Search results key on `followKey` — the Browns/UAB collision | shipped — W6 |
+
+### W6 — the Teams tab and search  ✅ shipped 2026-09-10
+
+**Teams becomes the follow list.** It was the whole directory in accordions —
+every conference, every team, ~250 rows deep — to answer a question about a
+handful of teams. Browsing by conference is what the Leagues hub is for and
+finding one team by name is what search is for, so this tab is the teams that
+are *yours*: one card each, the card navigating and the star unfollowing.
+Each card's subtitle names the group **with its league in front of it** —
+"NBA Eastern", "NHL Eastern" — because the directory files basketball and
+hockey teams under their conference and both leagues call theirs Eastern; and
+for the NFL the group is the **division**, since the team's own id would only
+ever say AFC or NFC.
+
+**Joining moves into an Add teams sheet** over the whole directory, with a
+curated shortlist standing in until the first keystroke. One card per team and
+no league headings: a single card holding fifteen teams under a heading reads
+as *the* list of that league's teams, which makes every team it omits look
+like an oversight. The shortlist **interleaves proportionally** across all
+four leagues rather than stacking them, so the top of the sheet is every
+league's biggest names instead of fifteen college programs before the first
+franchise. Rows toggle follows rather than navigating — the sheet's question
+is "which teams are mine?", and a page visit isn't part of answering it.
+
+### Three live bugs, and search was two of them
+
+**Search could only find college-football teams.** `useTeamDirectory("cfb")`
+— the league axis landed in 2.0 and the corpus never widened with it, so the
+tab could not find the Browns, the Lakers or the Maple Leafs *at all*. That is
+also why the `followKey` collision this wave was written to fix had never been
+reachable: with one league in the corpus, no two results could share an id.
+Both are fixed together, and the collision now has teeth — "pacific" returns
+the NBA's Pacific and the NHL's Pacific as two distinct, correctly-linked
+rows.
+
+**Search's conference corpus was eleven college conferences.** "AFC East"
+found nothing. It is every league's groups now — top-level conferences, the
+divisions beneath them, and the league-wide tables.
+
+**Search's game section was permanently empty.** It fetched a bare
+`/api/scoreboard` with no league, which that route answers with a **400**, so
+`res.ok` was false and the slate silently stayed empty. It fetches a day
+window per league now, and a league that misses costs its own games rather
+than the section.
+
+Also swept: the app's own name. The root metadata still said "College
+Football Hub" — the 1.x name and the 1.x promise, on an app that has covered
+four leagues since 2.0.
 
 ## W7 — Chrome and tokens
 
