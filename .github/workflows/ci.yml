@@ -28,7 +28,10 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      # v4 declared node20 and warned on every run; v5 and up declare
+      # node24. v7 blocks fork checkouts under `pull_request_target` and
+      # `workflow_run` — this workflow uses plain `pull_request`.
+      - uses: actions/checkout@v7
 
       # The project builds with the iOS 26 SDK (deployment target 18.0),
       # so pick the newest Xcode on the image rather than the default,

@@ -23,7 +23,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The parity check diffs against the PR's base, so it needs the
           # history either side of it, not just the tip.
@@ -44,7 +44,19 @@ jobs:
       - name: Web parity status
         working-directory: .
         run: ./scripts/parity-status.sh | tee -a "$GITHUB_STEP_SUMMARY"
-      - uses: actions/setup-node@v4
+      # v4 declared node20 and every run carried a deprecation warning for
+      # it; everything from v5 up declares node24, which is what the runner
+      # had been forcing these actions onto anyway. Tracking latest rather
+      # than the minimum that clears the warning, so this doesn't recur.
+      #
+      # The breaking change worth knowing: from v5 this caches automatically
+      # when `package.json` names a package manager. `web/package.json`
+      # doesn't, so the explicit `cache: npm` below stays the only caching —
+      # verified against a real run (one cache hit, one restore).
+      #
+      # `node-version` is unrelated to all of that: it is the Node the build
+      # runs on, not the Node the action runs on.
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
