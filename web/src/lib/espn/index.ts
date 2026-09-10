@@ -4,6 +4,7 @@ export {
   rankings,
   conferenceTeams,
   conferenceStandings,
+  hubStandings,
   teamSchedule,
   conferenceGames,
   gameSummary,

@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, ListOrdered, Search, Shield } from "lucide-react";
+import { House, Search, Shield, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/", label: "Scores", icon: House },
-  { href: "/rankings", label: "Rankings", icon: ListOrdered },
+  // "Leagues", not "Rankings" (iOS, 2026-09-09): what the hub lists is
+  // leagues, and a conference or a poll is reached *through* one. The
+  // trophy replaced a numbered-list glyph that drew the standings table the
+  // old name promised — and it can't be mistaken for the football the
+  // Scores tab wears. The route keeps its name; only the words moved.
+  { href: "/rankings", label: "Leagues", icon: Trophy },
   { href: "/teams", label: "Teams", icon: Shield },
   { href: "/search", label: "Search", icon: Search },
 ];

@@ -309,3 +309,61 @@ describe("transformTeamSchedule", () => {
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
 });
+
+describe("a season that hasn't opened has no numbers", () => {
+  // ESPN rolls its season pointer the moment the last one ends and keeps
+  // serving the old table underneath it: probed live 2026-09-09, the NBA
+  // standings were stamped 2026-27 and full of 2025-26 results three weeks
+  // before a ball was tipped.
+  const response = {
+    season: { year: 2027, startDate: "2026-09-30T07:00Z" },
+    children: [
+      {
+        id: 5,
+        name: "Eastern Conference",
+        standings: {
+          entries: [
+            {
+              team: { id: "2", location: "Boston", abbreviation: "BOS" },
+              stats: [
+                { type: "vsconf", summary: "36-16" },
+                { type: "total", summary: "56-26" },
+                { type: "winpercent", value: 0.68 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  } as unknown as EspnStandingsResponse;
+
+  it("keeps the roster and drops the records", () => {
+    // Who is in this division is true all summer; only the numbers are
+    // last season's.
+    const [table] = transformStandings(response, "nba");
+    const [entry] = table.entries;
+    expect(entry.team.school).toBe("Boston");
+    expect(entry.conferenceRecord).toBeUndefined();
+    expect(entry.overallRecord).toBeUndefined();
+    expect(entry.overallWins).toBe(0);
+  });
+
+  it("keeps them once the season has opened", () => {
+    const started = {
+      ...response,
+      season: { ...response.season, startDate: "2026-09-01T07:00Z" },
+    } as EspnStandingsResponse;
+    const [entry] = transformStandings(started, "nba")[0].entries;
+    expect(entry.conferenceRecord).toBe("36-16");
+    expect(entry.overallRecord).toBe("56-26");
+  });
+
+  it("keeps them when ESPN ships no start date at all", () => {
+    // Absence must never blank a table — every football response we have
+    // read ships one, but the rule can't depend on that.
+    const undated = { ...response, season: undefined } as EspnStandingsResponse;
+    expect(transformStandings(undated, "nba")[0].entries[0].conferenceRecord).toBe(
+      "36-16"
+    );
+  });
+});

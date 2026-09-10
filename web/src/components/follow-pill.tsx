@@ -13,14 +13,21 @@ import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import type { League } from "@/lib/leagues";
 import { conferenceToken, followKey } from "@/lib/refs";
 
-interface FollowPillProps {
+type FollowPillProps = {
   league: League;
-  /** Raw ESPN id — team id, or the conference group id as a string. */
-  id: string;
-  kind: "team" | "conference";
   /** Spoken name for the accessible label. */
   name: string;
-}
+} & (
+  | {
+      kind: "team" | "conference";
+      /** Raw ESPN id — team id, or the conference group id as a string. */
+      id: string;
+    }
+  // A poll is followed by league alone: the set is keyed that way so a
+  // league that grows a poll needs no migration, and there is no id to
+  // carry (iOS, 2026-09-05).
+  | { kind: "poll"; id?: undefined }
+);
 
 export function FollowPill({ league, id, kind, name }: FollowPillProps) {
   const {
@@ -28,6 +35,8 @@ export function FollowPill({ league, id, kind, name }: FollowPillProps) {
     toggleFavorite,
     isFavoriteConference,
     toggleFavoriteConference,
+    isFavoritePoll,
+    toggleFavoritePoll,
   } = useFavoritesContext();
 
   // Branched rather than one shared `key`: a team key and a conference
@@ -36,10 +45,14 @@ export function FollowPill({ league, id, kind, name }: FollowPillProps) {
   const following =
     kind === "team"
       ? isFavorite(followKey({ league, teamId: id }))
-      : isFavoriteConference(conferenceToken({ league, id: Number(id) }));
+      : kind === "conference"
+        ? isFavoriteConference(conferenceToken({ league, id: Number(id) }))
+        : isFavoritePoll(league);
   const toggle = () => {
     if (kind === "team") toggleFavorite(followKey({ league, teamId: id }));
-    else toggleFavoriteConference(conferenceToken({ league, id: Number(id) }));
+    else if (kind === "conference") {
+      toggleFavoriteConference(conferenceToken({ league, id: Number(id) }));
+    } else toggleFavoritePoll(league);
   };
 
   return (

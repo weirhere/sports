@@ -131,6 +131,13 @@ export interface ConferenceStanding {
    * 1-based when ESPN knows it; absent (or ESPN's 0) when it doesn't.
    */
   playoffSeed?: number;
+  /**
+   * ESPN's `winpercent`, where the league keeps one — what a merged
+   * league table ranks on. The NHL ships none.
+   */
+  winPercent?: number;
+  /** Standings points, which is what the NHL ranks on instead. */
+  points?: number;
 }
 
 /**
@@ -142,6 +149,18 @@ export interface ConferenceStanding {
 export interface ConferenceStandingsGroup {
   id: string;
   league: League;
+  /**
+   * Set when this table is a division hanging under a conference — the
+   * 2019 AAC's East and West, or a pro league's `level=3` request. The page
+   * for the parent conference collects these instead of finding nothing.
+   */
+  parentId?: number;
+  /**
+   * Set on a table merged from several divisions: its entry order is each
+   * division's in turn, so it ranks nothing across them — and no row may
+   * tease a division leader as the conference's.
+   */
+  spansDivisions?: boolean;
   name: string;
   entries: ConferenceStanding[];
 }

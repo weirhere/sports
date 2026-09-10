@@ -35,6 +35,7 @@ import {
   collegeDivision,
   conferenceName,
   divisionForTeamId,
+  parentOf,
   tier,
   tierRank,
 } from "@/lib/conferences";
@@ -59,6 +60,7 @@ import type {
   EspnRank,
   EspnRankingsResponse,
   EspnStandingsResponse,
+  EspnStandingsGroup,
   EspnStandingsEntry,
   EspnScheduleResponse,
   EspnScheduleEvent,
@@ -406,11 +408,35 @@ function parseRecordString(record: string | undefined): {
     : { wins: 0, losses: 0 };
 }
 
+/**
+ * Whether anyone has played a game in the season this response says it is
+ * for.
+ *
+ * ESPN rolls its season *pointer* the moment the last one ends and keeps
+ * serving the old table underneath it: probed live 2026-09-09, the NBA
+ * standings were stamped 2026-27 and full of 2025-26 results three weeks
+ * before a ball was tipped. So the stamp is no use and the start date is —
+ * a season that opens in the future has no numbers, whatever numbers came
+ * with it.
+ *
+ * True when ESPN ships no date at all: absence must never blank a table.
+ */
+export function seasonHasStarted(
+  response: EspnStandingsResponse,
+  now: Date = new Date()
+): boolean {
+  const raw = response.season?.startDate;
+  if (!raw) return true;
+  const start = Date.parse(raw);
+  return !Number.isFinite(start) || start <= now.getTime();
+}
+
 function transformStandingsEntry(
   entry: EspnStandingsEntry,
   groupId: number | undefined,
   index: number,
-  league: League
+  league: League,
+  played: boolean
 ): ConferenceStanding | null {
   if (!entry.team) return null;
   const team = transformTeam(entry.team, league);
@@ -425,12 +451,18 @@ function transformStandingsEntry(
   const streak = stat("streak")?.displayValue;
   const rawSeed = stat("playoffseed")?.value;
   const playoffSeed = rawSeed != null ? Math.trunc(rawSeed) : undefined;
+  // What a merged league table ranks on. Football and basketball keep a
+  // win percentage; the NHL keeps none and ranks on points instead, so a
+  // league table there would otherwise fall to source order and come back
+  // East's seeds then West's.
+  const winPercent = stat("winpercent")?.value ?? undefined;
+  const points = stat("points")?.value ?? undefined;
 
   const conf = parseRecordString(conferenceRecord);
   const overall = parseRecordString(overallRecord);
   const streakMatch = streak ? /^([WL])(\d+)$/i.exec(streak) : null;
 
-  return {
+  const identity = {
     team: {
       ...team,
       conferenceId: groupId !== undefined ? String(groupId) : team.conferenceId,
@@ -439,6 +471,23 @@ function transformStandingsEntry(
           ? conferenceName(groupId, league)
           : team.conferenceName,
     },
+  };
+
+  // The roster still stands — who is in this division is true all summer.
+  // Only the numbers are last season's.
+  if (!played) {
+    return {
+      ...identity,
+      conferenceWins: 0,
+      conferenceLosses: 0,
+      overallWins: 0,
+      overallLosses: 0,
+      conferenceRank: index + 1,
+    };
+  }
+
+  return {
+    ...identity,
     conferenceWins: conf.wins,
     conferenceLosses: conf.losses,
     overallWins: overall.wins,
@@ -452,6 +501,8 @@ function transformStandingsEntry(
     overallRecord,
     streak,
     playoffSeed,
+    winPercent,
+    points: points != null ? Math.trunc(points) : undefined,
   };
 }
 
@@ -495,31 +546,88 @@ function tierNameSort(
  * order. Empty conferences are KEPT — offseason responses can have zero
  * entries and the page needs to say "Standings TBA", not error.
  */
+/**
+ * One group's own table, without its children.
+ *
+ * A group with no entries still becomes a table: an offseason response can
+ * have zero, and the page needs to say "Standings TBA" rather than error —
+ * and ESPN ships the Sun Belt with none at all, which is what silently
+ * dropped it from the list of 11 for a while.
+ */
+function transformStandingsGroup(
+  group: EspnStandingsGroup,
+  league: League,
+  parentId: number | undefined,
+  played: boolean
+): ConferenceStandingsGroup {
+  const numericId = flexibleNumber(group.id);
+  const registryName = conferenceName(numericId, league);
+  const name =
+    registryName !== "Other"
+      ? registryName
+      : (group.shortName ?? group.name ?? "Conference");
+  const entries = (group.standings?.entries ?? [])
+    .map((entry, index) =>
+      transformStandingsEntry(entry, numericId, index, league, played)
+    )
+    .filter((entry): entry is ConferenceStanding => entry !== null);
+  return {
+    id: numericId !== undefined ? String(numericId) : "",
+    league,
+    name,
+    entries: played ? seedOrdered(entries) : entries,
+    parentId,
+  };
+}
+
+/**
+ * Every group in the response, at whatever depth it sits.
+ *
+ * Walks the **whole tree** rather than collapsing to one depth or the
+ * other, because a `level=3` response carries both: the conferences and
+ * the divisions under them. Parentage comes from our own registry first
+ * and from the payload's nesting only where the id is new — the registry
+ * is the thing the rest of the app agrees with, and it knows that the
+ * NFL's group 4 hangs under 8 whatever shape a given response arrives in.
+ *
+ * A group with children is still a group: the AFC is a real table as well
+ * as the parent of four.
+ */
 export function transformStandings(
   response: EspnStandingsResponse,
   league: League
 ): ConferenceStandingsGroup[] {
-  return (response.children ?? [])
-    .map((group) => {
-      const numericId = flexibleNumber(group.id);
-      const registryName = conferenceName(numericId, league);
-      const name =
-        registryName !== "Other"
-          ? registryName
-          : (group.shortName ?? group.name ?? "Conference");
-      const entries = (group.standings?.entries ?? [])
-        .map((entry, index) =>
-          transformStandingsEntry(entry, numericId, index, league)
-        )
-        .filter((entry): entry is ConferenceStanding => entry !== null);
-      return {
-        id: numericId !== undefined ? String(numericId) : "",
-        league,
-        name,
-        entries: seedOrdered(entries),
-      };
-    })
-    .sort((a, b) => tierNameSort(a, b, league));
+  const tables: ConferenceStandingsGroup[] = [];
+  const played = seasonHasStarted(response);
+
+  const walk = (
+    groups: readonly EspnStandingsGroup[],
+    payloadParent: number | undefined
+  ) => {
+    for (const group of groups) {
+      const id = flexibleNumber(group.id);
+      // The registry's answer wins; the payload's nesting is the fallback
+      // for an id it has never seen — 2019's "American Athletic - East"
+      // is group 163, which no registry knows, and 151 is where it hangs.
+      const parent = parentOf(id, league) ?? payloadParent;
+      const children = group.children ?? [];
+      const entries = group.standings?.entries ?? [];
+      // A group that is purely a container contributes no table of its
+      // own: its numbers live in its children, and `foldingDivisions` is
+      // what merges them back into a row that names the conference.
+      // Emitting it too would put an EMPTY "AFC" beside the real one.
+      //
+      // Guarded on having no entries rather than on having children, so a
+      // response that ever carries both keeps what it carries.
+      if (children.length === 0 || entries.length > 0) {
+        tables.push(transformStandingsGroup(group, league, parent, played));
+      }
+      walk(children, id);
+    }
+  };
+  walk(response.children ?? [], undefined);
+
+  return tables.sort((a, b) => tierNameSort(a, b, league));
 }
 
 /**

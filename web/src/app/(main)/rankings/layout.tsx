@@ -1,8 +1,8 @@
 export const metadata = {
-  title: "Rankings | College Football Hub",
+  title: "Leagues | StatSide",
 };
 
-export default function RankingsLayout({
+export default function LeaguesLayout({
   children,
 }: {
   children: React.ReactNode;

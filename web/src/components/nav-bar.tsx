@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Scores" },
-  { href: "/rankings", label: "Rankings" },
+  { href: "/rankings", label: "Leagues" },
   { href: "/teams", label: "Teams" },
   { href: "/search", label: "Search" },
 ];
@@ -15,7 +15,7 @@ const NAV_LINKS = [
 /** Top-level pages and their bar titles; "/" gets the wordmark instead. */
 const TOP_LEVEL_TITLES: Record<string, string> = {
   "/": "StatSide",
-  "/rankings": "Rankings",
+  "/rankings": "Leagues",
   "/teams": "Teams",
   "/search": "Search",
 };
