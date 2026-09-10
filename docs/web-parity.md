@@ -674,3 +674,4 @@ sibling below it.
 | 2026-09-05 | The share link deliberately stays the App Store link | Already settled; the web's own card shipped |
 | 2026-09-06 | `SwipeSafeButtonStyle` naming at call sites | iOS-only mechanism |
 | 2026-09-10 | The parity ledger is enforced and counted (this mechanism) | Process, not product — it is *about* this file |
+| 2026-09-10 | Live Activities de-iced on path 3 (broadcast channels), and the card designed | **n/a** — a Live Activity is a lock-screen and Dynamic Island surface; the `n/a` categories above already cover the widget extension, and this is the same family. The *service* is not n/a and is sequenced with Open question #6 |
