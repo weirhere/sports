@@ -38,6 +38,12 @@ jobs:
         run: |
           ./scripts/check-parity-ledger.sh \
             "${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+      # Informational, and the reason the ledger is worth keeping: parity you
+      # can read a number off is parity you can notice drifting. Never fails
+      # the build — the check above is the one with teeth.
+      - name: Web parity status
+        working-directory: .
+        run: ./scripts/parity-status.sh | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -78,7 +78,7 @@ with Cincinnati placed in "AFC North" from the hardcoded registry.
 | 2026-09-06 | Team routing is league-qualified end to end (`TeamRef`); search results key on `followKey`, never a bare id | shipped |
 | 2026-09-08 | `SeasonYear.year(for:)` — entity pages read the season on their own league's clock | shipped |
 | 2026-09-08 | `leagues[].calendar` decoded leniently; `leagues` becomes a lossy array | shipped |
-| 2026-09-08 | A box-score category no longer requires a name (basketball ships `name: null`) | pending — W5, where the box score is rendered |
+| 2026-09-08 | A box-score category no longer requires a name (basketball ships `name: null`) | shipped — W5a |
 | 2026-09-05 | A season's slate is fetched by date window, never `dates={year}` | shipped |
 | 2026-09-08 | TBD kickoffs re-anchored to their Eastern day at the mapper | shipped |
 | 2026-09-08 | `League.canTableAWholeSeason` — don't fetch a season for a >1000-game league | shipped |
@@ -560,8 +560,8 @@ four leagues since 2.0.
 | iOS date | Decision | Status |
 |---|---|---|
 | 2026-09-09 | The wordmark drops the field glyph and is set as a mark | shipped — W7 |
-| 2026-08-31 | Dark mode adopts light mode's elevation logic; new `bgCard` token | **audited, already correct** — W7 |
-| 2026-08-31 | Entity-page headers paint `bgCard`; the team-color hero retires | **audited, already correct** — W7 |
+| 2026-08-31 | Dark mode adopts light mode's elevation logic; new `bgCard` token | shipped — W7 (audited, already correct) |
+| 2026-08-31 | Entity-page headers paint `bgCard`; the team-color hero retires | shipped — W7 (audited, already correct) |
 
 ### W7 — chrome and tokens  ✅ shipped 2026-09-10
 
@@ -620,3 +620,4 @@ to be pushed to 196.
 | 2026-09-01 | The overnight agent loop; `main` protection | Process, not product |
 | 2026-09-05 | The share link deliberately stays the App Store link | Already settled; the web's own card shipped |
 | 2026-09-06 | `SwipeSafeButtonStyle` naming at call sites | iOS-only mechanism |
+| 2026-09-10 | The parity ledger is enforced and counted (this mechanism) | Process, not product — it is *about* this file |
