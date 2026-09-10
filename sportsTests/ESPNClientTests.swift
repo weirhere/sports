@@ -287,3 +287,73 @@ private func fixture(_ name: String) throws -> Data {
         #expect(top.movement == 0)
     }
 }
+
+/// The season-window split — the rule that replaced November 1.
+///
+/// ESPN truncates a `dates=` window at its `limit` **silently**: no flag, no
+/// count, no cursor. A response that came back at exactly the limit is the
+/// only signal there is, and a slate quietly missing February looks exactly
+/// like a slate with no February. So the client halves a full window and asks
+/// again, which needs to know nothing about the league or the group's width.
+@Suite struct SeasonWindowTests {
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .current
+        return calendar
+    }
+
+    private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day))!
+    }
+
+    @Test func halvingSplitsASpanDownTheMiddleWithNoOverlap() throws {
+        let span = day(2026, 10, 1)...day(2026, 10, 11)
+        let halves = try #require(ESPNClient.halve(span, calendar: calendar))
+
+        #expect(halves.count == 2)
+        #expect(halves[0].lowerBound == span.lowerBound)
+        #expect(halves[1].upperBound == span.upperBound)
+        // Contiguous and disjoint: the merge dedupes by event id anyway, but
+        // an overlap would pay for the same games twice.
+        let gap = calendar.dateComponents([.day], from: halves[0].upperBound,
+                                          to: halves[1].lowerBound).day
+        #expect(gap == 1)
+    }
+
+    @Test func aSingleDayCannotBeHalved() {
+        // The recursion's floor. A day over the limit is unsplittable, and
+        // returning it truncated beats hammering the endpoint over it.
+        let oneDay = day(2026, 10, 1)...day(2026, 10, 1)
+        #expect(ESPNClient.halve(oneDay, calendar: calendar) == nil)
+    }
+
+    @Test func twoDaysHalveIntoOneEach() {
+        let span = day(2026, 10, 1)...day(2026, 10, 2)
+        let halves = ESPNClient.halve(span, calendar: calendar)
+        #expect(halves?.count == 2)
+        #expect(halves?[0].lowerBound == halves?[0].upperBound)
+        #expect(halves?[1].lowerBound == halves?[1].upperBound)
+    }
+
+    @Test func halvingAWholeSeasonTerminates() {
+        // Eight windows is the cap (`maxWindowSplits` = 3), and a season is
+        // ~300 days — so every window a real split produces is still many
+        // days wide and the recursion can't run away.
+        var spans = [SeasonSpan.days(of: .nhl, year: 2026, calendar: calendar)]
+        for _ in 0..<ESPNClient.maxWindowSplits {
+            spans = spans.flatMap { ESPNClient.halve($0, calendar: calendar) ?? [$0] }
+        }
+        #expect(spans.count == 8)
+        // Still covering the whole season, end to end.
+        let season = SeasonSpan.days(of: .nhl, year: 2026, calendar: calendar)
+        #expect(spans.first?.lowerBound == season.lowerBound)
+        #expect(spans.last?.upperBound == season.upperBound)
+    }
+
+    @Test func theLimitIsTheTruncationSignal() {
+        // Not a magic number in two places: the query's `limit` and the
+        // count that means "this came back full" are the same constant, or
+        // a window could truncate without the client noticing.
+        #expect(ESPNClient.seasonWindowLimit == 900)
+    }
+}

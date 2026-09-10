@@ -267,40 +267,57 @@ actor ESPNClient: ScoresProviding {
         // this season's slate (verified live 2026-09-05 — `dates=2026`
         // opens with ten `season.year: 2025` postseason events). A range
         // returns exactly the season asked for, types 2 and 3, each event
-        // stamped with its own week. A conference's season runs ~100–200
-        // events, so one 400-cap request still covers it.
-        let items = [
-            URLQueryItem(name: "groups", value: String(conferenceId)),
-            URLQueryItem(name: "limit", value: "400"),
-            URLQueryItem(name: "dates", value: Self.datesToken(
-                for: SeasonSpan.days(of: league, year: year ?? SeasonYear.year(for: league)))),
-        ]
-        let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-        return ESPNMapper.scoreboard(from: dto, league: league).games
+        // stamped with its own week.
+        //
+        // `groups=` narrows it to this conference, in **every** league we
+        // cover — the 2026-09-08 integration concluded it was ignored
+        // outside football, and that conclusion is what cost basketball and
+        // hockey a Games tab for a fortnight. Re-probed live 2026-09-10:
+        // `groups=1` on a season-long NBA window returns the Atlantic's own
+        // 376 games, not the league's.
+        try await seasonGames(days: SeasonSpan.days(of: league,
+                                                    year: year ?? SeasonYear.year(for: league)),
+                              groups: conferenceId)
     }
 
     /// A whole division's season, for the Top 25's Games tab — which is a
     /// filter over one slate rather than 25 schedule fetches.
-    ///
-    /// Two requests, because ESPN's scoreboard truncates at its `limit`
-    /// and a full FBS season is ~950 events (measured live 2026-09-05:
-    /// 605 through October, 350 after). The split lands on November 1, so
-    /// each half comes back whole; the halves don't overlap, and the merge
-    /// dedupes by event id anyway. Either half failing fails the request —
-    /// half a season passing for a whole one is the one outcome worse than
-    /// an error.
     func seasonGames(year: Int?) async throws -> [Game] {
         let season = year ?? SeasonYear.year(for: league)
-        let windows = Self.seasonWindows(of: league, year: season)
+        return try await seasonGames(
+            days: SeasonSpan.days(of: league, year: season),
+            groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil)
+    }
+
+    /// A span of a season, in as many windows as it takes to come back
+    /// whole, merged and deduped by event id.
+    ///
+    /// **ESPN truncates a `dates=` window at `limit` silently.** There is no
+    /// flag, no count, no next-page cursor — a response that came back at
+    /// exactly the limit is the only signal there is, and a slate quietly
+    /// missing February looks exactly like a slate that has no February.
+    /// That is the failure this exists to make impossible.
+    ///
+    /// So the split is a *rule* rather than a date. It used to be November 1
+    /// — right for college football, whose autumn is dense and whose
+    /// postseason thins out, and right for nothing else. A window that comes
+    /// back full is halved and both halves asked for instead, which needs to
+    /// know nothing about the league, the group's width, or the shape of its
+    /// calendar. Measured live 2026-09-10: an NBA division is 376 events and
+    /// takes one request; the NHL's Eastern Conference truncates at 900 and
+    /// its halves are 665 and 296; the NHL's whole league needs three.
+    ///
+    /// Bounded by `maxWindowSplits` so a pathological span can't fan out —
+    /// a single day over the limit is unsplittable, and returning the
+    /// truncated day beats hammering the endpoint over it.
+    ///
+    /// Any window failing fails the whole request: half a season passing for
+    /// a whole one is the one outcome worse than an error.
+    func seasonGames(days: ClosedRange<Date>, groups: Int?) async throws -> [Game] {
         var byId: [String: Game] = [:]
         var order: [String] = []
-        for games in try await withThrowingTaskGroup(of: [Game].self, returning: [[Game]].self, body: { group in
-            for window in windows {
-                group.addTask { try await self.seasonBoard(days: window) }
-            }
-            return try await group.reduce(into: []) { $0.append($1) }
-        }) {
-            for game in games where byId[game.id] == nil {
+        for game in try await seasonBoard(days: days, groups: groups, depth: 0) {
+            if byId[game.id] == nil {
                 byId[game.id] = game
                 order.append(game.id)
             }
@@ -308,33 +325,51 @@ actor ESPNClient: ScoresProviding {
         return order.compactMap { byId[$0] }
     }
 
-    /// One window of a season. `limit=900` rather than the shared path's
-    /// 400: a three-month range runs ~600 events, and a silent truncation
-    /// would look like missing games.
-    private func seasonBoard(days: ClosedRange<Date>) async throws -> [Game] {
-        var items = [URLQueryItem(name: "limit", value: "900"),
+    /// One window, halved and re-asked when it comes back full.
+    private func seasonBoard(days: ClosedRange<Date>, groups: Int?,
+                             depth: Int) async throws -> [Game] {
+        var items = [URLQueryItem(name: "limit", value: String(Self.seasonWindowLimit)),
                      URLQueryItem(name: "dates", value: Self.datesToken(for: days))]
-        // Only college football's scoreboard takes a group filter.
-        if league.hasCollegeDivisions {
-            items.insert(URLQueryItem(name: "groups", value: String(Conference.fbsGroupId)), at: 0)
+        if let groups {
+            items.insert(URLQueryItem(name: "groups", value: String(groups)), at: 0)
         }
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-        return ESPNMapper.scoreboard(from: dto, league: league).games
+        let games = ESPNMapper.scoreboard(from: dto, league: league).games
+
+        guard games.count >= Self.seasonWindowLimit, depth < Self.maxWindowSplits,
+              let halves = Self.halve(days) else { return games }
+        // A window that legitimately holds exactly the limit is split for
+        // nothing — one extra request, and the merge dedupes it away.
+        return try await withThrowingTaskGroup(of: [Game].self) { group in
+            for half in halves {
+                group.addTask { try await self.seasonBoard(days: half, groups: groups,
+                                                           depth: depth + 1) }
+            }
+            return try await group.reduce(into: []) { $0 += $1 }
+        }
     }
 
-    /// The season split into windows small enough to come back whole,
-    /// on November 1 — before it the schedule is dense (~600 events),
-    /// after it the postseason thins out.
-    static func seasonWindows(of league: League, year: Int,
-                              calendar: Calendar = .current) -> [ClosedRange<Date>] {
-        let span = SeasonSpan.days(of: league, year: year, calendar: calendar)
-        guard let split = calendar.date(from: DateComponents(year: year, month: 11, day: 1)),
-              span.contains(split),
-              let beforeSplit = calendar.date(byAdding: .day, value: -1, to: split),
-              beforeSplit >= span.lowerBound
-        else { return [span] }
-        return [span.lowerBound...beforeSplit, split...span.upperBound]
+    /// A span cut down the middle, or nil where there is nothing left to
+    /// cut — a single day.
+    static func halve(_ days: ClosedRange<Date>,
+                      calendar: Calendar = .current) -> [ClosedRange<Date>]? {
+        let dayCount = calendar.dateComponents([.day], from: days.lowerBound,
+                                               to: days.upperBound).day ?? 0
+        guard dayCount >= 1,
+              let midpoint = calendar.date(byAdding: .day, value: dayCount / 2,
+                                           to: days.lowerBound),
+              let afterMidpoint = calendar.date(byAdding: .day, value: 1, to: midpoint),
+              afterMidpoint <= days.upperBound
+        else { return nil }
+        return [days.lowerBound...midpoint, afterMidpoint...days.upperBound]
     }
+
+    /// ESPN's own ceiling on a `dates=` window, and the count that means
+    /// "this came back truncated".
+    static let seasonWindowLimit = 900
+    /// Three splits — up to eight windows — is past any real season and
+    /// short of a runaway.
+    static let maxWindowSplits = 3
 
     /// `20260801-20270131` — ESPN reads both ends on the Eastern clock.
     private static func datesToken(for days: ClosedRange<Date>) -> String {

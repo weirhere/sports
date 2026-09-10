@@ -135,14 +135,15 @@ import Testing
     }
 
     /// The shapes these leagues do *not* have, asserted so nothing quietly
-    /// grows one: no poll, no FBS/FCS divisions, no whole-season slate,
-    /// and no week to group a Games tab by.
+    /// grows one: no poll, no FBS/FCS divisions, and no week to group a
+    /// Games tab by. A whole-season slate is no longer on that list — the
+    /// client splits a season into as many windows as it takes, so the
+    /// width of a group stopped being a reason to refuse one (2026-09-10).
     @Test func theWinterLeaguesHaveNoFootballShapes() {
         for league in [League.nba, .nhl] {
             #expect(!league.hasPoll)
             #expect(!league.hasWeeks)
             #expect(!league.hasCollegeDivisions)
-            #expect(!league.canTableAWholeSeason)
             #expect(!league.slateSplitsByConference)
             #expect(Conference.division(for: 5, in: league) == nil)
             #expect(!Conference.titleGameIsTopTwo(id: 5, year: 2026, in: league))
