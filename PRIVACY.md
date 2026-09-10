@@ -6,7 +6,9 @@ StatSide is a college football scores app for iPhone. It is built to show you sc
 
 ## What we collect
 
-**Nothing.** StatSide has no accounts, no analytics, no advertising, no tracking, and no server of its own.
+**Nothing.** StatSide has no accounts, no analytics, no advertising, and no tracking.
+
+StatSide runs one small service of its own, and it is worth being precise about what it is. To keep a live game's card up to date on your Lock Screen, the app subscribes to a broadcast channel **for that game** — not for you. One update is sent to everyone watching the same game at once. The service stores which channel a game is on and nothing else: no device identifiers, no tokens, no account, nothing that says a particular person is watching a particular game. It has no way to tell you apart from anyone else using the app.
 
 - The teams you follow and your display preferences are stored **only on your device** (and in your device backups, which you control). They are never transmitted to us or anyone else.
 - StatSide contains no third-party SDKs of any kind.

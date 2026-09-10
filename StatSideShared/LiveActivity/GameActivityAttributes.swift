@@ -39,6 +39,15 @@ nonisolated struct GameActivityAttributes: ActivityAttributes {
 
         /// When the facts above were true. Only rendered once the system
         /// tells us the card is stale — see `isStale` on the context.
+        ///
+        /// Wire format is **epoch seconds**, pinned by the CodingKeys
+        /// below rather than left to a default date strategy. A push
+        /// update's `content-state` is decoded by ActivityKit, not by our
+        /// own configured decoder, and Swift's default for `Date` is
+        /// seconds since the 2001 reference date — so a server that
+        /// helpfully sent ISO-8601, or Unix epoch against a decoder
+        /// expecting 2001, would fail the whole update silently. The
+        /// service and this struct have to agree in writing.
         var asOf: Date
 
         /// Whether there is a score to show at all. Pre-kick this is
@@ -46,6 +55,40 @@ nonisolated struct GameActivityAttributes: ActivityAttributes {
         /// noise pretending to be signal, which the widget already ruled
         /// on (`WidgetGame.showsScores`).
         var showsScores: Bool { phase != .pre }
+
+        enum CodingKeys: String, CodingKey {
+            case awayScore, homeScore, phase, headline, detail, asOf
+        }
+
+        init(awayScore: Int?, homeScore: Int?, phase: Phase,
+             headline: String, detail: String?, asOf: Date) {
+            self.awayScore = awayScore
+            self.homeScore = homeScore
+            self.phase = phase
+            self.headline = headline
+            self.detail = detail
+            self.asOf = asOf
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            awayScore = try c.decodeIfPresent(Int.self, forKey: .awayScore)
+            homeScore = try c.decodeIfPresent(Int.self, forKey: .homeScore)
+            phase = try c.decode(Phase.self, forKey: .phase)
+            headline = try c.decode(String.self, forKey: .headline)
+            detail = try c.decodeIfPresent(String.self, forKey: .detail)
+            asOf = Date(timeIntervalSince1970: try c.decode(Double.self, forKey: .asOf))
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encodeIfPresent(awayScore, forKey: .awayScore)
+            try c.encodeIfPresent(homeScore, forKey: .homeScore)
+            try c.encode(phase, forKey: .phase)
+            try c.encode(headline, forKey: .headline)
+            try c.encodeIfPresent(detail, forKey: .detail)
+            try c.encode(asOf.timeIntervalSince1970, forKey: .asOf)
+        }
     }
 
     /// Which of the four centre states the card is in. Deliberately not

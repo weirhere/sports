@@ -18,6 +18,14 @@ import ActivityKit
 final class LiveActivityController {
     private let log = Logger(subsystem: "com.andyryanweir.sports", category: "liveactivity")
 
+    /// Where a game's broadcast channel comes from. Injected so tests and
+    /// the DEBUG harness never reach the network.
+    private let channels: any LiveActivityChannelDirectory
+
+    init(channels: any LiveActivityChannelDirectory = RemoteChannelDirectory()) {
+        self.channels = channels
+    }
+
     /// Whether the feature is offered to users at all.
     ///
     /// False until path 3's broadcast service exists. Flipping it on
@@ -76,13 +84,17 @@ final class LiveActivityController {
         // view reads logos synchronously and a cold cache renders discs.
         await warmLogos(attributes)
 
+        // Path 3: the activity subscribes to the game's broadcast channel,
+        // and one push to that channel reaches every device watching the
+        // same game. `nil` — no service configured, or it couldn't answer —
+        // degrades to a local-only card, which is fine for a DEBUG look and
+        // is exactly why `isAvailable` gates the feature in front of users.
+        let channelId = await channels.channelId(for: game)
         do {
             _ = try Activity.request(
                 attributes: attributes,
                 content: ActivityContent(state: state, staleDate: staleDate(for: state, game: game)),
-                // E12: becomes `.channel(...)` once the broadcast service
-                // exists. `nil` keeps this local-only and reviewable.
-                pushType: nil
+                pushType: channelId.map { .channel($0) }
             )
             return true
         } catch {
