@@ -22,6 +22,7 @@ import type {
   Poll,
   GameDetail,
   GameDrive,
+  GameSituation,
   PlayItem,
   ScoringSide,
   BoxScoreTeam,
@@ -48,6 +49,7 @@ import {
   hasWeeks,
   leagueSpec,
   playsOnASurface,
+  scoringCardTitle,
   seasonYearFromEspn,
   teamLogoBase,
   type League,
@@ -1076,6 +1078,49 @@ function transformDrive(drive: EspnDrive, index: number): GameDrive {
 }
 
 /**
+ * The live situation — the Gamecast strip's whole source.
+ *
+ * Built from the **drive in progress**'s last play, not from a second
+ * live-only payload: the last play knows the down it left behind, where the
+ * ball sits, and how far that is from the end zone. ESPN drops
+ * `drives.current` the moment a game is final, so the strip retires itself
+ * with no clock check of its own.
+ *
+ * Returns undefined unless a drive is in progress with a play on it.
+ */
+export function transformSituation(
+  current: EspnDrive | undefined,
+  awayTeamId: string
+): GameSituation | undefined {
+  const play = current?.plays?.[current.plays.length - 1];
+  if (!current || !play) return undefined;
+  const isAway = current.team?.id !== undefined && current.team.id === awayTeamId;
+  const yardsToEndzone = play.end?.yardsToEndzone;
+
+  return {
+    possessionTeamId: nonEmpty(current.team?.id),
+    downDistanceText: nonEmpty(play.end?.shortDownDistanceText),
+    possessionText: nonEmpty(play.end?.possessionText),
+    driveSummary: nonEmpty(current.description),
+    lastPlayText: nonEmpty(play.text),
+    fieldPosition:
+      yardsToEndzone === undefined
+        ? undefined
+        : // `yardsToEndzone` counts down toward the *defence's* end zone, so
+          // which end of the bar that is depends on who has the ball.
+          // Clamped: a payload can hand back a spot past the goal line on a
+          // scoring play.
+          Math.min(
+            Math.max((isAway ? 100 - yardsToEndzone : yardsToEndzone) / 100, 0),
+            1
+          ),
+    // The away team attacks the home end zone, which the bar draws on the
+    // right — so the arrow points right exactly when the away side has it.
+    drivingRight: isAway,
+  };
+}
+
+/**
  * A play feed, stamped with **whose points** each scoring play was.
  *
  * The side is read off the change in the running score rather than off the
@@ -1206,6 +1251,44 @@ function boxScoreCategoryLabel(
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+/**
+ * The Scoring card's rows: ESPN's own `scoringPlays` where it ships them, and
+ * otherwise the scoring plays picked out of the flat feed.
+ *
+ * Only for leagues that want the card at all — hockey does, because a goal is
+ * an event; basketball doesn't, because ~98 of them is the box score with
+ * worse formatting, which is what `scoringCardTitle` answers.
+ *
+ * The derived path keeps **only plays that actually moved the game score**. A
+ * hockey shootout is the reason: ESPN flags every attempt as a scoring play
+ * and stamps it with the *shootout tally* rather than the game score — 1-2 on
+ * all three attempts of a 2-2 game — so a plain `isScoringPlay` filter listed
+ * three goals whose running score went nowhere and disagreed with the header
+ * above them. A shootout is worth one goal, awarded at the end, and the line
+ * score's SO column is where it belongs.
+ */
+function derivedScoringPlays(
+  summary: EspnGameSummaryResponse,
+  flatPlays: PlayItem[],
+  league: League
+): ScoringPlayItem[] {
+  const shipped = summary.scoringPlays ?? [];
+  if (shipped.length > 0) return shipped.map(transformScoringPlay);
+  if (scoringCardTitle(league) === undefined) return [];
+  return flatPlays
+    .filter((play) => play.isScoringPlay && play.scoringSide !== undefined)
+    .map((play) => ({
+      id: play.id,
+      quarter: play.period,
+      clock: play.clock,
+      typeAbbreviation: play.typeText,
+      text: play.text,
+      teamId: play.teamId,
+      awayScore: play.awayScore,
+      homeScore: play.homeScore,
+    }));
+}
+
 function transformScoringPlay(
   play: EspnScoringPlay,
   index: number
@@ -1283,6 +1366,7 @@ export function transformGameSummary(
   const homeTeamEspnId = String(game.homeTeam.team.espnId);
   const awayTeamEspnId = String(game.awayTeam.team.espnId);
   const drives = summary.drives?.previous ?? [];
+  const flatPlays = drives.length > 0 ? [] : transformPlays(summary.plays ?? []);
 
   // boxscore.teams has no homeAway on some responses; ESPN orders it
   // away-first, matching the scoreboard convention.
@@ -1320,11 +1404,12 @@ export function transformGameSummary(
       league
     ),
     drives: drives.map(transformDrive),
-    scoringPlays: (summary.scoringPlays ?? []).map(transformScoringPlay),
+    scoringPlays: derivedScoringPlays(summary, flatPlays, league),
     boxScore: transformBoxScore(summary.boxscore, league),
     // Only ever populated where a league has no drives to group by:
     // football's plays live inside its drives, and carrying them twice
     // would print the same rows in two places.
-    plays: drives.length > 0 ? [] : transformPlays(summary.plays ?? []),
+    plays: drives.length > 0 ? [] : flatPlays,
+    situation: transformSituation(summary.drives?.current, awayTeamEspnId),
   };
 }

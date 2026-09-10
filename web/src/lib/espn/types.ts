@@ -400,6 +400,9 @@ export interface EspnScoringPlay {
 
 export interface EspnDrives {
   previous?: EspnDrive[];
+  /** The possession in progress. ESPN drops it the moment a game ends — a
+   *  final game's `drives` object carries `previous` alone. */
+  current?: EspnDrive;
 }
 
 export interface EspnDrive {

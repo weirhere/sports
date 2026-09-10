@@ -8,10 +8,17 @@
 
 import Link from "next/link";
 import type { Game, GameTeam } from "@/lib/types";
+import { teamPath } from "@/lib/routes";
 import { LiveDot } from "@/components/theme/live-dot";
 import { cn } from "@/lib/utils";
 import { TeamMark } from "./team-mark";
-import { isLiveStatus, showsScores, statusLine, statusSubline } from "./game-status";
+import {
+  isLiveStatus,
+  kickoffHero,
+  showsScores,
+  statusLine,
+  statusSubline,
+} from "./game-status";
 
 export function GameHeader({ game }: { game: Game }) {
   const live = isLiveStatus(game.status);
@@ -21,6 +28,11 @@ export function GameHeader({ game }: { game: Game }) {
   const scoreLineVisible = scores && awayScore !== null && homeScore !== null;
   const line = statusLine(game);
   const subline = statusSubline(game);
+  // A pre-game page's one question is *when*, so the kickoff takes the slot
+  // a played game's score takes (iOS, 2026-09-09). "Wed, Sep 9 at 8:20 PM"
+  // set in the quietest type on the page answered it in a whisper while the
+  // space between the logos sat empty.
+  const kickoff = kickoffHero(game);
 
   return (
     <header className="card-surface">
@@ -30,7 +42,7 @@ export function GameHeader({ game }: { game: Game }) {
         <div
           className={cn(
             "flex min-w-0 flex-none flex-col items-center gap-1",
-            !scoreLineVisible && "pt-3"
+            !scoreLineVisible && !kickoff && "pt-3"
           )}
         >
           {live && <LiveDot />}
@@ -63,18 +75,43 @@ export function GameHeader({ game }: { game: Game }) {
               </span>
             </p>
           )}
-          <p
-            className={cn(
-              "text-center type-meta-em tnum",
-              scores ? "text-text-secondary" : "text-text-primary"
-            )}
-          >
-            {line}
-          </p>
-          {subline && (
-            <p className="text-center type-meta text-text-secondary">
-              {subline}
-            </p>
+          {kickoff ? (
+            <>
+              <p className="whitespace-nowrap type-kickoff-hero text-text-primary">
+                {kickoff.time}
+              </p>
+              {kickoff.date && (
+                <p className="text-center type-team-name text-text-secondary">
+                  {kickoff.date}
+                </p>
+              )}
+              {/* The network gets its own third line: the kickoff split left
+                  it without the second line it used to ride in on. */}
+              {game.broadcast && (
+                <p className="text-center type-meta text-text-secondary">
+                  {game.broadcast}
+                </p>
+              )}
+              <span className="sr-only">
+                {[kickoff.date, kickoff.time].filter(Boolean).join(", ")}
+              </span>
+            </>
+          ) : (
+            <>
+              <p
+                className={cn(
+                  "text-center type-meta-em tnum",
+                  scores ? "text-text-secondary" : "text-text-primary"
+                )}
+              >
+                {line}
+              </p>
+              {subline && (
+                <p className="text-center type-meta text-text-secondary">
+                  {subline}
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -96,7 +133,11 @@ function TeamSide({ side, scores }: { side: GameTeam; scores: boolean }) {
 
   return (
     <Link
-      href={`/team/${side.team.id}`}
+      // League-qualified, always. ESPN's team ids collide across leagues —
+      // id 2 is Auburn *and* the Bills — so a bare `/team/2` resolves
+      // through the legacy fallback and lands a Bills link on Auburn. The
+      // header knows the league; it must not throw it away.
+      href={teamPath(side.team)}
       aria-label={label}
       className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center transition-opacity hover:opacity-80"
     >

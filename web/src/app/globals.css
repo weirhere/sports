@@ -137,6 +137,14 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+/* The pre-game headline — the slot a played game's score takes. Smaller
+   than a score because a time is longer, and semibold rather than heavy:
+   it is the answer to "when", not a result. */
+@utility type-kickoff-hero {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 @utility type-score-hero {
   font-size: 34px;
   font-weight: 600;

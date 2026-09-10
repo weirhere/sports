@@ -308,6 +308,31 @@ export interface PlayItem {
 }
 
 /**
+ * The live situation — ESPN's Gamecast strip, derived from the drive in
+ * progress. Every field is optional inside the payload, so a half-filled
+ * situation renders the lines it has and drops the ones it doesn't.
+ */
+export interface GameSituation {
+  possessionTeamId?: string;
+  /** "2nd & 4". */
+  downDistanceText?: string;
+  /** "WSU 26" — the ball's spot. */
+  possessionText?: string;
+  /** The drive so far: "1 play, 6 yards, 0:05". */
+  driveSummary?: string;
+  /** ESPN's narration of the play that just ended. */
+  lastPlayText?: string;
+  /**
+   * Where the ball sits, 0 at the away team's own goal line and 1 at the
+   * home team's. Absent when the payload gave no distance, which leaves the
+   * field bar off and the rest of the strip standing.
+   */
+  fieldPosition?: number;
+  /** True when the offence is moving toward the home end zone. */
+  drivingRight: boolean;
+}
+
+/**
  * One team's player box score.
  *
  * ESPN ships a category per stat group with its own column headers, and we
@@ -360,6 +385,13 @@ export interface GameDetail {
   /** The flat play feed, oldest first — only ever populated for leagues
    *  with no drives to group by. */
   plays?: PlayItem[];
+  /**
+   * The possession in progress, live games only — ESPN's `drives.current`.
+   * Absent the moment a game is final (verified live: a final game's
+   * `drives` object carries `previous` and nothing else), which is what
+   * retires the Gamecast strip without a second condition.
+   */
+  situation?: GameSituation;
 }
 
 /** The scoreboard response: the week strip's slots plus the slate. */

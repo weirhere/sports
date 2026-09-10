@@ -2,13 +2,24 @@
 // a narrow type/clock gutter, the play text, and the running score against
 // the trailing edge.
 
-import type { ScoringPlayItem } from "@/lib/types";
+import type { Game, ScoringPlayItem } from "@/lib/types";
 import { DetailCard } from "./detail-card";
+import { allowsShootout, periodText } from "@/lib/period-label";
 import { quarterMarkerLabel } from "./game-status";
 
-export function ScoringPlaysCard({ plays }: { plays: ScoringPlayItem[] }) {
+export function ScoringPlaysCard({
+  plays,
+  title = "Scoring",
+  game,
+}: {
+  plays: ScoringPlayItem[];
+  /** "Scoring" in football, "Goals" in hockey — the league's own word. */
+  title?: string;
+  /** Whose game, for the period marker's league-correct name. */
+  game?: Game;
+}) {
   return (
-    <DetailCard title="Scoring">
+    <DetailCard title={title}>
       <ul className="pb-2">
         {plays.map((play, index) => {
           const marker =
@@ -21,7 +32,9 @@ export function ScoringPlaysCard({ plays }: { plays: ScoringPlayItem[] }) {
                     index === 0 ? "" : "pt-2"
                   }`}
                 >
-                  {quarterMarkerLabel(play.quarter)}
+                  {game
+                    ? periodText(play.quarter, game.league, allowsShootout(game))
+                    : quarterMarkerLabel(play.quarter)}
                 </p>
               )}
               <div className="flex items-start gap-3 px-4 py-[5px]">
