@@ -503,6 +503,7 @@ college-football game there; worth an eyes-on check.
 | iOS date | Decision | Status |
 |---|---|---|
 | 2026-09-10 | A season is fetched in as many windows as it takes; every conference page gets a Games tab | pending — the web deliberately shipped the rolling window in W4b; this is the follow-up it was logged for |
+| 2026-09-10 | The per-venue capacity request is deleted; the decode and the meter stay | shipped — the web never added the fetch (W5b made the same call from the same evidence) |
 
 ## W6 — Teams tab, search, onboarding
 

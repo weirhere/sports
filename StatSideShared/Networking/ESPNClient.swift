@@ -159,14 +159,6 @@ actor ESPNClient: ScoresProviding {
     /// The `/teams` directory, resolved once per client (see `teamDirectory`).
     private var teamsById: [String: Team]?
 
-    /// Stadium capacities by venue id, asked once each per client — a
-    /// nil value is a resolved "no number for this one". Unlike the team
-    /// directory, this caches failures too: the caller is the game
-    /// detail's 30s poll loop, so an un-cached miss would re-ask twice a
-    /// minute for as long as the page is open, and the cost of giving up
-    /// is one absent line on one card.
-    private var venueCapacities: [String: Int?] = [:]
-
     init(league: League = .collegeFootball, session: URLSession = .shared) {
         self.league = league
         self.session = session
@@ -552,27 +544,19 @@ actor ESPNClient: ScoresProviding {
         let dto: SummaryResponseDTO = try await fetch(
             path: "/summary", query: [URLQueryItem(name: "event", value: eventId)]
         )
-        var summary = ESPNMapper.gameSummary(from: dto, league: league)
-        // The site API's venue object stops at name, address, surface —
-        // capacity only exists on the core API's venue resource, so the
-        // "how full was it" half of the info card costs one extra
-        // request, cached per venue and never blocking the summary.
-        if summary.venueCapacity == nil, let venueId = dto.gameInfo?.venue?.id {
-            summary.venueCapacity = await venueCapacity(venueId: venueId)
-        }
-        return summary
-    }
-
-    /// One core-API venue lookup, memoized. A miss is a quiet nil: the
-    /// capacity line degrades away exactly like every other optional
-    /// field on this card.
-    private func venueCapacity(venueId: String) async -> Int? {
-        if let cached = venueCapacities[venueId] { return cached }
-        let dto: CoreVenueDTO? = try? await fetch(
-            base: coreBase, path: "/venues/\(venueId)", query: []
-        )
-        venueCapacities[venueId] = dto?.capacity
-        return dto?.capacity
+        // `venueCapacity` is still decoded off the site payload's venue —
+        // it is simply always absent today. The core API's venue resource
+        // used to be fetched here to fill it in, and that request is gone
+        // (2026-09-10): ESPN publishes no capacity **anywhere**. Sampled
+        // live across all four leagues, 100 core venue objects carried one
+        // 0 times, and `capacity` is not among the keys the resource ships
+        // at all — it is `id`, `guid`, `fullName`, `shortName`, `address`,
+        // `grass`, `indoor`, `images`. The row it was added to rescue has
+        // therefore never rendered, before or after. Keeping the decode
+        // costs nothing and lights the row up for free if ESPN ever adds
+        // the field; keeping the request cost one round trip per venue per
+        // session to learn nothing.
+        return ESPNMapper.gameSummary(from: dto, league: league)
     }
 
     private func fetch<T: Decodable>(path: String, query: [URLQueryItem]) async throws -> T {
