@@ -559,9 +559,53 @@ four leagues since 2.0.
 
 | iOS date | Decision | Status |
 |---|---|---|
-| 2026-09-09 | The wordmark drops the field glyph and is set as a mark | pending |
-| 2026-08-31 | Dark mode adopts light mode's elevation logic; new `bgCard` token | needs audit — the P3 token port predates this |
-| 2026-08-31 | Entity-page headers paint `bgCard`; the team-color hero retires | needs audit |
+| 2026-09-09 | The wordmark drops the field glyph and is set as a mark | shipped — W7 |
+| 2026-08-31 | Dark mode adopts light mode's elevation logic; new `bgCard` token | **audited, already correct** — W7 |
+| 2026-08-31 | Entity-page headers paint `bgCard`; the team-color hero retires | **audited, already correct** — W7 |
+
+### W7 — chrome and tokens  ✅ shipped 2026-09-10
+
+**The wordmark becomes a mark.** It was a 🏈 emoji beside "StatSide" at 17
+bold — the glyph-plus-name lockup iOS retired on 2026-09-09, and for the same
+reason: the tab bar's own Games icon is a football too, so the header was
+saying "sports" twice a thumb apart, and a stock icon beside a stock
+system-font string reads as a placeholder logo. All three of iOS's moves turn
+out to be reachable in a browser — a **weight split** ("Stat" black against
+"Side" medium), the system stack's **condensed width** (measured: 96px → 83px
+at 24px, so the axis is genuinely exposed; a browser without it renders normal
+width and the other two moves still carry), and **−3% tracking**. It sits at
+24px, the hero-title scale, for the reason the entity pages use it: nothing
+above it names the screen.
+
+**The token audit came back clean.** Both rows were logged as "needs audit —
+the P3 token port predates this", and both are already correct: `--text-primary`
+is the soft `#1a1a1a`, the dark ramp is 0.00 / 0.11 / 0.15 / 0.17 exactly
+(`#000` → `#1c1c1c` → `#262626` → `#2b2b2b`), `--bg-card` exists and is
+distinct from `--bg-primary` in dark, and `bg-bg-primary` is used in four
+places, all of them chrome (nav bar, tab bar, calendar-sheet headers) with the
+inverted-ink `text-bg-primary` on filled chips. The entity-page hero paints
+`bg-card` and no team colour survives anywhere. The only hardcoded hexes
+outside the token file are the OpenGraph card's, which is deliberate — it
+renders always-light through Satori, which can't read CSS variables — and they
+match the light tokens exactly. **Nothing to change**, which is worth
+recording as a result rather than a silent tick.
+
+**The fixed-chrome flash is fixed**, paired with this pass as the backlog
+suggested. The route template animates the page in with framer-motion's `y`,
+and a `transform` on an ancestor becomes the containing block for every
+`position: fixed` descendant — so for the length of the entrance the day strip
+anchored to the template div rather than the viewport and rendered *over* the
+slate.
+
+Of the three ways out the audit listed, this takes the third and structurally
+right one: the fixed chrome mounts **outside** the animated subtree, through a
+portal into the app shell. Not `document.body` — the shell publishes
+`--page-max` as a custom property and the strip reads it to line up with the
+content, so portalling that far would fix the transform and break the width.
+Verified by measurement, which is how the bug was caught in the first place:
+mid-navigation the template still reports `matrix(1, 0, 0, 1, 0, 8)` and the
+strip now resolves to **56px**, its correct viewport position, where it used
+to be pushed to 196.
 
 ---
 

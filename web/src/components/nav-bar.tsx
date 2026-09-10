@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Wordmark } from "@/components/wordmark";
 
 const NAV_LINKS = [
   { href: "/", label: "Scores" },
@@ -53,13 +54,10 @@ export function NavBar() {
             )}
           </>
         ) : pathname === "/" ? (
-          <Link href="/" className="mr-6 flex items-center gap-1.5">
-            <span aria-hidden="true" className="text-[15px] leading-none">
-              🏈
-            </span>
-            <span className="text-[17px] font-bold tracking-tight">
-              StatSide
-            </span>
+          // The mark, not a label — and no glyph beside it: the tab bar's
+          // Games icon is already a football (iOS, 2026-09-09).
+          <Link href="/" className="mr-6 flex items-center text-text-primary">
+            <Wordmark />
           </Link>
         ) : (
           <span className="mr-6 text-[17px] font-bold tracking-tight">

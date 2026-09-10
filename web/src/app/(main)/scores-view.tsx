@@ -24,6 +24,7 @@ import {
   useLeagueScoreboards,
   type LeagueScoreboardsSeed,
 } from "@/lib/hooks/use-league-scoreboards";
+import { ChromePortal } from "@/components/chrome-portal";
 import { DayStrip } from "@/components/day-strip";
 import { DayCalendarSheet } from "@/components/day-calendar-sheet";
 import { TodayButton } from "@/components/today-button";
@@ -190,12 +191,18 @@ export function ScoresView({ seed }: ScoresViewProps) {
         onYearChange={selectSeason}
       />
 
-      <DayStrip
-        days={days}
-        selectedDay={selectedDay}
-        onSelect={selectDay}
-        onOpenCalendar={() => setCalendarOpen(true)}
-      />
+      {/* Both of these are `position: fixed`, so they mount outside the
+          route template — a transformed ancestor would become their
+          containing block for the length of the page-entrance animation and
+          anchor them to it rather than to the viewport. */}
+      <ChromePortal>
+        <DayStrip
+          days={days}
+          selectedDay={selectedDay}
+          onSelect={selectDay}
+          onOpenCalendar={() => setCalendarOpen(true)}
+        />
+      </ChromePortal>
       <DayCalendarSheet
         open={calendarOpen}
         onOpenChange={setCalendarOpen}
@@ -306,7 +313,11 @@ export function ScoresView({ seed }: ScoresViewProps) {
         </div>
       </div>
 
-      {showsTodayJump && <TodayButton onClick={selectToday} />}
+      {showsTodayJump && (
+        <ChromePortal>
+          <TodayButton onClick={selectToday} />
+        </ChromePortal>
+      )}
     </div>
   );
 }
