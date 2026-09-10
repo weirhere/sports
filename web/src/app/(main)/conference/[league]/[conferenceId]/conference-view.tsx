@@ -1,17 +1,16 @@
 "use client";
 
 // The ConferencePage client shell — Standings leads (the iOS 2026-08-31
-// order), Games carries the season's full slate one card per week with the
-// postseason last. Season flips navigate `?year=` so the server refetch is
+// order), Games carries the season's slate under the control row every
+// Games tab shares. Season flips navigate `?year=` so the server refetch is
 // the per-year cache.
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { conferenceLogoUrl } from "@/lib/conferences";
-import { seasonYear, seasonYears, type League } from "@/lib/leagues";
-import type { ConferenceStandingsGroup, Game } from "@/lib/types";
+import { hasWeeks, seasonYear, seasonYears, type League } from "@/lib/leagues";
+import type { ConferenceStandingsGroup, Game, Team } from "@/lib/types";
 import { HeroHeader } from "@/components/hero-header";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { SeasonMenuChip } from "@/components/season-menu-chip";
@@ -25,69 +24,19 @@ import {
   scopesFor,
   type StandingsScope,
 } from "@/lib/standings-scope";
-import { gamePath } from "@/lib/routes";
-import { GameMatchupRow, gameRowLabel } from "@/components/next-game-card";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
+import { ConferenceGamesList } from "@/components/conference-games-list";
+import {
+  SlateControlRow,
+  toggledGrouping,
+} from "@/components/slate-control-row";
+import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
 
 // Ordered — Standings first and the entry default (FotMob's Leagues order).
 const TABS: HeroTab[] = [
   { id: "standings", label: "Standings" },
   { id: "games", label: "Games" },
 ];
-
-interface WeekGroup {
-  id: string;
-  title: string;
-  games: Game[];
-}
-
-/**
- * The season slate's grouping — iOS `ConferenceSlate.groups`: regular-season
- * weeks ascending, then a dateless bucket, then the postseason — whose week
- * numbers restart at 1 and must never land a title game in "Week 1". Games
- * sort chronologically within a group.
- */
-export function groupSeasonSlate(games: Game[]): WeekGroup[] {
-  const time = (game: Game) => {
-    const parsed = Date.parse(game.scheduledAt);
-    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
-  };
-  const sorted = [...games].sort((a, b) => time(a) - time(b));
-
-  const regular = new Map<number, Game[]>();
-  const postseason: Game[] = [];
-  const undated: Game[] = [];
-  for (const game of sorted) {
-    const week = game.week;
-    if (game.seasonType === 3) {
-      postseason.push(game);
-    } else if (week !== undefined && week >= 1) {
-      const bucket = regular.get(week);
-      if (bucket) bucket.push(game);
-      else regular.set(week, [game]);
-    } else {
-      // A league with no weeks at all (the NBA and NHL ship `week: null` on
-      // every event) files its whole slate here rather than under a Week 1
-      // that doesn't exist.
-      undated.push(game);
-    }
-  }
-
-  const groups: WeekGroup[] = [...regular.keys()]
-    .sort((a, b) => a - b)
-    .map((week) => ({
-      id: `week-${week}`,
-      title: `Week ${week}`,
-      games: regular.get(week) ?? [],
-    }));
-  if (undated.length > 0) {
-    groups.push({ id: "week-other", title: "More games", games: undated });
-  }
-  if (postseason.length > 0) {
-    groups.push({ id: "week-postseason", title: "Postseason", games: postseason });
-  }
-  return groups;
-}
 
 interface ConferenceViewProps {
   league: League;
@@ -141,7 +90,45 @@ export function ConferenceView({
     [allTables, conferenceRef, scope]
   );
 
-  const weekGroups = useMemo(() => groupSeasonSlate(games ?? []), [games]);
+  // Weeks is the season's own clock and the default where a league has
+  // them; the NBA and NHL send `week: null` on every event, so their pane
+  // opens grouped by day rather than under one unheaded card.
+  const [grouping, setGrouping] = useState<SlateGrouping>(
+    hasWeeks(league) ? "week" : "day"
+  );
+  const [teamChoice, setTeamChoice] = useState<string | undefined>();
+
+  // The filter's roster: the conference's own members, from the season's
+  // standings — the one list that says who *belongs* rather than who showed
+  // up, since the slate also carries every non-conference opponent. Where
+  // ESPN ships no standings (its Sun Belt hole, an offseason table) the
+  // slate's teams stand in, because a filter with no names is no filter.
+  const filterableTeams = useMemo<Team[]>(() => {
+    const members = allTables
+      ? tablesAtScope(allTables, conferenceRef, "conference")
+          .flatMap((table) => table.entries)
+          .map((entry) => entry.team)
+      : [];
+    if (members.length > 0) {
+      return [...members].sort((a, b) => a.school.localeCompare(b.school));
+    }
+    const seen = new Set<string>();
+    return (games ?? [])
+      .flatMap((game) => [game.awayTeam.team, game.homeTeam.team])
+      .filter((team) => !seen.has(team.id) && seen.add(team.id))
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [allTables, conferenceRef, games]);
+
+  // The pick, honored only while this season's conference actually has that
+  // team. A stale pick reads as "All teams" rather than emptying the pane
+  // with a name that means nothing here — which is what lets the choice
+  // survive a season flip instead of being reset by one.
+  const activeTeam = filterableTeams.find((team) => team.id === teamChoice);
+  const filteredGames = useMemo(
+    () => gamesForTeam(games ?? [], activeTeam?.id),
+    [games, activeTeam?.id]
+  );
+
   // The hero count sums every division, however the tables are sliced.
   const teamCount = useMemo(() => {
     if (!allTables) return 0;
@@ -226,7 +213,18 @@ export function ConferenceView({
               base={baseScope ?? scope}
               onSelect={setScope}
             />
-          ) : undefined
+          ) : (
+            <SlateControlRow
+              grouping={grouping}
+              onToggle={(value) =>
+                setGrouping((current) => toggledGrouping(current, value))
+              }
+              teams={filterableTeams}
+              teamSelection={activeTeam?.id}
+              onSelectTeam={setTeamChoice}
+              hasWeeks={hasWeeks(league)}
+            />
+          )
         }
       />
 
@@ -275,31 +273,28 @@ export function ConferenceView({
           <>
             {games === null ? (
               retryRow("Couldn't load the schedule.")
-            ) : weekGroups.length === 0 ? (
+            ) : filteredGames.length > 0 ? (
+              <ConferenceGamesList games={filteredGames} grouping={grouping} />
+            ) : activeTeam && games.length > 0 ? (
+              // The narrowed-empty state, Scores' rule (iOS, 2026-08-29):
+              // name what's hiding the games and offer them back, so a
+              // filtered pane never reads as a missing schedule.
+              <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+                <p className="type-team-name text-text-secondary">
+                  No {displayYear} games for {activeTeam.school}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTeamChoice(undefined)}
+                  className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+                >
+                  Show all teams
+                </button>
+              </section>
+            ) : (
               <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
                 Schedule TBA
               </section>
-            ) : (
-              weekGroups.map((group) => (
-                <section key={group.id} className="card-surface pb-1">
-                  <CardHeader title={group.title} />
-                  {group.games.map((game, index) => (
-                    <div key={game.id}>
-                      {index > 0 && (
-                        <div className="ml-4 border-t border-divider" />
-                      )}
-                      <Link
-                        href={gamePath(game)}
-                        aria-label={gameRowLabel(game)}
-                        className="block transition-colors hover:bg-bg-header"
-                        suppressHydrationWarning
-                      >
-                        <GameMatchupRow game={game} />
-                      </Link>
-                    </div>
-                  ))}
-                </section>
-              ))
             )}
           </>
         )}

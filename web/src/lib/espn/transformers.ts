@@ -807,7 +807,14 @@ function deriveRecord(teamId: string, games: Game[]): string | undefined {
 }
 
 /**
- * Map a /teams/{id}/schedule payload (plus postseason extra events).
+ * Map a /teams/{id}/schedule payload, plus the preseason and postseason
+ * responses fetched beside it.
+ *
+ * Each phase's events are stamped with **their own** season type, which is
+ * what lets the Games tab split them into a card each: exhibition football
+ * must never read as games that counted, and the phases arrive as three
+ * separate requests precisely because ESPN won't return them together.
+ *
  * `recordSummary`/`standingSummary` always describe ESPN's *current*
  * season — under a past season's games they'd be this year's numbers, so
  * they only survive when `season.year === requestedSeason.year`.
@@ -815,7 +822,10 @@ function deriveRecord(teamId: string, games: Game[]): string | undefined {
 export function transformTeamSchedule(
   regular: EspnScheduleResponse,
   league: League,
-  extraEvents: EspnScheduleEvent[] = []
+  extra: {
+    preseason?: EspnScheduleEvent[];
+    postseason?: EspnScheduleEvent[];
+  } = {}
 ): TeamScheduleData {
   const scheduleTeam = regular.team;
   let team: Team | undefined;
@@ -841,10 +851,13 @@ export function transformTeamSchedule(
   const rawYear = regular.requestedSeason?.year;
   const year = rawYear !== undefined ? seasonYearFromEspn(league, rawYear) : undefined;
   const games = [
+    ...(extra.preseason ?? []).map((event) =>
+      transformScheduleEvent(event, league, { seasonYear: year, seasonType: 1 })
+    ),
     ...(regular.events ?? []).map((event) =>
       transformScheduleEvent(event, league, { seasonYear: year, seasonType: 2 })
     ),
-    ...extraEvents.map((event) =>
+    ...(extra.postseason ?? []).map((event) =>
       transformScheduleEvent(event, league, { seasonYear: year, seasonType: 3 })
     ),
   ]

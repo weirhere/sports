@@ -26,6 +26,7 @@ import {
   TeamRecordCard,
   teamRecordCardHasContent,
 } from "@/components/team-record-card";
+import { bySeasonPhase, seasonPhaseTitle } from "@/lib/season-phase";
 import { StandingsList } from "@/components/standings-list";
 import { StandingsScopeChip } from "@/components/standings-scope-chip";
 import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
@@ -158,6 +159,11 @@ export function TeamView({
     [standingsGroups, conferenceRef, scope]
   );
 
+  // Preseason, regular season and postseason each get their own card:
+  // exhibition football must never read as games that counted, and it is
+  // what lets the regular-season card be honestly named.
+  const phases = useMemo(() => bySeasonPhase(schedule.games), [schedule.games]);
+
   const selectYear = (year: number) => {
     const query = year === seasonYear(league) ? "" : `?year=${year}`;
     router.push(`/team/${league}/${teamId}${query}`);
@@ -270,25 +276,32 @@ export function TeamView({
           </>
         )}
 
-        {activeTab === "games" && (
-          <>
-            <section className="card-surface pb-1">
-              <CardHeader title="Schedule" />
-              {schedule.games.length > 0 ? (
-                schedule.games.map((game, index) => (
+        {activeTab === "games" &&
+          // A card per phase of the season (iOS, 2026-09-06). The phases the
+          // team has no games in produce no card, so a college page with
+          // neither a preseason nor a bowl is one card, as before — and the
+          // empty state still needs a card of its own when there are no
+          // games to split at all.
+          (phases.length > 0 ? (
+            phases.map(({ phase, games }) => (
+              <section key={phase} className="card-surface pb-1">
+                <CardHeader title={seasonPhaseTitle(phase)} />
+                {games.map((game, index) => (
                   <div key={game.id}>
                     {index > 0 && <div className="ml-4 border-t border-divider" />}
                     <ScheduleRow game={game} teamId={teamId} />
                   </div>
-                ))
-              ) : (
-                <p className="px-4 py-8 text-center type-team-name text-text-secondary">
-                  Season TBA
-                </p>
-              )}
+                ))}
+              </section>
+            ))
+          ) : (
+            <section className="card-surface pb-1">
+              <CardHeader title="Schedule" />
+              <p className="px-4 py-8 text-center type-team-name text-text-secondary">
+                Season TBA
+              </p>
             </section>
-          </>
-        )}
+          ))}
 
         {activeTab === "standings" &&
           conferenceRef !== undefined &&

@@ -231,20 +231,63 @@ polls).
 | 2026-09-07 | A team page's Standings tab gets the scope chip (scoping *out*) | shipped |
 | 2026-09-08 | Standings columns are per league; the ranking key follows | shipped |
 | 2026-09-06 | Championship cut marked with a leading-edge bar plus a keyed legend | shipped |
-| 2026-09-05 | `SlateControlRow` — Weeks / Date toggles + a Team dropdown | pending — W4b, with the Games tabs it controls |
+| 2026-09-05 | `SlateControlRow` — Weeks / Date toggles + a Team dropdown | shipped — W4b |
 | 2026-09-05 | The Top 25 becomes an entity page with Standings and Games tabs | pending — W4c |
 | 2026-09-05 | `PollScreen` moves onto the entity template; the picker becomes a chip | pending — W4c |
-| 2026-09-05 | ConferencePage's Games tab gains a team filter | pending — W4b |
-| 2026-09-06 | The preseason gets its own cards; the season opens in July | pending — W4b |
-| 2026-09-06 | Team pages fetch the preseason and split Games into a card per phase | pending — W4b |
-| 2026-09-08 | A Games tab opens on the next game — earlier cards fold behind one row | pending — W4b |
-| 2026-09-08 | A Games tab is affordable per team, not per conference (NBA/NHL) | pending — W4b |
+| 2026-09-05 | ConferencePage's Games tab gains a team filter | shipped — W4b |
+| 2026-09-06 | The preseason gets its own cards; the season opens in July | shipped — W4b |
+| 2026-09-06 | Team pages fetch the preseason and split Games into a card per phase | shipped — W4b |
+| 2026-09-08 | A Games tab opens on the next game — earlier cards fold behind one row | shipped — W4b |
+| 2026-09-08 | A Games tab is affordable per team, not per conference (NBA/NHL) | shipped — W4b, as the iOS **code** has it rather than as the row reads. See below |
 | 2026-09-06 | The postseason becomes its own tab, drawn as a bracket | pending — W4c |
 | 2026-09-06 | Bracket connectors are earned, never assumed; byes are synthesised | pending — W4c |
 | 2026-09-06 | The postseason tab is the playoff only; the Pro Bowl hangs beneath | pending — W4c |
 | 2026-09-08 | No Postseason tab for NBA/NHL this pass | pending — W4c |
 | 2026-09-05 | Past-season polls come from the core API | pending — W4c |
 | 2026-09-06 | The Top 25 wears college football's mark, not a trophy | shipped — in W3, with the hub row |
+
+### W4b — the Games tabs  ✅ shipped 2026-09-09
+
+Every Games tab in the app gets the same control row and the same fold, plus
+the preseason's own cards on team and conference pages alike. The rows are
+marked shipped in the W4a table above; two things W4b turned up are worth
+their own paragraphs, because neither has a decision row on iOS.
+
+**iOS ships a rolling-window Games tab for the NBA and NHL; its decision row
+says it ships none.** CLAUDE.md's 2026-09-08 row reads "NBA and NHL conference
+and league pages show Standings alone", and `ConferencePage.swift` has said
+otherwise since the leagues merged: `availableTabs` returns `[.standings,
+.games]` for a league that can't table a whole season, and `rollingGames()`
+fetches a `dates=` window of a week back and three weeks forward, walked
+forward up to four times until one has games in it and narrowed by the same
+rule that decides whether a followed table claims a game. **The web now
+matches the code**, which is the thing users see. There is no decision row for
+it on either platform — this is the first place it is written down.
+
+**A dropped `groups=` had an NFL division's Games tab showing the whole
+league.** `scoreboardUrl` gated the parameter behind `hasCollegeDivisions`, so
+every non-college caller's group was silently discarded and an AFC East page
+tabled all fifteen of a week's games. ESPN honours `groups=` far more widely
+than that gate assumed — probed live 2026-09-09:
+
+| request | events | verdict |
+|---|---|---|
+| `nfl` one week, no groups | 15 | the whole league |
+| `nfl` one week, `groups=4` | 3 | AFC East's own |
+| `nba` whole season, no groups | 900 | truncates at Feb 18 |
+| `nba` whole season, `groups=1` | 376 | Atlantic's season, whole |
+| `nhl` whole season, `groups=32` | 584 | Atlantic's season, whole |
+| `nhl` whole season, `groups=7` | 900 | truncates at Mar 26 |
+
+The dropped parameter is fixed here, which is a parity fix: iOS always sent
+it. The **second** half of that table is not. A *division*-scoped season fetch
+fits comfortably under ESPN's 900-event cap for basketball and hockey, which
+means those pages could carry a real Games tab — weeks, the fold, the team
+filter, a whole season — instead of a rolling window, and it means
+`canTableAWholeSeason` asks the question at the wrong granularity: the limit
+is per **group**, not per league. That is a product change, and it belongs on
+iOS first. Logged in BACKLOG.md rather than taken here, because shipping it on
+web alone would open exactly the divergence this epic exists to close.
 
 **Three bugs fixed on the way, none of them a parity row.**
 

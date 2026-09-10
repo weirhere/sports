@@ -29,8 +29,13 @@ export function espnDayRange(start: Date, end: Date): string {
 /**
  * The scoreboard.
  *
- * `groups` is college football's FBS/FCS filter and is silently ignored by
- * every other league, so it is only ever sent where it means something.
+ * `groups` narrows the slate to one group of ESPN's own hierarchy, and it
+ * works in **every** league we cover — college football's FBS/FCS divisions,
+ * and a pro league's conferences and divisions alike (probed live
+ * 2026-09-09: `groups=4` on the NFL returns the three AFC East games of a
+ * week rather than all fifteen). It is sent whenever a caller names one, and
+ * only college football gets a *default*, because only it has a division
+ * every request has to pick.
  *
  * Two ways to scope it in time, and the difference matters:
  *
@@ -57,9 +62,8 @@ export function scoreboardUrl(
   }
 ): string {
   const url = new URL(`${apiBase(league)}/scoreboard`);
-  if (hasCollegeDivisions(league)) {
-    url.searchParams.set("groups", String(params?.groups ?? FBS_GROUP_ID));
-  }
+  const groups = params?.groups ?? (hasCollegeDivisions(league) ? FBS_GROUP_ID : undefined);
+  if (groups !== undefined) url.searchParams.set("groups", String(groups));
   url.searchParams.set("limit", String(params?.limit ?? 300));
   if (params?.week !== undefined) url.searchParams.set("week", String(params.week));
   if (params?.seasonType !== undefined) {
