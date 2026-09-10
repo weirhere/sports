@@ -124,5 +124,19 @@ final class LiveActivityController {
             _ = await WidgetLogoFetcher.logo(for: url)
         }
     }
+
+    #if DEBUG
+    /// Backdates the stale deadline so the stale treatment can be looked at
+    /// on demand. Waiting two minutes for it is not a review loop, and the
+    /// state matters more than most: it's the one none of the four
+    /// reference apps has, so nobody's prior art says whether it reads.
+    func debugMakeStale(gameId: String) async {
+        guard let activity = activity(for: gameId) else { return }
+        await activity.update(
+            ActivityContent(state: activity.content.state,
+                            staleDate: Date().addingTimeInterval(-1))
+        )
+    }
+    #endif
 }
 #endif
