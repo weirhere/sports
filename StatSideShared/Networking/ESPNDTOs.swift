@@ -572,12 +572,6 @@ nonisolated struct VenueDTO: Decodable {
     let grass: Bool?
 }
 
-/// The core API's venue resource, which is where `capacity` actually
-/// lives. Only the one field is read.
-nonisolated struct CoreVenueDTO: Decodable {
-    let capacity: Int?
-}
-
 nonisolated struct VenueAddressDTO: Decodable {
     let city: String?
     let state: String?

@@ -6,9 +6,17 @@ import SwiftUI
 ///
 /// The venue is the card's headline — name in ink, city beneath it in
 /// meta gray (FotMob's treatment) — and the crowd numbers below it are
-/// label/value pairs in the team-page cards' language. Capacity is
-/// always shown; attendance joins it the moment ESPN publishes one, and
-/// the pair earns a fill meter in ink, never color.
+/// label/value pairs in the team-page cards' language. Attendance leads,
+/// and where a capacity exists it becomes attendance's context and the
+/// pair earns a fill meter in ink, never color.
+///
+/// **In practice there is never a capacity.** ESPN publishes none on any
+/// surface we can reach — sampled live 2026-09-10 across all four
+/// leagues, 100 core venue objects carried one 0 times, and the field is
+/// not among the keys that resource ships. The rows below are written as
+/// though it might arrive because the decode is still there and costs
+/// nothing; what was removed is the per-venue *request* that went looking
+/// for it. Don't re-add one without checking the payload first.
 struct GameInfoRows: View {
     let summary: GameSummary
 
