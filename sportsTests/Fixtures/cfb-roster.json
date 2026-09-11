@@ -1,0 +1,176 @@
+{
+  "coach": [
+    {
+      "id": "2331669",
+      "firstName": "Lane",
+      "lastName": "Kiffin"
+    }
+  ],
+  "athletes": [
+    {
+      "position": "offense",
+      "items": [
+        {
+          "id": "5276651",
+          "displayName": "Brayden Allen",
+          "fullName": "Brayden Allen",
+          "jersey": "80",
+          "displayHeight": "6' 2\"",
+          "displayWeight": "197 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5276651.png",
+            "alt": "Brayden Allen"
+          },
+          "position": {
+            "name": "Wide Receiver",
+            "displayName": "Wide Receiver",
+            "abbreviation": "WR"
+          },
+          "experience": {
+            "years": 1,
+            "displayValue": "Freshman",
+            "abbreviation": "FR"
+          },
+          "injuries": []
+        },
+        {
+          "id": "5209345",
+          "displayName": "JC Anderson",
+          "fullName": "JC Anderson",
+          "jersey": "87",
+          "displayHeight": "6' 6\"",
+          "displayWeight": "256 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5209345.png",
+            "alt": "JC Anderson"
+          },
+          "position": {
+            "name": "Tight End",
+            "displayName": "Tight End",
+            "abbreviation": "TE"
+          },
+          "experience": {
+            "years": 1,
+            "displayValue": "Freshman",
+            "abbreviation": "FR"
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "defense",
+      "items": [
+        {
+          "id": "5161801",
+          "displayName": "Richard Anderson",
+          "fullName": "Richard Anderson",
+          "jersey": "88",
+          "displayHeight": "6' 3\"",
+          "displayWeight": "339 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5161801.png",
+            "alt": "Richard Anderson"
+          },
+          "position": {
+            "name": "Defensive Tackle",
+            "displayName": "Defensive Tackle",
+            "abbreviation": "DT"
+          },
+          "experience": {
+            "years": 1,
+            "displayValue": "Freshman",
+            "abbreviation": "FR"
+          },
+          "injuries": []
+        },
+        {
+          "id": "5207618",
+          "displayName": "Aidan Anding",
+          "fullName": "Aidan Anding",
+          "jersey": "23",
+          "displayHeight": "5' 11\"",
+          "displayWeight": "170 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5207618.png",
+            "alt": "Aidan Anding"
+          },
+          "position": {
+            "name": "Cornerback",
+            "displayName": "Cornerback",
+            "abbreviation": "CB"
+          },
+          "experience": {
+            "years": 2,
+            "displayValue": "Sophomore",
+            "abbreviation": "SO"
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "specialTeam",
+      "items": [
+        {
+          "id": "5194616",
+          "displayName": "Grant Chadwick",
+          "fullName": "Grant Chadwick",
+          "jersey": "90",
+          "displayHeight": "6' 5\"",
+          "displayWeight": "213 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5194616.png",
+            "alt": "Grant Chadwick"
+          },
+          "position": {
+            "name": "Punter",
+            "displayName": "Punter",
+            "abbreviation": "P"
+          },
+          "experience": {
+            "years": 3,
+            "displayValue": "Junior",
+            "abbreviation": "JR"
+          },
+          "injuries": []
+        },
+        {
+          "id": "5160219",
+          "displayName": "Aidan Corbello",
+          "fullName": "Aidan Corbello",
+          "jersey": "36",
+          "displayHeight": "5' 9\"",
+          "displayWeight": "199 lbs",
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/college-football/players/full/5160219.png",
+            "alt": "Aidan Corbello"
+          },
+          "position": {
+            "name": "Place kicker",
+            "displayName": "Place Kicker",
+            "abbreviation": "PK"
+          },
+          "experience": {
+            "years": 3,
+            "displayValue": "Junior",
+            "abbreviation": "JR"
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "injuredReserveOrOut",
+      "items": []
+    },
+    {
+      "position": "suspended",
+      "items": []
+    },
+    {
+      "position": "practiceSquad",
+      "items": []
+    }
+  ]
+}

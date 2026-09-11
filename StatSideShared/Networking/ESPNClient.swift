@@ -77,6 +77,18 @@ nonisolated protocol ScoresProviding: Sendable {
     /// fetches. `year` selects a season; nil means the current one.
     func seasonGames(year: Int?) async throws -> [Game]
     func gameSummary(eventId: String) async throws -> GameSummary
+    /// One team's current roster.
+    ///
+    /// No `year`, deliberately: ESPN's roster endpoint has no season axis.
+    /// `?season=2019`, `?season=2024` and `?season=2025` all answer 200, echo
+    /// the season back, and carry zero athletes (probed live 2026-09-10 on
+    /// college football, the NFL and the NBA). Which is also why the Roster tab
+    /// shows no season chip.
+    func roster(teamId: String) async throws -> TeamRoster
+    /// Whether this backend has a roster to serve at all. The tab is hidden
+    /// where it doesn't — an empty pane behind a permanent tab is worse than
+    /// no tab.
+    var providesRoster: Bool { get }
 }
 
 nonisolated extension ScoresProviding {
@@ -91,6 +103,13 @@ nonisolated extension ScoresProviding {
     /// tables, and neither does a backend that can't ask for them. Empty
     /// rather than an error: the page hides the scope, it doesn't fail.
     func divisionStandings(year: Int?) async throws -> [ConferenceStandings] { [] }
+
+    /// A backend with no roster endpoint says so, and the tab never appears.
+    /// Empty rather than an error, the divisional-standings rule: a provider
+    /// that can't answer is not a page that failed.
+    var providesRoster: Bool { false }
+
+    func roster(teamId: String) async throws -> TeamRoster { .empty }
 
     /// The season in progress.
     func rankings() async throws -> [Poll] {
@@ -538,6 +557,15 @@ actor ESPNClient: ScoresProviding {
         let extras = (await preseasonFetch?.events?.elements ?? [])
             + (await postseasonFetch?.events?.elements ?? [])
         return ESPNMapper.teamSchedule(from: regular, extraEvents: extras, league: league)
+    }
+
+    nonisolated var providesRoster: Bool { true }
+
+    func roster(teamId: String) async throws -> TeamRoster {
+        // No query at all: the endpoint takes no season (see the protocol's
+        // note), so the only roster there is, is the current one.
+        let dto: RosterResponseDTO = try await fetch(path: "/teams/\(teamId)/roster", query: [])
+        return ESPNMapper.roster(from: dto)
     }
 
     func gameSummary(eventId: String) async throws -> GameSummary {
@@ -1518,6 +1546,100 @@ nonisolated enum ESPNMapper {
                 ranks: ranks
             )
         }
+    }
+
+    // MARK: - Roster
+
+    /// One team's roster, from either of the two shapes ESPN ships.
+    ///
+    /// The NFL, college football and the NHL group their athletes; the NBA
+    /// sends a flat list. Both arrive as `RosterEntryDTO`s, so the only thing
+    /// left here is what to call each group — and, for the flat case, that the
+    /// whole roster is one group rather than a group per player.
+    static func roster(from dto: RosterResponseDTO) -> TeamRoster {
+        var groups: [RosterGroup] = []
+        /// Consecutive ungrouped athletes collect here. Not one group per
+        /// player, and not a group per run either — a flat payload is one
+        /// roster, so the loose players merge into a single card.
+        var ungrouped: [RosterPlayer] = []
+
+        for entry in dto.athletes?.elements ?? [] {
+            switch entry {
+            case .group(let group):
+                let players = (group.items?.elements ?? []).compactMap(player(from:))
+                // Empty groups produce no card — the NFL ships `suspended: 0`
+                // most weeks, and a header over nothing is chrome.
+                guard !players.isEmpty else { continue }
+                groups.append(RosterGroup(name: groupName(group.position), players: players))
+            case .player(let athlete):
+                if let player = player(from: athlete) { ungrouped.append(player) }
+            }
+        }
+        if !ungrouped.isEmpty {
+            groups.append(RosterGroup(name: ungroupedName, players: ungrouped))
+        }
+        return TeamRoster(coach: coach(from: dto.coach?.elements ?? []), groups: groups)
+    }
+
+    /// What a flat payload's one card is called. "Roster" rather than a
+    /// position guess: the NBA ships no grouping, so neither do we.
+    private static let ungroupedName = "Roster"
+
+    /// ESPN's group label, made presentable.
+    ///
+    /// Football sends lowercase codes; hockey sends names that are already
+    /// display-ready ("Centers", "Left Wings"). One rule covers both: map the
+    /// codes we know, and pass anything else through capitalized rather than
+    /// dropping a group we can't name — a card headed "Taxi Squad" is right,
+    /// and a missing card never is.
+    private static func groupName(_ code: String?) -> String {
+        guard let code, !code.isEmpty else { return ungroupedName }
+        switch code {
+        case "offense": return "Offense"
+        case "defense": return "Defense"
+        case "specialTeam": return "Special teams"
+        case "injuredReserveOrOut": return "Injured reserve"
+        case "suspended": return "Suspended"
+        case "practiceSquad": return "Practice squad"
+        default: return code.prefix(1).uppercased() + code.dropFirst()
+        }
+    }
+
+    private static func player(from dto: RosterAthleteDTO) -> RosterPlayer? {
+        // A player with no name is a row that says nothing; a player with no
+        // id can't be a stable identity in a list. Everything else degrades.
+        guard let id = dto.id,
+              let name = dto.displayName ?? dto.fullName, !name.isEmpty else { return nil }
+        return RosterPlayer(
+            id: id,
+            name: name,
+            jersey: dto.jersey.flatMap { $0.isEmpty ? nil : $0 },
+            position: dto.position?.abbreviation,
+            positionName: dto.position?.displayName ?? dto.position?.name,
+            height: dto.displayHeight,
+            weight: dto.displayWeight,
+            age: dto.age,
+            // The pro leagues ship `experience.years` — seasons played, not a
+            // class — and no abbreviation, so this stays nil for them and the
+            // age column is what they render.
+            classAbbreviation: dto.experience?.abbreviation,
+            headshotURL: dto.headshot?.href.flatMap(URL.init(string:)),
+            // First listed: a player carrying two designations has one status
+            // that matters, and it's the one ESPN leads with.
+            injuryStatus: (dto.injuries?.elements ?? []).compactMap(\.status).first)
+    }
+
+    private static func coach(from dtos: [RosterCoachDTO]) -> RosterCoach? {
+        guard let first = dtos.first else { return nil }
+        let name = [first.firstName, first.lastName]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        guard !name.isEmpty else { return nil }
+        // `experience` comes as a bare integer with no unit attached. It reads
+        // like seasons as a head coach, but ESPN never says so, and a page
+        // that guesses at a number is worse than one that omits it.
+        return RosterCoach(name: name)
     }
 }
 

@@ -1,0 +1,97 @@
+{
+  "coach": [
+    {
+      "id": "3024",
+      "firstName": "JJ",
+      "lastName": "Redick",
+      "experience": 1
+    }
+  ],
+  "athletes": [
+    {
+      "id": "5113969",
+      "displayName": "Cameron Carr",
+      "fullName": "Cameron Carr",
+      "displayHeight": "6' 5\"",
+      "displayWeight": "184 lbs",
+      "age": 21,
+      "headshot": {
+        "href": "https://a.espncdn.com/i/headshots/nba/players/full/5113969.png",
+        "alt": "Cameron Carr"
+      },
+      "position": {
+        "name": "Guard",
+        "displayName": "Guard",
+        "abbreviation": "G"
+      },
+      "experience": {
+        "years": 0
+      },
+      "injuries": []
+    },
+    {
+      "id": "3945274",
+      "displayName": "Luka Doncic",
+      "fullName": "Luka Doncic",
+      "jersey": "77",
+      "displayHeight": "6' 8\"",
+      "displayWeight": "230 lbs",
+      "age": 27,
+      "headshot": {
+        "href": "https://a.espncdn.com/i/headshots/nba/players/full/3945274.png",
+        "alt": "Luka Doncic"
+      },
+      "position": {
+        "name": "Guard",
+        "displayName": "Guard",
+        "abbreviation": "G"
+      },
+      "experience": {
+        "years": 8
+      },
+      "injuries": []
+    },
+    {
+      "id": "4397014",
+      "displayName": "Quentin Grimes",
+      "fullName": "Quentin Grimes",
+      "displayHeight": "6' 4\"",
+      "displayWeight": "210 lbs",
+      "age": 26,
+      "headshot": {
+        "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397014.png",
+        "alt": "Quentin Grimes"
+      },
+      "position": {
+        "name": "Guard",
+        "displayName": "Guard",
+        "abbreviation": "G"
+      },
+      "experience": {
+        "years": 5
+      },
+      "injuries": []
+    },
+    {
+      "id": "4868423",
+      "displayName": "Jaden Hardy",
+      "fullName": "Jaden Hardy",
+      "displayHeight": "6' 3\"",
+      "displayWeight": "198 lbs",
+      "age": 24,
+      "headshot": {
+        "href": "https://a.espncdn.com/i/headshots/nba/players/full/4868423.png",
+        "alt": "Jaden Hardy"
+      },
+      "position": {
+        "name": "Guard",
+        "displayName": "Guard",
+        "abbreviation": "G"
+      },
+      "experience": {
+        "years": 4
+      },
+      "injuries": []
+    }
+  ]
+}

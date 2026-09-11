@@ -86,7 +86,7 @@ struct GameShareCardView: View {
 
             // Attribution is the same mark the Scores header wears, one
             // step down: the card is a share site, not the app's own chrome.
-            Wordmark(size: 18)
+            Wordmark(size: 15)
                 .padding(.vertical, Spacing.md)
         }
         .background(Color.bgPrimary)

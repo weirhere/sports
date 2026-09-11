@@ -115,11 +115,22 @@ struct ScoresScreen: View {
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
             }
+            // Identity follows the conference, for the reason the team
+            // destination below does: a replaced value at the same path
+            // position otherwise reuses the page and its caches.
             .navigationDestination(for: ConferenceDestination.self) { destination in
                 ConferencePage(destination: destination)
+                    .id(destination)
             }
+            // Identity follows the team (2026-09-10). Search and the
+            // widget route by *replacing* the value at this path position
+            // rather than pushing a second page, and a destination whose
+            // identity doesn't change is reused with all of its `@State`
+            // intact — which is how the Lakers page came to show Ole Miss's
+            // schedule, standings and roster under a Lakers crest.
             .navigationDestination(for: Team.self) { team in
                 TeamPage(team: team)
+                    .id(team.followKey)
             }
         }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can

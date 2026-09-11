@@ -19,4 +19,24 @@ nonisolated extension URL {
         }
         return nil
     }
+
+    /// The same headshot, asked for at row size.
+    ///
+    /// ESPN's roster payload links `/i/headshots/…/full/{id}.png`, which is a
+    /// 600×436 PNG weighing ~200 KB. A college football roster is 100 players,
+    /// so a Roster tab rendered off those URLs pulls ~20 MB to fill a screenful
+    /// of 36pt discs. The CDN's own resizer takes the file down to ~18 KB —
+    /// `combiner/i?img={path}&w=150&h=110`, which is ≥110px on the short side
+    /// and so still sharp in a 36pt disc at 3×.
+    ///
+    /// Verified live 2026-09-10 on all four leagues; a missing player 404s
+    /// cleanly, which `LogoCache` already remembers rather than re-requesting.
+    /// The `?w=` parameters the path form accepts are ignored — the full image
+    /// comes back at full size — so the combiner is the only way to ask.
+    var headshotThumbnail: URL? {
+        guard let host = host(), host.hasSuffix("espncdn.com"),
+              path().contains("/i/headshots/") else { return nil }
+        return URL(string:
+            "https://a.espncdn.com/combiner/i?img=\(path())&w=150&h=110")
+    }
 }
