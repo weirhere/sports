@@ -680,3 +680,89 @@ nonisolated struct RankDTO: Decodable {
     let recordSummary: String?
     let team: TeamDTO?
 }
+
+// MARK: - Roster
+// Verified live 2026-09-10 on all four leagues. Two things the shapes here
+// defend against:
+//
+//   1. `athletes` arrives in **two forms**. The NFL, college football and the
+//      NHL ship `[{position, items: [athlete]}]`; the NBA ships a flat
+//      `[athlete]` with no grouping whatsoever. A decoder written for one
+//      silently returns nothing for the other.
+//   2. The endpoint takes no season. `?season=2019` answers 200 and echoes the
+//      season back with zero athletes, so there is nothing to decode a year
+//      from and nothing to ask a past season for.
+
+nonisolated struct RosterResponseDTO: Decodable {
+    /// Lossy, and the element itself is either-shaped: one unreadable group
+    /// or player must never take the roster with it.
+    let athletes: LossyArray<RosterEntryDTO>?
+    let coach: LossyArray<RosterCoachDTO>?
+}
+
+/// One element of `athletes` — a position group, or (the NBA) a player
+/// standing on its own.
+nonisolated enum RosterEntryDTO: Decodable {
+    case group(RosterGroupDTO)
+    case player(RosterAthleteDTO)
+
+    init(from decoder: Decoder) throws {
+        // `items` is the discriminator: a group always carries one, and an
+        // athlete object never does. The `try?` matters — the two shapes
+        // disagree about the *type* under `position` (a group's is a string,
+        // a player's an object), so an athlete fails the group decode
+        // outright rather than merely coming back itemless.
+        if let group = try? RosterGroupDTO(from: decoder), group.items != nil {
+            self = .group(group)
+        } else {
+            // Neither shape: throws, and `LossyArray` drops the element.
+            self = .player(try RosterAthleteDTO(from: decoder))
+        }
+    }
+}
+
+nonisolated struct RosterGroupDTO: Decodable {
+    /// The group's own name. Lowercase codes in football ("offense",
+    /// "specialTeam"); already display-ready in hockey ("Centers").
+    let position: String?
+    let items: LossyArray<RosterAthleteDTO>?
+}
+
+nonisolated struct RosterAthleteDTO: Decodable {
+    let id: String?
+    let displayName: String?
+    let fullName: String?
+    let jersey: String?
+    /// ESPN pre-formats both with their units — "6' 2"", "225 lbs" — so the
+    /// app never has to guess whether a league is metric.
+    let displayHeight: String?
+    let displayWeight: String?
+    let age: Int?
+    let headshot: LogoDTO?
+    let position: RosterPositionDTO?
+    /// College football's class year lives here ("Freshman" / "FR"). The pro
+    /// leagues ship only `years`, which is seasons played, not a class.
+    let experience: RosterExperienceDTO?
+    let injuries: LossyArray<RosterInjuryDTO>?
+}
+
+nonisolated struct RosterPositionDTO: Decodable {
+    let name: String?
+    let displayName: String?
+    let abbreviation: String?
+}
+
+nonisolated struct RosterExperienceDTO: Decodable {
+    let years: Int?
+    let displayValue: String?
+    let abbreviation: String?
+}
+
+nonisolated struct RosterInjuryDTO: Decodable {
+    let status: String?
+}
+
+nonisolated struct RosterCoachDTO: Decodable {
+    let firstName: String?
+    let lastName: String?
+}

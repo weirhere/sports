@@ -25,7 +25,10 @@ struct AddTeamsSheet: View {
         NavigationStack {
             content
                 .background(Color.bgRecessed)
-                .navigationDestination(for: Team.self) { TeamPage(team: $0) }
+                // Identity follows the team, like every other Team
+                // destination (2026-09-10) — a replaced value at the same
+                // path position otherwise reuses the page's caches.
+                .navigationDestination(for: Team.self) { TeamPage(team: $0).id($0.followKey) }
                 .navigationTitle("Add teams")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

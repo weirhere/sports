@@ -1,0 +1,255 @@
+{
+  "coach": [
+    {
+      "id": "883",
+      "firstName": "Martin",
+      "lastName": "St. Louis"
+    }
+  ],
+  "athletes": [
+    {
+      "position": "Centers",
+      "items": [
+        {
+          "id": "5080202",
+          "displayName": "Owen Beck",
+          "fullName": "Owen Beck",
+          "jersey": "62",
+          "displayHeight": "5' 11\"",
+          "displayWeight": "187 lbs",
+          "age": 22,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5080202.png",
+            "alt": "Owen Beck"
+          },
+          "position": {
+            "name": "Center",
+            "displayName": "Center",
+            "abbreviation": "C"
+          },
+          "experience": {
+            "years": 2
+          },
+          "injuries": []
+        },
+        {
+          "id": "4565224",
+          "displayName": "Kirby Dach",
+          "fullName": "Kirby Dach",
+          "jersey": "77",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "221 lbs",
+          "age": 25,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4565224.png",
+            "alt": "Kirby Dach"
+          },
+          "position": {
+            "name": "Center",
+            "displayName": "Center",
+            "abbreviation": "C"
+          },
+          "experience": {
+            "years": 6
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "Left Wings",
+      "items": [
+        {
+          "id": "4697654",
+          "displayName": "Brett Berard",
+          "fullName": "Brett Berard",
+          "displayHeight": "5' 9\"",
+          "displayWeight": "175 lbs",
+          "age": 24,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4697654.png",
+            "alt": "Brett Berard"
+          },
+          "position": {
+            "name": "Left Wing",
+            "displayName": "Left Wing",
+            "abbreviation": "LW"
+          },
+          "experience": {
+            "years": 2
+          },
+          "injuries": []
+        },
+        {
+          "id": "4915349",
+          "displayName": "Juraj Slafkovsky",
+          "fullName": "Juraj Slafkovsky",
+          "jersey": "20",
+          "displayHeight": "6' 3\"",
+          "displayWeight": "225 lbs",
+          "age": 22,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4915349.png",
+            "alt": "Juraj Slafkovsky"
+          },
+          "position": {
+            "name": "Left Wing",
+            "displayName": "Left Wing",
+            "abbreviation": "LW"
+          },
+          "experience": {
+            "years": 4
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "Right Wings",
+      "items": [
+        {
+          "id": "3069687",
+          "displayName": "Josh Anderson",
+          "fullName": "Josh Anderson",
+          "jersey": "17",
+          "displayHeight": "6' 3\"",
+          "displayWeight": "226 lbs",
+          "age": 32,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3069687.png",
+            "alt": "Josh Anderson"
+          },
+          "position": {
+            "name": "Right Wing",
+            "displayName": "Right Wing",
+            "abbreviation": "RW"
+          },
+          "experience": {
+            "years": 11
+          },
+          "injuries": []
+        },
+        {
+          "id": "3069294",
+          "displayName": "Alex Belzile",
+          "fullName": "Alex Belzile",
+          "jersey": "60",
+          "displayHeight": "6' 0\"",
+          "displayWeight": "195 lbs",
+          "age": 35,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3069294.png",
+            "alt": "Alex Belzile"
+          },
+          "position": {
+            "name": "Right Wing",
+            "displayName": "Right Wing",
+            "abbreviation": "RW"
+          },
+          "experience": {
+            "years": 3
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "Defense",
+      "items": [
+        {
+          "id": "3942064",
+          "displayName": "Alexandre Carrier",
+          "fullName": "Alexandre Carrier",
+          "jersey": "45",
+          "displayHeight": "5' 11\"",
+          "displayWeight": "174 lbs",
+          "age": 29,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3942064.png",
+            "alt": "Alexandre Carrier"
+          },
+          "position": {
+            "name": "Defense",
+            "displayName": "Defense",
+            "abbreviation": "D"
+          },
+          "experience": {
+            "years": 6
+          },
+          "injuries": []
+        },
+        {
+          "id": "4352732",
+          "displayName": "Noah Dobson",
+          "fullName": "Noah Dobson",
+          "jersey": "53",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "200 lbs",
+          "age": 26,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4352732.png",
+            "alt": "Noah Dobson"
+          },
+          "position": {
+            "name": "Defense",
+            "displayName": "Defense",
+            "abbreviation": "D"
+          },
+          "experience": {
+            "years": 7
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "Goalies",
+      "items": [
+        {
+          "id": "4697686",
+          "displayName": "Jakub Dobes",
+          "fullName": "Jakub Dobes",
+          "jersey": "75",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "215 lbs",
+          "age": 25,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4697686.png",
+            "alt": "Jakub Dobes"
+          },
+          "position": {
+            "name": "Goaltender",
+            "displayName": "Goaltender",
+            "abbreviation": "G"
+          },
+          "experience": {
+            "years": 2
+          },
+          "injuries": []
+        },
+        {
+          "id": "5188437",
+          "displayName": "Jacob Fowler",
+          "fullName": "Jacob Fowler",
+          "jersey": "32",
+          "displayHeight": "6' 2\"",
+          "displayWeight": "225 lbs",
+          "age": 21,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5188437.png",
+            "alt": "Jacob Fowler"
+          },
+          "position": {
+            "name": "Goaltender",
+            "displayName": "Goaltender",
+            "abbreviation": "G"
+          },
+          "experience": {
+            "years": 0
+          },
+          "injuries": []
+        }
+      ]
+    }
+  ]
+}

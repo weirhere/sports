@@ -20,13 +20,14 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, standings
+        case overview, games, standings, roster
 
         var title: String {
             switch self {
             case .overview: "Overview"
             case .games: "Games"
             case .standings: "Standings"
+            case .roster: "Roster"
             }
         }
     }
@@ -68,6 +69,26 @@ struct TeamPage: View {
     @State private var standingsFailedYears: Set<Int> = []
     @State private var divisionLoadingYears: Set<Int> = []
     @State private var divisionFailedYears: Set<Int> = []
+    /// The current roster, fetched once on first visit to the tab and held
+    /// for the page's life. Not keyed by year like the schedules and the
+    /// standings: ESPN's roster endpoint has no season axis at all (see
+    /// `ScoresProviding.roster`), which is also why the season chip stands
+    /// down on this tab.
+    @State private var roster: TeamRoster?
+    /// Which team the cached roster describes. Belt and braces against the
+    /// navigation-identity trap the `.id(team.followKey)` on every Team
+    /// destination closes (2026-09-10): a reused page must not paint the
+    /// previous team's squad under this one's crest, whatever the routing
+    /// layer does. A fetch-once guard is only safe if it knows what it
+    /// fetched.
+    @State private var rosterTeamKey: String?
+    @State private var rosterLoading = false
+    @State private var rosterFailed = false
+
+    /// The roster, but only if it belongs to the team on screen.
+    private var currentRoster: TeamRoster? {
+        rosterTeamKey == team.followKey ? roster : nil
+    }
     /// How wide the Standings tab tables its teams — the team's league,
     /// its conference, or its division (Andy, 2026-09-07). Session-scoped
     /// like ConferencePage's, and only the NFL's pages offer the choice.
@@ -201,6 +222,7 @@ struct TeamPage: View {
                         case .overview: overviewContent
                         case .games: gamesContent
                         case .standings: standingsContent
+                        case .roster: rosterContent
                         }
                     }
                     // geometryGroup pins every child (row logos included) to
@@ -219,8 +241,8 @@ struct TeamPage: View {
                                 let dx = value.translation.width
                                 guard abs(dx) > 50,
                                       abs(dx) > abs(value.translation.height) * 1.5,
-                                      let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1)),
-                                      target != .standings || showsStandingsTab else { return }
+                                      let target = neighbour(of: tab, step: dx < 0 ? 1 : -1)
+                                else { return }
                                 select(tab: target)
                             }
                     )
@@ -463,7 +485,26 @@ struct TeamPage: View {
     }
 
     private var visibleTabs: [Tab] {
-        showsStandingsTab ? [.overview, .games, .standings] : [.overview, .games]
+        var tabs: [Tab] = [.overview, .games]
+        if showsStandingsTab { tabs.append(.standings) }
+        if showsRosterTab { tabs.append(.roster) }
+        return tabs
+    }
+
+    /// Only where the backend has a roster to serve. ESPN does for every
+    /// league; CFBD and the UI-test fixture don't, and an empty pane behind a
+    /// permanent tab is worse than no tab.
+    private var showsRosterTab: Bool { client.providesRoster }
+
+    /// The tab one step along the row — the *visible* row, not the enum's.
+    /// Standings is conference-gated, so a hidden tab sits in the middle of
+    /// the raw-value order on plenty of college pages; walking the ordinals
+    /// there would swipe onto a tab that isn't on screen.
+    private func neighbour(of tab: Tab, step: Int) -> Tab? {
+        guard let index = visibleTabs.firstIndex(of: tab) else { return nil }
+        let target = index + step
+        guard visibleTabs.indices.contains(target) else { return nil }
+        return visibleTabs[target]
     }
 
     /// Switching scope re-reads the same season. Division is the only one
@@ -569,9 +610,15 @@ struct TeamPage: View {
     /// Overview is the exception it has always been: its record card is
     /// pinned to the current season, so there is nothing there for a year
     /// to scope, and a control that does nothing is worse than no control.
+    ///
+    /// Roster is the second exception, for a harder reason: ESPN's roster
+    /// endpoint has no season axis, so a past year can't be asked for at all
+    /// (probed live 2026-09-10 — `?season=2019` answers 200 with zero
+    /// athletes). A chip there wouldn't do nothing; it would show this year's
+    /// roster under last decade's label.
     @ViewBuilder
     private var seasonChip: some View {
-        if let selectedYear, tab != .overview {
+        if let selectedYear, tab != .overview, tab != .roster {
             SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
                            style: .bar, onSelect: { select(year: $0) })
         }
@@ -731,6 +778,40 @@ struct TeamPage: View {
         .task(id: standingsYear) { await loadStandings(scope: scope) }
     }
 
+    /// Who plays here — FotMob's squad screen, in the app's table language.
+    ///
+    /// No season chip above it (see `seasonChip`), and no `Game` anywhere in
+    /// it, so nothing on this tab needs the schedule or the live board.
+    private var rosterContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let roster = currentRoster, !roster.isEmpty {
+                RosterList(roster: roster, league: pageLeague)
+            } else if rosterLoading {
+                // A lone spinner gets no card — a surface around it hugs
+                // into a floating pill (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            } else if rosterFailed {
+                StatusMessage(text: "Couldn't load the roster.",
+                              retry: { Task { await loadRoster(force: true) } })
+                    .cardSurface()
+            } else {
+                StatusMessage(text: "Roster TBA")
+                    .cardSurface()
+            }
+        }
+        // No top padding: the pinned header carries it, so the gap is
+        // the same whether the header is riding along or stuck.
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        // First visit fetches; every visit after is a hit. One request per
+        // page, never polled — a roster doesn't change during a game. Keyed
+        // by the team so a reused page re-fetches rather than keeping the
+        // last one's squad.
+        .task(id: team.followKey) { await loadRoster() }
+    }
+
     // MARK: - Loads
 
     private func loadInitial() async {
@@ -766,6 +847,32 @@ struct TeamPage: View {
             failedYears.remove(year)
         } catch {
             failedYears.insert(year)
+        }
+    }
+
+    /// The one roster request. No year: the endpoint takes none.
+    private func loadRoster(force: Bool = false) async {
+        let key = team.followKey
+        // A page handed a different team drops what it was holding — the
+        // fetch-once guard below is only safe about a roster it can name.
+        if rosterTeamKey != key {
+            roster = nil
+            rosterFailed = false
+        }
+        guard force || currentRoster == nil, !rosterLoading else { return }
+        rosterLoading = true
+        defer { rosterLoading = false }
+        do {
+            let loaded = try await client.roster(teamId: team.id)
+            // And the page may have been handed another team while this was
+            // in flight.
+            guard team.followKey == key else { return }
+            roster = loaded
+            rosterTeamKey = key
+            rosterFailed = false
+        } catch {
+            guard team.followKey == key else { return }
+            rosterFailed = true
         }
     }
 

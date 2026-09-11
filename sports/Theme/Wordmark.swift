@@ -1,50 +1,45 @@
 import SwiftUI
 
-/// The app's name, set as a mark rather than as a label.
+/// The app's name, in plain system type.
 ///
-/// The field glyph that used to lead it retired on 2026-09-09 (Andy): the
-/// tab bar's own Games icon is the same `sportscourt.fill`, so the header
-/// was saying "sports" twice a thumb apart, and a stock SF Symbol beside a
-/// stock SF Pro string reads as a placeholder logo. With the glyph gone the
-/// name has room to carry the identity by itself.
+/// **Plain, and no glyph.** The 2026-09-09 drawn-mark treatment — SF Pro's
+/// condensed width axis, "Stat" in black against "Side" in medium, −3%
+/// tracking, and the 17 → 24 size it bought — is reverted (Andy, 2026-09-10:
+/// *"we changed this back on the web version. we need to update here on iOS as
+/// well"*, following the web's own revert the same day). The width axis, the
+/// weight split and the tight tracking were what made system type read as
+/// drawn type; in place they read as system type trying to look drawn, which
+/// is a judgment only the eye makes. The size comes down with them — 24 was
+/// affordable *because* the condensed cut bought the width back — but not all
+/// the way to the original 17: Andy's call at 21, which keeps the masthead
+/// carrying the screen without the plain cut's full width at 24.
 ///
-/// Three moves make system type read as drawn type, all of them inside the
-/// monochrome budget — a wordmark that wants colour wants weight instead:
+/// The one thing that doesn't come back is the field glyph. Its own argument
+/// still holds: `sportscourt.fill` is also the Games tab's icon, so the header
+/// said "sports" twice a thumb apart, and a stock SF Symbol beside a stock SF
+/// Pro string reads as a placeholder logo.
 ///
-/// - **A weight split.** "Stat" in black against "Side" in medium is the
-///   compound-word lockup, and it says which half of the name is the noun.
-///   Medium and not regular: at 900-against-400 the two halves read as two
-///   words that happened to touch, and the mark has to read as one.
-/// - **A width variant.** SF Pro's condensed cut (iOS 16+, so it clears the
-///   18.0 floor) is the single thing that stops the string looking like the
-///   system font, and it buys back the width the larger size spends.
-/// - **Tight tracking.** −3%, a touch past the hero tabs' −2%, so the two
-///   weights close up into one shape.
+/// The real answer to a placeholder wordmark is a drawn one, which needs a
+/// licence and a designer. This is honest about being system type until there
+/// is one.
 struct Wordmark: View {
-    /// Point size. 24 on the Scores header — the app's own
-    /// `heroTitle` scale, for the same reason entity pages use it: nothing
-    /// above it is naming the screen.
-    var size: CGFloat = 24
+    /// Point size. 21 on the Scores header; 15 on the share card's sign-off,
+    /// the value it carried before the stylization — the card is a share site,
+    /// not the app's own chrome, so it doesn't follow the masthead up.
+    var size: CGFloat = 21
 
     var body: some View {
-        (Text("Stat").font(face(.black)) + Text("Side").font(face(.medium)))
-            .tracking(size * -0.03)
+        Text("StatSide")
+            .font(.system(size: size, weight: .heavy))
             .foregroundStyle(Color.textPrimary)
             .lineLimit(1)
-            .accessibilityLabel("StatSide")
-    }
-
-    /// UIKit stays contained the way `Font`'s own tokens contain it: the
-    /// width axis has no SwiftUI spelling before iOS 26.
-    private func face(_ weight: UIFont.Weight) -> Font {
-        Font(UIFont.systemFont(ofSize: size, weight: weight, width: .condensed))
     }
 }
 
 #Preview {
     VStack(alignment: .leading, spacing: Spacing.lg) {
         Wordmark()
-        Wordmark(size: 18)   // the share card's sign-off
+        Wordmark(size: 15)   // the share card's sign-off
     }
     .padding()
     .background(Color.bgPrimary)

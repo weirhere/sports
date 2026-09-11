@@ -1,0 +1,270 @@
+{
+  "coach": [
+    {
+      "id": "17553",
+      "firstName": "Andy",
+      "lastName": "Reid",
+      "experience": 27
+    }
+  ],
+  "athletes": [
+    {
+      "position": "offense",
+      "items": [
+        {
+          "id": "4912218",
+          "displayName": "Cyrus Allen",
+          "fullName": "Cyrus Allen",
+          "jersey": "13",
+          "displayHeight": "5' 11\"",
+          "displayWeight": "180 lbs",
+          "age": 23,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4912218.png",
+            "alt": "Cyrus Allen"
+          },
+          "position": {
+            "name": "Wide Receiver",
+            "displayName": "Wide Receiver",
+            "abbreviation": "WR"
+          },
+          "experience": {
+            "years": 0
+          },
+          "injuries": []
+        },
+        {
+          "id": "4566190",
+          "displayName": "Kahlil Benson",
+          "fullName": "Kahlil Benson",
+          "jersey": "70",
+          "displayHeight": "6' 6\"",
+          "displayWeight": "319 lbs",
+          "age": 24,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4566190.png",
+            "alt": "Kahlil Benson"
+          },
+          "position": {
+            "name": "Offensive Tackle",
+            "displayName": "Offensive Tackle",
+            "abbreviation": "OT"
+          },
+          "experience": {
+            "years": 0
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "defense",
+      "items": [
+        {
+          "id": "4612387",
+          "displayName": "Felix Anudike-Uzomah",
+          "fullName": "Felix Anudike-Uzomah",
+          "jersey": "91",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "255 lbs",
+          "age": 24,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4612387.png",
+            "alt": "Felix Anudike-Uzomah"
+          },
+          "position": {
+            "name": "Defensive End",
+            "displayName": "Defensive End",
+            "abbreviation": "DE"
+          },
+          "experience": {
+            "years": 4
+          },
+          "injuries": []
+        },
+        {
+          "id": "4602389",
+          "displayName": "Jeffrey Bassa",
+          "fullName": "Jeffrey Bassa",
+          "jersey": "31",
+          "displayHeight": "6' 2\"",
+          "displayWeight": "235 lbs",
+          "age": 23,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4602389.png",
+            "alt": "Jeffrey Bassa"
+          },
+          "position": {
+            "name": "Linebacker",
+            "displayName": "Linebacker",
+            "abbreviation": "LB"
+          },
+          "experience": {
+            "years": 2
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "specialTeam",
+      "items": [
+        {
+          "id": "4361496",
+          "displayName": "Matt Araiza",
+          "fullName": "Matt Araiza",
+          "jersey": "14",
+          "displayHeight": "6' 1\"",
+          "displayWeight": "200 lbs",
+          "age": 26,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4361496.png",
+            "alt": "Matt Araiza"
+          },
+          "position": {
+            "name": "Punter",
+            "displayName": "Punter",
+            "abbreviation": "P"
+          },
+          "experience": {
+            "years": 3
+          },
+          "injuries": []
+        },
+        {
+          "id": "3055899",
+          "displayName": "Harrison Butker",
+          "fullName": "Harrison Butker",
+          "jersey": "7",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "205 lbs",
+          "age": 31,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/3055899.png",
+            "alt": "Harrison Butker"
+          },
+          "position": {
+            "name": "Place kicker",
+            "displayName": "Place Kicker",
+            "abbreviation": "PK"
+          },
+          "experience": {
+            "years": 10
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "injuredReserveOrOut",
+      "items": [
+        {
+          "id": "4885466",
+          "displayName": "Jeff Caldwell",
+          "fullName": "Jeff Caldwell",
+          "jersey": "8",
+          "displayHeight": "6' 5\"",
+          "displayWeight": "215 lbs",
+          "age": 23,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4885466.png",
+            "alt": "Jeff Caldwell"
+          },
+          "position": {
+            "name": "Wide Receiver",
+            "displayName": "Wide Receiver",
+            "abbreviation": "WR"
+          },
+          "experience": {
+            "years": 0
+          },
+          "injuries": [
+            {
+              "status": "Injured Reserve",
+              "date": "2026-08-25T23:12Z"
+            }
+          ]
+        },
+        {
+          "id": "4431534",
+          "displayName": "Ethan Downs",
+          "fullName": "Ethan Downs",
+          "jersey": "40",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "263 lbs",
+          "age": 23,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4431534.png",
+            "alt": "Ethan Downs"
+          },
+          "position": {
+            "name": "Linebacker",
+            "displayName": "Linebacker",
+            "abbreviation": "LB"
+          },
+          "experience": {
+            "years": 1
+          },
+          "injuries": [
+            {
+              "status": "Injured Reserve",
+              "date": "2026-07-29T00:21Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "position": "suspended",
+      "items": []
+    },
+    {
+      "position": "practiceSquad",
+      "items": [
+        {
+          "id": "5093923",
+          "displayName": "Andrew Armstrong",
+          "fullName": "Andrew Armstrong",
+          "jersey": "85",
+          "displayHeight": "6' 4\"",
+          "displayWeight": "210 lbs",
+          "age": 25,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/5093923.png",
+            "alt": "Andrew Armstrong"
+          },
+          "position": {
+            "name": "Wide Receiver",
+            "displayName": "Wide Receiver",
+            "abbreviation": "WR"
+          },
+          "experience": {
+            "years": 1
+          },
+          "injuries": []
+        },
+        {
+          "id": "4605841",
+          "displayName": "Nathan Carter",
+          "fullName": "Nathan Carter",
+          "displayHeight": "5' 10\"",
+          "displayWeight": "202 lbs",
+          "age": 24,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4605841.png",
+            "alt": "Nathan Carter"
+          },
+          "position": {
+            "name": "Running Back",
+            "displayName": "Running Back",
+            "abbreviation": "RB"
+          },
+          "experience": {
+            "years": 2
+          },
+          "injuries": []
+        }
+      ]
+    }
+  ]
+}
