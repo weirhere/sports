@@ -6,12 +6,16 @@ import { House, Search, Shield, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/", label: "Scores", icon: House },
+  // "Games", not "Scores" (iOS `RootView`, which has labelled this tab
+  // Games since the league axis landed): the tab is the whole slate, and a
+  // slate at 11am on a Saturday has no scores in it at all. The route, the
+  // view and every `scores*` symbol keep their names — only the word moved,
+  // exactly as the Tables → Leagues rename did.
+  { href: "/", label: "Games", icon: House },
   // "Leagues", not "Rankings" (iOS, 2026-09-09): what the hub lists is
   // leagues, and a conference or a poll is reached *through* one. The
   // trophy replaced a numbered-list glyph that drew the standings table the
-  // old name promised — and it can't be mistaken for the football the
-  // Scores tab wears. The route keeps its name; only the words moved.
+  // old name promised. The route keeps its name; only the words moved.
   { href: "/rankings", label: "Leagues", icon: Trophy },
   { href: "/teams", label: "Teams", icon: Shield },
   { href: "/search", label: "Search", icon: Search },

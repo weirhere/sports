@@ -54,6 +54,10 @@ export function TeamsList() {
 
   return (
     <div className="flex flex-col gap-2">
+      {/* The nav bar shows the wordmark on every route now, so the tab bar
+          and the active nav link are what name this page for sighted users.
+          Assistive tech reads neither as a heading. */}
+      <h1 className="sr-only">Teams</h1>
       {loading ? (
         [0, 1, 2].map((row) => (
           <Skeleton key={row} className="h-[72px] w-full rounded-[10px]" />
@@ -108,7 +112,7 @@ function EmptyState() {
     <div className="flex flex-col items-center gap-1 px-6 pb-2 pt-10 text-center">
       <p className="type-team-name-em text-text-primary">No teams yet</p>
       <p className="type-meta text-text-secondary">
-        Your teams lead the Scores screen and your followed tables.
+        Your teams lead the Games screen and your followed tables.
       </p>
     </div>
   );

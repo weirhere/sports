@@ -11,7 +11,7 @@ export default function NotFound() {
         href="/"
         className="mt-2 rounded-full bg-text-primary px-5 py-2 type-chip-em text-bg-primary transition-opacity hover:opacity-90"
       >
-        Back to scores
+        Back to games
       </Link>
     </div>
   );

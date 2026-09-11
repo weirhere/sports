@@ -627,6 +627,9 @@ answers a desktop problem has nothing to port to a phone.
 | 2026-09-09 | The game page's OpenGraph card (`statside.co`) | shipped — it has always been web-first |
 | 2026-09-10 | The Scores day strip, the Live/funnel capsule and collapse-all move into one sticky card at the top of the slate column | **n/a** — the phone has no follow rail, so it has no gap to close |
 | 2026-09-10 | The iOS download CTA: a nav-bar pill, a promo card leading the Scores rail and closing a game page's rail, and Safari's Smart App Banner | **n/a** — the app is the thing being linked to |
+| 2026-09-10 | The nav bar carries the wordmark on every route rather than swapping it for the page's name | **n/a** — iOS names a screen in its nav bar, which is the platform's own convention and not a thing to port |
+| 2026-09-10 | The wordmark reverts to plain 17-bold system type (no condensed axis, no weight split, no tracking); the 🏈 stays gone | **pending** — Andy's objection was to the treatment, not to the platform, and he raised it looking at the web. iOS still ships the 2026-09-09 drawn mark; this row closes when he says which way it goes |
+| 2026-09-10 | One content width for the whole app — 1040px, replacing three per-route caps | **n/a** — a phone has one width and the chrome can't shift between routes |
 
 ### The iOS download CTA  ✅ shipped 2026-09-10
 
@@ -704,6 +707,14 @@ drag across the slate, and the strip scrolls horizontally under the same
 finger — inside the swipe ref, dragging the strip would scroll it *and* step
 the day. The card is the column's first child and the swipe ref moved to the
 sibling below it.
+
+---
+
+## Late parity rows
+
+| iOS date | Decision | Status |
+|---|---|---|
+| (unrecorded) | The first tab is labelled **Games**, not Scores | **shipped 2026-09-10** — `RootView.swift` has said Games since the league axis landed and no decision row ever recorded it, so the web had no way to learn it. Logged on both sides now. Second instance of the gap E11's P3 item is open on |
 
 ---
 
