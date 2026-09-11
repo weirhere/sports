@@ -69,7 +69,7 @@ final class SmokeUITests: XCTestCase {
         // through the Add teams sheet (2026-09-05). Tolerates an
         // already-followed Georgia from a previous run — follows persist
         // on the simulator.
-        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+        XCTAssertTrue(followTeam("Georgia Bulldogs", location: "Georgia", in: app),
                       "The Add teams sheet should follow Georgia")
         let card = app.teamCard("Georgia Bulldogs")
         XCTAssertTrue(card.waitForExistence(timeout: 10),

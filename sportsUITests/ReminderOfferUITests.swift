@@ -33,7 +33,7 @@ final class ReminderOfferUITests: XCTestCase {
         // rather than the tap itself — a SwiftUI alert can't present over
         // a sheet anchored to the same view, so it waits for the sheet to
         // go (which is what onboarding's first follow always did too).
-        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+        XCTAssertTrue(followTeam("Georgia Bulldogs", location: "Georgia", in: app),
                       "The Add teams sheet should follow Georgia")
 
         // The one-time offer rides the first follow.
