@@ -2,10 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Live Activity broadcast pushes (E12, path 3). Sandbox until the
-	     service is live; the App Store build resolves this to production. -->
-	<key>aps-environment</key>
-	<string>development</string>
+	<!-- No `aps-environment` here on purpose. E12's Live Activity client
+	     added it for path 3's broadcast pushes, and it blocks the archive:
+	     the App ID carries no Push Notifications capability, so signing
+	     fails on a profile that can't include the entitlement. Nothing in
+	     a release build can use push anyway — `LiveActivityController
+	     .isAvailable` is a DEBUG-only default, no channels are configured,
+	     and the service has never run against Apple — so the capability
+	     buys a signing problem and no user anything. Restore it, and turn
+	     Push Notifications on for the App ID, in the same change that
+	     ships the broadcast service. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.andyryanweir.sports</string>
