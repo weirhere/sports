@@ -626,6 +626,51 @@ answers a desktop problem has nothing to port to a phone.
 |---|---|---|
 | 2026-09-09 | The game page's OpenGraph card (`statside.co`) | shipped — it has always been web-first |
 | 2026-09-10 | The Scores day strip, the Live/funnel capsule and collapse-all move into one sticky card at the top of the slate column | **n/a** — the phone has no follow rail, so it has no gap to close |
+| 2026-09-10 | The iOS download CTA: a nav-bar pill, a promo card leading the Scores rail and closing a game page's rail, and Safari's Smart App Banner | **n/a** — the app is the thing being linked to |
+
+### The iOS download CTA  ✅ shipped 2026-09-10
+
+Andy: *"include a download CTA for the iOS on the web app"*, then *"include the
+logo in the button and create a card on the left side of the page above
+following teams/conferences with a stylized graphic of the app"*.
+
+**Why it was missing mattered more after #109.** The OpenGraph card means a
+shared game link now unfurls into Slack and on X wearing the matchup card — and
+lands every one of those taps on a page with no way to the App Store. The
+backlog named that hole at the time ("a way back to the App Store from the web
+page"); this closes it.
+
+**Three surfaces, no interstitial.** `GetTheAppPill` sits in the nav bar's right
+slot at every width, which has been empty since the Live pill and the funnel
+moved into the Scores control card — a bar every page already carries is the
+only placement that costs no vertical space. `GetTheAppCard` leads the Scores
+follow rail and closes a game page's rail. And `metadata.itunes` emits Safari's
+own Smart App Banner, the one placement Apple renders itself, and the only one
+that can say "Open" rather than "Get" once the app is installed. No
+`appArgument`: the `statside://` scheme is deliberately unregistered and there
+are no universal links, so there is nothing to hand it.
+
+**Above the follow lists, not below.** The rail's length *is* the follow set's,
+so anything under it sits at a different height for every visitor and is
+off-screen for the ones with the most teams. That also forced a fix the card
+would otherwise have caused: a sticky column taller than the viewport pins its
+top and puts everything past the fold permanently out of reach, so the rail is
+capped at `calc(100vh-5rem)` and scrolls inside itself.
+
+**The graphic is drawn, not shot.** A screenshot would be a PNG to re-shoot
+every time the slate's type or spacing moved, an unreadable grey smear at
+220pt, and a second file for dark mode. The SVG is the same slate abstracted to
+its shapes — a day strip with today filled the way the selected chip inverts,
+then three game cards, one live — with every value a theme token, so it
+re-paints in dark mode with the rest of the page.
+
+**Apple's mark, never Apple's badge.** The "Download on the App Store" badge is
+licensed artwork with its own colour and clear-space rules: it would be the
+colour budget's fourth exception and a binary to keep in sync. The logo alone,
+inline, inherits `currentColor` and inverts with the button it sits in. (The
+apple in `lucide-react` is a piece of fruit.)
+
+---
 
 ### The Scores control card  ✅ shipped 2026-09-10
 

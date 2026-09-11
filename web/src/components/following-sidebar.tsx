@@ -16,6 +16,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { CardHeader } from "@/components/card-header";
+import { GetTheAppCard } from "@/components/get-the-app";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { TeamLogo } from "@/components/team-logo";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -88,11 +89,25 @@ export function FollowingSidebar() {
     // now: the day strip used to be fixed between the two, and the rail had
     // to clear its height as well (2026-09-10). The rail only exists at
     // `lg`, where the bar is always h-16.
+    //
+    // Capped and scrollable, because a sticky column taller than the
+    // viewport pins its top and puts everything past the fold out of reach
+    // — no amount of page scrolling brings it back. A long follow set could
+    // already reach that height; the promo card above the lists is ~300px
+    // that every visitor now carries, so the cap stopped being optional.
     <aside
       aria-label="Following"
-      className="hidden lg:sticky lg:top-16 lg:block lg:self-start"
+      className="hidden lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:self-start lg:overflow-y-auto"
     >
       <div className="flex flex-col gap-3">
+        {/* Above the follow lists, not below them: the rail's own length is
+            the follow set's, so anything under it sits at a different
+            height for every visitor and is off-screen for the ones with the
+            most teams. At the top it is always the same card in the same
+            place — and it never moves the rows beneath it, because the
+            follow set arrives after hydration and this doesn't. */}
+        <GetTheAppCard />
+
         {teamsVisible && (
           <section className="card-surface">
             <CardHeader title="Following teams" />

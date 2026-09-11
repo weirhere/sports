@@ -35,6 +35,7 @@ import {
   gameInfoHasContent,
   venueHasContent,
 } from "./game-info-cards";
+import { GetTheAppCard } from "@/components/get-the-app";
 import { LiveSituationCard } from "./live-situation-card";
 import { LineScoreCard } from "./line-score-card";
 import { ScoringPlaysCard } from "./scoring-plays-card";
@@ -185,6 +186,12 @@ export function GameDetailView({
                 standings={standings}
               />
             )}
+            {/* Last in the rail, and last in the phone's single column: a
+                game page is where a shared link lands (the OpenGraph card,
+                2026-09-09), so this is the one screen whose visitor may
+                never have heard of the app — and the foot of the page they
+                just read is where saying so is earned rather than sold. */}
+            <GetTheAppCard />
           </div>
         </div>
       )}
