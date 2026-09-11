@@ -17,6 +17,17 @@ export const metadata: Metadata = {
     "Fast, focused scores for college football, the NFL, the NBA and the NHL. Follow your teams, tables and games.",
   openGraph: {
     siteName: "StatSide",
+    type: "website",
+  },
+  // X builds its card from `twitter:` tags and falls back to the `og:`
+  // ones for anything missing — but NOT for the card *shape*, which has no
+  // og: equivalent and defaults to `summary`: the small square thumbnail a
+  // post of statside.co was wearing. One line turns every route's unfurl
+  // into the full-width card the image is drawn for. No `twitter:image`
+  // beside it on purpose: the fallback covers it, and a second image route
+  // would be the same PNG rendered under a second URL to keep in step.
+  twitter: {
+    card: "summary_large_image",
   },
   // Safari's Smart App Banner — `<meta name="apple-itunes-app">`, on every
   // page. It is the native answer to the same question `GetTheAppPill`

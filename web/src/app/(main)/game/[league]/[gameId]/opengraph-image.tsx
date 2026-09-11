@@ -28,6 +28,8 @@
 // a row, which is why the kickoff stack is a real div.
 
 import { ImageResponse } from "next/og";
+import { interFonts } from "@/lib/og/fonts";
+import { DIVIDER, INK, LIVE, MUTED, PAPER, RECESSED as DISC } from "@/lib/og/palette";
 import { gameSummary } from "@/lib/espn/provider";
 import { ogCardModel, type OgCardModel, type OgCardSide } from "./og-card";
 import { displayName, parseLeague } from "@/lib/leagues";
@@ -35,46 +37,6 @@ import { displayName, parseLeague } from "@/lib/leagues";
 export const alt = "StatSide game card";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-
-// The app's ink, verbatim from globals.css — the card is always light, so
-// these are the light values with no dark twin.
-const INK = "#1a1a1a";
-const MUTED = "#6b6b6b";
-const DIVIDER = "#e0e0e0";
-const PAPER = "#ffffff";
-/** The placeholder disc a logo that wouldn't load degrades to. */
-const DISC = "#ededed";
-/** The app's one green: the live accent shares rank-up (2026-08-29). */
-const LIVE = "#008538";
-
-/**
- * Inter stands in for SF Pro: Satori has no system fonts, and its built-in
- * fallback ships one weight — which would flatten a card whose whole
- * hierarchy is weight and size. Bundled rather than fetched so rendering
- * costs no network hop and can't fail halfway.
- */
-async function interFonts() {
-  const weights = [
-    { file: "inter-latin-400-normal.woff", weight: 400 as const },
-    { file: "inter-latin-600-normal.woff", weight: 600 as const },
-    { file: "inter-latin-700-normal.woff", weight: 700 as const },
-  ];
-  try {
-    return await Promise.all(
-      weights.map(async ({ file, weight }) => ({
-        name: "Inter",
-        weight,
-        style: "normal" as const,
-        data: await fetch(
-          new URL(`../../../../../lib/og/fonts/${file}`, import.meta.url)
-        ).then((res) => res.arrayBuffer()),
-      }))
-    );
-  } catch {
-    // Rule 1: a card in the fallback font beats no card.
-    return undefined;
-  }
-}
 
 /**
  * Satori fetches remote images itself and *throws* when one won't load, so

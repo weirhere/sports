@@ -630,6 +630,8 @@ answers a desktop problem has nothing to port to a phone.
 | 2026-09-10 | The nav bar carries the wordmark on every route rather than swapping it for the page's name | **n/a** — iOS names a screen in its nav bar, which is the platform's own convention and not a thing to port |
 | 2026-09-10 | The wordmark reverts to plain 17-bold system type (no condensed axis, no weight split, no tracking); the 🏈 stays gone | **pending** — Andy's objection was to the treatment, not to the platform, and he raised it looking at the web. iOS still ships the 2026-09-09 drawn mark; this row closes when he says which way it goes |
 | 2026-09-10 | One content width for the whole app — 1040px, replacing three per-route caps | **n/a** — a phone has one width and the chrome can't shift between routes |
+| 2026-09-10 | The site's own OpenGraph card, inherited by every non-game route, plus `twitter:card: summary_large_image` | **n/a** — an unfurl is a property of a URL, and an iOS share deliberately carries the store link (2026-09-05). The `LPLinkMetadata` bubble is the app's equivalent and already exists |
+| 2026-09-10 | The OG cards actually load Inter: `fs.readFile` over `fetch`, one static asset URL per face, and a test that the three faces differ | **n/a** — `GameShareCardView` is SwiftUI drawing in the system font; this is a Satori/Node bug with no iOS counterpart |
 
 ### The iOS download CTA  ✅ shipped 2026-09-10
 
