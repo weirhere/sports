@@ -632,6 +632,7 @@ answers a desktop problem has nothing to port to a phone.
 | 2026-09-10 | One content width for the whole app — 1040px, replacing three per-route caps | **n/a** — a phone has one width and the chrome can't shift between routes |
 | 2026-09-10 | The site's own OpenGraph card, inherited by every non-game route, plus `twitter:card: summary_large_image` | **n/a** — an unfurl is a property of a URL, and an iOS share deliberately carries the store link (2026-09-05). The `LPLinkMetadata` bubble is the app's equivalent and already exists |
 | 2026-09-10 | The OG cards actually load Inter: `fs.readFile` over `fetch`, one static asset URL per face, and a test that the three faces differ | **n/a** — `GameShareCardView` is SwiftUI drawing in the system font; this is a Satori/Node bug with no iOS counterpart |
+| 2026-09-10 | Team and conference pages get OpenGraph cards of their own — the page's hero at poster size, on the game card's chassis | **n/a** — an unfurl is a property of a URL, and an iOS team share is text by decision: the invitation framing plus the store link (2026-08-09), with no image |
 
 ### The iOS download CTA  ✅ shipped 2026-09-10
 

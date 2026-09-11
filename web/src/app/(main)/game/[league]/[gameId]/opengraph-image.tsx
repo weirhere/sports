@@ -28,8 +28,12 @@
 // a row, which is why the kickoff stack is a real div.
 
 import { ImageResponse } from "next/og";
+import { BrandCard, CardShell } from "@/lib/og/card";
 import { interFonts } from "@/lib/og/fonts";
-import { DIVIDER, INK, LIVE, MUTED, PAPER, RECESSED as DISC } from "@/lib/og/palette";
+import { logoData } from "@/lib/og/logo";
+// `DISC` is the recessed ground doing a second job: the quiet disc a
+// logo that wouldn't load degrades to.
+import { INK, LIVE, MUTED, RECESSED as DISC } from "@/lib/og/palette";
 import { gameSummary } from "@/lib/espn/provider";
 import { ogCardModel, type OgCardModel, type OgCardSide } from "./og-card";
 import { displayName, parseLeague } from "@/lib/leagues";
@@ -37,27 +41,6 @@ import { displayName, parseLeague } from "@/lib/leagues";
 export const alt = "StatSide game card";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-
-/**
- * Satori fetches remote images itself and *throws* when one won't load, so
- * a cold ESPN CDN would take the whole card down. Fetching them here turns
- * that into a placeholder disc — the app's own rule for the same gap.
- */
-async function logoData(url: string | undefined): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(2000),
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const type = res.headers.get("content-type") ?? "image/png";
-    return `data:${type};base64,${buffer.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
 
 function Logo({ src }: { src: string | null }) {
   if (!src) {
@@ -134,29 +117,12 @@ function Card({ model, awayLogo, homeLogo }: {
   homeLogo: string | null;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100%",
-        backgroundColor: PAPER,
-        fontFamily: "Inter",
-      }}
-    >
-      {/* The row is top-aligned inside itself (the app's `.top` HStack) but
-          centered in the canvas: an OG image is a fixed 1200×630 where the
-          app's card shrinks to its content, and a pre-game card — no scores
-          under the names — would otherwise hang from the ceiling. */}
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "32px 48px",
-        }}
-      >
+    // The row is top-aligned inside itself (the app's `.top` HStack); the
+    // shell centres it in the canvas, because an OG image is a fixed
+    // 1200×630 where the app's card shrinks to its content, and a pre-game
+    // card — no scores under the names — would otherwise hang from the
+    // ceiling.
+    <CardShell>
       <div
         style={{
           display: "flex",
@@ -217,48 +183,7 @@ function Card({ model, awayLogo, homeLogo }: {
         </div>
         <Side side={model.home} logo={homeLogo} showsScores={model.showsScores} isLive={model.isLive} />
       </div>
-      </div>
-
-      <div style={{ display: "flex", height: 1, backgroundColor: DIVIDER }} />
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "24px 0 28px",
-          fontSize: 30,
-          fontWeight: 700,
-          letterSpacing: -0.4,
-          color: INK,
-        }}
-      >
-        StatSide
-      </div>
-    </div>
-  );
-}
-
-/** The card a game we couldn't load still deserves: the brand, and no lies. */
-function FallbackCard({ tagline }: { tagline: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        width: "100%",
-        height: "100%",
-        backgroundColor: PAPER,
-        fontFamily: "Inter",
-      }}
-    >
-      <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -1, color: INK }}>
-        StatSide
-      </div>
-      <div style={{ display: "flex", fontSize: 32, color: MUTED }}>{tagline}</div>
-    </div>
+    </CardShell>
   );
 }
 
@@ -275,7 +200,7 @@ export default async function Image({
   // when the summary fetch failed, which says nothing about the league.
   const tagline = league ? `${displayName(league)} scores` : "Live scores";
 
-  if (!league) return new ImageResponse(<FallbackCard tagline={tagline} />, options);
+  if (!league) return new ImageResponse(<BrandCard tagline={tagline} />, options);
 
   try {
     // Next memoizes the fetch, so this shares the page's own summary call.
@@ -290,6 +215,6 @@ export default async function Image({
       options
     );
   } catch {
-    return new ImageResponse(<FallbackCard tagline={tagline} />, options);
+    return new ImageResponse(<BrandCard tagline={tagline} />, options);
   }
 }
