@@ -33,6 +33,10 @@ import type {
   ScoringPlayItem,
   TeamStats,
   TeamScheduleData,
+  TeamRoster,
+  RosterGroup,
+  RosterPlayer,
+  RosterCoach,
 } from "@/lib/types";
 import type { LivePhase } from "@/lib/format";
 import type { WeekSlot } from "@/lib/season";
@@ -82,6 +86,11 @@ import type {
   EspnScoringPlay,
   EspnTeamLeaders,
   EspnVenue,
+  EspnRosterResponse,
+  EspnRosterEntry,
+  EspnRosterGroup,
+  EspnRosterAthlete,
+  EspnRosterCoach,
 } from "./types";
 import { flexibleNumber } from "./types";
 import { parseKickoff } from "@/lib/format";
@@ -1412,4 +1421,123 @@ export function transformGameSummary(
     plays: drives.length > 0 ? [] : flatPlays,
     situation: transformSituation(summary.drives?.current, awayTeamEspnId),
   };
+}
+
+// --- Roster ---
+
+/**
+ * What a flat payload's one card is called. "Roster" rather than a position
+ * guess: the NBA ships no grouping, so neither do we.
+ */
+const UNGROUPED_ROSTER_NAME = "Roster";
+
+/**
+ * ESPN's group label, made presentable.
+ *
+ * Football sends lowercase codes; hockey sends names that are already
+ * display-ready ("Centers", "Left Wings"). One rule covers both: map the
+ * codes we know, and pass anything else through capitalized rather than
+ * dropping a group we can't name — a card headed "Taxi Squad" is right, and
+ * a missing card never is.
+ */
+const ROSTER_GROUP_NAMES: Record<string, string> = {
+  offense: "Offense",
+  defense: "Defense",
+  specialTeam: "Special teams",
+  injuredReserveOrOut: "Injured reserve",
+  suspended: "Suspended",
+  practiceSquad: "Practice squad",
+};
+
+function rosterGroupName(code: string | undefined): string {
+  if (!code) return UNGROUPED_ROSTER_NAME;
+  return (
+    ROSTER_GROUP_NAMES[code] ?? code.charAt(0).toUpperCase() + code.slice(1)
+  );
+}
+
+/** A group carries `items`; an athlete never does. */
+function isRosterGroup(entry: EspnRosterEntry): entry is EspnRosterGroup {
+  return Array.isArray((entry as EspnRosterGroup).items);
+}
+
+function transformRosterPlayer(
+  athlete: EspnRosterAthlete
+): RosterPlayer | null {
+  // A player with no name is a row that says nothing; a player with no id
+  // can't be a stable key in a list. Everything else degrades.
+  const name = nonEmpty(athlete.displayName) ?? nonEmpty(athlete.fullName);
+  if (!athlete.id || !name) return null;
+  return {
+    id: athlete.id,
+    name,
+    jersey: nonEmpty(athlete.jersey),
+    position: nonEmpty(athlete.position?.abbreviation),
+    positionName:
+      nonEmpty(athlete.position?.displayName) ?? nonEmpty(athlete.position?.name),
+    height: nonEmpty(athlete.displayHeight),
+    weight: nonEmpty(athlete.displayWeight),
+    age: typeof athlete.age === "number" ? athlete.age : undefined,
+    // The pro leagues ship `experience.years` — seasons played, not a class —
+    // and no abbreviation, so this stays undefined for them and the age
+    // column is what they render.
+    classAbbreviation: nonEmpty(athlete.experience?.abbreviation),
+    headshotUrl: nonEmpty(athlete.headshot?.href),
+    // First listed: a player carrying two designations has one status that
+    // matters, and it's the one ESPN leads with.
+    injuryStatus: (athlete.injuries ?? [])
+      .map((injury) => nonEmpty(injury.status))
+      .find((status): status is string => status !== undefined),
+  };
+}
+
+function transformRosterCoach(
+  coaches: EspnRosterCoach[]
+): RosterCoach | undefined {
+  const first = coaches[0];
+  if (!first) return undefined;
+  const name = [first.firstName, first.lastName]
+    .map((part) => nonEmpty(part))
+    .filter((part): part is string => part !== undefined)
+    .join(" ");
+  // `experience` comes as a bare integer with no unit attached. It reads like
+  // seasons as a head coach, but ESPN never says so, and a page that guesses
+  // at a number is worse than one that omits it.
+  return name ? { name } : undefined;
+}
+
+/**
+ * One team's roster, from either of the two shapes ESPN ships.
+ *
+ * The NFL, college football and the NHL group their athletes; the NBA sends a
+ * flat list. The only decisions left here are what to call each group — and,
+ * for the flat case, that the whole roster is one group rather than a group
+ * per player.
+ */
+export function transformRoster(data: EspnRosterResponse): TeamRoster {
+  const groups: RosterGroup[] = [];
+  // Loose athletes collect here. Not one group per player, and not a group
+  // per run either — a flat payload is one roster, so they merge into a
+  // single card.
+  const ungrouped: RosterPlayer[] = [];
+
+  for (const entry of data.athletes ?? []) {
+    if (isRosterGroup(entry)) {
+      const players = (entry.items ?? [])
+        .map(transformRosterPlayer)
+        .filter((player): player is RosterPlayer => player !== null);
+      // Empty groups produce no card — the NFL ships `suspended: []` most
+      // weeks, and a header over nothing is chrome.
+      if (players.length === 0) continue;
+      groups.push({ name: rosterGroupName(entry.position), players });
+    } else {
+      const player = transformRosterPlayer(entry);
+      if (player) ungrouped.push(player);
+    }
+  }
+  if (ungrouped.length > 0) {
+    groups.push({ name: UNGROUPED_ROSTER_NAME, players: ungrouped });
+  }
+
+  return { coach: transformRosterCoach(data.coach ?? []), groups };
 }

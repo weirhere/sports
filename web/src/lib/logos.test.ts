@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { darkTeamLogoVariant } from "./logos";
+import { darkTeamLogoVariant, headshotThumbnail } from "./logos";
 
 describe("darkTeamLogoVariant", () => {
   it("rewrites team logos to the 500-dark variant", () => {
@@ -62,5 +62,40 @@ describe("dark variants across leagues", () => {
         "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/sec.png"
       )
     ).toBeNull();
+  });
+});
+
+describe("headshotThumbnail", () => {
+  it("asks the CDN's combiner for a row-sized photo", () => {
+    expect(
+      headshotThumbnail(
+        "https://a.espncdn.com/i/headshots/college-football/players/full/5269389.png"
+      )
+    ).toBe(
+      "https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/5269389.png&w=150&h=110"
+    );
+  });
+
+  it("covers every league's headshot bucket", () => {
+    for (const bucket of ["nfl", "nba", "nhl"]) {
+      expect(
+        headshotThumbnail(
+          `https://a.espncdn.com/i/headshots/${bucket}/players/full/3139477.png`
+        )
+      ).toContain(`img=/i/headshots/${bucket}/players/full/3139477.png`);
+    }
+  });
+
+  it("returns null for a team logo, so only headshots get resized", () => {
+    expect(
+      headshotThumbnail("https://a.espncdn.com/i/teamlogos/ncaa/500/333.png")
+    ).toBeNull();
+  });
+
+  it("returns null for non-espncdn hosts and unparseable URLs", () => {
+    expect(
+      headshotThumbnail("https://example.com/i/headshots/nfl/players/full/1.png")
+    ).toBeNull();
+    expect(headshotThumbnail("not a url")).toBeNull();
   });
 });

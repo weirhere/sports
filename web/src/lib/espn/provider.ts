@@ -12,6 +12,7 @@ import type {
   ConferenceTeams,
   GameDetail,
   Team,
+  TeamRoster,
   TeamScheduleData,
 } from "@/lib/types";
 import {
@@ -32,6 +33,7 @@ import type {
   EspnStandingsResponse,
   EspnScheduleResponse,
   EspnGameSummaryResponse,
+  EspnRosterResponse,
 } from "./types";
 import {
   coreRankingUrl,
@@ -42,6 +44,7 @@ import {
   scoreboardUrl,
   seasonWindowUrl,
   standingsUrl,
+  teamRosterUrl,
   teamScheduleUrl,
   teamsUrl,
 } from "./endpoints";
@@ -57,6 +60,7 @@ import {
   transformStandings,
   transformConferenceTeams,
   transformTeamSchedule,
+  transformRoster,
   transformHeaderGame,
   transformGameSummary,
 } from "./transformers";
@@ -90,6 +94,7 @@ const REVALIDATE = {
   rankings: 300,
   standings: 300,
   schedule: 3600,
+  roster: 3600,
   conferenceGames: 3600,
   conferences: 86400,
 } as const;
@@ -405,6 +410,28 @@ export async function teamSchedule(
   if (schedule.games.length > 0) return schedule;
   // Next season's schedule isn't published yet; show last season instead.
   return fetchSchedule(league, teamId, current - 1);
+}
+
+/**
+ * One team's current roster.
+ *
+ * No `year`, deliberately: ESPN's roster endpoint has no season axis.
+ * `?season=2019`, `?season=2024` and `?season=2025` all answer 200, echo the
+ * season back, and carry zero athletes (probed live 2026-09-10). Which is
+ * also why the Roster tab shows no season chip.
+ *
+ * Cached for an hour like the schedule and never polled — a roster doesn't
+ * change during a game.
+ */
+export async function teamRoster(
+  league: League,
+  teamId: string
+): Promise<TeamRoster> {
+  const data = await fetchJson<EspnRosterResponse>(
+    teamRosterUrl(league, teamId),
+    REVALIDATE.roster
+  );
+  return transformRoster(data);
 }
 
 async function fetchSchedule(

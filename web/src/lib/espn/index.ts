@@ -7,6 +7,7 @@ export {
   conferenceStandings,
   hubStandings,
   teamSchedule,
+  teamRoster,
   conferenceGames,
   gameSummary,
   EspnApiError,

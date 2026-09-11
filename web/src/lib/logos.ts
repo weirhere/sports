@@ -35,3 +35,33 @@ export function darkTeamLogoVariant(url: string): string | null {
   if (!LIGHT_PATH.test(parsed.pathname)) return null;
   return url.replace(LIGHT_PATH, "$1-dark/");
 }
+
+/**
+ * The same headshot, asked for at row size — a port of iOS
+ * `URL.headshotThumbnail`.
+ *
+ * ESPN's roster payload links `/i/headshots/…/full/{id}.png`, a 600×436 PNG
+ * weighing ~200 KB. A college football roster is 100 players, so a Roster tab
+ * rendered off those URLs pulls ~20 MB to fill a screenful of 36px discs. The
+ * CDN's own resizer takes the file down to ~19 KB — verified live 2026-09-11:
+ * 219,372 bytes → 19,559 — and 110px on the short side is still sharp in a
+ * 36px disc on a 2× display.
+ *
+ * The `?w=` parameters the plain path accepts are ignored (the full image
+ * comes back at full size), so the combiner is the only way to ask. A player
+ * with no photo 404s cleanly, which the row treats as "no headshot".
+ *
+ * Null for any URL that isn't an ESPN headshot — callers fall back to the
+ * href they were given.
+ */
+export function headshotThumbnail(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (!parsed.hostname.endsWith("espncdn.com")) return null;
+  if (!parsed.pathname.includes("/i/headshots/")) return null;
+  return `https://a.espncdn.com/combiner/i?img=${parsed.pathname}&w=150&h=110`;
+}

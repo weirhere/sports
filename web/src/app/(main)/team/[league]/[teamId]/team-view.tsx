@@ -13,8 +13,10 @@ import { seasonYear, seasonYears, type League } from "@/lib/leagues";
 import { gameState } from "@/lib/game-state";
 import type {
   ConferenceStandingsGroup,
+  TeamRoster,
   TeamScheduleData,
 } from "@/lib/types";
+import { rosterIsEmpty } from "@/lib/types";
 import { HeroHeader } from "@/components/hero-header";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { SeasonMenuChip } from "@/components/season-menu-chip";
@@ -27,6 +29,7 @@ import {
   teamRecordCardHasContent,
 } from "@/components/team-record-card";
 import { bySeasonPhase, seasonPhaseTitle } from "@/lib/season-phase";
+import { RosterList } from "@/components/roster-list";
 import { StandingsList } from "@/components/standings-list";
 import { StandingsScopeChip } from "@/components/standings-scope-chip";
 import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
@@ -36,11 +39,14 @@ import {
   type StandingsScope,
 } from "@/lib/standings-scope";
 
-// Ordered — the ordinal is the tab walk (Overview → Games → Standings).
+// Ordered — the ordinal is the tab walk (Overview → Games → Standings →
+// Roster). Standings is conference-gated, so the row is assembled rather
+// than sliced.
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
   { id: "games", label: "Games" },
   { id: "standings", label: "Standings" },
+  { id: "roster", label: "Roster" },
 ];
 
 interface TeamViewProps {
@@ -49,6 +55,8 @@ interface TeamViewProps {
   schedule: TeamScheduleData;
   /** All conferences' standings for the requested season; null = fetch failed. */
   standingsGroups: ConferenceStandingsGroup[] | null;
+  /** The team's current roster; null = fetch failed. Never season-scoped. */
+  roster: TeamRoster | null;
   /** Current AP top-25 rank, when the team holds one. */
   apRank?: number;
   /** The season the payload actually describes — the chip label. */
@@ -62,6 +70,7 @@ export function TeamView({
   teamId,
   schedule,
   standingsGroups,
+  roster,
   apRank,
   displayYear,
   isCurrentSeason,
@@ -91,7 +100,9 @@ export function TeamView({
   }, [league, schedule.team?.conferenceId, standingsGroups, teamId]);
 
   const showsStandingsTab = conferenceId !== undefined;
-  const visibleTabs = showsStandingsTab ? TABS : TABS.slice(0, 2);
+  const visibleTabs = showsStandingsTab
+    ? TABS
+    : TABS.filter((entry) => entry.id !== "standings");
   const activeTab = tab === "standings" && !showsStandingsTab ? "overview" : tab;
 
   const school =
@@ -215,8 +226,12 @@ export function TeamView({
         trailing={
           <>
             {/* Overview is the exception it always was and shows no chip:
-                its record card is pinned to the current season. */}
-            {activeTab !== "overview" && (
+                its record card is pinned to the current season. Roster is
+                the second, for a harder reason — ESPN's roster endpoint has
+                no season axis, so a past year can't be asked for at all. A
+                chip there wouldn't do nothing; it would show this year's
+                roster under last decade's label. */}
+            {activeTab !== "overview" && activeTab !== "roster" && (
               <SeasonMenuChip
                 value={displayYear}
                 years={seasonYears(league)}
@@ -301,6 +316,20 @@ export function TeamView({
                 Season TBA
               </p>
             </section>
+          ))}
+
+        {activeTab === "roster" &&
+          // Who plays here — FotMob's squad screen, in the app's table
+          // language. Nothing on this tab reads the schedule or the season:
+          // there is one roster and it is the current one.
+          (roster === null ? (
+            retryRow("Couldn't load the roster.")
+          ) : rosterIsEmpty(roster) ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              Roster TBA
+            </section>
+          ) : (
+            <RosterList roster={roster} league={league} />
           ))}
 
         {activeTab === "standings" &&
