@@ -174,6 +174,9 @@ export function ScoresView({ seed }: ScoresViewProps) {
 
   return (
     <div>
+      {/* See TeamsList: the bar carries the wordmark on every route, so no
+          visible element on this page names it. */}
+      <h1 className="sr-only">Games</h1>
       <ScoreFilterSheet
         open={filterSheetOpen}
         onOpenChange={setFilterSheetOpen}

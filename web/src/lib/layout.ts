@@ -1,19 +1,26 @@
 /**
- * Per-route content width.
+ * The content width — **one number for every route** (Andy, 2026-09-10:
+ * *"the max width on the scores/games page should be the same max width on
+ * all the other pages so there is no content shift"*).
  *
  * The pages are single columns of cards, so an unbounded desktop page
  * stretches a game row until its score sits a hand's width from the team
- * name it belongs to. Every route caps itself, and the chrome that has to
- * line up with the content — the nav bar, the day strip — reads the cap
- * off the `--page-max` custom property `AppShell` sets on the shell root
- * rather than repeating a number.
+ * name it belongs to (#112). That is still true — the cap didn't go away,
+ * it stopped being three different caps. Games was 960, a game page 1040
+ * and everything else 80rem, so the nav bar, the wordmark and the first
+ * card all jumped horizontally on every tab change: the bar is `mx-auto`
+ * against this value, so a page 320px wider moves its contents 160px left.
  *
- * Scores is the narrow one (a 280px follow rail beside a ~660px slate);
- * the game page is a little wider, because its context rail sits beside a
- * main column that has to hold a box score.
+ * **1040px, the game page's own**, because it is the one number that costs
+ * nothing to adopt. It is already the widest two-column layout in the app
+ * and the only one sized around a real constraint — a box score beside a
+ * 320px context rail. Games gains ~80px of slate, which the row spends on
+ * the team-name column (the status column is fixed), and the card lists on
+ * Leagues, Teams and Search lose 240px they were only using to stretch a
+ * standings row.
+ *
+ * The chrome that has to line up with the content reads it off the
+ * `--page-max` custom property `AppShell` sets on the shell root, rather
+ * than repeating the number.
  */
-export function pageMaxWidth(pathname: string): string {
-  if (pathname === "/") return "960px";
-  if (pathname.startsWith("/game/")) return "1040px";
-  return "80rem"; /* the max-w-7xl every other page has always had */
-}
+export const PAGE_MAX = "1040px";

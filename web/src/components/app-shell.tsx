@@ -1,9 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { NavBar } from "./nav-bar";
 import { BottomTabBar } from "./bottom-tab-bar";
-import { pageMaxWidth } from "@/lib/layout";
+import { PAGE_MAX } from "@/lib/layout";
 import { CHROME_PORTAL_ID } from "./chrome-portal";
 
 interface AppShellProps {
@@ -11,16 +10,15 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  // One width per route, published as a custom property so the nav bar and
-  // the day strip line up with the content instead of each hardcoding a
-  // number. Custom properties inherit through the tree, so the fixed week
-  // strip inside <main> still sees it.
-  const pathname = usePathname();
-
+  // One width for the whole app, published as a custom property so the nav
+  // bar lines up with the content instead of hardcoding a number of its
+  // own. Custom properties inherit through the tree, so anything nested in
+  // <main> still sees it. It was a width *per route* until 2026-09-10,
+  // which is what made the chrome jump sideways on every tab change.
   return (
     <div
       className="min-h-screen"
-      style={{ "--page-max": pageMaxWidth(pathname) } as React.CSSProperties}
+      style={{ "--page-max": PAGE_MAX } as React.CSSProperties}
     >
       <NavBar />
       {/* Fixed chrome mounts here rather than inside the page, which the

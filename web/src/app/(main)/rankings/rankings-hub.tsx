@@ -224,6 +224,8 @@ export function LeaguesHub({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* See TeamsList: the bar names the app, not the page. */}
+      <h1 className="sr-only">Leagues</h1>
       {followedRows.length > 0 && (
         <>
           <SectionHeading title="Following" />
