@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/wordmark";
+import { GetTheAppPill } from "@/components/get-the-app";
 
 const NAV_LINKS = [
   { href: "/", label: "Scores" },
@@ -87,6 +88,14 @@ export function NavBar() {
             );
           })}
         </nav>
+
+        {/* The one outbound link in the app, at every width — the nav bar's
+            right slot has been empty since the Live pill and the funnel
+            moved into the Scores control card (2026-09-10), and a bar that
+            every page already carries is the only CTA placement that costs
+            no vertical space. `ml-auto` pushes it there whether or not the
+            desktop nav rendered. */}
+        <GetTheAppPill />
       </div>
     </header>
   );
