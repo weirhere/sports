@@ -375,33 +375,33 @@ scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
 
-### 2.2.0: the set is still football
+### 2.2.0: reshot, but still football
 
-The eight frames are the 2026-09-06 set — college football and the NFL. The
-release's headline is basketball and hockey, and **neither appears in a single
-screenshot**. That is a real gap on the product page, and it is a deliberate
-open question rather than an oversight, because of what can and cannot be shot
-in September:
+The eight frames were **recaptured and re-rendered on 2026-09-11** against
+2.2.0. Two things were wrong with the 2.0 set and only one of them is fixed.
 
-- **The hero cannot show them.** Scores is bounded by the current day and has
-  no season control (the view-options sheet retired 2026-09-05), and the NBA
-  and NHL regular seasons do not open until late October. A day strip today
-  has empty basketball and hockey sections, which is the honest picture and a
-  bad screenshot.
-- **The other surfaces can.** The Leagues tab lists all four leagues today
-  with real tables, and a league or team page's season chip reaches a finished
-  NBA or NHL season — full schedules, real standings, real box scores. So a
-  Leagues frame and an NBA or NHL team-page frame are both shootable now.
+**Fixed — the copy, and the captures.** Five frames said things the release
+made false: `01-hero` ("College football and the NFL" / "Both leagues"),
+`02-follow` ("either league"), `08-closer` ("Two leagues, done right", plus a
+disclaimer naming only the NFL and the NCAA), and the weekend framing on
+`03-saturdays` and `04-week`, which stopped being the promise once the NBA and
+NHL brought most nights from October to June. And the device shots underneath
+were the 2026-09-05 set, showing a tab bar reading "Scores | Tables | Teams",
+undated day chips, Today inside the strip, one "College Football" accordion,
+and the retired field glyph. Seven masters reshot; `07-widget` untouched,
+since it is a manual springboard capture that no store frame composites.
 
-Two ways to close it, and it is Andy's call which:
+**Still open — no basketball or hockey appears in any frame.** The slate
+frames are Saturday, September 5 and the NFL's opening Sunday, because those
+are the days that exist: the NBA and NHL regular seasons do not open until
+late October, Scores is bounded by the current day, and a day strip today has
+empty sections for both. Reshoot `01-scores` and add a league frame once
+either season is under way.
 
-1. **Reshoot two frames now** — Leagues (all four) and an NBA or NHL team page
-   on a past season — and carry the other six. Costs a capture run plus
-   re-rendering those marketing frames and the `docs/social/` crops that read
-   the masters at hardcoded offsets.
-2. **Ship the football set and reshoot at tip-off.** Screenshots carry forward
-   automatically on a version update, and late October gives a live slate that
-   shoots the hero properly too.
+What the reshoot did buy: the **Roster** tab and game detail's **Plays** tab
+are both in the set now, without anything being staged for them. The release's
+own features could not appear in a September 5 capture, which is the argument
+for reshooting at a cut rather than carrying frames forward by default.
 
 **Warm the logo cache first.** A capture run against a fresh install shoots
 before the team marks have downloaded, and every logo lands as an empty grey
