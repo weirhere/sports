@@ -155,7 +155,12 @@ extension XCTestCase {
         guard openTab("Search", in: app, until: field) else { return false }
         field.tap()
         field.typeText(name)
-        let result = app.buttons[name].firstMatch
+        // A prefix, not the bare name: a search result says which league it
+        // found ("Georgia Bulldogs, CFB" — 2026-09-07), because one
+        // "Cleveland Browns" tells you nothing about which football you
+        // found. An exact-label query stopped matching the day that landed.
+        let result = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
         guard result.waitForExistence(timeout: 10) else { return false }
         result.tap()
         // The Router intent switches to the Teams tab and pushes the page;
