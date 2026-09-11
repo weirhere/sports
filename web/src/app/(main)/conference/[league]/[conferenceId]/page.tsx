@@ -13,6 +13,7 @@ import {
   seasonYear,
   type League,
 } from "@/lib/leagues";
+import { conferenceCardModel } from "@/lib/og/entity";
 import { ConferenceView } from "./conference-view";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +40,15 @@ export async function generateMetadata({ params }: PageProps) {
   const league = parseLeague(leagueParam);
   if (!league) return { title: "Conference | StatSide" };
   const name = conferenceName(Number(conferenceId), league);
+  if (name === "Other") {
+    return { title: `Conference | ${displayName(league)} | StatSide` };
+  }
   return {
-    title:
-      name !== "Other"
-        ? `${name} | ${displayName(league)} | StatSide`
-        : `Conference | ${displayName(league)} | StatSide`,
+    title: `${name} | ${displayName(league)} | StatSide`,
+    // See the team page: the unfurl's second line should name the thing
+    // the link names, not the site.
+    description: conferenceCardModel(league, name, undefined, null)
+      .description,
   };
 }
 

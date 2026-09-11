@@ -12,6 +12,7 @@ import {
   seasonYear,
   type League,
 } from "@/lib/leagues";
+import { teamCardModel } from "@/lib/og/entity";
 import { TeamView } from "./team-view";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,15 @@ export async function generateMetadata({ params }: PageProps) {
       title: school
         ? `${school} | ${displayName(league)} | StatSide`
         : `Team | ${displayName(league)} | StatSide`,
+      // The other half of the unfurl. Without this the card's title names
+      // the team and the line under it falls back to the site's own
+      // description, which names four leagues and no team. Carries no
+      // numbers on purpose — an unfurl is cached, and a record in a
+      // sentence freezes there; the record lives on the image, where it
+      // reads as the snapshot it is.
+      ...(school
+        ? { description: teamCardModel(league, schedule).description }
+        : {}),
     };
   } catch {
     return { title: "Team | StatSide" };
