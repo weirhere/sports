@@ -430,3 +430,79 @@ export interface ConferenceGameGroup {
   conference: Conference;
   games: Game[];
 }
+
+// --- Roster ---
+// The web twin of iOS `TeamRoster` (StatSideShared/Models/TeamRoster.swift).
+
+/**
+ * One team's current roster: the head coach and the players, in whatever
+ * groups the provider ships them.
+ *
+ * **Current only.** ESPN's roster endpoint has no season axis — `season=2019`,
+ * `season=2024` and `season=2025` all answer 200, echo the season back, and
+ * carry zero athletes (probed live 2026-09-10 for iOS and re-probed
+ * 2026-09-11 here). So there is no `year` and the Roster tab shows no season
+ * chip: a past season's roster isn't something we can be wrong about, it's
+ * something we can't ask for.
+ */
+export interface TeamRoster {
+  coach?: RosterCoach;
+  groups: RosterGroup[];
+}
+
+/**
+ * A titled run of players — ESPN's own grouping, never ours.
+ *
+ * The NFL and college football ship six lowercase codes (offense, defense,
+ * specialTeam, injuredReserveOrOut, suspended, practiceSquad); the NHL ships
+ * display-ready names ("Centers", "Goalies"); the NBA ships no grouping at
+ * all, so its whole roster arrives as one group. Deriving guards and forwards
+ * from each athlete's position would be inventing a structure the payload
+ * doesn't have — the same rule that keeps drives and downs off a basketball
+ * game page.
+ */
+export interface RosterGroup {
+  /** Display name, already resolved from the provider's code. */
+  name: string;
+  players: RosterPlayer[];
+}
+
+export interface RosterCoach {
+  name: string;
+}
+
+/**
+ * One player. Everything but the id and the name is optional, because ESPN
+ * omits plenty: no jersey on 5 of 76 NFL players, none on 10 of 18 NBA
+ * preseason ones, and no `age` whatsoever on a college football roster
+ * (0 of 100 — college keeps a class year instead).
+ */
+export interface RosterPlayer {
+  id: string;
+  name: string;
+  jersey?: string;
+  /** Position abbreviation — "QB", "LW", "G". */
+  position?: string;
+  /** The position spoken out loud, for a screen reader ("Quarterback"). */
+  positionName?: string;
+  /** ESPN's own formatting, which already carries the units: `6' 2"`. */
+  height?: string;
+  /** Likewise: `225 lbs`. */
+  weight?: string;
+  age?: number;
+  /** College football's answer to age — "FR", "SO", "JR", "SR". */
+  classAbbreviation?: string;
+  headshotUrl?: string;
+  /** "Questionable", "Out". Only the NFL ships these, and only for the
+   *  handful of players carrying one. */
+  injuryStatus?: string;
+}
+
+/** Nothing to show — which is what renders "Roster TBA" rather than a
+ *  stack of empty cards. */
+export function rosterIsEmpty(roster: TeamRoster): boolean {
+  return (
+    roster.coach === undefined &&
+    roster.groups.every((group) => group.players.length === 0)
+  );
+}

@@ -514,3 +514,64 @@ export interface EspnTeamsResponse {
     }[];
   }[];
 }
+
+// --- Roster ---
+// Verified live 2026-09-10 (iOS) and re-probed 2026-09-11 on all four
+// leagues. Two things the shapes here defend against:
+//
+//   1. `athletes` arrives in **two forms**. The NFL, college football and the
+//      NHL ship `[{position, items: [athlete]}]`; the NBA ships a flat
+//      `[athlete]` with no grouping whatsoever. A reader written for one
+//      silently returns nothing for the other — and silently matters here,
+//      because an empty roster is how the pane says "TBA".
+//   2. The endpoint takes no season. `?season=2019` answers 200 and echoes
+//      the season back with zero athletes, so there is nothing to read a year
+//      from and nothing to ask a past season for.
+
+export interface EspnRosterResponse {
+  athletes?: EspnRosterEntry[];
+  coach?: EspnRosterCoach[];
+}
+
+/**
+ * One element of `athletes` — a position group, or (the NBA) a player
+ * standing on its own. `items` is the discriminator: a group always carries
+ * one, and an athlete object never does.
+ */
+export type EspnRosterEntry = EspnRosterGroup | EspnRosterAthlete;
+
+export interface EspnRosterGroup {
+  /** The group's own name. Lowercase codes in football ("offense",
+   *  "specialTeam"); already display-ready in hockey ("Centers"). */
+  position?: string;
+  items?: EspnRosterAthlete[];
+}
+
+export interface EspnRosterAthlete {
+  id?: string;
+  displayName?: string;
+  fullName?: string;
+  jersey?: string;
+  /** ESPN pre-formats both with their units — `6' 2"`, `225 lbs` — so the
+   *  app never has to guess whether a league is metric. */
+  displayHeight?: string;
+  displayWeight?: string;
+  age?: number;
+  headshot?: { href?: string };
+  position?: EspnRosterPosition;
+  /** College football's class year lives here ("Freshman" / "FR"). The pro
+   *  leagues ship only `years`, which is seasons played, not a class. */
+  experience?: { years?: number; displayValue?: string; abbreviation?: string };
+  injuries?: { status?: string }[];
+}
+
+export interface EspnRosterPosition {
+  name?: string;
+  displayName?: string;
+  abbreviation?: string;
+}
+
+export interface EspnRosterCoach {
+  firstName?: string;
+  lastName?: string;
+}

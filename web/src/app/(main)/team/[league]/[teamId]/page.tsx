@@ -4,7 +4,7 @@
 // per-year cache); the client shell owns tab choice only.
 
 import { notFound } from "next/navigation";
-import { teamSchedule, hubStandings, rankings } from "@/lib/espn";
+import { teamSchedule, teamRoster, hubStandings, rankings } from "@/lib/espn";
 import {
   SEASON_FLOOR,
   displayName,
@@ -76,13 +76,16 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   // scoped exactly — a user who picked 2019 must never silently get 2018.
   const fetchYear = year === currentYear ? undefined : year;
 
-  const [scheduleResult, standingsResult, rankingsResult] =
+  const [scheduleResult, standingsResult, rankingsResult, rosterResult] =
     await Promise.allSettled([
       teamSchedule(league, teamId, fetchYear),
       // The divisional response, so the scope chip can reach a team's
       // own division without a second request.
       hubStandings(league, { year: fetchYear }),
       rankings(league),
+      // No year: ESPN's roster endpoint has no season axis, so the roster
+      // is the current one whatever season the rest of the page is showing.
+      teamRoster(league, teamId),
     ]);
 
   // Unknown team: no identity and no games. A dead ESPN response for the
@@ -95,6 +98,10 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   const standingsGroups =
     standingsResult.status === "fulfilled" ? standingsResult.value : null;
 
+  // Null distinguishes a failed fetch from a team ESPN has no roster for —
+  // the pane offers a retry for one and says "Roster TBA" for the other.
+  const roster = rosterResult.status === "fulfilled" ? rosterResult.value : null;
+
   // Rank badge: the current AP top 25 (rankings are always current-season).
   const polls = rankingsResult.status === "fulfilled" ? rankingsResult.value : [];
   const apPoll = polls.find((poll) => poll.type === "ap") ?? polls[0];
@@ -106,6 +113,7 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
       teamId={teamId}
       schedule={schedule}
       standingsGroups={standingsGroups}
+      roster={roster}
       apRank={apRank}
       // The payload's own year pins the chip label — the current-season
       // fetch may fall back a season while the next one is unpublished.

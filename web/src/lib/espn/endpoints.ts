@@ -228,3 +228,15 @@ export function teamsUrl(league: League, limit = 1000): string {
   url.searchParams.set("limit", String(limit));
   return url.toString();
 }
+
+/**
+ * One team's roster.
+ *
+ * **No season parameter, deliberately.** `?season=2019` answers 200, echoes
+ * the season back and carries zero athletes (probed live 2026-09-10 on
+ * college football, the NFL and the NBA) — the endpoint has no season axis,
+ * which is also why the Roster tab shows no season chip.
+ */
+export function teamRosterUrl(league: League, teamId: string): string {
+  return `${apiBase(league)}/teams/${teamId}/roster`;
+}

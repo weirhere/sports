@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { scoreboardUrl, seasonWindowUrl, espnDayRange } from "./endpoints";
+import {
+  scoreboardUrl,
+  seasonWindowUrl,
+  espnDayRange,
+  teamRosterUrl,
+} from "./endpoints";
 
 describe("the groups parameter", () => {
   it("sends a named group for every league", () => {
@@ -43,5 +48,20 @@ describe("the season axis", () => {
     expect(scoreboardUrl("cfb", { seasonYear: 2019, week: 3 })).toContain(
       "dates=2019"
     );
+  });
+});
+
+describe("teamRosterUrl", () => {
+  it("carries no season — the endpoint has no season axis", () => {
+    const url = teamRosterUrl("cfb", "333");
+    expect(url).toBe(
+      "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/333/roster"
+    );
+    expect(url).not.toContain("season");
+  });
+
+  it("uses each league's own base path", () => {
+    expect(teamRosterUrl("nba", "13")).toContain("/basketball/nba/teams/13/roster");
+    expect(teamRosterUrl("nhl", "1")).toContain("/hockey/nhl/teams/1/roster");
   });
 });
