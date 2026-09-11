@@ -16,12 +16,12 @@ final class WidgetUITests: XCTestCase {
         // The Add teams sheet is where a follow starts now (the Teams tab
         // lists follows rather than the directory). A no-op if a previous
         // run already followed Georgia.
-        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
+        XCTAssertTrue(followTeam("Georgia Bulldogs", location: "Georgia", in: app),
                       "The Add teams sheet should follow Georgia")
         // And one from the other league: the widget's promise is "my
         // games", so a followed NFL team has to reach the home screen the
         // same way a college one does.
-        XCTAssertTrue(followTeam("Seattle Seahawks", in: app),
+        XCTAssertTrue(followTeam("Seattle Seahawks", location: "Seattle", in: app),
                       "The Add teams sheet should follow the Seahawks")
         // The reminder offer may ride the sheet's dismissal on a fresh
         // install; it isn't this suite's subject.
@@ -84,12 +84,21 @@ final class WidgetUITests: XCTestCase {
         let rendered = springboard.staticTexts["UGA"].firstMatch
         XCTAssertTrue(rendered.waitForExistence(timeout: 30),
                       "Widget should render the followed team's game")
-        // The cross-league promise, at the surface that has to keep it: a
-        // college game and an NFL game share the widget, and neither
-        // crowds the other out. Both teams are followed and the provider's
-        // limit is four, so both fit by construction.
-        XCTAssertTrue(springboard.staticTexts["SEA"].firstMatch.waitForExistence(timeout: 30),
-                      "Widget should render the followed NFL team's game too")
+        // The Seahawks follow above stays deliberately — it exercises the
+        // provider's two-league fan-out, and its card on the Teams tab is
+        // asserted. What is *not* asserted here is that the NFL game
+        // reaches the Home Screen, because that encodes a calendar fact
+        // the gallery's medium family can't honour: medium renders two
+        // rows where the provider's limit is four, so whenever a followed
+        // college team has two fixtures before the followed NFL team's
+        // next one, the NFL row is correctly the third and correctly off
+        // screen. (Seen live on 2026-09-11: Georgia on the 12th and the
+        // 19th, Seattle not until the 20th.)
+        //
+        // The cross-league promise is a pure function and is tested as
+        // one — `CrossLeagueWidgetTests.theWidgetPicksAcrossLeaguesByTime`
+        // fixes the clock and asserts the interleave outright. A live
+        // springboard walk is the wrong place to re-litigate it.
 
         // Tap-through: the row's link → statside://game/{id}?day=… → game
         // lands in-app. The day is what makes a row the app hasn't loaded

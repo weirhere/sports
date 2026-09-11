@@ -110,22 +110,34 @@ extension XCTestCase {
     /// followed it (follows persist on the simulator).
     ///
     /// `name` is the team's full display name, which is both what search
-    /// matches and what the row's accessibility label says.
+    /// matches and what the row's accessibility label says. `location` is
+    /// the team's location on its own — "Georgia", not "Georgia Bulldogs"
+    /// — because the star spells its label from `team.location` while the
+    /// row beside it spells its own from `displayName`.
     @MainActor
     @discardableResult
-    func followTeam(_ name: String, in app: XCUIApplication) -> Bool {
+    func followTeam(_ name: String, location: String,
+                    in app: XCUIApplication) -> Bool {
         guard openAddTeamsSheet(in: app) else { return false }
         let field = app.searchFields["search.addTeams"]
         field.tap()
         field.typeText(name)
-        let row = app.buttons[name].firstMatch
-        guard row.waitForExistence(timeout: 10) else { return false }
+        // The star follows; the row beside it does not. The sheet's rows
+        // split in 2.2.0 (the `opensTeam` shape): the body became a
+        // NavigationLink into the team page, so tapping the row navigates
+        // and follows nothing — which is exactly how this helper failed,
+        // silently, for a whole release.
+        let star = app.buttons["Follow \(location)"].firstMatch
+        let following = app.buttons["Unfollow \(location)"].firstMatch
+        guard star.waitForExistence(timeout: 10) || following.exists else {
+            return false
+        }
         // One tap, confirmed on the tab behind rather than in the sheet.
         // A retry loop would tap into nothing: the first follow of all
         // raises the kickoff-reminder offer, and SwiftUI closes the sheet
         // to present it (both are anchored to the same view), taking the
-        // row's element with it.
-        if row.value as? String != "following" { row.tap() }
+        // star's element with it.
+        if star.exists { star.tap() }
         // Still up whenever nothing interrupted — leave it the way a user
         // would.
         let done = app.buttons["Done"].firstMatch

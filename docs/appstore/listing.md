@@ -14,15 +14,20 @@ NFL joined — a name that names one league is worse than no fallback.
 
 ## Subtitle (30 chars max) ✏️
 
-`CFB and NFL, at a glance` (24)
+`CFB, NFL, NBA and NHL scores` (28)
 
 Alternates:
-- `Football scores, at a glance` (28) — broader, loses the two leagues
-- `College football and the NFL` (28) — names them, drops the promise
+- `CFB, NFL, NBA, NHL at a glance` (30) — keeps the 1.x promise, but sits
+  exactly on the limit, so any counting difference in ASC rejects it
+- `Four leagues, at a glance` (25) — keeps the promise, names nothing, and
+  spends no characters on search
 
-Rewritten for 2.0. "College football, at a glance" (29) was the 1.x line and
-is now half the app. "CFB" is jargon in a store subtitle, but it is the
-jargon this audience searches with, and it buys the room to name both.
+Rewritten for 2.2.0. "CFB and NFL, at a glance" named half the app the moment
+basketball and hockey landed. Naming all four costs the "at a glance" promise,
+which is the trade taken on purpose: the subtitle is indexed and the promise
+is not, and a four-league app that reads as a football app in search is the
+more expensive miss. The league abbreviations stay jargon, and stay the jargon
+this audience searches with.
 
 ## Category
 
@@ -32,6 +37,37 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.2.0 (build 16)
+
+> • Basketball and hockey. The NBA and the NHL join college football and the
+>   NFL — same day strip, same Following section, same widget, same reminders
+>   30 minutes before your teams play. StatSide has no offseason now: the
+>   season runs July through June.
+> • Each league keeps its own language. NBA standings show wins, win
+>   percentage and games back; the NHL's show games played, W-L-OTL and
+>   points. Overtime is called overtime and a shootout is called a shootout.
+>   Nothing invents a down or a drive for a sport that hasn't got one.
+> • A basketball or hockey game page has its line score, its leaders, its
+>   box score, and its plays grouped by period.
+> • Rosters. Team pages have a Roster tab — the head coach, then every
+>   player by position, with the number, the height and weight, and the
+>   class year or the age.
+> • Tables is now Leagues. Same hub, truer name: what it lists is leagues,
+>   and a conference or a poll is reached through one. The NBA and the NHL
+>   list their divisions there, each wearing its conference's mark.
+> • A game that hasn't kicked leads with the time it does. The kickoff takes
+>   the big slot between the crests — the one a score fills the moment there
+>   is one — with the date and the network beneath it.
+> • A game page says which tables it counts toward. The league and both
+>   conferences ride the top of Game info as badges you can tap, so the
+>   standings are one tap from the game instead of three.
+> • Where a game is played got a card of its own, so the kickoff and the
+>   stadium stopped sharing one.
+> • A Games tab now runs to the end of the season. Hockey's used to stop in
+>   January, and nothing said so.
+> • Fixed: opening a team from search or from the widget could show you
+>   another team's schedule, next game and record under the right crest.
 
 ### 2.1.1 (build 15)
 
@@ -188,41 +224,48 @@ up, fold the still-true bullets into 1.3.1 and drop that one.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Saturday and Sunday, in one place. Follow your college and NFL teams, see
-> what's live, and get a reminder 30 minutes before kickoff. No ads. (140)
+> Four leagues, one screen. Follow your college football, NFL, NBA and NHL
+> teams, see what's live, and get a reminder 30 minutes before they play.
+> No ads. (155)
 
-Rewritten 2026-09-06 for 2.0: the 1.x line said "Saturdays move fast", which
-is half the week now. This field is editable without review, so it should
-never be the stale one.
+Rewritten for 2.2.0: the 2.0 line said "Saturday and Sunday", which is two
+days of a week the app now covers most of. "Before they play" replaces
+"before kickoff" — the reminder is league-agnostic and three of the four
+leagues don't kick anything. This field is editable without review, so it
+should never be the stale one.
 
 ## Description (4000 chars max) ✏️
 
-> StatSide is college football and the NFL, at a glance. One screen answers
-> "what's happening right now" — no ads, no interstitials, nothing between
-> you and the scores.
+> StatSide is college football, the NFL, the NBA and the NHL, at a glance. One
+> screen answers "what's happening right now" — no ads, no interstitials,
+> nothing between you and the scores.
 >
-> BUILT FOR SATURDAYS AND SUNDAYS
-> • Your teams first: follow any team in either league and their games lead
->   the page, together
-> • One day at a time, both leagues stacked — college football and the NFL,
->   each in its own section
-> • Live games get a pulsing dot, a possession marker, and heavier type on the score
+> BUILT FOR GAME DAY, ALL YEAR
+> • Your teams first: follow any team in any of the four leagues and their
+>   games lead the page, together
+> • One day at a time, every league stacked — college football broken down
+>   the way you think about it, by conference, and the NFL, the NBA and the
+>   NHL each in a section of their own
+> • Live games get a pulsing dot, heavier type on the score, and possession
+>   where the sport has it
 > • One tap filters to live games only
 >
 > YOUR TEAMS, EVERYWHERE
 > • A Home Screen and Lock Screen widget with your teams' live score or next
->   kickoff, from either league
-> • Kickoff reminders 30 minutes before your teams play
+>   game, from every league you follow
+> • Reminders 30 minutes before your teams play
 > • Ask Siri "What's my next game?" — or share a score straight from any game
 > • Long-press any game to follow a team or share the score
 >
-> TABLES FOR BOTH
+> LEAGUES, TABLES AND TEAMS
 > • AP Top 25 and Coaches Poll, with movement arrows
-> • Every FBS conference, the FCS, and the AFC and NFC — standings and each
->   team's season
-> • Game pages: line score, box score, scoring plays, drive log, team stats, leaders
-> • Team pages: the record, the full season schedule, bye weeks and all
-> • Search any team, conference, or game — across both leagues
+> • Every FBS conference, the FCS, the AFC and NFC and their divisions, and
+>   every NBA and NHL division — each table in its own league's terms
+> • Game pages: line score, box score, scoring plays, team stats, leaders,
+>   and the plays themselves — drives for football, periods for basketball
+>   and hockey
+> • Team pages: the record, the full season, bye weeks, and the roster
+> • Search any team, conference or game — across every league
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
@@ -230,29 +273,41 @@ never be the stale one.
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
-> Free. Fast. Two leagues, done right.
+> Free. Fast. Four leagues, done right.
 >
 > StatSide is an independent app and is not affiliated with or endorsed by the
-> NFL, the NCAA, or any conference, team or school.
+> NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
 
-Rewritten for 2.0. Three things in the 1.x copy stopped being true:
+Rewritten for 2.2.0. Four things in the 2.0 copy stopped being true:
 
-- **"A WEEK, NOT A DATE"** described the week strip, which retired on
-  2026-09-05. A week can only be honest about one league — college football's
-  Week 2 and the NFL's are different date ranges — so Scores is a day now.
-  The section had to go, not be reworded.
-- **"follow any FBS team"** and **"One sport, done right"** both named one
-  league.
-- The disclaimer named only the NCAA.
+- **"college football and the NFL"** named half the app, in the opening line
+  and again in the closing one ("Two leagues, done right").
+- **"BUILT FOR SATURDAYS AND SUNDAYS"** was the football week. The NBA and the
+  NHL play most nights from October to June, so the heading is the year now.
+- **"both leagues stacked"** described a two-accordion Scores page. College
+  football breaks down by conference as of 2.1, and there are four leagues on
+  the day.
+- **"kickoff reminders"** and **"next kickoff"** are football words for a
+  league-agnostic feature. The disclaimer named only the NFL and the NCAA.
+
+Kept deliberately: the drive log is still named, because it is still there for
+football and nothing pretends a possession is a drive elsewhere; and the "no
+data" paragraph is unchanged, because nothing in this release collects any.
 
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
-`college football,scores,live,rankings,top 25,ncaaf,schedule,sec,big ten,playoff,afc,nfc` (87)
+`college football,scores,live,standings,top 25,ncaaf,basketball,hockey,box score,playoff,afc,nfc` (95)
 
 Don't repeat words already in the name/subtitle — they're indexed
-automatically. That is why `cfb` and `nfl` are *not* here at 2.0: both moved
-into the subtitle, so repeating them would spend characters on nothing.
-`afc`/`nfc` took the freed room.
+automatically. That is why `cfb`, `nfl`, `nba` and `nhl` are *not* here: all
+four are in the subtitle, so repeating them would spend characters on nothing.
+
+Changed for 2.2.0: `basketball`, `hockey`, `standings` and `box score` in;
+`rankings`, `schedule`, `sec` and `big ten` out. The two sport words are the
+ones a basketball or hockey fan actually types, and they have to come from
+somewhere. `standings` replaces `rankings` because three of the four leagues
+have no poll, `top 25` already carries the one that does, and the box score is
+the surface Josh's feedback named as the reason he opens a game page.
 
 ## URLs
 
@@ -320,6 +375,34 @@ scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
 
+### 2.2.0: the set is still football
+
+The eight frames are the 2026-09-06 set — college football and the NFL. The
+release's headline is basketball and hockey, and **neither appears in a single
+screenshot**. That is a real gap on the product page, and it is a deliberate
+open question rather than an oversight, because of what can and cannot be shot
+in September:
+
+- **The hero cannot show them.** Scores is bounded by the current day and has
+  no season control (the view-options sheet retired 2026-09-05), and the NBA
+  and NHL regular seasons do not open until late October. A day strip today
+  has empty basketball and hockey sections, which is the honest picture and a
+  bad screenshot.
+- **The other surfaces can.** The Leagues tab lists all four leagues today
+  with real tables, and a league or team page's season chip reaches a finished
+  NBA or NHL season — full schedules, real standings, real box scores. So a
+  Leagues frame and an NBA or NHL team-page frame are both shootable now.
+
+Two ways to close it, and it is Andy's call which:
+
+1. **Reshoot two frames now** — Leagues (all four) and an NBA or NHL team page
+   on a past season — and carry the other six. Costs a capture run plus
+   re-rendering those marketing frames and the `docs/social/` crops that read
+   the masters at hardcoded offsets.
+2. **Ship the football set and reshoot at tip-off.** Screenshots carry forward
+   automatically on a version update, and late October gives a live slate that
+   shoots the hero properly too.
+
 **Warm the logo cache first.** A capture run against a fresh install shoots
 before the team marks have downloaded, and every logo lands as an empty grey
 disc — which is fatal, since logos-in-colour is the app's whole visual
@@ -355,21 +438,22 @@ Store Connect won't even ask per-build.
 
 ## App Review notes (submission form) ✏️
 
-Rewritten 2026-08-04 for the 4.2.2 resubmission. Leads with what the user
-does and the native surface area; never self-describes as displaying
-aggregated content.
+Rewritten 2026-08-04 for the 4.2.2 resubmission; league names refreshed for
+2.2.0. Leads with what the user does and the native surface area; never
+self-describes as displaying aggregated content.
 
-> StatSide is a fully native SwiftUI app built around following your football
-> teams, in college football and the NFL. Follow a team (Teams tab) and the
-> app personalizes around it: a Following section leads the scores page with
-> your teams from both leagues together, and you can turn on kickoff
-> reminders — local notifications 30 minutes before each of your teams'
-> games, scheduled on-device.
+> StatSide is a fully native SwiftUI app built around following your teams
+> across college football, the NFL, the NBA and the NHL. Follow a team (Teams
+> tab) and the app personalizes around it: a Following section leads the games
+> page with your teams from every league together, and you can turn on game
+> reminders — local notifications 30 minutes before each of your teams' games,
+> scheduled on-device.
 >
 > Native functionality in this build:
 > • Home Screen and Lock Screen widget (WidgetKit) showing your teams' live
->   score or next kickoff across both leagues, with deep links into the app
-> • Local kickoff notifications with deep links to the game
+>   score or next game across every league you follow, with deep links into
+>   the app
+> • Local game reminders with deep links to the game
 > • Siri Shortcut / App Intent: "What's my next game?"
 > • Live scores that update in place every 30 seconds while games are on,
 >   with haptic feedback on score changes
@@ -377,13 +461,20 @@ aggregated content.
 >   VoiceOver support, light/dark mode
 > • No web views anywhere; every screen is native SwiftUI
 >
-> To demo: follow any team from the Teams tab (Add teams → either league),
-> then enable the bell on its team page (kickoff reminders) and add the
-> StatSide widget to the Home Screen. The day strip on Scores walks any day
-> of the season, and the season picker beside it reaches past seasons with
-> full live-style data — useful in the offseason, when the current day can be
-> quiet. No login required. The app collects no data (App Privacy: Data Not
-> Collected).
+> To demo: follow any team from the Teams tab (Add teams → any of the four
+> leagues), then enable the bell on its team page (game reminders) and add the
+> StatSide widget to the Home Screen. The day strip on Games walks any day of
+> the season, and the season picker on a league or team page reaches past
+> seasons with full live-style data — useful if the current day is quiet. No
+> login required. The app collects no data (App Privacy: Data Not Collected).
+
+**Reviewer-timing note for this build.** It is submitted in September: college
+football and the NFL are in season, and the NBA and NHL regular seasons do not
+open until late October. A reviewer opening the app today sees football on the
+day strip and empty slates for basketball and hockey, which is the season and
+not a defect. The Leagues tab shows all four with their tables, and a past
+season on an NBA or NHL team page shows a full schedule — that is the fastest
+way to see the new leagues carrying real data.
 
 ## 4.2.2 resubmission (build 6) — Resolution Center reply ✏️
 
