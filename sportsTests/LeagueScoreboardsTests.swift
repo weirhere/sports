@@ -625,6 +625,25 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(scoreboards.showsTodayJump)
     }
 
+    /// The jump shows on a past season (the test above), so it has to
+    /// re-bound the strip rather than select today's *date* inside 2019's
+    /// bounds — a selected day the strip has no chip for is a screen with
+    /// no way back.
+    @Test func jumpingHomeFromAPastSeasonRebindsTheStrip() async {
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c-today", home: team("1", in: .collegeFootball),
+                       away: team("2", in: .collegeFootball))])
+        await scoreboards.select(season: 2019)
+        #expect(scoreboards.showsTodayJump)
+
+        await scoreboards.selectToday()
+
+        #expect(scoreboards.seasonYear == scoreboards.currentSeasonYear)
+        #expect(scoreboards.isOnToday)
+        #expect(!scoreboards.showsTodayJump)
+        #expect(scoreboards.days().contains { $0.id == DayFormat.id(for: scoreboards.selectedDay) })
+    }
+
     @Test func adjacentDayIsBoundedByTheSeason() async {
         let scoreboards = await makeScoreboards()
         #expect(scoreboards.adjacentDay(offset: 1) != nil)
