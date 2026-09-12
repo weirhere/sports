@@ -104,19 +104,30 @@ nonisolated enum GameSelection {
             target = min(target, kickoff.addingTimeInterval(60))
         }
 
-        // A result on screen expires at midnight, so ask then rather than
-        // on whichever hourly tick happens to land after it — a widget
-        // still showing yesterday's slate at 12:40am is the thing this
-        // whole rule exists to stop.
-        let showsResult = games.contains { game in
+        // Anything on screen whose copy is true only *today* expires at
+        // midnight, so ask then rather than on whichever hourly tick
+        // happens to land after it — a widget still showing yesterday's
+        // slate at 12:40am is the thing this whole rule exists to stop.
+        //
+        // Two kinds qualify. A result, which stops being one of "my games"
+        // the moment tomorrow arrives (`isSpent`). And a kickoff today or
+        // tomorrow, because its day line is a relative word: "Tomorrow"
+        // has to have become "Today" by the time anyone reads it on the
+        // day itself.
+        let today = calendar.startOfDay(for: now)
+        let expiresTonight = games.contains { game in
             switch game.status {
             case .final, .other: return true
-            case .pre, .live: return false
+            case .live: return false
+            case .pre:
+                guard let date = game.date else { return false }
+                let days = calendar.dateComponents([.day], from: today,
+                                                   to: calendar.startOfDay(for: date)).day ?? 0
+                return days == 0 || days == 1
             }
         }
-        if showsResult,
-           let tomorrow = calendar.date(byAdding: .day, value: 1,
-                                        to: calendar.startOfDay(for: now)) {
+        if expiresTonight,
+           let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) {
             target = min(target, tomorrow)
         }
 

@@ -112,14 +112,15 @@ nonisolated extension WidgetGame {
         }
         let isPre: Bool
         if case .pre = game.status { isPre = true } else { isPre = false }
+        let status = Self.status(for: game)
         self.init(
             id: game.id,
             away: WidgetTeamLine(competitor: game.away, muted: awayMuted,
                                  logo: awayLogo, darkLogo: awayDarkLogo),
             home: WidgetTeamLine(competitor: game.home, muted: homeMuted,
                                  logo: homeLogo, darkLogo: homeDarkLogo),
-            statusLine: Self.status(for: game).line,
-            statusDetail: Self.status(for: game).detail,
+            statusLine: status.line,
+            statusDetail: status.detail,
             network: (isPre || game.isLive) ? game.broadcast : nil,
             isLive: game.isLive,
             showsScores: !isPre,
@@ -134,14 +135,14 @@ nonisolated extension WidgetGame {
     static func status(for game: Game) -> (line: String, detail: String?) {
         switch game.status {
         case .pre:
-            // Absolute dates (never "Today"): widget strings outlive the
-            // moment they're generated — and they always name the month,
-            // since a widget row carries no strip or header to say which
-            // week you're looking at.
+            // "Today" / "Tomorrow", absolute past that. The day line is
+            // day-relative but the *string* is not durable, so anything
+            // holding one has to expire it at midnight — `nextRefresh`
+            // pulls the timeline there, and the snapshot re-derives on the
+            // way out rather than re-serving yesterday's "Today".
             guard let date = game.date else { return ("TBD", nil) }
             let time = game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute())
-            let day = date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
-            return (day, time)
+            return (DayFormat.relativeDay(date), time)
         case .live:
             return (game.status.liveStatusText(in: game.home.team.league) ?? "Live", nil)
         case .final(let detail):
@@ -237,6 +238,28 @@ nonisolated struct WidgetSnapshot: Codable {
                 day: widgetGame.day
             )
         }
+    }
+
+    /// The stale blob's rows, with each day line re-derived against the
+    /// moment it is being *served*.
+    ///
+    /// A kickoff's day line is relative now ("Today"/"Tomorrow"), and a
+    /// relative word saved yesterday is simply wrong today — the one
+    /// failure the stale marker can't excuse, since it reads as a
+    /// statement about right now. The kickoff itself is stored, so the
+    /// line is rebuilt rather than replayed. Every other status — a final,
+    /// a live clock, "Postponed" — is already absolute and keeps the
+    /// string it was saved with.
+    func statusLines(asOf now: Date, calendar: Calendar = .current) -> [String: String] {
+        var lines: [String: String] = [:]
+        for game in games {
+            // `showsScores == false` is how a pre-game row is spelled in a
+            // blob; `nil` is a blob written before that field shipped, and
+            // those predate the relative day line too.
+            guard game.showsScores == false, !game.isLive, let day = game.day else { continue }
+            lines[game.id] = DayFormat.relativeDay(day, now: now, calendar: calendar)
+        }
+        return lines
     }
 
     func save(to defaults: UserDefaults) {
