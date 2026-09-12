@@ -61,6 +61,7 @@ export function ScoresControlCard({
         selectedDay={selectedDay}
         onSelect={onSelectDay}
         onOpenCalendar={onOpenCalendar}
+        liveOnly={liveOnly}
       />
       <div className="flex items-center gap-2 border-t border-divider px-2 py-2">
         <ScoresHeaderControls

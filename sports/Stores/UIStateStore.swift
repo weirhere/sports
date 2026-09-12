@@ -30,12 +30,33 @@ final class UIStateStore {
         didSet { defaults.set(followPromptDismissed, forKey: Self.followPromptDismissedKey) }
     }
 
-    /// The Scores Live toggle. Persisted (Andy, 2026-08-29): "you should
-    /// be able to customize it to the way you want it and keep it" — the
-    /// permanent chip and the explanatory empty state make a saved filter
-    /// legible on a quiet Tuesday.
+    /// The Scores Live toggle — the remembered *intent*, which is not
+    /// always what the slate on screen is narrowed by. Anywhere a day is in
+    /// hand, read it through `liveOnly(on:)` instead.
+    ///
+    /// Persisted (Andy, 2026-08-29): "you should be able to customize it to
+    /// the way you want it and keep it" — the permanent chip and the
+    /// explanatory empty state make a saved filter legible on a quiet
+    /// Tuesday.
     var liveOnly: Bool {
         didSet { defaults.set(liveOnly, forKey: Self.liveOnlyKey) }
+    }
+
+    /// Whether the Live filter is actually narrowing `day`: the toggle is
+    /// on *and* the day is today (Andy, 2026-09-12).
+    ///
+    /// "Live" is a question about right now, and today is the only day that
+    /// can answer it — on tomorrow the filter guarantees an empty screen,
+    /// and on yesterday it hides every result the day exists to show. So a
+    /// swipe off today suspends the filter and a swipe back restores it,
+    /// with the chip following. Suspended, never forgotten: the intent
+    /// stays in `liveOnly`, which is what makes coming home turn it back on
+    /// rather than leaving the user to.
+    func liveOnly(on day: Date, calendar: Calendar = .current) -> Bool {
+        // `self.` for the reader, not the compiler: the stored intent and
+        // this rule share a base name on purpose, so every call site says
+        // which one it means.
+        self.liveOnly && calendar.isDateInToday(day)
     }
 
     /// The Scores slate filter. Persisted like `liveOnly` (same call,
