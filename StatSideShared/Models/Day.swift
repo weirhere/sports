@@ -96,6 +96,34 @@ nonisolated enum DayFormat {
         return calendar.date(from: parts) ?? date
     }
 
+    /// A kickoff's day, named the way anyone would say it out loud:
+    /// "Today", "Tomorrow", or an absolute "Sat, Sep 12".
+    ///
+    /// Day-granularity, so a noon kick and an 11pm kick on the same date
+    /// are equally far away — the question is which day it lands on, not
+    /// how many hours until it starts.
+    ///
+    /// The absolute form always names its month. A row wearing one carries
+    /// no strip or header saying which week is on screen, so a bare "Sat"
+    /// would be a guess (2026-09-07).
+    ///
+    /// `now` and `calendar` are injected so the thresholds are testable
+    /// without freezing the clock — and so a caller re-deriving the line
+    /// later can say which moment it is relative to.
+    static func relativeDay(_ date: Date, now: Date = .now,
+                            calendar: Calendar = .current) -> String {
+        let days = calendar.dateComponents([.day],
+                                           from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: date)).day ?? 0
+        switch days {
+        case 0: return "Today"
+        case 1: return "Tomorrow"
+        default:
+            return date.formatted(.dateTime.weekday(.abbreviated)
+                .month(.abbreviated).day())
+        }
+    }
+
     /// ESPN publishes every scoreboard on the US Eastern clock.
     static let eastern = TimeZone(identifier: "America/New_York") ?? .gmt
 }

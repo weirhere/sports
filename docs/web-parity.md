@@ -727,6 +727,7 @@ sibling below it.
 | iOS date | Decision | Why no web analog |
 |---|---|---|
 | 2026-09-06, 2026-09-07 | Every widget decision (month on kickoffs, clearing yesterday, row deep links) | No widget extension on web |
+| 2026-09-12 | A widget row's kickoff reads "Today" / "Tomorrow" on game day and the day before | No widget extension on web. The *rule* is not new to the web — the Scores rows have named the near days since 2026-08-09 and `web/` ports that with them; what has no analog is the widget row it landed on, and the timeline-expiry machinery underneath it |
 | 2026-09-07 | The haptics budget grows to four | No haptics API worth using here |
 | 2026-09-07 | Deep links carry `?day=` | The web's URLs are already addressable; a `?day=` query is the natural port and rides W2 |
 | 2026-09-07 | Every load's end re-tries the pending deep link | Server-rendered routes resolve before paint |

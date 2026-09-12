@@ -92,6 +92,7 @@ nonisolated struct NextGameProvider: TimelineProvider {
             // Last-good beats blank: re-serve the snapshot marked stale and
             // retry on a short leash.
             if let snapshot = WidgetSnapshot.load(from: defaults) {
+                let freshLines = snapshot.statusLines(asOf: now)
                 let games = snapshot.games.map { game in
                     WidgetGame(
                         id: game.id,
@@ -105,7 +106,7 @@ nonisolated struct NextGameProvider: TimelineProvider {
                                              score: game.homeScore, muted: game.homeMuted,
                                              logo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL),
                                              darkLogo: WidgetLogoFetcher.cachedLogo(for: game.homeLogoURL?.darkTeamLogoVariant)),
-                        statusLine: game.statusLine,
+                        statusLine: freshLines[game.id] ?? game.statusLine,
                         statusDetail: game.statusDetail,
                         network: game.network,
                         isLive: game.isLive,
