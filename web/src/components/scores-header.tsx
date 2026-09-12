@@ -39,9 +39,13 @@ export function ScoresHeaderControls({
         aria-pressed={liveOnly}
         aria-label="Live games only"
         className={cn(
-          "type-chip-em flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+          // Active, the pill wears the accent rather than the ink (FotMob,
+          // 2026-09-12) — a tint under a hairline, the label holding its
+          // own contrast either way. Only the Live chip gets this: it IS
+          // the live affordance, which is what keeps the budget at three.
+          "type-chip-em flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 transition-colors",
           liveOnly
-            ? "bg-text-primary text-bg-primary"
+            ? "border-live-edge bg-live-tint text-text-primary"
             : "text-text-primary hover:bg-bg-header"
         )}
       >
@@ -49,7 +53,7 @@ export function ScoresHeaderControls({
         <span
           aria-hidden="true"
           className={cn(
-            "h-1.5 w-1.5 rounded-full",
+            "h-2 w-2 rounded-full",
             liveOnly ? "bg-live" : "bg-text-secondary"
           )}
         />
@@ -63,7 +67,9 @@ export function ScoresHeaderControls({
         }
         aria-haspopup="dialog"
         className={cn(
-          "type-chip-em flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+          // The transparent border matches the Live pill's, so the two sit
+          // at the same height whichever of them is active.
+          "type-chip-em flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 transition-colors",
           filterLabel !== null
             ? "bg-text-primary text-bg-primary"
             : "text-text-primary hover:bg-bg-header"

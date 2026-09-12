@@ -62,6 +62,25 @@ extension Color {
     /// green so the app carries exactly one green.
     static let liveAccent = rankUp
 
+    /// The Live control's own "on" surface: a pale wash of the accent in
+    /// light, a deep one in dark (2026-09-12, FotMob). Not an opacity over
+    /// an unknown backdrop — the pill sits inside a glass capsule, whose
+    /// translucency would make a fraction land differently every time.
+    /// `textPrimary` reads ~14.6:1 on both.
+    static let liveTint = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.055, green: 0.165, blue: 0.094, alpha: 1)
+            : UIColor(red: 0.890, green: 0.961, blue: 0.910, alpha: 1)
+    })
+
+    /// The hairline around that surface — the accent again, softened. It
+    /// is what keeps a pale pill from dissolving into a light glass group.
+    static let liveEdge = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.20, green: 0.82, blue: 0.40, alpha: 0.38)
+            : UIColor(red: 0.00, green: 0.52, blue: 0.22, alpha: 0.28)
+    })
+
     /// Rankings movement: up. Light-mode green is darkened to clear WCAG AA
     /// (4.5:1) against bgPrimary; dark mode brightens instead.
     static let rankUp = Color(uiColor: UIColor { traits in
@@ -93,6 +112,8 @@ extension ShapeStyle where Self == Color {
     static var textPrimary: Color { .textPrimary }
     static var textSecondary: Color { .textSecondary }
     static var liveAccent: Color { .liveAccent }
+    static var liveTint: Color { .liveTint }
+    static var liveEdge: Color { .liveEdge }
     static var rankUp: Color { .rankUp }
     static var rankDown: Color { .rankDown }
 }

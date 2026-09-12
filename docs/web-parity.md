@@ -719,6 +719,7 @@ sibling below it.
 | iOS date | Decision | Status |
 |---|---|---|
 | (unrecorded) | The first tab is labelled **Games**, not Scores | **shipped 2026-09-10** — `RootView.swift` has said Games since the league axis landed and no decision row ever recorded it, so the web had no way to learn it. Logged on both sides now. Second instance of the gap E11's P3 item is open on |
+| 2026-09-12 | The active Live chip wears the accent instead of the ink — a `liveTint` wash under a `liveEdge` hairline, `textPrimary` staying put, dot up to 8pt | **shipped 2026-09-12** — same commit, both platforms. `web/src/components/scores-header.tsx` already carried the iOS chip line for line (ink fill, inverted label, 6px dot), so it took the same two tokens: `--live-tint` / `--live-edge` in `globals.css`, mirroring `Color.liveTint` / `Color.liveEdge`. The funnel beside it keeps the ink fill and gains a transparent border so the two pills stay the same height |
 
 ---
 
