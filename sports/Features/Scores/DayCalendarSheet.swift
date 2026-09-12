@@ -21,6 +21,10 @@ struct DayCalendarSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// The opening scroll runs once. A re-appear — the sheet coming back
+    /// from the background — leaves the reader wherever it had scrolled to.
+    @State private var hasOpenedOnSelectedMonth = false
+
     private var calendar: Calendar { .current }
     private var selectedId: String { DayFormat.id(for: selected) }
     private var todayId: String { DayFormat.id(for: .now) }
@@ -42,6 +46,15 @@ struct DayCalendarSheet: View {
             }
     }
 
+    /// The month the sheet opens on — the one the strip is already on.
+    /// Nil where the selection somehow sits outside the season the sheet
+    /// renders, in which case it opens at the top rather than scrolling
+    /// to a section that isn't there.
+    private var selectedMonthId: String? {
+        let id = MonthGrid.id(of: selected, calendar: calendar)
+        return months.contains { $0.id == id } ? id : nil
+    }
+
     /// Whether today is a day this sheet could jump to at all — the same
     /// question the floating Today button asks.
     private var canJumpToToday: Bool {
@@ -59,16 +72,12 @@ struct DayCalendarSheet: View {
                             } header: {
                                 monthHeader(month)
                             }
-                            .id(month.id)
                         }
                     }
                     .padding(.horizontal, Spacing.sm)
                     .padding(.bottom, Spacing.xl)
                 }
-                .onAppear {
-                    // Open on the month you're already in, not on August.
-                    proxy.scrollTo(MonthGrid.id(of: selected, calendar: calendar), anchor: .top)
-                }
+                .onAppear { openOnSelectedMonth(proxy) }
             }
             .background(Color.bgRecessed)
             .safeAreaInset(edge: .top, spacing: 0) { weekdayCaptions }
@@ -93,6 +102,32 @@ struct DayCalendarSheet: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    /// Opens on the month you're already in, not on the season's first
+    /// (Andy, 2026-09-12 — it was opening on July).
+    ///
+    /// Two things were wrong with the single `onAppear` `scrollTo` this
+    /// replaces, and either one alone lands the sheet at the top. The
+    /// anchor id was on the `Section` rather than on a view the scroll
+    /// view can position; and the call ran from `onAppear`, which is
+    /// before the scroll view's first layout. The strip's own `onAppear`
+    /// scroll gets away with that timing because its `HStack` isn't lazy —
+    /// every chip exists to be scrolled to. This stack has realized a
+    /// month or two at that point, and the months in between are what the
+    /// offset is made of.
+    ///
+    /// So: one turn of the main actor for the first layout, then a second
+    /// pass, because the first scroll is what realizes the months it
+    /// travelled through and the exact landing is only knowable once they
+    /// have their real heights.
+    private func openOnSelectedMonth(_ proxy: ScrollViewProxy) {
+        guard !hasOpenedOnSelectedMonth, let target = selectedMonthId else { return }
+        hasOpenedOnSelectedMonth = true
+        Task { @MainActor in
+            proxy.scrollTo(target, anchor: .top)
+            Task { @MainActor in proxy.scrollTo(target, anchor: .top) }
+        }
     }
 
     /// Pinned above the grids, so the columns are always labelled however
@@ -127,6 +162,9 @@ struct DayCalendarSheet: View {
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, Spacing.sm)
             .background(Color.bgRecessed)
+            // The scroll anchor lives here, on a view the reader can
+            // actually position, rather than on the `Section` around it.
+            .id(month.id)
     }
 
     /// Seven columns, with leading blanks so the first day lands under its

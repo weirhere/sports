@@ -47,6 +47,53 @@ final class CalendarSheetUITests: XCTestCase {
                       "and land back on Scores. Chose: \(chosen)")
     }
 
+    /// The sheet opens on the month the strip is already on — Andy's
+    /// 2026-09-12 report, where it opened on July whatever day was showing.
+    ///
+    /// Encodes no calendar fact: it scrolls somewhere the sheet didn't open
+    /// on, picks whatever day is there, and asserts the *reopened* sheet
+    /// shows that day's month. Whichever months those are is the app's
+    /// business, not the test's.
+    func testCalendarSheetOpensOnTheSelectedMonth() throws {
+        let app = launch()
+        let calendar = app.buttons["scores-calendar-button"]
+        XCTAssertTrue(calendar.waitForExistence(timeout: 20))
+        calendar.tap()
+        XCTAssertTrue(app.navigationBars["Jump to a day"].waitForExistence(timeout: 10))
+
+        // Well past the month it opened on — the season spans a year, so
+        // there is always somewhere else to be. The sheet is modal, so an
+        // app-level swipe lands in it.
+        for _ in 0..<4 { app.swipeUp() }
+
+        let cell = dayCells(in: app).first { $0.isHittable }
+        let label = try XCTUnwrap(cell?.label, "The sheet should render day cells")
+        // "Saturday, November 14" — the month is what follows the comma.
+        let month = try XCTUnwrap(
+            label.split(separator: ",").last?.trimmingCharacters(in: .whitespaces)
+                .split(separator: " ").first.map(String.init),
+            "Day cells speak their whole date")
+        cell?.tap()
+
+        XCTAssertTrue(calendar.waitForExistence(timeout: 10), "Picking a day closes the sheet")
+        calendar.tap()
+        XCTAssertTrue(app.navigationBars["Jump to a day"].waitForExistence(timeout: 10))
+
+        // The month header for the day just picked, on screen without a
+        // scroll. A sheet that opened at the season's start fails here.
+        let header = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", month)).firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 10) && header.isHittable,
+                      "Reopening should land on \(month) — the month of the selected day")
+    }
+
+    /// Day cells speak their whole date ("Saturday, November 14"), which is
+    /// the one label in the sheet carrying a comma.
+    private func dayCells(in app: XCUIApplication) -> [XCUIElement] {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", "))
+            .allElementsBoundByIndex
+    }
+
     /// The reported bug, end to end: searching a team whose ESPN id a
     /// college program also holds must open that team, not the college one.
     /// The Browns and UAB are both id 5.

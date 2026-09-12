@@ -95,11 +95,22 @@ export function clampDay(day: Date, start: Date, end: Date): Date {
  * Every other chip carries its **month** — "Sun, Sep 27". The strip spans a
  * whole season that crosses a year boundary, so a bare "Sat 5" stops meaning
  * anything the moment you drag past the fortnight either side of today.
+ *
+ * Under the Live filter today reads **"Ongoing"** (iOS, 2026-09-12): the day
+ * on screen isn't the whole day any more, it's whatever is being played right
+ * now. It follows the filter and not the slate — a label that flipped back to
+ * "Today" as the last game went final would be the mystery state the labelled
+ * controls exist to avoid, and the empty state already speaks for an empty
+ * slate. Today alone: nothing is ongoing on a day that isn't this one.
  */
-export function dayChipLabel(day: Date, now: Date = new Date()): string {
+export function dayChipLabel(
+  day: Date,
+  now: Date = new Date(),
+  liveOnly = false
+): string {
   switch (daysBetween(now, day)) {
     case 0:
-      return "Today";
+      return liveOnly ? "Ongoing" : "Today";
     case -1:
       return "Yesterday";
     case 1:
