@@ -134,6 +134,34 @@ import Testing
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
     }
 
+    /// Live applies to today and nowhere else (Andy, 2026-09-12): a swipe
+    /// to tomorrow or yesterday suspends the filter so the day's games can
+    /// be seen, and a swipe home restores it.
+    @Test func theLiveFilterAppliesToTodayAlone() {
+        let store = UIStateStore(defaults: makeDefaults())
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let laterInTheSeason = calendar.date(byAdding: .day, value: 60, to: today)!
+
+        store.liveOnly = true
+        #expect(store.liveOnly(on: today))
+        // Any moment in today, not just its midnight — the filter is on
+        // all day. 20 hours rather than 23: a spring-forward day is only 23
+        // long, and the rule must not fail once a year.
+        #expect(store.liveOnly(on: calendar.date(byAdding: .hour, value: 20, to: today)!))
+        #expect(!store.liveOnly(on: tomorrow))
+        #expect(!store.liveOnly(on: yesterday))
+        #expect(!store.liveOnly(on: laterInTheSeason))
+        // Suspended, never forgotten: the trip back has to turn it on
+        // again, which only works if the intent survived the trip out.
+        #expect(store.liveOnly)
+
+        store.liveOnly = false
+        #expect(!store.liveOnly(on: today))
+    }
+
     /// A conference filter written before the view-options sheet retired
     /// comes back as the full slate: Top 25 is the only filter with a
     /// control now, so a restored conference slate would narrow the screen
