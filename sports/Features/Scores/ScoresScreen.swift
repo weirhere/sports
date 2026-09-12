@@ -66,7 +66,12 @@ struct ScoresScreen: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                ScoresHeader(liveOnly: uiState.liveOnly,
+                // The chip shows whether Live is *narrowing this day*, not
+                // whether it is remembered — off today it is suspended, and
+                // the chip says so (Andy, 2026-09-12). Keyed to the selected
+                // day rather than `shownDay` because the header moves with
+                // the thumb, not with the slate sliding out behind it.
+                ScoresHeader(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
                              onToggleLive: { toggleLive() },
                              onOpenCalendar: { showsCalendar = true })
                 DayStrip(days: scoreboards.days(),
@@ -206,18 +211,27 @@ struct ScoresScreen: View {
         scoreboards.sections(day: shownDay,
                              followingIds: following.teamKeys,
                              followedTables: following.orderedTables,
-                             liveOnly: uiState.liveOnly)
+                             liveOnly: uiState.liveOnly(on: shownDay))
     }
 
     /// Turning the Live filter on goes to where live games are — today
     /// (Andy, 2026-08-29, when this was the current week): filtering a
     /// future day to nothing answers the wrong question. Turning it off
     /// stays put.
+    ///
+    /// The chip reads the effective filter, so a tap while it is off is
+    /// always a request to turn it on — including off today, where the
+    /// filter is suspended rather than forgotten (Andy, 2026-09-12). That
+    /// tap may change no state at all: the trip home is the whole action.
     private func toggleLive() {
-        withAnimation { uiState.liveOnly.toggle() }
-        guard uiState.liveOnly, !scoreboards.isOnToday else { return }
-        daySlideAnimation = nil
-        Task { await scoreboards.selectToday() }
+        guard uiState.liveOnly(on: scoreboards.selectedDay) else {
+            withAnimation { uiState.liveOnly = true }
+            guard !scoreboards.isOnToday else { return }
+            daySlideAnimation = nil
+            Task { await scoreboards.selectToday() }
+            return
+        }
+        withAnimation { uiState.liveOnly = false }
     }
 
     /// The way back to today: centred over the slate, just above the tab
@@ -474,7 +488,7 @@ struct ScoresScreen: View {
         let sections = scoreboards.sections(day: target,
                                             followingIds: following.teamKeys,
                                             followedTables: following.orderedTables,
-                                            liveOnly: uiState.liveOnly)
+                                            liveOnly: uiState.liveOnly(on: target))
         Group {
             if sections.isEmpty {
                 VStack(spacing: Spacing.md) {
@@ -539,7 +553,7 @@ struct ScoresScreen: View {
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
-                } else if uiState.liveOnly {
+                } else if uiState.liveOnly(on: shownDay) {
                     // The narrowed-slate empty state: name what's hiding
                     // the games, and offer the whole slate back.
                     Text("No live games right now")
