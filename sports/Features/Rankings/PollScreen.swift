@@ -42,8 +42,11 @@ struct PollScreen: View {
         }
     }
 
-    /// The current season's polls, already fetched by the hub.
-    let polls: [Poll]
+    /// The current season's polls where the caller already has them — the
+    /// tables hub fetched them for its own row. Empty is a legitimate
+    /// push: the Scores Top 25 header holds no polls, so the page fetches
+    /// the season in progress the same way it fetches every other one.
+    var polls: [Poll] = []
     /// Whose poll this is — the follow control's id.
     var league: League = .collegeFootball
 
@@ -127,7 +130,11 @@ struct PollScreen: View {
                 PollFollowPill(league: league)
             }
         }
-        .task { await loadGames(year: year) }
+        .task {
+            async let poll: Void = load(year: year)
+            async let games: Void = loadGames(year: year)
+            _ = await (poll, games)
+        }
     }
 
     // MARK: - Season
@@ -140,10 +147,12 @@ struct PollScreen: View {
         Array(stride(from: currentYear, through: league.seasonFloor, by: -1))
     }
 
-    /// The shown season's polls. The current one came in with the push;
-    /// every other is fetched on demand and kept.
+    /// The shown season's polls. The current one came in with the push
+    /// where the caller had it; every other — and the current one on a
+    /// push that carried none — is fetched on demand and kept.
     private var seasonPolls: [Poll] {
-        year == currentYear ? Self.displayed(polls) : (pollsByYear[year] ?? [])
+        if year == currentYear, !polls.isEmpty { return Self.displayed(polls) }
+        return pollsByYear[year] ?? []
     }
 
     private var selectedPoll: Poll? {
@@ -173,9 +182,10 @@ struct PollScreen: View {
     }
 
     private func load(year value: Int, force: Bool = false) async {
-        // The season in progress arrived with the push, and a season
-        // already fetched is a season already fetched.
-        guard value != currentYear else { return }
+        // The season in progress arrived with the push where the push
+        // carried one, and a season already fetched is a season already
+        // fetched.
+        guard value != currentYear || polls.isEmpty else { return }
         guard pollsByYear[value] == nil || force else { return }
         guard !loadingYears.contains(value) else { return }
         loadingYears.insert(value)
