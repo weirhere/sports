@@ -7,6 +7,11 @@ import SwiftUI
 /// Styled as the leading pill of the header's grouped control (FotMob's
 /// tap-target language, Andy 2026-08-29) — the enclosing capsule belongs
 /// to `ScoresHeader`, so this pill paints only its active fill.
+///
+/// `liveOnly` is the filter as it applies to the day on screen, not the
+/// remembered toggle: a swipe off today suspends it (2026-09-12), so the
+/// pill changes on day changes it carries no transaction for — hence the
+/// animation lives here rather than only at the tap site.
 struct LiveFilterChip: View {
     let liveOnly: Bool
     let onToggle: () -> Void
@@ -34,6 +39,7 @@ struct LiveFilterChip: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: liveOnly)
         .accessibilityLabel("Live games only")
         .accessibilityIdentifier("scores-live-chip")
         .accessibilityAddTraits(liveOnly ? .isSelected : [])
