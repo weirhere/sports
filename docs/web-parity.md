@@ -722,6 +722,7 @@ sibling below it.
 |---|---|---|
 | 2026-09-12 | The Live filter renames today "Ongoing" on the day strip and the Today button | **shipped 2026-09-12** — same commit as iOS, which is what this ledger is for. `dayChipLabel(day, now, liveOnly)` in `web/src/lib/day.ts` mirrors `DayStrip.namedDay`, and `liveOnly` was already in `ScoresControlCard` and `scores-view` — the two controls just had to be handed it. One difference, pre-existing: a web chip's `aria-label` is the full date on every day (`dayLongLabel`), where iOS speaks the named day, so the rename is visual only on web. Left as it is rather than churned here |
 | (unrecorded) | The first tab is labelled **Games**, not Scores | **shipped 2026-09-10** — `RootView.swift` has said Games since the league axis landed and no decision row ever recorded it, so the web had no way to learn it. Logged on both sides now. Second instance of the gap E11's P3 item is open on |
+| 2026-09-12 | The day strip's selected chip is ink, not a pill | **shipped 2026-09-12** — ported in the same change, `web/src/components/day-strip.tsx`: the `bg-text-primary text-bg-primary` fill comes off and the chip switches `type-chip`/`text-text-secondary` for `type-chip-em`/`text-text-primary`. `day-calendar-sheet.tsx` and `today-button.tsx` keep their fills, as on iOS |
 
 ---
 

@@ -109,11 +109,14 @@ export function DayStrip({
                 onClick={() => onSelect(day)}
                 aria-label={dayLongLabel(day)}
                 aria-current={isSelected ? "true" : undefined}
+                // The selected day is ink, not a pill (iOS, 2026-09-12):
+                // weight and darkness carry the selection, so nothing in
+                // the strip is a filled surface.
                 className={cn(
-                  "type-chip shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 transition-colors",
                   isSelected
-                    ? "bg-text-primary text-bg-primary"
-                    : "text-text-secondary hover:text-text-primary"
+                    ? "type-chip-em text-text-primary"
+                    : "type-chip text-text-secondary hover:text-text-primary"
                 )}
               >
                 {dayChipLabel(day, undefined, liveOnly)}

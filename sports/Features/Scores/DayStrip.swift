@@ -49,22 +49,19 @@ struct DayStrip: View {
         } label: {
             // fixedSize: the labels are words now, not two glyphs, and a
             // chip that truncates to "Tomorr…" is worse than a wider strip.
-            let label = Text(compactLabel(day.date))
-                .font(.chip)
+            //
+            // The selected day is ink, not a pill (Andy, 2026-09-12, from
+            // FotMob): weight and darkness carry the selection, the way
+            // every other emphasis in the app does. Nothing in the strip
+            // is a filled surface, so the day chips are plain text at two
+            // strengths — textPrimary semibold against textSecondary.
+            Text(compactLabel(day.date))
+                .font(isSelected ? .chipEmphasis : .chip)
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle(isSelected ? Color.bgPrimary : Color.textSecondary)
+                .foregroundStyle(isSelected ? Color.textPrimary : Color.textSecondary)
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 6)
-            // The selected chip is the strip's one piece of floating
-            // chrome — ink-tinted glass on iOS 26, the solid capsule on
-            // the 18.0 floor. Unselected chips stay bare text.
-            if isSelected {
-                label.glassCapsuleInteractive(tint: Color.textPrimary,
-                                              fallback: Color.textPrimary)
-            } else {
-                label
-            }
         }
         .buttonStyle(.plain)
         // The chip abbreviates its month and weekday; the spoken label is
