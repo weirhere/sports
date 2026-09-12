@@ -51,11 +51,17 @@ struct ScoresScreen: View {
     /// The pending intent whose day is already being fetched — one attempt
     /// per intent, so a game missing from the day it claims can't spin.
     @State private var pendingDayFetch: String?
+    /// Bumped by the Today jump: the slate goes home with the strip.
+    @State private var slateHomeCount = 0
 
     private enum DragAxis { case horizontal, vertical }
 
     /// Height of the floating Today button plus its breathing room.
     private static let jumpClearance: CGFloat = 44
+
+    /// Zero-height marker at the head of the slate — what the Today jump
+    /// scrolls back to.
+    private static let slateHome = "scores-slate-home"
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -245,7 +251,7 @@ struct ScoresScreen: View {
     /// two Todays a thumb apart is one too many.
     private var todayJump: some View {
         Button {
-            select(day: .now)
+            jumpToToday()
         } label: {
             Text("Today")
                 .font(.chip)
@@ -264,6 +270,23 @@ struct ScoresScreen: View {
         .transition(.scale(scale: 0.85).combined(with: .opacity))
         .accessibilityLabel("Jump to today")
         .accessibilityIdentifier("scores-today-jump")
+    }
+
+    /// The Today button's own move, which `select(day:)` can't make.
+    ///
+    /// Two things it does that a plain day selection doesn't. It goes
+    /// through `selectToday()`, so a strip bounded to a past season
+    /// re-bounds to this one — selecting today's *date* while the strip
+    /// still spans 2019 leaves a selected day the strip has no chip for,
+    /// which is a screen with no way back. And it takes the slate home
+    /// with it (Andy): a day you left scrolled to the bottom shouldn't
+    /// hand today back the same way.
+    private func jumpToToday() {
+        let today = Calendar.current.startOfDay(for: .now)
+        daySlideEdge = today > scoreboards.selectedDay ? .trailing : .leading
+        daySlideAnimation = .default
+        slateHomeCount += 1
+        Task { await scoreboards.selectToday() }
     }
 
     /// Every user day change funnels through here so chip taps and swipes
@@ -388,51 +411,65 @@ struct ScoresScreen: View {
         if sections.isEmpty {
             emptyState
         } else {
-            ScrollView {
-                LazyVStack(spacing: Spacing.sm) {
-                    // The Following slot's empty state: following nobody
-                    // renders the follow prompt where the section would be.
-                    if !following.followsAnyone, !uiState.followPromptDismissed {
-                        FollowPromptCard()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: Spacing.sm) {
+                        // The Following slot's empty state: following nobody
+                        // renders the follow prompt where the section would be.
+                        if !following.followsAnyone, !uiState.followPromptDismissed {
+                            FollowPromptCard()
+                                .cardSurface()
+                        }
+                        ForEach(sections) { section in
+                            SectionAccordion(
+                                section: section,
+                                isExpanded: uiState.isExpanded(section.id),
+                                onToggle: { withAnimation { uiState.toggle(section.id) } }
+                            )
                             .cardSurface()
-                    }
-                    ForEach(sections) { section in
-                        SectionAccordion(
-                            section: section,
-                            isExpanded: uiState.isExpanded(section.id),
-                            onToggle: { withAnimation { uiState.toggle(section.id) } }
-                        )
-                        .cardSurface()
-                    }
-                }
-                .padding(Spacing.sm)
-                // The jump floats over this scroll view, so the last card
-                // needs room to clear it rather than sitting underneath.
-                .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
-            }
-            .refreshable {
-                await scoreboards.refresh()
-                refreshCount += 1
-            }
-            .sensoryFeedback(.success, trigger: refreshCount)
-            // FotMob's gesture: pinch in collapses every section on screen,
-            // pinch out opens them all. Fires once per pinch at the
-            // threshold crossing; simultaneous so scroll, pull-to-refresh,
-            // and header taps are unaffected.
-            .simultaneousGesture(
-                MagnifyGesture()
-                    .onChanged { value in
-                        guard !pinchHandled else { return }
-                        if value.magnification < 0.8 {
-                            pinchHandled = true
-                            withAnimation { uiState.collapseAll(sections.map(\.id)) }
-                        } else if value.magnification > 1.25 {
-                            pinchHandled = true
-                            withAnimation { uiState.expandAll(sections.map(\.id)) }
                         }
                     }
-                    .onEnded { _ in pinchHandled = false }
-            )
+                    .padding(Spacing.sm)
+                    // The jump floats over this scroll view, so the last card
+                    // needs room to clear it rather than sitting underneath.
+                    .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
+                    // Where the Today jump scrolls back to. The stack
+                    // itself, not a marker view above it: a zero-height
+                    // child would still take the stack's spacing and push
+                    // the first card down by it.
+                    .id(Self.slateHome)
+                }
+                .refreshable {
+                    await scoreboards.refresh()
+                    refreshCount += 1
+                }
+                .sensoryFeedback(.success, trigger: refreshCount)
+                // FotMob's gesture: pinch in collapses every section on
+                // screen, pinch out opens them all. Fires once per pinch at
+                // the threshold crossing; simultaneous so scroll,
+                // pull-to-refresh, and header taps are unaffected.
+                .simultaneousGesture(
+                    MagnifyGesture()
+                        .onChanged { value in
+                            guard !pinchHandled else { return }
+                            if value.magnification < 0.8 {
+                                pinchHandled = true
+                                withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                            } else if value.magnification > 1.25 {
+                                pinchHandled = true
+                                withAnimation { uiState.expandAll(sections.map(\.id)) }
+                            }
+                        }
+                        .onEnded { _ in pinchHandled = false }
+                )
+                // The jump's other half. A day change rebuilds this pane, so
+                // the day arriving is at its top by construction — this is
+                // for the slate the jump is *leaving*, which otherwise
+                // slides out from wherever the thumb left it.
+                .onChange(of: slateHomeCount) { _, _ in
+                    proxy.scrollTo(Self.slateHome, anchor: .top)
+                }
+            }
         }
     }
 
