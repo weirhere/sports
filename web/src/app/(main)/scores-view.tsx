@@ -316,7 +316,7 @@ export function ScoresView({ seed }: ScoresViewProps) {
           moved into the control card and stopped being fixed at all. */}
       {showsTodayJump && (
         <ChromePortal>
-          <TodayButton onClick={selectToday} />
+          <TodayButton onClick={selectToday} liveOnly={uiState.liveOnly} />
         </ChromePortal>
       )}
     </div>

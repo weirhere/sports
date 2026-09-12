@@ -64,7 +64,8 @@ struct ScoresScreen: View {
                              onToggleLive: { toggleLive() },
                              onOpenCalendar: { showsCalendar = true })
                 DayStrip(days: scoreboards.days(),
-                         selectedId: DayFormat.id(for: scoreboards.selectedDay)) { day in
+                         selectedId: DayFormat.id(for: scoreboards.selectedDay),
+                         liveOnly: uiState.liveOnly) { day in
                     select(day: day)
                 }
                 Divider().overlay(Color.divider)
@@ -229,11 +230,16 @@ struct ScoresScreen: View {
     /// "Somewhere to go" means off the strip, not just off today (Andy,
     /// 2026-09-07): a day or two out the Today chip is still up there, and
     /// two Todays a thumb apart is one too many.
+    ///
+    /// It wears whatever the strip's chip wears, the Live filter's
+    /// "Ongoing" included — it is the way back to that chip, and the button
+    /// naming a day the chip it lands on doesn't is the same one-word-apart
+    /// problem in reverse.
     private var todayJump: some View {
         Button {
             select(day: .now)
         } label: {
-            Text("Today")
+            Text(uiState.liveOnly ? "Ongoing" : "Today")
                 .font(.chip)
                 .fixedSize()
                 .foregroundStyle(Color.bgPrimary)
@@ -248,7 +254,7 @@ struct ScoresScreen: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         .padding(.bottom, Spacing.md)
         .transition(.scale(scale: 0.85).combined(with: .opacity))
-        .accessibilityLabel("Jump to today")
+        .accessibilityLabel(uiState.liveOnly ? "Jump to ongoing games" : "Jump to today")
         .accessibilityIdentifier("scores-today-jump")
     }
 

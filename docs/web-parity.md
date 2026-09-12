@@ -718,6 +718,7 @@ sibling below it.
 
 | iOS date | Decision | Status |
 |---|---|---|
+| 2026-09-12 | The Live filter renames today "Ongoing" on the day strip and the Today button | **shipped 2026-09-12** — same commit as iOS, which is what this ledger is for. `dayChipLabel(day, now, liveOnly)` in `web/src/lib/day.ts` mirrors `DayStrip.namedDay`, and `liveOnly` was already in `ScoresControlCard` and `scores-view` — the two controls just had to be handed it. One difference, pre-existing: a web chip's `aria-label` is the full date on every day (`dayLongLabel`), where iOS speaks the named day, so the rename is visual only on web. Left as it is rather than churned here |
 | (unrecorded) | The first tab is labelled **Games**, not Scores | **shipped 2026-09-10** — `RootView.swift` has said Games since the league axis landed and no decision row ever recorded it, so the web had no way to learn it. Logged on both sides now. Second instance of the gap E11's P3 item is open on |
 
 ---
