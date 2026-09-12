@@ -77,4 +77,44 @@ import Testing
                         broadcast: nil)
         #expect(GameRef(game).day == kickoff)
     }
+
+    // MARK: - The destination's identity
+
+    /// What every `navigationDestination(for: Game.self)` keys its `.id`
+    /// on. A widget tap arriving while a detail page is already open
+    /// *replaces* the value at that path position rather than pushing a
+    /// second page, and a destination whose identity doesn't change is
+    /// reused with all of its `@State` intact — which is how one game's
+    /// logos, leaders and venue came to sit under another game's info card.
+    @Test func twoGamesAreTwoDestinations() {
+        #expect(game(id: "401", league: .collegeFootball).routeKey
+                != game(id: "402", league: .collegeFootball).routeKey)
+    }
+
+    /// League-qualified for `FollowKey`'s reason: ESPN's ids collide across
+    /// leagues, and an event id is no safer than a team id.
+    @Test func theSameIdInTwoLeaguesIsTwoDestinations() {
+        #expect(game(id: "401", league: .collegeFootball).routeKey
+                != game(id: "401", league: .nfl).routeKey)
+    }
+
+    /// And the same game is the same destination however it was reached —
+    /// a poll tick re-pushing its own game must not rebuild the page.
+    @Test func theSameGameKeepsOneIdentity() {
+        #expect(game(id: "401", league: .nhl).routeKey
+                == game(id: "401", league: .nhl).routeKey)
+    }
+
+    private func game(id: String, league: League) -> Game {
+        let team = Team(id: "1", location: "Team 1", name: nil, abbreviation: nil,
+                        displayName: nil, shortDisplayName: nil, logoURL: nil,
+                        conferenceId: nil, league: league)
+        return Game(id: id, date: day, name: nil, shortName: nil,
+                    weekNumber: nil, status: .pre(detail: nil),
+                    home: Competitor(team: team, score: nil, record: nil, rank: nil,
+                                     isHome: true, winner: nil),
+                    away: Competitor(team: team, score: nil, record: nil, rank: nil,
+                                     isHome: false, winner: nil),
+                    broadcast: nil)
+    }
 }

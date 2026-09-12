@@ -10,7 +10,14 @@ struct GameDetailScreen: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var summary: GameSummary?
+    @State private var loadedSummary: GameSummary?
+    /// Which game the loaded summary and standings describe. Belt and
+    /// braces against the navigation-identity trap the `.id(game.routeKey)`
+    /// on every Game destination closes: a reused screen must not paint the
+    /// previous game's logos, leaders and venue under this one's header,
+    /// whatever the routing layer does. A fetch-once guard is only safe if
+    /// it knows what it fetched.
+    @State private var loadedKey: String?
     @State private var isLoading = false
     @State private var lastError: String?
     /// The matchup-standings card's data; a miss just hides the card.
@@ -28,6 +35,23 @@ struct GameDetailScreen: View {
     /// here rather than in the list so switching tabs and coming back
     /// doesn't quietly widen the slate under the user.
     @State private var scoringOnly = false
+
+    /// The summary, but only if it belongs to the game on screen. Every
+    /// card on the page reads through here, so a screen handed a new game
+    /// falls back to what the pushed row already knows — the header it has
+    /// always drawn before the fetch lands — rather than to another
+    /// matchup's.
+    private var summary: GameSummary? {
+        loadedKey == game.routeKey ? loadedSummary : nil
+    }
+
+    /// Standings are league-wide and fetched once, so they carry the same
+    /// risk the summary does: a reused screen handed a game in another
+    /// league would keep asking the matchup card to find its two teams in
+    /// the wrong table.
+    private var currentStandings: [ConferenceStandings] {
+        loadedKey == game.routeKey ? conferenceStandings : []
+    }
 
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison. Summary keeps every card the screen has always had,
@@ -204,12 +228,15 @@ struct GameDetailScreen: View {
         .sensoryFeedback(.impact(weight: .medium), trigger: currentScores) { _, _ in
             isLiveNow
         }
-        .task { await load() }
+        // Keyed by the game, not fire-once: a screen reused for another
+        // game must fetch that game rather than sit on what it holds.
+        .task(id: game.routeKey) { await load() }
         // 30s auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
         // either condition changes, cancelling or restarting the loop — a
-        // summary that comes back final stops it on its own.
-        .task(id: scenePhase == .active && isLiveNow) {
+        // summary that comes back final stops it on its own. The game rides
+        // in it for the reason above: a new game is a new loop.
+        .task(id: pollKey) {
             guard scenePhase == .active, isLiveNow else { return }
             Self.logger.info("detail polling: started for event \(game.id)")
             while !Task.isCancelled {
@@ -224,6 +251,12 @@ struct GameDetailScreen: View {
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
+
+    /// What restarts the poll loop: the game, and whether it should be
+    /// running at all.
+    private var pollKey: String {
+        "\(game.routeKey):\(scenePhase == .active && isLiveNow)"
+    }
 
     /// The header's "where do I watch" line — live, or pre-game, where the
     /// kickoff split left the network without the second line it used to
@@ -491,11 +524,11 @@ struct GameDetailScreen: View {
                     if isCurrentSeason,
                        MatchupStandings.hasContent(away: game.away.team,
                                                    home: game.home.team,
-                                                   standings: conferenceStandings) {
+                                                   standings: currentStandings) {
                         card(title: "Standings") {
                             MatchupStandings(away: game.away.team,
                                              home: game.home.team,
-                                             standings: conferenceStandings)
+                                             standings: currentStandings)
                         }
                     }
                     // Pre-game the venue card sits up top with the
@@ -569,7 +602,20 @@ struct GameDetailScreen: View {
     }
 
     private func load(force: Bool = false) async {
-        guard summary == nil || force else { return }
+        let key = game.routeKey
+        // A screen handed a different game drops what it was holding,
+        // the view-state the old game scoped included: a Plays tab and a
+        // scoring-only filter belong to the matchup they were chosen on.
+        if loadedKey != key {
+            loadedSummary = nil
+            conferenceStandings = []
+            lastError = nil
+            tab = .summary
+            scoringOnly = false
+            shareCardPNG = nil
+            loadedKey = key
+        }
+        guard loadedSummary == nil || force else { return }
         isLoading = true
         defer { isLoading = false }
         // Standings ride along for the matchup card — independent fetch,
@@ -582,12 +628,18 @@ struct GameDetailScreen: View {
         async let standingsFetch: [ConferenceStandings]? =
             needsStandings ? try? client.conferenceStandings() : nil
         do {
-            summary = try await client.gameSummary(eventId: game.id)
+            let loaded = try await client.gameSummary(eventId: game.id)
+            // And the screen may have been handed another game while this
+            // was in flight — the widget tap this whole guard exists for
+            // can land mid-fetch as easily as before one.
+            guard game.routeKey == key else { return }
+            loadedSummary = loaded
             lastError = nil
         } catch {
+            guard game.routeKey == key else { return }
             lastError = "Couldn't load this game."
         }
-        if let loaded = await standingsFetch {
+        if let loaded = await standingsFetch, game.routeKey == key {
             conferenceStandings = loaded
         }
         await refreshPinnedActivity()

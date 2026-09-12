@@ -54,9 +54,12 @@ struct TeamsScreen: View {
                     ConferencePage(destination: destination)
                         .id(destination)
                 }
-                // TeamPage's Next game card pushes game detail.
+                // TeamPage's Next game card pushes game detail. Identity
+                // follows the game, exactly as the two destinations above
+                // follow theirs.
                 .navigationDestination(for: Game.self) { game in
                     GameDetailScreen(game: game)
+                        .id(game.routeKey)
                 }
         }
         .task { await directory.load() }

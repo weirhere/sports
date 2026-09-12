@@ -112,8 +112,15 @@ struct ScoresScreen: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.85),
                        value: scoreboards.showsTodayJump)
             .toolbar(.hidden, for: .navigationBar)
+            // Identity follows the game, for the reason the two below do:
+            // a widget tap while a detail page is already open *replaces*
+            // the value at this path position, and a destination whose
+            // identity doesn't change is reused with its `@State` intact —
+            // which is how one game's header, logos, leaders and venue came
+            // to sit under another game's info card.
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game)
+                    .id(game.routeKey)
             }
             // Identity follows the conference, for the reason the team
             // destination below does: a replaced value at the same path

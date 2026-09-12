@@ -34,6 +34,14 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
         return false
     }
 
+    /// What a navigation destination's identity keys on, so a game
+    /// replaced at the same path position gets its own page rather than
+    /// the previous game's (`Team.followKey`'s job, one layer over).
+    ///
+    /// League-qualified for `FollowKey`'s reason: ESPN's ids collide
+    /// across leagues, and an event id is no safer than a team id.
+    var routeKey: String { "\(home.team.league.rawValue):\(id)" }
+
     /// True when either side is ranked in the Top 25.
     var involvesRankedTeam: Bool {
         home.rank != nil || away.rank != nil
