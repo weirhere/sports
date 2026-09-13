@@ -134,10 +134,17 @@ final class NotificationScheduler {
             return
         }
 
+        // Whether every followed team actually answered. A fetch that
+        // throws is not the same fact as a team with no games, and the
+        // difference decides whether deletions are safe below.
+        var answeredInFull = true
         var gamesById: [String: Game] = [:]
         for key in followedKeys.followKeys {
             guard let schedule = try? await makeClient(key.league)
-                .teamSchedule(teamId: key.teamId) else { continue }
+                .teamSchedule(teamId: key.teamId) else {
+                answeredInFull = false
+                continue
+            }
             for game in schedule.games {
                 // Dedupe by game id: both-teams-followed games get one
                 // reminder. TBD kickoffs (nil date, or a placeholder date
@@ -165,9 +172,21 @@ final class NotificationScheduler {
         }
 
         let pending = await pendingKickoffIds()
-        let stale = pending.filter { desired[$0] == nil }
-        if !stale.isEmpty {
-            await center.removePending(identifiers: stale)
+        // Creates and updates apply on a partial answer; deletions never
+        // do. An empty `desired` is only authoritative when every schedule
+        // came back — otherwise a phone that foregrounds with no network
+        // would read "no answer" as "no games" and drop all 24 reminders
+        // on the floor, silently. They rebuild on the next full resync.
+        //
+        // Deliberately all-or-nothing rather than per-team: request ids
+        // encode a game and a kickoff, not the team a reminder was
+        // scheduled for, so a stale id can't be attributed to the fetch
+        // that failed.
+        if answeredInFull {
+            let stale = pending.filter { desired[$0] == nil }
+            if !stale.isEmpty {
+                await center.removePending(identifiers: stale)
+            }
         }
         let pendingSet = Set(pending)
         for (id, game) in desired where !pendingSet.contains(id) {
