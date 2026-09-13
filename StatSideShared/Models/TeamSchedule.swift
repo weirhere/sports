@@ -18,6 +18,10 @@ nonisolated struct TeamSchedule: Sendable {
     /// around it, so the schedule shows it rather than leaving a silent gap
     /// between two week numbers.
     var byeWeek: Int? = nil
+    /// Where this team plays, derived from the season's own home dates —
+    /// no request of its own. Nil for a provider that ships no venue on a
+    /// schedule (CFBD) and for a fragment with no home date in it.
+    var homeVenue: TeamVenue? = nil
 
     /// W-L counted from final results — the only honest record for a past
     /// season. Nil until at least one game is final (or when the team's

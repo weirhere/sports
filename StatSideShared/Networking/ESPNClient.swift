@@ -1062,8 +1062,37 @@ nonisolated enum ESPNMapper {
             // page that asked knows that season as 2026.
             year: dto.requestedSeason?.year.map(league.seasonYear(fromESPN:)),
             games: games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) },
-            byeWeek: dto.byeWeek?.value
+            byeWeek: dto.byeWeek?.value,
+            homeVenue: selfTeam.flatMap {
+                homeVenue(in: (dto.events?.elements ?? []) + extraEvents, teamId: $0.id)
+            }
         )
+    }
+
+    /// The team's home ground, read off the schedule it already fetched.
+    /// Costs no request — every competition in the payload names its venue,
+    /// so the rule (`TeamVenue.home`) only needs the fixtures reduced to
+    /// host, neutrality, and gate.
+    ///
+    /// The **preseason is out**: those dates are exhibitions, so counting
+    /// them would inflate "home games" past what anyone means by it and
+    /// drag the average down with a crowd nobody turned up for. A home
+    /// *playoff* date is the opposite and stays in — it is a real game at
+    /// the real ground.
+    static func homeVenue(in events: [ScheduleEventDTO], teamId: String) -> TeamVenue? {
+        TeamVenue.home(from: events.compactMap { event in
+            guard event.seasonType?.type != 1,
+                  let competition = event.competitions?.first else { return nil }
+            let host = competition.competitors?.first { $0.homeAway == "home" }
+            return TeamVenue.Fixture(
+                venue: competition.venue?.fullName,
+                city: TeamVenue.cityLine(city: competition.venue?.address?.city,
+                                         state: competition.venue?.address?.state),
+                isHome: host?.team?.id == teamId,
+                isNeutral: competition.neutralSite == true,
+                attendance: competition.attendance
+            )
+        })
     }
 
     /// `groups` is the team's most specific group, and college football

@@ -347,6 +347,15 @@ nonisolated struct ScheduleCompetitionDTO: Decodable {
     let status: StatusDTO?
     let competitors: [ScheduleCompetitorDTO]?
     let broadcasts: [ScheduleBroadcastDTO]?
+    /// Where the game is played. The schedule endpoint ships it on every
+    /// competition, played or not — name and address only, no `grass` and
+    /// no venue `id`, so a team's home ground is nameable from the season
+    /// it already fetched and its surface is not.
+    let venue: VenueDTO?
+    /// The announced crowd, on played games only. Averaging it across the
+    /// season's home dates is the only crowd figure ESPN gives us that
+    /// belongs to a *team* rather than to one game.
+    let attendance: Int?
 }
 
 nonisolated struct ScheduleBroadcastDTO: Decodable {

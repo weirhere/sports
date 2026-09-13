@@ -258,6 +258,12 @@ export interface EspnScheduleCompetition {
   status?: EspnStatus;
   competitors?: EspnScheduleCompetitor[];
   broadcasts?: EspnScheduleBroadcast[];
+  /**
+   * The announced crowd, on played games only. Averaged across a team's
+   * home dates it is the one attendance figure ESPN gives us that belongs
+   * to a team rather than to a single fixture.
+   */
+  attendance?: number;
 }
 
 export interface EspnScheduleBroadcast {
