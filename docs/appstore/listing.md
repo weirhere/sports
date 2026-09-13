@@ -311,13 +311,22 @@ the surface Josh's feedback named as the reason he opens a game page.
 
 ## URLs
 
-- Support URL: `https://weirhere.github.io/statside-site/` (docs/index.html — see below)
-- Privacy Policy URL: `https://weirhere.github.io/statside-site/privacy.html`
+- Support URL: `https://statside.co/support`
+- Privacy Policy URL: `https://statside.co/privacy`
 - Marketing URL: optional, leave blank
 
-Live via GitHub Pages from the public weirhere/statside-site repo (this repo
-is private, so Pages is hosted separately). Source of truth: docs/ here —
-copy changes over to statside-site when editing.
+**Both changed on 2026-09-13 and both fields need updating in App Store
+Connect** — the old pair (`weirhere.github.io/statside-site/…`) is a 404 and
+has been for some time: that repo went private, so Pages stopped serving,
+and nothing noticed because nothing checks a listing field. The live
+listing's Privacy Policy link was dead.
+
+They are routes in `web/` now — `/privacy` and `/support`, prerendered
+static, on the app's own domain and its own deploy. No copy step between two
+repos: the policy's text is `PRIVACY.md` at the repo root, mirrored into
+`web/src/content/privacy.ts` under a test that fails Web CI if the two ever
+differ. `weirhere/statside-site` holds nothing that isn't here and can be
+archived.
 
 ## Screenshots
 

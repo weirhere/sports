@@ -1,4 +1,18 @@
-# StatSide Privacy Policy
+// The published privacy policy — a **mirror of `PRIVACY.md` at the repo
+// root**, which is the source of truth. `privacy.test.ts` asserts the two
+// are byte-identical, so editing one without the other fails Web CI.
+//
+// A copy, rather than a build-time read of the file itself, because
+// Vercel builds this app with `web/` as its root directory: a
+// `readFileSync` reaching above it would work locally and could fail in
+// production, which is the one failure mode a privacy policy must not
+// have. The copy is a copy CI cannot let drift, which is the same
+// mechanism the parity ledger runs on.
+//
+// To change the policy: edit `PRIVACY.md`, then paste it between the
+// backticks below. The test tells you if you forgot.
+
+export const PRIVACY_MARKDOWN = `# StatSide Privacy Policy
 
 *Effective date: September 13, 2026*
 
@@ -38,3 +52,4 @@ If a future version of StatSide ever changes any of the above, this policy will 
 ## Contact
 
 Questions: iamandyweir@gmail.com
+`;
