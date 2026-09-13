@@ -20,7 +20,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, standings, roster
+        case overview, games, standings, roster, trophies
 
         var title: String {
             switch self {
@@ -28,6 +28,7 @@ struct TeamPage: View {
             case .games: "Games"
             case .standings: "Standings"
             case .roster: "Roster"
+            case .trophies: "Trophies"
             }
         }
     }
@@ -42,6 +43,11 @@ struct TeamPage: View {
     /// Where the first load landed. The share always describes this
     /// season, whatever the chip is showing.
     @State private var currentSeasonYear: Int?
+    /// Which team's full history the schedule cache has been filled for,
+    /// so the dozen-season fetch runs once per team rather than per
+    /// appearance of the Trophies tab.
+    @State private var trophyHistoryKey: String?
+    @State private var trophyHistoryLoading = false
     @State private var loadingYears: Set<Int> = []
     @State private var failedYears: Set<Int> = []
     @State private var initialLoading = false
@@ -223,6 +229,7 @@ struct TeamPage: View {
                         case .games: gamesContent
                         case .standings: standingsContent
                         case .roster: rosterContent
+                        case .trophies: trophiesContent
                         }
                     }
                     // geometryGroup pins every child (row logos included) to
@@ -488,6 +495,7 @@ struct TeamPage: View {
         var tabs: [Tab] = [.overview, .games]
         if showsStandingsTab { tabs.append(.standings) }
         if showsRosterTab { tabs.append(.roster) }
+        tabs.append(.trophies)
         return tabs
     }
 
@@ -616,9 +624,13 @@ struct TeamPage: View {
     /// (probed live 2026-09-10 — `?season=2019` answers 200 with zero
     /// athletes). A chip there wouldn't do nothing; it would show this year's
     /// roster under last decade's label.
+    ///
+    /// Trophies is the third, and the most obvious of them: a trophy case is
+    /// every season at once. Scoping it to one would turn the tab into a
+    /// worse copy of that season's Games tab.
     @ViewBuilder
     private var seasonChip: some View {
-        if let selectedYear, tab != .overview, tab != .roster {
+        if let selectedYear, tab != .overview, tab != .roster, tab != .trophies {
             SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
                            style: .bar, onSelect: { select(year: $0) })
         }
@@ -680,6 +692,77 @@ struct TeamPage: View {
         // the same whether the header is riding along or stuck.
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
+    }
+
+    /// Every season's derivation plus the registry's closed history.
+    ///
+    /// Reads straight off the schedule cache, so a season the page has
+    /// already fetched for another tab costs nothing here.
+    private var trophyCase: TrophyCase {
+        let derived = availableSeasons
+            .compactMap { schedules[$0] }
+            .flatMap { TrophyCase.derive(from: $0, league: pageLeague) }
+        return TrophyCase.assemble(
+            derived: derived,
+            registry: TrophyRegistry.trophies(teamId: team.id, league: pageLeague),
+            allTimeKinds: TrophyRegistry.coveredKinds(in: pageLeague),
+            derivedFloor: pageLeague.seasonFloor
+        )
+    }
+
+    /// Every season either landed or failed. Nothing renders before this
+    /// is true: a shelf that fills in season by season shows a count that
+    /// changes under the reader, which for a number this page presents as
+    /// a fact is worse than a spinner.
+    private var trophyHistoryIsComplete: Bool {
+        availableSeasons.allSatisfy {
+            schedules[$0] != nil || failedYears.contains($0)
+        }
+    }
+
+    /// The tab is **unconditional**, which is the one place this lands away
+    /// from "a tab only when they've won things" (Andy, 2026-09-13).
+    ///
+    /// The condition can't be answered for free. Every other per-availability
+    /// tab in the app gates on something already in hand — `Roster` on a
+    /// client capability, `Box score` and `Plays` on a summary the page
+    /// fetched anyway — where "has this team ever won anything" is only
+    /// knowable from a dozen season requests. Gating on those would mean a
+    /// tab that materialises mid-scroll several seconds after the page
+    /// opened, which reads as a bug; gating on the current season alone
+    /// would hide the tab on a team that won its conference last December.
+    /// So the row is stable and the empty state does the talking, until
+    /// `TrophyRegistry` is populated and can answer the question statically.
+    private var trophiesContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if !trophyHistoryIsComplete {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            } else if trophyCase.isEmpty {
+                if trophyHistoryFailedWholesale {
+                    StatusMessage(text: "Couldn't load the trophy case.",
+                                  retry: { Task { await loadTrophyHistory(force: true) } })
+                        .cardSurface()
+                } else {
+                    StatusMessage(text: "No titles since \(pageLeague.seasonFloor)")
+                        .cardSurface()
+                }
+            } else {
+                TeamTrophiesCard(trophyCase: trophyCase)
+                    .cardSurface()
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .task(id: team.followKey) { await loadTrophyHistory() }
+    }
+
+    /// Told apart from a genuinely empty shelf: a team that has won nothing
+    /// and a network that answered nothing look identical on this tab, and
+    /// only one of them is worth a Retry button.
+    private var trophyHistoryFailedWholesale: Bool {
+        availableSeasons.allSatisfy { failedYears.contains($0) }
     }
 
     private var gamesContent: some View {
@@ -855,6 +938,41 @@ struct TeamPage: View {
         } catch {
             failedYears.insert(year)
         }
+    }
+
+    /// Fills the schedule cache back to the league's season floor, which is
+    /// what a trophy case is derived from.
+    ///
+    /// **Sequential, and deliberately so.** Each season is three parallel
+    /// requests already (`load(year:)` asks for all three season types), so
+    /// firing a dozen seasons at once would queue thirteen behind
+    /// `URLSession`'s six-connection ceiling and put ~39 requests on ESPN in
+    /// one burst — the pile-up the day-fetch debounce exists to stop. One
+    /// season at a time costs a couple of seconds behind a spinner and is
+    /// the politest shape available; the tab is opened deliberately, once
+    /// per visit, and never polled.
+    ///
+    /// Cheap on a page that has been browsed: a season already in the cache
+    /// is skipped, so the current season never refetches and flipping
+    /// through the season chip warms this for free.
+    private func loadTrophyHistory(force: Bool = false) async {
+        let key = team.followKey
+        // A page handed a different team starts over — the same trap the
+        // roster fetch is keyed against, and the schedule cache is keyed by
+        // year alone, so it cannot tell two teams apart on its own.
+        if trophyHistoryKey != key {
+            trophyHistoryKey = nil
+        }
+        guard force || trophyHistoryKey != key, !trophyHistoryLoading else { return }
+        trophyHistoryLoading = true
+        defer { trophyHistoryLoading = false }
+        for year in availableSeasons where schedules[year] == nil {
+            if force { failedYears.remove(year) }
+            await load(year: year)
+            // The page may have been handed another team mid-flight.
+            guard team.followKey == key else { return }
+        }
+        trophyHistoryKey = key
     }
 
     /// The one roster request. No year: the endpoint takes none.

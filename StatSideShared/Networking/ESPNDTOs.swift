@@ -356,6 +356,16 @@ nonisolated struct ScheduleCompetitionDTO: Decodable {
     /// season's home dates is the only crowd figure ESPN gives us that
     /// belongs to a *team* rather than to one game.
     let attendance: Int?
+    /// What ESPN prints the game as: "SEC Championship", "Super Bowl LIX",
+    /// "NBA Cup - Group Play". The scoreboard path has decoded this since
+    /// the postseason bracket needed it; the schedule path never did, which
+    /// is what left a team's own title games unnameable on its own page.
+    ///
+    /// **A headline is not a trophy.** Branded kickoffs and neutral-site
+    /// regular games sit in this same field, so it is only ever read
+    /// through `TrophyKind.from(headline:league:)`, which matches known
+    /// wording and stays silent on everything else.
+    let notes: [CompetitionNoteDTO]?
 }
 
 nonisolated struct ScheduleBroadcastDTO: Decodable {
