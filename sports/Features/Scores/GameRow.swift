@@ -19,6 +19,13 @@ struct GameRow: View {
     /// scope, so a tag on every row would be noise saying what the header
     /// above it already said.
     var leagueTag: League? = nil
+    /// Set where a list spans seasons — the H2H tab, whose ten rows can be
+    /// ten different years. A final row's date is normally "Sat, 11/30",
+    /// which is exactly right on a slate that is one week wide and a lie in
+    /// a list that is a decade deep. The year replaces the weekday rather
+    /// than joining it: five seasons back, which day of the week it was is
+    /// worth nothing and the fixed status column has no room for both.
+    var showsYear: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 28
@@ -291,7 +298,9 @@ struct GameRow: View {
                     .font(.rowMetaMedium)
                     .foregroundStyle(.textPrimary)
                 if let date = game.date, !timeOnly {
-                    Text(date.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))
+                    Text(showsYear
+                         ? date.formatted(.dateTime.year().month(.defaultDigits).day())
+                         : date.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))
                         .font(.rowMeta)
                         .foregroundStyle(.textSecondary)
                         .lineLimit(1)
@@ -491,7 +500,14 @@ struct GameRow: View {
             return parts.joined(separator: ", ")
         case .final(let detail):
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
-            return "\(scoreSummary), \(overtime ? "final, overtime" : "final")"
+            var parts = [scoreSummary, overtime ? "final, overtime" : "final"]
+            // A final row normally says nothing about when it was played —
+            // the slate around it already does. In a list spanning seasons
+            // nothing does, so the row says it itself.
+            if showsYear, let date = game.date {
+                parts.append(date.formatted(.dateTime.year().month(.wide).day()))
+            }
+            return parts.joined(separator: ", ")
         case .other(let detail):
             return "\(sideName(game.away)) at \(sideName(game.home)), \(detail ?? "status unavailable")"
         }

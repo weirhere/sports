@@ -67,6 +67,15 @@ nonisolated protocol ScoresProviding: Sendable {
     /// next is unpublished. An explicit year returns exactly that season —
     /// a user who picked 2019 must never silently get 2018.
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule
+
+    /// One team's season, minus the exhibitions — the unit a head-to-head
+    /// series is assembled from.
+    ///
+    /// Its own requirement rather than a filter over `teamSchedule` because
+    /// the difference is a request, not a predicate: ESPN files each phase
+    /// separately, so a backend that can skip the preseason fetch should,
+    /// and a series ten seasons deep is where that saving is worth having.
+    func seasonGames(teamId: String, year: Int) async throws -> [Game]
     /// One conference's full-season slate — every game with a side in the
     /// conference, postseason included where the provider carries it.
     /// `year` selects a season; nil means the current one. An explicit
@@ -121,6 +130,13 @@ nonisolated extension ScoresProviding {
         try await teamSchedule(teamId: teamId, year: nil)
     }
 
+    /// The whole schedule, with the exhibitions dropped after the fact —
+    /// what a backend that fetches a season in one piece can do.
+    func seasonGames(teamId: String, year: Int) async throws -> [Game] {
+        try await teamSchedule(teamId: teamId, year: year)
+            .games.filter { $0.seasonType != Postseason.preseasonSeasonType }
+    }
+
     // The FBS-only forms. Every caller that predates E8 keeps them, so
     // "did this change what we fetch?" has one answer for the whole app:
     // no, unless a call site names another division.
@@ -153,6 +169,10 @@ nonisolated extension ScoresProviding {
 nonisolated enum ESPNError: Error {
     case invalidURL
     case badStatus(Int)
+    /// Every request a composed answer was made of failed. Distinct from an
+    /// empty answer on purpose: "no meetings since 2017" and "we couldn't
+    /// ask" look identical on screen, and only one of them is true.
+    case nothingFetched
 }
 
 /// Talks to ESPN's unofficial API. An actor so fetching and decoding stay
@@ -535,6 +555,29 @@ actor ESPNClient: ScoresProviding {
         return try await fetchSchedule(teamId: teamId, year: current - 1)
     }
 
+    /// A season without the exhibition request. Two calls rather than
+    /// three, which is the whole point of the requirement: a ten-season
+    /// series saves ten round trips by not asking about football nobody
+    /// counts.
+    func seasonGames(teamId: String, year: Int) async throws -> [Game] {
+        let path = schedulePath(teamId: teamId)
+        async let regularFetch: ScheduleResponseDTO =
+            fetch(path: path, query: scheduleQuery(year: year, seasonType: 2))
+        async let postseasonFetch: ScheduleResponseDTO? =
+            try? fetch(path: path, query: scheduleQuery(year: year, seasonType: 3))
+        let regular = try await regularFetch
+        let extras = await postseasonFetch?.events?.elements ?? []
+        return ESPNMapper.teamSchedule(from: regular, extraEvents: extras,
+                                       league: league).games
+    }
+
+    private func schedulePath(teamId: String) -> String { "/teams/\(teamId)/schedule" }
+
+    private func scheduleQuery(year: Int, seasonType: Int) -> [URLQueryItem] {
+        [URLQueryItem(name: "season", value: String(league.espnSeason(for: year))),
+         URLQueryItem(name: "seasontype", value: String(seasonType))]
+    }
+
     private func fetchSchedule(teamId: String, year: Int) async throws -> TeamSchedule {
         // A bare /schedule request inherits ESPN's "current" season type, which
         // is the empty preseason from February until kickoff — so ask for the
@@ -545,10 +588,9 @@ actor ESPNClient: ScoresProviding {
         // The regular season is the one that must succeed; the other two
         // degrade to no games rather than failing the page — a team with no
         // preseason and no bowl is the normal case, not an error.
-        let path = "/teams/\(teamId)/schedule"
+        let path = schedulePath(teamId: teamId)
         func query(_ seasonType: Int) -> [URLQueryItem] {
-            [URLQueryItem(name: "season", value: String(league.espnSeason(for: year))),
-             URLQueryItem(name: "seasontype", value: String(seasonType))]
+            scheduleQuery(year: year, seasonType: seasonType)
         }
         async let preseasonFetch: ScheduleResponseDTO? = try? fetch(path: path, query: query(1))
         async let regularFetch: ScheduleResponseDTO = fetch(path: path, query: query(2))

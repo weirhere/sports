@@ -177,6 +177,30 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// and their divisions would be one or two rows a section.
     var slateSplitsByConference: Bool { self == .collegeFootball }
 
+    /// How many seasons back a head-to-head series is assembled from.
+    ///
+    /// The window is really sized in *meetings* — ten is the list length
+    /// that answers "who usually wins this" without becoming a scroll — and
+    /// expressed in seasons, because seasons are what can be fetched. So
+    /// the number follows how often two teams meet: football's leagues play
+    /// each other once or twice a year, basketball's and hockey's two to
+    /// four times.
+    ///
+    /// It is also the request bill. There is no head-to-head resource on
+    /// ESPN, so a series costs two requests per season (the regular season
+    /// and the postseason, which is where the rivalry games worth
+    /// remembering are) — 20 for college football, 12 for the NFL, 6 for
+    /// the others. Paid once, on an explicit tap, cached for the page's
+    /// life and never polled; this constant is the dial if that is ever
+    /// too much.
+    var headToHeadSeasons: Int {
+        switch self {
+        case .collegeFootball: 10   // one meeting a year, so ten of them
+        case .nfl: 6                // twice a year inside a division
+        case .nba, .nhl: 3          // two to four times a year
+        }
+    }
+
     /// Whether the season has weeks worth grouping by. ESPN sends
     /// `week: null` on every NBA and NHL event and ships an empty
     /// `leagues[].calendar` for both (probed 2026-09-08), so a Weeks

@@ -51,6 +51,11 @@ nonisolated enum Postseason {
     /// ESPN's `season.type` for the postseason.
     static let seasonType = 3
 
+    /// And for the exhibitions. It lives beside its sibling rather than as
+    /// a literal in a fourth place: the preseason grouping, the team page's
+    /// phase split and the head-to-head fetch all read it.
+    static let preseasonSeasonType = 1
+
     static func games(in games: [Game]) -> [Game] {
         games.filter { $0.seasonType == seasonType }
     }
