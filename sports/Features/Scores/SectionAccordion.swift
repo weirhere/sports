@@ -25,21 +25,12 @@ struct SectionAccordion: View {
     /// A header that names a real table splits into two surfaces (Andy's
     /// call, 2026-08-25, back with the conference stack on 2026-09-06):
     /// the mark + name push that table's page, everything after them
-    /// toggles. Following, the poll and "Other" keep the whole row as the
-    /// toggle — there is nowhere for their name to go.
+    /// toggles. Following and "Other" keep the whole row as the toggle —
+    /// there is nowhere for their name to go.
     private var headerRow: some View {
         HStack(spacing: 0) {
-            if let destination = tableDestination {
-                NavigationLink(value: destination) {
-                    identity
-                        .padding(.leading, Spacing.lg)
-                        .padding(.vertical, Spacing.md)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(SwipeSafeButtonStyle())
-                // Named for what the tap does, not what it says — and it
-                // is the UI tests' hook for this path.
-                .accessibilityLabel("\(section.title) standings")
+            if nameOpensATable {
+                nameLink
                 toggleButton {
                     countAndChevron
                         .padding(.leading, Spacing.sm)
@@ -62,13 +53,46 @@ struct SectionAccordion: View {
         .background(Color.bgHeader)
     }
 
-    /// The page this section's name opens, where it has one. "Other" and
-    /// an id the registry doesn't know deliberately get none — a page
-    /// that can't name itself isn't a destination.
-    private var tableDestination: ConferenceDestination? {
-        guard case .conference(let id) = section.table,
-              Conference.isKnown(id.id, in: id.league) else { return nil }
-        return ConferenceDestination(conference: id, name: section.title)
+    /// Whether this section's name has a page to open. "Other" and an id
+    /// the registry doesn't know deliberately don't — a table that can't
+    /// name itself isn't a destination. The poll always does: `PollScreen`
+    /// needs nothing but a league, and fetches the rest itself.
+    private var nameOpensATable: Bool {
+        switch section.table {
+        case .some(.conference(let id)): return Conference.isKnown(id.id, in: id.league)
+        case .some(.poll): return true
+        case .none: return false
+        }
+    }
+
+    /// The mark + name as the push. Both accessibility labels are named for
+    /// what the tap does rather than what it says — and they are the UI
+    /// tests' hook for this path.
+    @ViewBuilder
+    private var nameLink: some View {
+        switch section.table {
+        case .some(.conference(let id)):
+            NavigationLink(value: ConferenceDestination(conference: id, name: section.title)) {
+                nameLabel
+            }
+            .buttonStyle(SwipeSafeButtonStyle())
+            .accessibilityLabel("\(section.title) standings")
+        case .some(.poll(let league)):
+            NavigationLink(value: PollDestination(league: league)) {
+                nameLabel
+            }
+            .buttonStyle(SwipeSafeButtonStyle())
+            .accessibilityLabel("\(section.title) rankings")
+        case .none:
+            EmptyView()
+        }
+    }
+
+    private var nameLabel: some View {
+        identity
+            .padding(.leading, Spacing.lg)
+            .padding(.vertical, Spacing.md)
+            .contentShape(Rectangle())
     }
 
     /// The mark + name. Every section carries its own — a conference's
