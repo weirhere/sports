@@ -36,6 +36,16 @@ struct GameDetailScreen: View {
     /// doesn't quietly widen the slate under the user.
     @State private var scoringOnly = false
 
+    /// The H2H tab's series, and the game it belongs to — the summary's
+    /// `loadedKey` guard applied to the second fetch on this screen, for
+    /// the same reason. Fetched on the tab's first appearance rather than
+    /// with the page: a series is twenty requests for a tab most visits
+    /// never open.
+    @State private var loadedSeries: HeadToHead?
+    @State private var seriesKey: String?
+    @State private var seriesFailed = false
+    @State private var isLoadingSeries = false
+
     /// The summary, but only if it belongs to the game on screen. Every
     /// card on the page reads through here, so a screen handed a new game
     /// falls back to what the pushed row already knows — the header it has
@@ -56,15 +66,17 @@ struct GameDetailScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison. Summary keeps every card the screen has always had,
     /// minus Drives, which moved into Plays (2026-09-06); Plays sits in
-    /// the middle because chronology comes before rosters.
+    /// the middle because chronology comes before rosters, and H2H comes
+    /// last because the history comes after the game itself.
     private enum Tab: Int, HeroTabItem {
-        case summary, plays, boxScore
+        case summary, plays, boxScore, headToHead
 
         var title: String {
             switch self {
             case .summary: "Summary"
             case .plays: "Plays"
             case .boxScore: "Box score"
+            case .headToHead: "H2H"
             }
         }
     }
@@ -73,11 +85,28 @@ struct GameDetailScreen: View {
     /// feed, and any game ESPN hasn't filled in show Summary alone and
     /// no tab row — exactly as they did before either tab existed.
     private var availableTabs: [Tab] {
-        guard let summary else { return [.summary] }
         var tabs: [Tab] = [.summary]
-        if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
-        if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
+        if let summary {
+            if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
+            if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
+        }
+        // H2H reads the pushed row, not the summary, so it is offered from
+        // the first frame — which is the point: before kickoff it is the
+        // only other tab there is, and "who usually wins this" is the
+        // pre-game question. That does mean a pre-kick page now shows a tab
+        // row where it deliberately showed none (2026-09-05); a row of two
+        // real answers is not the chrome-saying-nothing that rule was
+        // written against.
+        if hasHeadToHead { tabs.append(.headToHead) }
         return tabs
+    }
+
+    /// Whether a series is even askable. Both sides have to be named — an
+    /// id is what the meetings are filtered by — and a team cannot play
+    /// itself.
+    private var hasHeadToHead: Bool {
+        let away = game.away.team.id, home = game.home.team.id
+        return !away.isEmpty && !home.isEmpty && away != home
     }
 
     private var showsTabs: Bool { availableTabs.count > 1 }
@@ -131,19 +160,28 @@ struct GameDetailScreen: View {
                 }
                 .frame(maxWidth: .infinity)
                 .background(Color.bgCard)
-                if let summary {
+                // H2H stands outside the summary gate: it is built from the
+                // pushed row, so it works while the summary is still in
+                // flight and — the case that matters — when the summary
+                // failed outright. A page that can't reach one endpoint
+                // shouldn't hide a tab that doesn't use it.
+                if summary != nil || tab == .headToHead {
                     Group {
                         // A tab whose data went away between polls falls
                         // back rather than rendering an empty pane.
                         let shown: Tab = availableTabs.contains(tab) ? tab : .summary
                         switch shown {
                         case .boxScore:
-                            BoxScoreList(summary: summary)
-                                .padding(Spacing.sm)
+                            if let summary {
+                                BoxScoreList(summary: summary)
+                                    .padding(Spacing.sm)
+                            }
                         case .plays:
-                            playsPane(summary)
+                            if let summary { playsPane(summary) }
+                        case .headToHead:
+                            headToHeadPane
                         case .summary:
-                            summaryCards(summary)
+                            if let summary { summaryCards(summary) }
                         }
                     }
                     // geometryGroup pins every child to the pane while it
@@ -231,6 +269,14 @@ struct GameDetailScreen: View {
         // Keyed by the game, not fire-once: a screen reused for another
         // game must fetch that game rather than sit on what it holds.
         .task(id: game.routeKey) { await load() }
+        // The series is fetched when its tab is first opened, not with the
+        // page — twenty requests is a lot to spend on a tab most visits
+        // never reach. The id carries the game so a screen handed another
+        // matchup while sitting on H2H fetches the new one.
+        .task(id: "\(game.routeKey):\(tab == .headToHead)") {
+            guard tab == .headToHead else { return }
+            await loadSeries()
+        }
         // 30s auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
         // either condition changes, cancelling or restarting the loop — a
@@ -579,6 +625,43 @@ struct GameDetailScreen: View {
         .padding(Spacing.sm)
     }
 
+    /// The H2H tab: the series tally and the meetings behind it.
+    private var headToHeadPane: some View {
+        HeadToHeadPane(away: game.away.team, home: game.home.team,
+                       state: seriesState,
+                       onRetry: { Task { await loadSeries(force: true) } })
+    }
+
+    /// What the pane draws. Keyed by the game like everything else on this
+    /// screen: a reused screen must not show the last matchup's series
+    /// under this one's logos.
+    private var seriesState: HeadToHeadPane.LoadState {
+        guard seriesKey == game.routeKey else { return .loading }
+        if let loadedSeries { return .loaded(loadedSeries) }
+        return seriesFailed ? .failed : .loading
+    }
+
+    /// Walks the series out of the two teams' shared past. Runs on the H2H
+    /// tab's first appearance and never again for that game — it is a
+    /// season-by-season walk, not something to put on a 30s poll.
+    private func loadSeries(force: Bool = false) async {
+        let key = game.routeKey
+        if seriesKey == key, loadedSeries != nil, !force { return }
+        guard !isLoadingSeries else { return }
+        isLoadingSeries = true
+        seriesKey = key
+        seriesFailed = false
+        defer { isLoadingSeries = false }
+        do {
+            let loaded = try await client.headToHead(for: game)
+            guard game.routeKey == key else { return }
+            loadedSeries = loaded
+        } catch {
+            guard game.routeKey == key else { return }
+            seriesFailed = true
+        }
+    }
+
     /// One content card: optional bordered header, then the section's own
     /// rows — the same recipe as the team-page cards.
     private func card(title: String? = nil, subtitle: String? = nil,
@@ -612,6 +695,9 @@ struct GameDetailScreen: View {
             tab = .summary
             scoringOnly = false
             shareCardPNG = nil
+            loadedSeries = nil
+            seriesKey = nil
+            seriesFailed = false
             loadedKey = key
         }
         guard loadedSummary == nil || force else { return }
