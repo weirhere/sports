@@ -84,6 +84,18 @@ describe("day chip labels", () => {
     expect(dayChipLabel(addDays(today, 1), today)).toBe("Tomorrow");
   });
 
+  it("renames today 'Ongoing' under the Live filter", () => {
+    // The day on screen isn't the whole day any more (iOS, 2026-09-12).
+    expect(dayChipLabel(today, today, true)).toBe("Ongoing");
+  });
+
+  it("leaves every other day's name alone under the Live filter", () => {
+    // Nothing is ongoing on a day that isn't this one.
+    expect(dayChipLabel(addDays(today, 1), today, true)).toBe("Tomorrow");
+    expect(dayChipLabel(addDays(today, -1), today, true)).toBe("Yesterday");
+    expect(dayChipLabel(new Date(2026, 8, 27), today, true)).toBe("Sun, Sep 27");
+  });
+
   it("carries the month on every other chip", () => {
     // The strip spans a season that crosses a year boundary, so a bare
     // "Sat 5" stops meaning anything past the fortnight either side.

@@ -22,6 +22,11 @@
   --logo-backing: transparent; /* disc behind conference marks; dark-only */
   --rank-up: #008538;
   --rank-down: #d60014;
+  /* The Live control's own "on" surface + hairline — a wash of the accent,
+     not the inverted ink (2026-09-12, FotMob). Fixed colors rather than an
+     opacity, so the pill lands the same on every ground it sits on. */
+  --live-tint: #e3f5e8;
+  --live-edge: rgb(0 133 56 / 0.28);
   --shadow-card: 0 2px 8px rgb(0 0 0 / 0.06);
 
   /* The scores page's follow rail. One source of truth: the grid that
@@ -43,6 +48,8 @@
   --logo-backing: #ebebeb;
   --rank-up: #33d166;
   --rank-down: #ff453b;
+  --live-tint: #0e2a18;
+  --live-edge: rgb(51 209 102 / 0.38);
   --shadow-card: none; /* dark elevation is luminance, not shadow */
 }
 
@@ -66,6 +73,8 @@
   --color-rank-down: var(--rank-down);
   /* The live accent is GREEN — it shares rank-up (2026-08-29 decision). */
   --color-live: var(--rank-up);
+  --color-live-tint: var(--live-tint);
+  --color-live-edge: var(--live-edge);
 
   /* shadcn compat — the surviving ui/ components consume these. */
   --color-background: var(--bg-recessed);

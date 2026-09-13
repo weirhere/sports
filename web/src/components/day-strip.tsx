@@ -11,7 +11,8 @@
 // Chips carry their month — "Sun, Sep 27" — because the strip spans a season
 // that crosses a year boundary, so a bare "Sat 5" stops meaning anything
 // once you drag past the fortnight either side of today. Yesterday and
-// tomorrow get their names beside today's.
+// tomorrow get their names beside today's, and today answers to "Ongoing"
+// while the Live filter is on (2026-09-12).
 //
 // It renders as a row inside `ScoresControlCard` rather than as fixed chrome
 // of its own (2026-09-10). It was `position: fixed`, inset past the follow
@@ -31,6 +32,8 @@ interface DayStripProps {
   selectedDay: Date;
   onSelect: (day: Date) => void;
   onOpenCalendar: () => void;
+  /** Renames today's chip "Ongoing" — see `dayChipLabel`. */
+  liveOnly?: boolean;
 }
 
 export function DayStrip({
@@ -38,6 +41,7 @@ export function DayStrip({
   selectedDay,
   onSelect,
   onOpenCalendar,
+  liveOnly = false,
 }: DayStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
@@ -105,14 +109,17 @@ export function DayStrip({
                 onClick={() => onSelect(day)}
                 aria-label={dayLongLabel(day)}
                 aria-current={isSelected ? "true" : undefined}
+                // The selected day is ink, not a pill (iOS, 2026-09-12):
+                // weight and darkness carry the selection, so nothing in
+                // the strip is a filled surface.
                 className={cn(
-                  "type-chip shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 transition-colors",
                   isSelected
-                    ? "bg-text-primary text-bg-primary"
-                    : "text-text-secondary hover:text-text-primary"
+                    ? "type-chip-em text-text-primary"
+                    : "type-chip text-text-secondary hover:text-text-primary"
                 )}
               >
-                {dayChipLabel(day)}
+                {dayChipLabel(day, undefined, liveOnly)}
               </button>
             );
           })}

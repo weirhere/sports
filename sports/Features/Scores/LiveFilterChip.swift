@@ -6,7 +6,19 @@ import SwiftUI
 ///
 /// Styled as the leading pill of the header's grouped control (FotMob's
 /// tap-target language, Andy 2026-08-29) — the enclosing capsule belongs
-/// to `ScoresHeader`, so this pill paints only its active fill.
+/// to `ScoresHeader`, so this pill paints only its active surface.
+///
+/// Active, it wears the accent rather than the ink (Andy, 2026-09-12, from
+/// FotMob): a `liveTint` wash under a `liveEdge` hairline, `textPrimary`
+/// staying put on top. The chip is the live affordance, so the live
+/// accent's own exception covers it — one green, one token, and the dot
+/// now sits on a surface it belongs to instead of vanishing into black.
+///
+/// `liveOnly` is the filter as it applies to the day on screen, not the
+/// remembered toggle: a swipe off today suspends it (2026-09-12), so the
+/// pill changes on day changes it carries no transaction for — hence the
+/// animation lives here rather than only at the tap site. It now crosses
+/// the tint and the hairline as well as the dot.
 struct LiveFilterChip: View {
     let liveOnly: Bool
     let onToggle: () -> Void
@@ -14,26 +26,37 @@ struct LiveFilterChip: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 6) {
-                // The red dot is the filter's "on" light — off shows gray,
-                // so the accent only spends when the toggle is live.
+                // The dot is the filter's "on" light — off shows gray, so
+                // the accent only spends when the toggle is live.
                 Circle()
                     .fill(liveOnly ? Color.liveAccent : Color.textSecondary)
-                    .frame(width: 7, height: 7)
+                    .frame(width: 8, height: 8)
                 Text("Live")
                     .font(.chipEmphasis)
                     .lineLimit(1)
                     .fixedSize()
             }
-            .foregroundStyle(liveOnly ? Color.bgPrimary : Color.textPrimary)
+            // The ink never inverts now, so the label holds its weight and
+            // its contrast through the toggle — only the ground moves.
+            .foregroundStyle(Color.textPrimary)
             .padding(.horizontal, Spacing.md + 2)
             .padding(.vertical, 10)
             .background(
-                Capsule().fill(liveOnly ? Color.textPrimary : Color.clear)
+                Capsule()
+                    .fill(liveOnly ? Color.liveTint : Color.clear)
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(
+                                liveOnly ? Color.liveEdge : Color.clear,
+                                lineWidth: 1
+                            )
+                    )
             )
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: liveOnly)
         .accessibilityLabel("Live games only")
         .accessibilityIdentifier("scores-live-chip")
         .accessibilityAddTraits(liveOnly ? .isSelected : [])

@@ -51,20 +51,32 @@ struct ScoresScreen: View {
     /// The pending intent whose day is already being fetched — one attempt
     /// per intent, so a game missing from the day it claims can't spin.
     @State private var pendingDayFetch: String?
+    /// Bumped by the Today jump: the slate goes home with the strip.
+    @State private var slateHomeCount = 0
 
     private enum DragAxis { case horizontal, vertical }
 
     /// Height of the floating Today button plus its breathing room.
     private static let jumpClearance: CGFloat = 44
 
+    /// Zero-height marker at the head of the slate — what the Today jump
+    /// scrolls back to.
+    private static let slateHome = "scores-slate-home"
+
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                ScoresHeader(liveOnly: uiState.liveOnly,
+                // The chip shows whether Live is *narrowing this day*, not
+                // whether it is remembered — off today it is suspended, and
+                // the chip says so (Andy, 2026-09-12). Keyed to the selected
+                // day rather than `shownDay` because the header moves with
+                // the thumb, not with the slate sliding out behind it.
+                ScoresHeader(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
                              onToggleLive: { toggleLive() },
                              onOpenCalendar: { showsCalendar = true })
                 DayStrip(days: scoreboards.days(),
-                         selectedId: DayFormat.id(for: scoreboards.selectedDay)) { day in
+                         selectedId: DayFormat.id(for: scoreboards.selectedDay),
+                         liveOnly: uiState.liveOnly) { day in
                     select(day: day)
                 }
                 Divider().overlay(Color.divider)
@@ -206,18 +218,27 @@ struct ScoresScreen: View {
         scoreboards.sections(day: shownDay,
                              followingIds: following.teamKeys,
                              followedTables: following.orderedTables,
-                             liveOnly: uiState.liveOnly)
+                             liveOnly: uiState.liveOnly(on: shownDay))
     }
 
     /// Turning the Live filter on goes to where live games are — today
     /// (Andy, 2026-08-29, when this was the current week): filtering a
     /// future day to nothing answers the wrong question. Turning it off
     /// stays put.
+    ///
+    /// The chip reads the effective filter, so a tap while it is off is
+    /// always a request to turn it on — including off today, where the
+    /// filter is suspended rather than forgotten (Andy, 2026-09-12). That
+    /// tap may change no state at all: the trip home is the whole action.
     private func toggleLive() {
-        withAnimation { uiState.liveOnly.toggle() }
-        guard uiState.liveOnly, !scoreboards.isOnToday else { return }
-        daySlideAnimation = nil
-        Task { await scoreboards.selectToday() }
+        guard uiState.liveOnly(on: scoreboards.selectedDay) else {
+            withAnimation { uiState.liveOnly = true }
+            guard !scoreboards.isOnToday else { return }
+            daySlideAnimation = nil
+            Task { await scoreboards.selectToday() }
+            return
+        }
+        withAnimation { uiState.liveOnly = false }
     }
 
     /// The way back to today: centred over the slate, just above the tab
@@ -236,11 +257,16 @@ struct ScoresScreen: View {
     /// "Somewhere to go" means off the strip, not just off today (Andy,
     /// 2026-09-07): a day or two out the Today chip is still up there, and
     /// two Todays a thumb apart is one too many.
+    ///
+    /// It wears whatever the strip's chip wears, the Live filter's
+    /// "Ongoing" included — it is the way back to that chip, and the button
+    /// naming a day the chip it lands on doesn't is the same one-word-apart
+    /// problem in reverse.
     private var todayJump: some View {
         Button {
-            select(day: .now)
+            jumpToToday()
         } label: {
-            Text("Today")
+            Text(uiState.liveOnly ? "Ongoing" : "Today")
                 .font(.chip)
                 .fixedSize()
                 .foregroundStyle(Color.bgPrimary)
@@ -255,8 +281,25 @@ struct ScoresScreen: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         .padding(.bottom, Spacing.md)
         .transition(.scale(scale: 0.85).combined(with: .opacity))
-        .accessibilityLabel("Jump to today")
+        .accessibilityLabel(uiState.liveOnly ? "Jump to ongoing games" : "Jump to today")
         .accessibilityIdentifier("scores-today-jump")
+    }
+
+    /// The Today button's own move, which `select(day:)` can't make.
+    ///
+    /// Two things it does that a plain day selection doesn't. It goes
+    /// through `selectToday()`, so a strip bounded to a past season
+    /// re-bounds to this one — selecting today's *date* while the strip
+    /// still spans 2019 leaves a selected day the strip has no chip for,
+    /// which is a screen with no way back. And it takes the slate home
+    /// with it (Andy): a day you left scrolled to the bottom shouldn't
+    /// hand today back the same way.
+    private func jumpToToday() {
+        let today = Calendar.current.startOfDay(for: .now)
+        daySlideEdge = today > scoreboards.selectedDay ? .trailing : .leading
+        daySlideAnimation = .default
+        slateHomeCount += 1
+        Task { await scoreboards.selectToday() }
     }
 
     /// Every user day change funnels through here so chip taps and swipes
@@ -381,51 +424,65 @@ struct ScoresScreen: View {
         if sections.isEmpty {
             emptyState
         } else {
-            ScrollView {
-                LazyVStack(spacing: Spacing.sm) {
-                    // The Following slot's empty state: following nobody
-                    // renders the follow prompt where the section would be.
-                    if !following.followsAnyone, !uiState.followPromptDismissed {
-                        FollowPromptCard()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: Spacing.sm) {
+                        // The Following slot's empty state: following nobody
+                        // renders the follow prompt where the section would be.
+                        if !following.followsAnyone, !uiState.followPromptDismissed {
+                            FollowPromptCard()
+                                .cardSurface()
+                        }
+                        ForEach(sections) { section in
+                            SectionAccordion(
+                                section: section,
+                                isExpanded: uiState.isExpanded(section.id),
+                                onToggle: { withAnimation { uiState.toggle(section.id) } }
+                            )
                             .cardSurface()
-                    }
-                    ForEach(sections) { section in
-                        SectionAccordion(
-                            section: section,
-                            isExpanded: uiState.isExpanded(section.id),
-                            onToggle: { withAnimation { uiState.toggle(section.id) } }
-                        )
-                        .cardSurface()
-                    }
-                }
-                .padding(Spacing.sm)
-                // The jump floats over this scroll view, so the last card
-                // needs room to clear it rather than sitting underneath.
-                .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
-            }
-            .refreshable {
-                await scoreboards.refresh()
-                refreshCount += 1
-            }
-            .sensoryFeedback(.success, trigger: refreshCount)
-            // FotMob's gesture: pinch in collapses every section on screen,
-            // pinch out opens them all. Fires once per pinch at the
-            // threshold crossing; simultaneous so scroll, pull-to-refresh,
-            // and header taps are unaffected.
-            .simultaneousGesture(
-                MagnifyGesture()
-                    .onChanged { value in
-                        guard !pinchHandled else { return }
-                        if value.magnification < 0.8 {
-                            pinchHandled = true
-                            withAnimation { uiState.collapseAll(sections.map(\.id)) }
-                        } else if value.magnification > 1.25 {
-                            pinchHandled = true
-                            withAnimation { uiState.expandAll(sections.map(\.id)) }
                         }
                     }
-                    .onEnded { _ in pinchHandled = false }
-            )
+                    .padding(Spacing.sm)
+                    // The jump floats over this scroll view, so the last card
+                    // needs room to clear it rather than sitting underneath.
+                    .padding(.bottom, scoreboards.showsTodayJump ? Self.jumpClearance : 0)
+                    // Where the Today jump scrolls back to. The stack
+                    // itself, not a marker view above it: a zero-height
+                    // child would still take the stack's spacing and push
+                    // the first card down by it.
+                    .id(Self.slateHome)
+                }
+                .refreshable {
+                    await scoreboards.refresh()
+                    refreshCount += 1
+                }
+                .sensoryFeedback(.success, trigger: refreshCount)
+                // FotMob's gesture: pinch in collapses every section on
+                // screen, pinch out opens them all. Fires once per pinch at
+                // the threshold crossing; simultaneous so scroll,
+                // pull-to-refresh, and header taps are unaffected.
+                .simultaneousGesture(
+                    MagnifyGesture()
+                        .onChanged { value in
+                            guard !pinchHandled else { return }
+                            if value.magnification < 0.8 {
+                                pinchHandled = true
+                                withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                            } else if value.magnification > 1.25 {
+                                pinchHandled = true
+                                withAnimation { uiState.expandAll(sections.map(\.id)) }
+                            }
+                        }
+                        .onEnded { _ in pinchHandled = false }
+                )
+                // The jump's other half. A day change rebuilds this pane, so
+                // the day arriving is at its top by construction — this is
+                // for the slate the jump is *leaving*, which otherwise
+                // slides out from wherever the thumb left it.
+                .onChange(of: slateHomeCount) { _, _ in
+                    proxy.scrollTo(Self.slateHome, anchor: .top)
+                }
+            }
         }
     }
 
@@ -438,7 +495,7 @@ struct ScoresScreen: View {
         let sections = scoreboards.sections(day: target,
                                             followingIds: following.teamKeys,
                                             followedTables: following.orderedTables,
-                                            liveOnly: uiState.liveOnly)
+                                            liveOnly: uiState.liveOnly(on: target))
         Group {
             if sections.isEmpty {
                 VStack(spacing: Spacing.md) {
@@ -503,7 +560,7 @@ struct ScoresScreen: View {
                     }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
-                } else if uiState.liveOnly {
+                } else if uiState.liveOnly(on: shownDay) {
                     // The narrowed-slate empty state: name what's hiding
                     // the games, and offer the whole slate back.
                     Text("No live games right now")
