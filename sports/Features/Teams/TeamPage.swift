@@ -48,6 +48,11 @@ struct TeamPage: View {
     /// appearance of the Trophies tab.
     @State private var trophyHistoryKey: String?
     @State private var trophyHistoryLoading = false
+    /// The built shelf. Nil until the history fetch finishes — a shelf
+    /// that fills in season by season shows a count that changes under the
+    /// reader, which for a number the page presents as a fact is worse
+    /// than a spinner.
+    @State private var shelf: TrophyCase?
     @State private var loadingYears: Set<Int> = []
     @State private var failedYears: Set<Int> = []
     @State private var initialLoading = false
@@ -696,9 +701,15 @@ struct TeamPage: View {
 
     /// Every season's derivation plus the registry's closed history.
     ///
-    /// Reads straight off the schedule cache, so a season the page has
-    /// already fetched for another tab costs nothing here.
-    private var trophyCase: TrophyCase {
+    /// Built **once**, when the history fetch finishes, and held in
+    /// `shelf` — not computed in `body`. This page's body re-evaluates on
+    /// scroll (the inline title tracks scroll geometry), and classifying a
+    /// dozen seasons of games on every frame is the cost the 2026-09-01
+    /// memoization pass took off the Scores pipeline for the same reason.
+    ///
+    /// Reads straight off the schedule cache, so a season the page already
+    /// fetched for another tab costs nothing.
+    private func assembleTrophyCase() -> TrophyCase {
         let derived = availableSeasons
             .compactMap { schedules[$0] }
             .flatMap { TrophyCase.derive(from: $0, league: pageLeague) }
@@ -708,16 +719,6 @@ struct TeamPage: View {
             allTimeKinds: TrophyRegistry.coveredKinds(in: pageLeague),
             derivedFloor: pageLeague.seasonFloor
         )
-    }
-
-    /// Every season either landed or failed. Nothing renders before this
-    /// is true: a shelf that fills in season by season shows a count that
-    /// changes under the reader, which for a number this page presents as
-    /// a fact is worse than a spinner.
-    private var trophyHistoryIsComplete: Bool {
-        availableSeasons.allSatisfy {
-            schedules[$0] != nil || failedYears.contains($0)
-        }
     }
 
     /// The tab is **unconditional**, which is the one place this lands away
@@ -735,22 +736,22 @@ struct TeamPage: View {
     /// `TrophyRegistry` is populated and can answer the question statically.
     private var trophiesContent: some View {
         VStack(spacing: Spacing.sm) {
-            if !trophyHistoryIsComplete {
+            if let shelf {
+                if shelf.isEmpty {
+                    StatusMessage(text: "No titles since \(pageLeague.seasonFloor)")
+                        .cardSurface()
+                } else {
+                    TeamTrophiesCard(trophyCase: shelf)
+                        .cardSurface()
+                }
+            } else if trophyHistoryFailedWholesale {
+                StatusMessage(text: "Couldn't load the trophy case.",
+                              retry: { Task { await loadTrophyHistory(force: true) } })
+                    .cardSurface()
+            } else {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xl)
-            } else if trophyCase.isEmpty {
-                if trophyHistoryFailedWholesale {
-                    StatusMessage(text: "Couldn't load the trophy case.",
-                                  retry: { Task { await loadTrophyHistory(force: true) } })
-                        .cardSurface()
-                } else {
-                    StatusMessage(text: "No titles since \(pageLeague.seasonFloor)")
-                        .cardSurface()
-                }
-            } else {
-                TeamTrophiesCard(trophyCase: trophyCase)
-                    .cardSurface()
             }
         }
         .padding(.horizontal, Spacing.sm)
@@ -962,16 +963,22 @@ struct TeamPage: View {
         // year alone, so it cannot tell two teams apart on its own.
         if trophyHistoryKey != key {
             trophyHistoryKey = nil
+            shelf = nil
         }
         guard force || trophyHistoryKey != key, !trophyHistoryLoading else { return }
         trophyHistoryLoading = true
         defer { trophyHistoryLoading = false }
+        if force { shelf = nil }
         for year in availableSeasons where schedules[year] == nil {
             if force { failedYears.remove(year) }
             await load(year: year)
             // The page may have been handed another team mid-flight.
             guard team.followKey == key else { return }
         }
+        // A shelf assembled from nothing is an empty shelf, which is a
+        // different claim from "we couldn't ask" — so a wholesale failure
+        // leaves it nil for the Retry state to pick up.
+        shelf = trophyHistoryFailedWholesale ? nil : assembleTrophyCase()
         trophyHistoryKey = key
     }
 
