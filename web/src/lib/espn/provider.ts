@@ -16,14 +16,27 @@ import type {
   TeamScheduleData,
 } from "@/lib/types";
 import {
+  SEASON_FLOOR,
   canTableAWholeSeason,
   hasCollegeDivisions,
   hasPoll,
+  headToHeadSeasons,
   seasonSpan,
   seasonYear as leagueSeasonYear,
   seasonYearFromEspn,
+  seasonYears,
   type League,
 } from "@/lib/leagues";
+import { makeHeadToHead, type HeadToHead } from "@/lib/head-to-head";
+import {
+  assembleTrophyCase,
+  deriveTrophies,
+  type TrophyCase,
+} from "@/lib/trophies";
+import {
+  registryCoveredKinds,
+  registryTrophies,
+} from "@/lib/trophy-registry";
 import type {
   EspnScoreboardResponse,
   EspnCoreCollection,
@@ -437,18 +450,27 @@ export async function teamRoster(
 async function fetchSchedule(
   league: League,
   teamId: string,
-  year: number
+  year: number,
+  options?: { preseason?: boolean }
 ): Promise<TeamScheduleData> {
   // Three season types in parallel. The preseason request is what surfaces
   // the Hall of Fame Game and August exhibitions — the client only ever
   // asked for 2 and 3, so a fan checking in mid-August had nothing to look
   // at. Both the preseason and postseason 404 for teams that don't have
   // one, which is tolerated rather than fatal.
+  //
+  // A caller that has no use for the exhibitions skips that request rather
+  // than filtering it out afterwards: the difference is a round trip, not a
+  // predicate, and a series ten seasons deep is where that saving is worth
+  // having.
+  const wantsPreseason = options?.preseason ?? true;
   const [preseason, regular, postseason] = await Promise.all([
-    fetchJson<EspnScheduleResponse>(
-      teamScheduleUrl(league, teamId, { year, seasonType: 1 }),
-      REVALIDATE.schedule
-    ).catch(() => undefined),
+    wantsPreseason
+      ? fetchJson<EspnScheduleResponse>(
+          teamScheduleUrl(league, teamId, { year, seasonType: 1 }),
+          REVALIDATE.schedule
+        ).catch(() => undefined)
+      : undefined,
     fetchJson<EspnScheduleResponse>(
       teamScheduleUrl(league, teamId, { year, seasonType: 2 }),
       REVALIDATE.schedule
@@ -461,6 +483,145 @@ async function fetchSchedule(
   return transformTeamSchedule(regular, league, {
     preseason: preseason?.events,
     postseason: postseason?.events,
+  });
+}
+
+/**
+ * One team's season, minus the exhibitions — the unit a head-to-head series
+ * and a trophy case are both assembled from.
+ *
+ * Its own function rather than a filter over `teamSchedule` because the
+ * difference is a request: ESPN files each phase separately, and skipping the
+ * preseason one takes college football's ten-season series from 30 requests
+ * to 20.
+ */
+export async function teamSeasonGames(
+  league: League,
+  teamId: string,
+  year: number
+): Promise<TeamScheduleData> {
+  return fetchSchedule(league, teamId, year, { preseason: false });
+}
+
+/**
+ * How many season requests are in flight at once.
+ *
+ * Bounded rather than fired off together: ten seasons is twenty requests, and
+ * twenty at once is not what "be a polite guest" means even for a one-shot.
+ * This just makes the throttle ours and deliberate, at a width that still
+ * hides the round-trip latency.
+ */
+const SEASON_POOL_WIDTH = 3;
+
+/**
+ * Walk a span of seasons a few at a time, dropping the ones that fail.
+ *
+ * A season that fails is dropped rather than failing the walk; a walk where
+ * *every* season failed throws, because an empty answer and a broken one look
+ * identical on screen and only one of them should say "no meetings".
+ */
+async function walkSeasons<T>(
+  years: number[],
+  task: (year: number) => Promise<T>
+): Promise<T[]> {
+  const collected: T[] = [];
+  let succeeded = false;
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const index = next;
+      next += 1;
+      if (index >= years.length) return;
+      try {
+        collected.push(await task(years[index]));
+        succeeded = true;
+      } catch {
+        // Dropped: one dead season is not a dead series.
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(SEASON_POOL_WIDTH, years.length) }, worker)
+  );
+  if (years.length > 0 && !succeeded) {
+    throw new EspnDataError("No seasons could be fetched");
+  }
+  return collected;
+}
+
+/**
+ * The completed meetings between the two sides of `game`, newest first, with
+ * the tally they add up to.
+ *
+ * ESPN publishes no head-to-head resource. The site summary's `seasonseries`
+ * is the closest thing and it is not close: it carries *this season's*
+ * meetings only, and college football's summary ships none at all. So a series
+ * worth a tab is walked out of one team's schedules, one season at a time.
+ *
+ * Anchored on the game's own season and looking back `headToHeadSeasons` of
+ * them — so a 2019 page shows the series as it stood in 2019 rather than
+ * everything that has happened since.
+ *
+ * Only one team's schedules are fetched: a meeting is in both sides'
+ * schedules, so asking twice would double the bill to learn nothing. The home
+ * side is the one asked, arbitrarily — a neutral-site game has no home in any
+ * meaningful sense and both are equally covered.
+ */
+export async function headToHead(
+  league: League,
+  game: Game
+): Promise<HeadToHead> {
+  const kickoff = Date.parse(game.scheduledAt);
+  const anchorSeason = leagueSeasonYear(
+    league,
+    Number.isNaN(kickoff) ? new Date() : new Date(kickoff)
+  );
+  const earliest = anchorSeason - headToHeadSeasons(league) + 1;
+  const years: number[] = [];
+  for (let year = earliest; year <= anchorSeason; year += 1) years.push(year);
+
+  const seasons = await walkSeasons(years, (year) =>
+    teamSeasonGames(league, game.homeTeam.team.id, year)
+  );
+  return makeHeadToHead(
+    seasons.flatMap((season) => season.games),
+    game,
+    earliest
+  );
+}
+
+/**
+ * A team's whole shelf: every season back to the floor, derived, plus the
+ * registry's closed history.
+ *
+ * Every season at once is what a trophy case *is*, which is also why the tab
+ * shows no season chip — scoping it to one would turn it into a worse copy of
+ * that season's Games tab. Twelve seasons is the bill; it is paid on an
+ * explicit tab open, and Next's fetch cache holds each season's two requests
+ * for an hour across every visitor.
+ */
+export async function teamTrophyCase(
+  league: League,
+  teamId: string
+): Promise<TrophyCase> {
+  const years = seasonYears(league);
+  const derived = await walkSeasons(years, async (year) => {
+    const schedule = await teamSeasonGames(league, teamId, year);
+    return deriveTrophies(schedule.games, {
+      teamId,
+      // The payload's own year wins where it has one — a season ESPN
+      // renumbers must not file its title under the year we asked for.
+      year: schedule.year ?? year,
+      league,
+    });
+  });
+  return assembleTrophyCase({
+    derived: derived.flat(),
+    registry: registryTrophies(teamId, league),
+    allTimeKinds: registryCoveredKinds(league),
+    derivedFloor: SEASON_FLOOR,
   });
 }
 

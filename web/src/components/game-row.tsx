@@ -27,6 +27,13 @@ interface GameRowProps {
    * spoken sentence still carries the full date.
    */
   timeOnly?: boolean;
+  /**
+   * True in a list that spans seasons — the previous meetings on a game's H2H
+   * tab. A final row then dates itself by year rather than by weekday: five
+   * seasons back, which day of the week it was is worth nothing and the fixed
+   * status column has no room for both.
+   */
+  showsYear?: boolean;
 }
 
 type RowPhase = "pre" | "live" | "final" | "other";
@@ -65,13 +72,17 @@ function liveLine(game: Game): string {
   );
 }
 
-export function GameRow({ game, timeOnly = false }: GameRowProps) {
+export function GameRow({
+  game,
+  timeOnly = false,
+  showsYear = false,
+}: GameRowProps) {
   const phase = phaseOf(game.status);
 
   return (
     <Link
       href={gamePath(game)}
-      aria-label={accessibilitySummary(game)}
+      aria-label={accessibilitySummary(game, { showsYear })}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-header"
     >
       <div aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-1">
@@ -80,7 +91,12 @@ export function GameRow({ game, timeOnly = false }: GameRowProps) {
       </div>
       <div aria-hidden="true" className="h-11 w-px shrink-0 bg-divider" />
       <div aria-hidden="true" className="w-20 shrink-0">
-        <StatusColumn game={game} phase={phase} timeOnly={timeOnly} />
+        <StatusColumn
+          game={game}
+          phase={phase}
+          timeOnly={timeOnly}
+          showsYear={showsYear}
+        />
       </div>
     </Link>
   );
@@ -170,10 +186,12 @@ function StatusColumn({
   game,
   phase,
   timeOnly,
+  showsYear,
 }: {
   game: Game;
   phase: RowPhase;
   timeOnly: boolean;
+  showsYear: boolean;
 }) {
   const network = game.broadcast;
   const date = kickoffDate(game);
@@ -236,11 +254,12 @@ function StatusColumn({
           </span>
           {date !== undefined && !timeOnly && (
             <span className="type-row-meta truncate text-text-secondary">
-              {date.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "numeric",
-                day: "numeric",
-              })}
+              {date.toLocaleDateString(
+                "en-US",
+                showsYear
+                  ? { year: "numeric", month: "numeric", day: "numeric" }
+                  : { weekday: "short", month: "numeric", day: "numeric" }
+              )}
             </span>
           )}
         </div>
@@ -292,7 +311,10 @@ function scoreSummary(game: Game): string {
   return `${score(game.awayTeam)}, ${score(game.homeTeam)}`;
 }
 
-export function accessibilitySummary(game: Game): string {
+export function accessibilitySummary(
+  game: Game,
+  options: { showsYear?: boolean } = {}
+): string {
   const phase = phaseOf(game.status);
   const date = kickoffDate(game);
 
@@ -335,7 +357,22 @@ export function accessibilitySummary(game: Game): string {
     }
     case "final": {
       const overtime = /ot/i.test(game.statusDetail ?? "");
-      return `${scoreSummary(game)}, ${overtime ? "final, overtime" : "final"}`;
+      const parts = [
+        scoreSummary(game),
+        overtime ? "final, overtime" : "final",
+      ];
+      // A row normally leaves the date to the slate around it. In a list
+      // spanning seasons nothing says which one, so the row says it itself.
+      if (options.showsYear && date !== undefined) {
+        parts.push(
+          date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        );
+      }
+      return parts.join(", ");
     }
     case "other":
       return `${sideName(game.awayTeam)} at ${sideName(game.homeTeam)}, ${

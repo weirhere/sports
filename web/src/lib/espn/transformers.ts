@@ -968,6 +968,10 @@ export function transformScheduleEvent(
     seasonType: context.seasonType,
     livePhase,
     statusDetail: status?.type?.shortDetail ?? status?.type?.detail,
+    // The same field the scoreboard shape reads, on the shape a team page
+    // actually fetches. A title game is one completed game with its name
+    // printed on it, so this is the whole source of the Trophies tab.
+    headline: comp.notes?.[0]?.headline,
   };
 }
 

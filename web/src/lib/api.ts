@@ -1,4 +1,6 @@
 import type { GameDetail, Scoreboard } from "./types";
+import type { HeadToHead } from "./head-to-head";
+import type { TrophyCase } from "./trophies";
 import type { League } from "./leagues";
 import { dayId } from "./day";
 
@@ -61,4 +63,30 @@ export async function getGameDetail(
   gameId: string
 ): Promise<GameDetail> {
   return fetchJson(`${BASE}/game/${gameId}?league=${league}`);
+}
+
+/**
+ * One matchup's series — the previous meetings and the tally they add up to.
+ *
+ * Its own request, not part of the page's, because it is a season-by-season
+ * walk: ESPN has no head-to-head resource, so the bill is two requests per
+ * season and it is only worth paying when the tab is actually opened.
+ */
+export async function getHeadToHead(
+  league: League,
+  gameId: string
+): Promise<HeadToHead> {
+  return fetchJson(`${BASE}/game/${gameId}/head-to-head?league=${league}`);
+}
+
+/**
+ * One team's trophy case — every season back to the floor, derived from the
+ * games it played. Requested on the tab's first open for the series' reason,
+ * doubled: a dozen seasons is a dozen pairs of requests.
+ */
+export async function getTeamTrophies(
+  league: League,
+  teamId: string
+): Promise<TrophyCase> {
+  return fetchJson(`${BASE}/team/${teamId}/trophies?league=${league}`);
 }

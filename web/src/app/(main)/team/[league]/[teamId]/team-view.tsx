@@ -9,7 +9,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { conferenceName, divisionForTeamId } from "@/lib/conferences";
-import { seasonYear, seasonYears, type League } from "@/lib/leagues";
+import {
+  SEASON_FLOOR,
+  seasonYear,
+  seasonYears,
+  type League,
+} from "@/lib/leagues";
 import { gameState } from "@/lib/game-state";
 import type {
   ConferenceStandingsGroup,
@@ -31,6 +36,13 @@ import {
 } from "@/components/team-record-card";
 import { bySeasonPhase, seasonPhaseTitle } from "@/lib/season-phase";
 import { RosterList } from "@/components/roster-list";
+import {
+  TeamTrophiesCard,
+  TeamTrophiesCardSkeleton,
+} from "@/components/team-trophies-card";
+import { trophyCaseIsEmpty } from "@/lib/trophies";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getTeamTrophies } from "@/lib/api";
 import { StandingsList } from "@/components/standings-list";
 import { StandingsScopeChip } from "@/components/standings-scope-chip";
 import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
@@ -41,13 +53,24 @@ import {
 } from "@/lib/standings-scope";
 
 // Ordered — the ordinal is the tab walk (Overview → Games → Standings →
-// Roster). Standings is conference-gated, so the row is assembled rather
-// than sliced.
+// Roster → Trophies). Standings is conference-gated, so the row is assembled
+// rather than sliced.
+//
+// Trophies is **unconditional**, which is the one place this lands away from
+// "a tab only when they've won things". The condition can't be answered for
+// free: every other per-availability tab gates on something already in hand —
+// Roster on a fetch the page makes anyway, Box score on a summary it already
+// has — where "has this team ever won anything" is only knowable from a dozen
+// season requests. Gating on those would mean a tab that materialises several
+// seconds after the page opened, which reads as a bug; gating on the current
+// season alone would hide the tab on a team that won its conference last
+// December. So the row is stable and the empty state does the talking.
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
   { id: "games", label: "Games" },
   { id: "standings", label: "Standings" },
   { id: "roster", label: "Roster" },
+  { id: "trophies", label: "Trophies" },
 ];
 
 interface TeamViewProps {
@@ -105,6 +128,21 @@ export function TeamView({
     ? TABS
     : TABS.filter((entry) => entry.id !== "standings");
   const activeTab = tab === "standings" && !showsStandingsTab ? "overview" : tab;
+
+  // A trophy case is every season at once, so it is fetched on the tab's first
+  // open rather than with the page — a dozen seasons is a dozen pairs of
+  // requests, and most visits never reach the tab. Latched on the tap that
+  // opens it, and keyed by the team so a shelf can never be shown under
+  // another team's crest.
+  const [trophiesRequested, setTrophiesRequested] = useState(false);
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "trophies") setTrophiesRequested(true);
+  };
+  const trophies = useOnDemand(
+    trophiesRequested ? `${league}:${teamId}` : undefined,
+    () => getTeamTrophies(league, teamId)
+  );
 
   const school =
     schedule.team?.school ??
@@ -231,8 +269,13 @@ export function TeamView({
                 the second, for a harder reason — ESPN's roster endpoint has
                 no season axis, so a past year can't be asked for at all. A
                 chip there wouldn't do nothing; it would show this year's
-                roster under last decade's label. */}
-            {activeTab !== "overview" && activeTab !== "roster" && (
+                roster under last decade's label. Trophies is the third and
+                the most obvious: a trophy case is every season at once, and
+                scoping it to one would turn the tab into a worse copy of
+                that season's Games tab. */}
+            {activeTab !== "overview" &&
+              activeTab !== "roster" &&
+              activeTab !== "trophies" && (
               <SeasonMenuChip
                 value={displayYear}
                 years={seasonYears(league)}
@@ -246,7 +289,7 @@ export function TeamView({
           <HeroTabBar
             tabs={visibleTabs}
             selected={activeTab}
-            onSelect={setTab}
+            onSelect={selectTab}
           />
         }
         controls={
@@ -336,6 +379,28 @@ export function TeamView({
             </section>
           ) : (
             <RosterList roster={roster} league={league} />
+          ))}
+
+        {activeTab === "trophies" &&
+          // What this team has won, derived from the games it played — a
+          // title is one completed game with its name printed on it. The
+          // shelf is built only once every season has landed: a case that
+          // fills in season by season shows a count that changes under the
+          // reader, which for a number the page presents as a fact is worse
+          // than a spinner.
+          (trophies.state.status === "failed" ? (
+            retryRow("Couldn't load the trophy case.")
+          ) : trophies.state.status === "loading" ? (
+            <TeamTrophiesCardSkeleton />
+          ) : trophyCaseIsEmpty(trophies.state.value) ? (
+            // Told apart from a failed fetch above: a team that has won
+            // nothing and a network that answered nothing look identical on
+            // this tab, and only one of them is worth a Retry button.
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No titles since {SEASON_FLOOR}
+            </section>
+          ) : (
+            <TeamTrophiesCard trophyCase={trophies.state.value} />
           ))}
 
         {activeTab === "standings" &&
