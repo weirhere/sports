@@ -28,13 +28,20 @@ export function SectionAccordion({
   onToggle,
 }: SectionAccordionProps) {
   const reducedMotion = useReducedMotion();
-  // A conference header splits into two surfaces (iOS 2026-08-25, restored
-  // 2026-09-06 once a header had somewhere to go): the mark + name push the
-  // conference page, the rest toggles.
-  const conferenceHref =
+  // A header that names a real table splits into two surfaces (iOS
+  // 2026-08-25, restored 2026-09-06 once a header had somewhere to go): the
+  // mark + name push that table's page, the rest toggles. The poll is a
+  // table too — its name opens the Top 25 page, the same page the Leagues
+  // hub's row does. Following and "Other" keep the whole row: there is
+  // nowhere for their name to go.
+  const nameHref =
     section.conference !== undefined
       ? conferencePath(section.conference)
-      : undefined;
+      : section.table?.kind === "poll"
+        ? "/rankings/poll"
+        : undefined;
+  // Named for what the tap does, not what it says.
+  const nameAction = section.table?.kind === "poll" ? "rankings" : "standings";
 
   const glyph =
     section.kind === "following" ? (
@@ -103,13 +110,13 @@ export function SectionAccordion({
     section.games.length === 1 ? "game" : "games"
   }`;
 
-  // The mark + name push the conference page; the count + chevron (a
-  // generous target) toggles. Every other header toggles whole-width.
-  const headerRow = conferenceHref ? (
+  // The mark + name push the table's page; the count + chevron (a generous
+  // target) toggles. Every other header toggles whole-width.
+  const headerRow = nameHref ? (
     <div className="flex w-full items-stretch bg-bg-header">
       <Link
-        href={conferenceHref}
-        aria-label={`${section.title}${spokenLeague} standings`}
+        href={nameHref}
+        aria-label={`${section.title}${spokenLeague} ${nameAction}`}
         className="flex min-w-0 items-center py-2.5 pl-4 transition-colors hover:bg-bg-elevated/60"
       >
         {identity}

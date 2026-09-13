@@ -141,6 +141,13 @@ struct ScoresScreen: View {
                 ConferencePage(destination: destination)
                     .id(destination)
             }
+            // The Top 25 section header's push. Unlike the tables hub,
+            // Scores holds no polls — the page fetches the season in
+            // progress itself, so the value is just the league.
+            .navigationDestination(for: PollDestination.self) { destination in
+                PollScreen(league: destination.league)
+                    .id(destination)
+            }
             // Identity follows the team (2026-09-10). Search and the
             // widget route by *replacing* the value at this path position
             // rather than pushing a second page, and a destination whose
