@@ -1212,6 +1212,7 @@ nonisolated enum ESPNMapper {
             shortName: event.shortName,
             weekNumber: event.week?.number,
             seasonType: event.seasonType?.type,
+            headline: competition.notes?.first?.headline,
             status: status(from: competition.status, situation: nil),
             home: home,
             away: away,
