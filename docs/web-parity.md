@@ -7,7 +7,7 @@ consequence, with a status. A row is only "done" when the behavior is on
 statside.co, not when it's understood.
 
 **How to use it.** Every iOS PR that changes user-visible behavior adds a row
-here — `pending` — at the same time it adds its row to CLAUDE.md's decisions log.
+here — `pending` — at the same time it adds its row to `docs/decisions.md`.
 That is the whole rule. The catch-up waves below burn the pending rows down.
 
 **Enforced.** `scripts/check-parity-ledger.sh` runs as the first step of the Web
@@ -190,7 +190,7 @@ The standings transformer read **one depth** of ESPN's group tree. That was
 fine for the shipped response and wrong for two shapes it now has to handle:
 a `level=3` request nests divisions under conferences, and college
 football's *divisional era* did the same on the plain response — which is
-why iOS still shows "Standings TBA" on a 2019 AAC page (`CLAUDE.md`,
+why iOS still shows "Standings TBA" on a 2019 AAC page (`docs/decisions.md`,
 2026-08-31, logged there as a known edge). The web now walks the whole tree,
 takes parentage from the registry first and the payload's nesting second,
 and drops a group that is purely a container so an empty "AFC" can't appear
@@ -205,7 +205,7 @@ stands — who is in a division is true all summer — so the fix keeps the
 teams and drops the records.
 
 > **A gap in this ledger, found by using it.** That last rule exists in the
-> iOS app (`ESPNMapper.seasonHasStarted`) but has **no row in CLAUDE.md's
+> iOS app (`ESPNMapper.seasonHasStarted`) but has **no row in the
 > decisions log**, so the audit that built this file never saw it. The
 > ledger is only ever as complete as the log it mirrors, and the CI check
 > can only enforce that the log and the ledger grow together — not that a
@@ -254,7 +254,7 @@ marked shipped in the W4a table above; two things W4b turned up are worth
 their own paragraphs, because neither has a decision row on iOS.
 
 **iOS ships a rolling-window Games tab for the NBA and NHL; its decision row
-says it ships none.** CLAUDE.md's 2026-09-08 row reads "NBA and NHL conference
+says it ships none.** The decisions log's 2026-09-08 row reads "NBA and NHL conference
 and league pages show Standings alone", and `ConferencePage.swift` has said
 otherwise since the leagues merged: `availableTabs` returns `[.standings,
 .games]` for a league that can't table a whole season, and `rollingGames()`
@@ -358,7 +358,7 @@ shipped response **and** the divisional one, so a conference ESPN actually
 ranks keeps its own order; and where no real table came back, the page shows
 **one card per division** rather than a merge. That second path is what gives
 a 2019 conference page real standings at all — iOS still shows "Standings
-TBA" there (`CLAUDE.md`, 2026-08-31, logged as a known edge).
+TBA" there (`docs/decisions.md`, 2026-08-31, logged as a known edge).
 
 **The NBA lost its W-L column on any divisional page.** ESPN ships no `total`
 stat at `level=3`, only `wins` and `losses` — and the NHL's `total` is a

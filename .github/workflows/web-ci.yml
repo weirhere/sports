@@ -29,7 +29,7 @@ jobs:
           # history either side of it, not just the tip.
           fetch-depth: 0
       # First, and outside `web/`: the coupling between the iOS app and this
-      # one. A PR that adds a decision row to CLAUDE.md must add a row to
+      # one. A PR that adds a decision row to docs/decisions.md must add a row to
       # docs/web-parity.md saying where the web stands on it. It rides this
       # job rather than standing as its own check so it blocks a merge with
       # no branch-protection change — the failure message says which it was.

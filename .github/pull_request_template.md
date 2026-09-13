@@ -9,7 +9,7 @@
 2026-09-01 port had nothing holding it and decayed to 1.x in eight days —
 89 iOS decision rows, one of which reached the web.
 
-So: **if this PR adds a row to `CLAUDE.md`'s decisions log, it adds one to
+So: **if this PR adds a row to `docs/decisions.md`, it adds one to
 `docs/web-parity.md` too.** One of these is true —
 
 - [ ] No new decision rows — nothing to mirror.
