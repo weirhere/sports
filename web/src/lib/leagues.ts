@@ -370,6 +370,34 @@ export function canTableAWholeSeason(league: League): boolean {
 }
 
 /**
+ * How many seasons back a head-to-head series is assembled from.
+ *
+ * The window is really sized in *meetings* — ten is the list length that
+ * answers "who usually wins this" without becoming a scroll — and expressed
+ * in seasons, because seasons are what can be fetched. So the number follows
+ * how often two teams meet: football's leagues play each other once or twice
+ * a year, basketball's and hockey's two to four times.
+ *
+ * It is also the request bill. ESPN publishes no head-to-head resource, so a
+ * series costs two requests per season (the regular season and the
+ * postseason, which is where the rivalry games worth remembering are) — 20
+ * for college football, 12 for the NFL, 6 for the others. Paid once, on an
+ * explicit tap, and never polled; this constant is the dial if that is ever
+ * too much.
+ */
+export function headToHeadSeasons(league: League): number {
+  switch (league) {
+    case "cfb":
+      return 10; // one meeting a year, so ten of them
+    case "nfl":
+      return 6; // twice a year inside a division
+    case "nba":
+    case "nhl":
+      return 3; // two to four times a year
+  }
+}
+
+/**
  * How many days either side of today a Games tab reaches for a league whose
  * whole season it cannot fetch: a week back and three weeks forward, in one
  * request of about a megabyte.

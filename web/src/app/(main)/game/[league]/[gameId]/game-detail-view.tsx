@@ -5,12 +5,18 @@
 // leaders. Live games poll every 30s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
-// **Summary / Plays / Box score**, and a tab only exists where its data does:
-// a pre-kick game, or one ESPN hasn't filled in, shows Summary alone and no
-// tab row at all — pixel-identical to what it showed before either tab
-// existed. Plays sits in the middle because chronology comes before rosters,
-// and the Drives card lives inside it: leaving it on Summary would print the
-// same rows in two tabs.
+// **Summary / Plays / Box score / H2H**, and a tab only exists where its data
+// does: a game ESPN hasn't filled in shows Summary and the series alone. Plays
+// sits in the middle because chronology comes before rosters, and the Drives
+// card lives inside it: leaving it on Summary would print the same rows in two
+// tabs.
+//
+// H2H reads the pushed row rather than the summary, so it is offered from the
+// first frame — which is the point: before kickoff it is the only other tab
+// there is, and "who usually wins this" is the pre-game question. That does
+// mean a pre-kick page now shows a tab row where it deliberately showed none;
+// a row of two real answers is not the chrome-saying-nothing that rule was
+// written against.
 //
 // Desktop splits that into two columns: the game itself on the left, and
 // the context that surrounds it — where it's played, who showed up, what
@@ -22,6 +28,8 @@
 import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getHeadToHead } from "@/lib/api";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
@@ -47,6 +55,7 @@ import {
 } from "./matchup-standings-card";
 import { BoxScoreList } from "./box-score-list";
 import { DrivePlayList, PeriodPlayList } from "./play-lists";
+import { HeadToHeadPane } from "./head-to-head-pane";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
@@ -79,14 +88,34 @@ export function GameDetailView({
   // Football's plays live inside its drives; every other league's arrive
   // flat. Which list the Plays tab renders follows from that.
   const hasPlays = drives.length > 0 || plays.length > 0;
+  // Whether a series is even askable. Both sides have to be named — an id is
+  // what the meetings are filtered by — and a team cannot play itself.
+  const awayId = game.awayTeam.team.id;
+  const homeId = game.homeTeam.team.id;
+  const hasHeadToHead = awayId !== "" && homeId !== "" && awayId !== homeId;
   const tabs: HeroTab[] = [
     { id: "summary", label: "Summary" },
     ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
     ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
+    ...(hasHeadToHead ? [{ id: "h2h", label: "H2H" }] : []),
   ];
   // A tab whose data went away between polls falls back rather than
   // rendering an empty pane.
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "summary";
+
+  // The series is fetched when its tab is first opened, not with the page —
+  // twenty requests is a lot to spend on a tab most visits never reach.
+  // Latched on the tap that opens it rather than watched for afterwards: once
+  // asked for it stays asked for, so flipping back costs nothing.
+  const [seriesRequested, setSeriesRequested] = useState(false);
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "h2h") setSeriesRequested(true);
+  };
+  const series = useOnDemand(
+    seriesRequested ? `${game.league}:${game.id}` : undefined,
+    () => getHeadToHead(game.league, game.id)
+  );
   const hasScoringPlays =
     drives.length > 0
       ? drives.some((drive) => (drive.plays ?? []).some((p) => p.isScoringPlay))
@@ -126,7 +155,7 @@ export function GameDetailView({
         <GameHeader game={game} />
         {showsTabs && (
           <div className="-mt-2 rounded-b-[10px] bg-bg-card px-4">
-            <HeroTabBar tabs={tabs} selected={activeTab} onSelect={setTab} />
+            <HeroTabBar tabs={tabs} selected={activeTab} onSelect={selectTab} />
           </div>
         )}
       </div>
@@ -235,6 +264,15 @@ export function GameDetailView({
 
       {activeTab === "boxScore" && (
         <BoxScoreList boxScore={boxScore} game={game} />
+      )}
+
+      {activeTab === "h2h" && (
+        <HeadToHeadPane
+          away={game.awayTeam.team}
+          home={game.homeTeam.team}
+          state={series.state}
+          onRetry={series.reload}
+        />
       )}
     </div>
   );

@@ -1,0 +1,621 @@
+{
+ "season": {
+  "year": 2026,
+  "type": 1,
+  "name": "Preseason",
+  "displayName": "2026",
+  "half": 1
+ },
+ "requestedSeason": {
+  "year": 2025,
+  "type": 2,
+  "name": "Regular Season",
+  "displayName": "2025"
+ },
+ "team": {
+  "id": "61",
+  "location": "Georgia",
+  "name": "Bulldogs",
+  "abbreviation": "UGA",
+  "displayName": "Georgia Bulldogs",
+  "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/61.png",
+  "color": "ba0c2f",
+  "recordSummary": "0-0",
+  "standingSummary": "1st in SEC",
+  "groups": {
+   "id": "8",
+   "parent": {
+    "id": "80"
+   },
+   "isConference": true
+  }
+ },
+ "events": [
+  {
+   "id": "401752669",
+   "date": "2025-08-30T19:30Z",
+   "name": "Marshall Thundering Herd at Georgia Bulldogs",
+   "shortName": "MRSH @ UGA",
+   "week": {
+    "number": 1,
+    "text": "Week 1"
+   },
+   "timeValid": true,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   },
+   "competitions": [
+    {
+     "date": "2025-08-30T19:30Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "venue": {
+      "fullName": "Sanford Stadium",
+      "address": {
+       "city": "Athens",
+       "state": "GA",
+       "zipCode": "30602",
+       "country": "USA"
+      }
+     },
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "broadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN"
+       },
+       "lang": "en",
+       "region": "us",
+       "partnered": false
+      }
+     ],
+     "competitors": [
+      {
+       "homeAway": "home",
+       "winner": true,
+       "score": {
+        "value": 45.0,
+        "displayValue": "45"
+       },
+       "curatedRank": {
+        "current": 5
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "1-0"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "0-0"
+        }
+       ],
+       "team": {
+        "id": "61",
+        "location": "Georgia",
+        "abbreviation": "UGA",
+        "displayName": "Georgia Bulldogs"
+       }
+      },
+      {
+       "homeAway": "away",
+       "winner": false,
+       "score": {
+        "value": 7.0,
+        "displayValue": "7"
+       },
+       "curatedRank": {
+        "current": 99
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "0-1"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "0-0"
+        }
+       ],
+       "team": {
+        "id": "276",
+        "location": "Marshall",
+        "abbreviation": "MRSH",
+        "displayName": "Marshall Thundering Herd"
+       }
+      }
+     ],
+     "attendance": 93033,
+     "notes": []
+    }
+   ]
+  },
+  {
+   "id": "401752685",
+   "date": "2025-09-06T18:28Z",
+   "name": "Austin Peay Governors at Georgia Bulldogs",
+   "shortName": "APSU @ UGA",
+   "week": {
+    "number": 2,
+    "text": "Week 2"
+   },
+   "timeValid": true,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   },
+   "competitions": [
+    {
+     "date": "2025-09-06T18:28Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "venue": {
+      "fullName": "Sanford Stadium",
+      "address": {
+       "city": "Athens",
+       "state": "GA",
+       "zipCode": "30602",
+       "country": "USA"
+      }
+     },
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "broadcasts": [
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+"
+       },
+       "lang": "en",
+       "region": "us",
+       "partnered": false
+      },
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "SECN+"
+       },
+       "lang": "en",
+       "region": "us",
+       "partnered": false
+      }
+     ],
+     "competitors": [
+      {
+       "homeAway": "home",
+       "winner": true,
+       "score": {
+        "value": 28.0,
+        "displayValue": "28"
+       },
+       "curatedRank": {
+        "current": 4
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "2-0"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "0-0"
+        }
+       ],
+       "team": {
+        "id": "61",
+        "location": "Georgia",
+        "abbreviation": "UGA",
+        "displayName": "Georgia Bulldogs"
+       }
+      },
+      {
+       "homeAway": "away",
+       "winner": false,
+       "score": {
+        "value": 6.0,
+        "displayValue": "6"
+       },
+       "curatedRank": {
+        "current": 99
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "1-1"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "0-0"
+        }
+       ],
+       "team": {
+        "id": "2046",
+        "location": "Austin Peay",
+        "abbreviation": "APSU",
+        "displayName": "Austin Peay Governors"
+       }
+      }
+     ],
+     "attendance": 93033,
+     "notes": []
+    }
+   ]
+  },
+  {
+   "id": "401752705",
+   "date": "2025-09-13T19:30Z",
+   "name": "Georgia Bulldogs at Tennessee Volunteers",
+   "shortName": "UGA @ TENN",
+   "week": {
+    "number": 3,
+    "text": "Week 3"
+   },
+   "timeValid": true,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   },
+   "competitions": [
+    {
+     "date": "2025-09-13T19:30Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "venue": {
+      "fullName": "Neyland Stadium",
+      "address": {
+       "city": "Knoxville",
+       "state": "TN",
+       "zipCode": "37996",
+       "country": "USA"
+      }
+     },
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 5,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final/OT",
+       "shortDetail": "Final/OT",
+       "altDetail": "OT"
+      }
+     },
+     "broadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ABC"
+       },
+       "lang": "en",
+       "region": "us",
+       "partnered": false
+      }
+     ],
+     "competitors": [
+      {
+       "homeAway": "home",
+       "winner": false,
+       "score": {
+        "value": 41.0,
+        "displayValue": "41"
+       },
+       "curatedRank": {
+        "current": 15
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "2-1"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "0-1"
+        }
+       ],
+       "team": {
+        "id": "2633",
+        "location": "Tennessee",
+        "abbreviation": "TENN",
+        "displayName": "Tennessee Volunteers"
+       }
+      },
+      {
+       "homeAway": "away",
+       "winner": true,
+       "score": {
+        "value": 44.0,
+        "displayValue": "44"
+       },
+       "curatedRank": {
+        "current": 6
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "3-0"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "1-0"
+        }
+       ],
+       "team": {
+        "id": "61",
+        "location": "Georgia",
+        "abbreviation": "UGA",
+        "displayName": "Georgia Bulldogs"
+       }
+      }
+     ],
+     "attendance": 101915,
+     "notes": []
+    }
+   ]
+  },
+  {
+   "id": "401777351",
+   "date": "2025-12-06T21:00Z",
+   "name": "Georgia Bulldogs at Alabama Crimson Tide",
+   "shortName": "UGA VS ALA",
+   "week": {
+    "number": 15,
+    "text": "Week 15"
+   },
+   "timeValid": true,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   },
+   "competitions": [
+    {
+     "date": "2025-12-06T21:00Z",
+     "timeValid": true,
+     "neutralSite": true,
+     "venue": {
+      "fullName": "Mercedes-Benz Stadium",
+      "address": {
+       "city": "Atlanta",
+       "state": "GA",
+       "zipCode": "30313",
+       "country": "USA"
+      }
+     },
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "broadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ABC"
+       },
+       "lang": "en",
+       "region": "us",
+       "partnered": false
+      }
+     ],
+     "competitors": [
+      {
+       "homeAway": "home",
+       "winner": false,
+       "score": {
+        "value": 7.0,
+        "displayValue": "7"
+       },
+       "curatedRank": {
+        "current": 9
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "10-3"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "7-1"
+        }
+       ],
+       "team": {
+        "id": "333",
+        "location": "Alabama",
+        "abbreviation": "ALA",
+        "displayName": "Alabama Crimson Tide"
+       }
+      },
+      {
+       "homeAway": "away",
+       "winner": true,
+       "score": {
+        "value": 28.0,
+        "displayValue": "28"
+       },
+       "curatedRank": {
+        "current": 3
+       },
+       "record": [
+        {
+         "id": "1",
+         "abbreviation": "Game",
+         "displayName": "Record Year To Date",
+         "shortDisplayName": "YTD",
+         "description": "Overall Record",
+         "type": "total",
+         "displayValue": "12-1"
+        },
+        {
+         "id": "9009",
+         "displayName": "CONF",
+         "shortDisplayName": "CONF",
+         "description": "Conference Record",
+         "type": "vsconf",
+         "displayValue": "7-1"
+        }
+       ],
+       "team": {
+        "id": "61",
+        "location": "Georgia",
+        "abbreviation": "UGA",
+        "displayName": "Georgia Bulldogs"
+       }
+      }
+     ],
+     "attendance": 77247,
+     "notes": [
+      {
+       "type": "event",
+       "headline": "SEC Championship"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

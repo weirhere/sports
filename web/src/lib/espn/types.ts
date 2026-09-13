@@ -259,6 +259,13 @@ export interface EspnScheduleCompetition {
   competitors?: EspnScheduleCompetitor[];
   broadcasts?: EspnScheduleBroadcast[];
   /**
+   * The fixture's printed headline — "SEC Championship". The scoreboard
+   * shape has carried this since the postseason bracket needed it; the
+   * schedule shape never declared it, which is why a team page could not
+   * name its own title games (the Trophies tab reads exactly this field).
+   */
+  notes?: { type?: string; headline?: string }[];
+  /**
    * The announced crowd, on played games only. Averaged across a team's
    * home dates it is the one attendance figure ESPN gives us that belongs
    * to a team rather than to a single fixture.
