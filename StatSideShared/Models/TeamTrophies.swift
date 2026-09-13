@@ -91,22 +91,27 @@ extension TrophyKind {
             }
             return conferenceChampionship(headline: headline, text: text)
         case .nba:
-            // Checked before the generic "finals" rule below, which would
-            // otherwise swallow the conference finals into the league title.
+            // Named exactly, and checked before the conference round below
+            // — both spell "Finals", and only one of them is the title.
             if text.contains("nba finals") {
                 return TrophyKind(singular: "NBA Finals", plural: "NBA Finals", tier: .league)
             }
-            // The in-season tournament is a real trophy, and its group
-            // stage and quarterfinals are not — "NBA Cup - Group Play" is
-            // the confirmed headline on four of one team's regular-season
-            // games, so the cup only counts where it says it was decided.
-            if text.contains("nba cup"),
-               text.contains("championship") || text.contains("final") {
+            // The in-season tournament is a real trophy; its group stage
+            // and its earlier rounds are not. "NBA Cup - Group Play" and
+            // "NBA Cup - Quarterfinals" are both confirmed headlines on
+            // regular-season games, which is why this asks whether the
+            // round *decided* anything rather than whether the string
+            // mentions a final.
+            if text.contains("nba cup"), decidesATrophy(text) {
                 return TrophyKind(singular: "NBA Cup", plural: "NBA Cups", tier: .league)
             }
             return conferenceFinals(headline: headline, text: text)
         case .nhl:
-            if text.contains("stanley cup"), text.contains("final") {
+            // Same guard as the cup above, and for a documented reason: the
+            // NHL called its earlier rounds "Stanley Cup Quarterfinals" and
+            // "Stanley Cup Semifinals" for decades, so "mentions the cup
+            // and a final" would hand a first-round exit the trophy.
+            if text.contains("stanley cup"), decidesATrophy(text) {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
             return conferenceFinals(headline: headline, text: text)
@@ -114,17 +119,42 @@ extension TrophyKind {
     }
 
     /// "SEC Championship", "AFC Championship" — the headline is already the
-    /// trophy's name, so it is kept verbatim rather than re-spelled from a
-    /// conference registry. A conference we have never heard of still reads
-    /// correctly, and a conference that renames itself needs no code change.
+    /// trophy's name, so it is kept as written (bar a trailing "Game")
+    /// rather than re-spelled from a conference registry. A conference we
+    /// have never heard of still reads correctly, one that renames itself
+    /// needs no code change, and a sponsor in the string is ESPN's own
+    /// wording rather than ours to strip.
     ///
-    /// Guarded on the word standing alone at the end: "NBA Cup -
-    /// Championship" and "Championship Week" are not conference titles, and
-    /// a headline that merely mentions the word is not one either.
+    /// Guarded on the word ending the headline, so "Championship Week" and
+    /// a passing mention are both out. A trailing "Game" is tolerated
+    /// because it is a coin-flip which way ESPN spells any given one — the
+    /// captured SEC title game is plain "SEC Championship", and a league
+    /// that writes "AFC Championship Game" must not silently win nothing.
     private static func conferenceChampionship(headline: String, text: String) -> TrophyKind? {
-        guard text.hasSuffix("championship"), text != "championship" else { return nil }
-        let name = headline.trimmingCharacters(in: .whitespaces)
+        var tail = text
+        var name = headline.trimmingCharacters(in: .whitespaces)
+        // The trophy is named after itself, not after the fixture: a team
+        // holds three AFC Championships, it does not hold three AFC
+        // Championship Games. Dropping the word also makes the name stable
+        // whichever way ESPN spells a given league's title game.
+        if tail.hasSuffix(" game") {
+            tail = String(tail.dropLast(5))
+            name = String(name.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        }
+        guard tail.hasSuffix("championship"), tail != "championship" else { return nil }
         return TrophyKind(singular: name, plural: name + "s", tier: .conference)
+    }
+
+    /// Whether a round name is the one that hands over a trophy.
+    ///
+    /// "Quarterfinals" and "Semifinals" both end in "final", which is the
+    /// whole problem: a substring test for it promotes a team knocked out
+    /// in the first round to champion. So a qualified round is ruled out by
+    /// name, and what's left has to be the last word.
+    private static func decidesATrophy(_ text: String) -> Bool {
+        guard !text.contains("quarterfinal"), !text.contains("semifinal") else { return false }
+        if text.contains("championship") { return true }
+        return text.hasSuffix("final") || text.hasSuffix("finals")
     }
 
     /// The NBA's and NHL's conference round: "Eastern Conference Finals".
@@ -157,13 +187,6 @@ nonisolated struct TrophyGroup: Identifiable, Hashable, Sendable {
         case allTime
         /// Only the seasons ESPN's season axis reaches.
         case since(Int)
-
-        var caption: String? {
-            switch self {
-            case .allTime: nil
-            case .since(let year): "since \(year)"
-            }
-        }
     }
 }
 
@@ -180,8 +203,9 @@ nonisolated struct TrophyCase: Hashable, Sendable {
     /// all-time. What the card's one footnote says, so the caption is
     /// stated once for the shelf instead of repeated on every row.
     var coverageFloor: Int? {
-        groups.compactMap {
-            if case .since(let year) = $0.coverage { year } else { nil }
+        groups.compactMap { group -> Int? in
+            guard case .since(let year) = group.coverage else { return nil }
+            return year
         }.min()
     }
 }
@@ -215,7 +239,7 @@ extension TrophyCase {
             byKind[kind, default: []].append(game)
         }
 
-        return byKind.compactMap { kind, games in
+        return byKind.compactMap { kind, games -> Trophy? in
             let decided = games
                 .filter { if case .final = $0.status { true } else { false } }
                 .sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
@@ -247,8 +271,8 @@ extension TrophyCase {
             wins[trophy.kind, default: []].insert(trophy.year)
         }
 
-        let groups = wins.map { kind, byYear -> TrophyGroup in
-            let years = byYear.sorted(by: >)
+        let groups = wins.map { kind, wonIn -> TrophyGroup in
+            let years = wonIn.sorted(by: >)
             // All-time only where the registry says it speaks for this
             // trophy's whole history. Inferring it from the rows instead
             // would read "the oldest one we happen to know about" as "the

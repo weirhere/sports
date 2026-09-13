@@ -114,6 +114,48 @@ private let sec = TrophyKind(singular: "SEC Championship",
                                 league: .nba)?.tier == .league)
         #expect(TrophyKind.from(headline: "NBA Cup - Group Play", league: .nba) == nil)
     }
+
+    /// "Quarterfinals" and "Semifinals" both end in "final", and the NHL
+    /// spent decades calling its early rounds "Stanley Cup Quarterfinals"
+    /// — so a substring test for the word hands a first-round exit the
+    /// cup. Caught by running the rule over the real headlines before it
+    /// ever compiled: "NBA Cup - Quarterfinals" was scoring a trophy.
+    @Test("A qualified round decides nothing", arguments: [
+        ("Stanley Cup Quarterfinals", League.nhl),
+        ("Stanley Cup Semifinals", League.nhl),
+        ("Eastern Conference Quarterfinals", League.nhl),
+        ("Western Conference Semifinals", League.nba),
+        ("NBA Cup - Semifinals", League.nba),
+    ])
+    func qualifiedRoundsDecideNothing(headline: String, league: League) {
+        #expect(TrophyKind.from(headline: headline, league: league) == nil)
+    }
+
+    @Test("The deciding round is recognized either way a league spells it")
+    func decidingRoundSpellings() {
+        #expect(TrophyKind.from(headline: "Stanley Cup Final",
+                                league: .nhl)?.singular == "Stanley Cup")
+        #expect(TrophyKind.from(headline: "Stanley Cup Finals",
+                                league: .nhl)?.singular == "Stanley Cup")
+        #expect(TrophyKind.from(headline: "Eastern Conference Final",
+                                league: .nhl)?.tier == .conference)
+    }
+
+    /// A team holds three AFC Championships, not three AFC Championship
+    /// Games — so the fixture's word comes off the trophy's name.
+    @Test("A title game is named after the trophy, not the fixture")
+    func titleGameNamedAfterTheTrophy() {
+        let afc = TrophyKind.from(headline: "AFC Championship Game", league: .nfl)
+        #expect(afc?.singular == "AFC Championship")
+        #expect(afc?.plural == "AFC Championships")
+        #expect(afc?.tier == .conference)
+    }
+
+    @Test("A sponsored conference title still reads as one")
+    func sponsoredConferenceTitle() {
+        #expect(TrophyKind.from(headline: "Big Ten Championship",
+                                league: .collegeFootball)?.tier == .conference)
+    }
 }
 
 // MARK: - The payload gap this closed

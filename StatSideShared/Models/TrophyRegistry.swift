@@ -72,10 +72,10 @@ nonisolated enum TrophyRegistry {
 
     /// Every registry trophy this team holds.
     static func trophies(teamId: String, league: League) -> [Trophy] {
-        (lists[league] ?? []).lazy.filter(\.verified).flatMap { list in
+        (lists[league] ?? []).filter(\.verified).flatMap { list in
             list.winners
                 .filter { $0.value == teamId }
-                .map { Trophy(kind: list.kind, year: $0.key, gameId: nil) }
+                .map { Trophy(kind: list.kind, year: $0.key) }
         }
     }
 

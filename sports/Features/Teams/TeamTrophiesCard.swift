@@ -97,19 +97,22 @@ struct TeamTrophiesCard: View {
     }
 }
 
+private let previewNational = TrophyKind(singular: "National Championship",
+                                         plural: "National Championships", tier: .league)
+private let previewSEC = TrophyKind(singular: "SEC Championship",
+                                    plural: "SEC Championships", tier: .conference)
+
 #Preview {
-    let cfp = TrophyKind(singular: "National Championship",
-                         plural: "National Championships", tier: .league)
-    let sec = TrophyKind(singular: "SEC Championship",
-                         plural: "SEC Championships", tier: .conference)
-    return VStack(spacing: Spacing.sm) {
+    VStack(spacing: Spacing.sm) {
+        // A shelf the registry speaks for, beside one it only knows the
+        // derived era of — the two coverage captions side by side.
         TeamTrophiesCard(trophyCase: TrophyCase(groups: [
-            TrophyGroup(kind: cfp, years: [2022, 2021], coverage: .allTime),
-            TrophyGroup(kind: sec, years: [2025, 2022, 2017], coverage: .since(2014)),
+            TrophyGroup(kind: previewNational, years: [2022, 2021], coverage: .allTime),
+            TrophyGroup(kind: previewSEC, years: [2025, 2022, 2017], coverage: .since(2014)),
         ]))
         .cardSurface()
         TeamTrophiesCard(trophyCase: TrophyCase(groups: [
-            TrophyGroup(kind: sec, years: [2025], coverage: .since(2014)),
+            TrophyGroup(kind: previewSEC, years: [2025], coverage: .since(2014)),
         ]))
         .cardSurface()
     }
