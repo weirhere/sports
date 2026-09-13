@@ -23,6 +23,7 @@ import { SeasonMenuChip } from "@/components/season-menu-chip";
 import { FollowPill } from "@/components/follow-pill";
 import { CardHeader } from "@/components/card-header";
 import { ScheduleRow } from "@/components/schedule-row";
+import { TeamVenueCard } from "@/components/team-venue-card";
 import { NextGameCard } from "@/components/next-game-card";
 import {
   TeamRecordCard,
@@ -282,12 +283,17 @@ export function TeamView({
                 overallRecord={overviewOverallRecord}
               />
             ) : (
-              !leadGame && (
+              !leadGame &&
+              !schedule.homeVenue && (
                 <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
                   Season TBA
                 </section>
               )
             )}
+            {/* Last, because it is the tab's least time-sensitive card — a
+                stadium doesn't move between refreshes, where the next game
+                and the record do. */}
+            {schedule.homeVenue && <TeamVenueCard venue={schedule.homeVenue} />}
           </>
         )}
 

@@ -9,7 +9,8 @@
 // the game starts.
 
 import type { LucideIcon } from "lucide-react";
-import { Calendar, CloudSun, MapPin, Tv } from "lucide-react";
+import { VenueHeadline } from "@/components/venue-headline";
+import { Calendar, CloudSun, Tv } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -288,20 +289,7 @@ export function VenueCard({
     <DetailCard title="Venue">
       <div className="py-1">
         {game.venue.name && (
-          <div className="flex items-start gap-3 px-4 py-[7px]">
-            <MapPin
-              aria-hidden="true"
-              className="mt-0.5 h-4 w-5 shrink-0 text-text-secondary"
-            />
-            {/* The venue is the card's headline — name in ink, city beneath
-                it in meta gray (FotMob's treatment). */}
-            <div className="min-w-0">
-              <p className="type-team-name-em text-text-primary">
-                {game.venue.name}
-              </p>
-              {city && <p className="type-meta text-text-secondary">{city}</p>}
-            </div>
-          </div>
+          <VenueHeadline name={game.venue.name} city={city || undefined} />
         )}
         {game.venue.name && hasCrowd && (
           <div className="my-1 ml-4 border-t border-divider" />
