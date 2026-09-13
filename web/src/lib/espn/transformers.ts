@@ -33,6 +33,7 @@ import type {
   ScoringPlayItem,
   TeamStats,
   TeamScheduleData,
+  TeamVenue,
   TeamRoster,
   RosterGroup,
   RosterPlayer,
@@ -255,6 +256,67 @@ function transformVenue(venue: EspnVenue | undefined): Venue {
     name: venue?.fullName ?? "TBD",
     city: venue?.address?.city ?? "",
     state: venue?.address?.state ?? "",
+  };
+}
+
+/** "Athens, GA" from whichever halves ESPN shipped. */
+export function venueCityLine(
+  city: string | undefined,
+  state: string | undefined
+): string | undefined {
+  const parts = [city, state]
+    .map((part) => part?.trim())
+    .filter((part): part is string => !!part);
+  return parts.length > 0 ? parts.join(", ") : undefined;
+}
+
+interface HomeDate {
+  venue?: string;
+  city?: string;
+  isHome: boolean;
+  isNeutral: boolean;
+  attendance?: number;
+}
+
+/**
+ * The ground a team keeps coming back to.
+ *
+ * Modal rather than first-seen, so a one-off relocation — a hurricane
+ * week, a stadium being re-turfed — can't rename a team's home for the
+ * season; ties break toward the earlier date. Neutral sites are out by
+ * definition, which is what keeps Georgia's home Sanford Stadium rather
+ * than the Mercedes-Benz Stadium it opens in.
+ */
+export function deriveHomeVenue(dates: HomeDate[]): TeamVenue | undefined {
+  const hosted = dates.filter((d) => d.isHome && !d.isNeutral && d.venue);
+  if (hosted.length === 0) return undefined;
+
+  // Insertion order is first-seen order, and only a strictly larger count
+  // takes the name — so equal counts leave the earlier date's ground in
+  // place rather than letting map order decide.
+  const counts = new Map<string, number>();
+  for (const date of hosted) {
+    counts.set(date.venue!, (counts.get(date.venue!) ?? 0) + 1);
+  }
+  let name = hosted[0].venue!;
+  for (const [venue, count] of counts) {
+    if (count > (counts.get(name) ?? 0)) name = venue;
+  }
+
+  const atHome = hosted.filter((d) => d.venue === name);
+  const gates = atHome
+    .map((d) => d.attendance)
+    .filter((gate): gate is number => !!gate && gate > 0);
+
+  return {
+    name,
+    city: atHome.find((d) => d.city)?.city,
+    homeGames: atHome.length,
+    countedGames: gates.length,
+    averageAttendance:
+      gates.length > 0
+        ? Math.round(gates.reduce((sum, gate) => sum + gate, 0) / gates.length)
+        : undefined,
   };
 }
 
@@ -974,6 +1036,29 @@ export function transformTeamSchedule(
     year,
     games,
     derivedRecord: team ? deriveRecord(team.id, games) : undefined,
+    // The preseason is deliberately out: those dates are exhibitions, so
+    // counting them would inflate "home games" past what anyone means by it
+    // and drag the average down with a crowd nobody turned up for. A home
+    // *playoff* date is the opposite and stays in — a real game at the real
+    // ground.
+    homeVenue: team
+      ? deriveHomeVenue(
+          [...(regular.events ?? []), ...(extra.postseason ?? [])].map((event) => {
+            const comp = event.competitions?.[0];
+            const host = comp?.competitors?.find((c) => c.homeAway === "home");
+            return {
+              venue: comp?.venue?.fullName,
+              city: venueCityLine(
+                comp?.venue?.address?.city,
+                comp?.venue?.address?.state
+              ),
+              isHome: host?.team?.id === team.id,
+              isNeutral: comp?.neutralSite === true,
+              attendance: comp?.attendance,
+            };
+          })
+        )
+      : undefined,
   };
 }
 

@@ -650,7 +650,7 @@ struct TeamPage: View {
                                conferenceRecord: overviewConferenceRecord,
                                overallRecord: overviewOverallRecord)
                     .cardSurface()
-            } else if nextGame == nil {
+            } else if nextGame == nil, schedule?.homeVenue == nil {
                 // Nothing to lead with: mirror the schedule's status
                 // treatment so the tab is never silently blank. A lone
                 // spinner gets no card — a surface around it hugs into a
@@ -667,6 +667,13 @@ struct TeamPage: View {
                     StatusMessage(text: "Season TBA")
                         .cardSurface()
                 }
+            }
+            // Last, because it is the tab's least time-sensitive card —
+            // a stadium doesn't move between refreshes, where the next
+            // game and the record do.
+            if let venue = schedule?.homeVenue {
+                TeamVenueCard(venue: venue)
+                    .cardSurface()
             }
         }
         // No top padding: the pinned header carries it, so the gap is

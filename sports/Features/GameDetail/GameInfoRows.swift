@@ -55,26 +55,7 @@ struct GameInfoRows: View {
     @ViewBuilder
     private var venueZone: some View {
         if let venue = summary.venue {
-            HStack(alignment: .top, spacing: Spacing.md) {
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.textSecondary)
-                    .frame(width: 20)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(venue)
-                        .font(.teamNameEmphasis)
-                        .foregroundStyle(.textPrimary)
-                    if let city = summary.venueCity {
-                        Text(city)
-                            .font(.meta)
-                            .foregroundStyle(.textSecondary)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, 7)
-            .accessibilityElement(children: .combine)
+            VenueHeadline(name: venue, city: summary.venueCity)
             if hasCrowdContent {
                 zoneDivider
             }

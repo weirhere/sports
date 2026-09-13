@@ -410,6 +410,30 @@ export interface Scoreboard {
  * `derivedRecord` (W-L counted from final results) is the honest record for
  * a past season.
  */
+/**
+ * A team's home ground, derived from the season it already fetched.
+ *
+ * ESPN ships a venue on every competition of a team schedule, played or
+ * not, so the home ground costs no request — it is the venue the team's
+ * own non-neutral home dates keep naming.
+ *
+ * No capacity and no surface here on purpose: ESPN publishes no capacity
+ * anywhere (sampled live 2026-09-10 across all four leagues), and the
+ * schedule payload carries neither `grass` nor a venue id to go looking
+ * with. A field that can never render is worse than no field.
+ */
+export interface TeamVenue {
+  name: string;
+  /** "Athens, GA" — whatever of the address ESPN shipped, joined. */
+  city?: string;
+  /** Home dates at this ground this season, played or still to come. */
+  homeGames: number;
+  /** How many of those have a published gate — the average's denominator. */
+  countedGames: number;
+  /** Mean announced attendance, absent until a home date has been played. */
+  averageAttendance?: number;
+}
+
 export interface TeamScheduleData {
   team?: Team;
   record?: string;
@@ -417,6 +441,8 @@ export interface TeamScheduleData {
   year?: number;
   games: Game[];
   derivedRecord?: string;
+  /** Where this team plays. Absent for a season with no home date in it. */
+  homeVenue?: TeamVenue;
 }
 
 // Grouped game structures for the scores page
