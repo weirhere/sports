@@ -127,17 +127,15 @@ private func scheduleEvent(seasonType: Int, venue: String, isHome: Bool,
     }
 }
 
-/// All four leagues ship a venue on every competition of a team schedule,
-/// which is what makes the card free. If one ever stops, these fail.
 @Suite struct TeamVenuePreseasonTests {
     /// Preseason dates are exhibitions: counting them would inflate "home
     /// games" past what anyone means by it. A home *playoff* date is a real
     /// game at the real ground and stays in.
     @Test func exhibitionsDontCountAsHomeDates() throws {
-        let events = try [
-            scheduleEvent(seasonType: 1, venue: "Lumen Field", isHome: true, attendance: 40_000),
-            scheduleEvent(seasonType: 2, venue: "Lumen Field", isHome: true, attendance: 68_000),
-            scheduleEvent(seasonType: 3, venue: "Lumen Field", isHome: true, attendance: 69_000),
+        let events = [
+            try scheduleEvent(seasonType: 1, venue: "Lumen Field", isHome: true, attendance: 40_000),
+            try scheduleEvent(seasonType: 2, venue: "Lumen Field", isHome: true, attendance: 68_000),
+            try scheduleEvent(seasonType: 3, venue: "Lumen Field", isHome: true, attendance: 69_000),
         ]
         let venue = try #require(ESPNMapper.homeVenue(in: events, teamId: "26"))
         #expect(venue.homeGames == 2)
@@ -145,9 +143,11 @@ private func scheduleEvent(seasonType: Int, venue: String, isHome: Bool,
     }
 }
 
+/// All four leagues ship a venue on every competition of a team schedule,
+/// which is what makes the card free. If one ever stops, these fail.
 @Suite struct TeamVenueDecodingTests {
     @Test func collegeFootballReadsSanfordStadium() throws {
-        let venue = try #require(fixtureVenue("team-schedule-live", league: .collegeFootball))
+        let venue = try #require(try fixtureVenue("team-schedule-live", league: .collegeFootball))
         #expect(venue.name == "Sanford Stadium")
         #expect(venue.city == "Athens, GA")
         // Seven home dates; the two Mercedes-Benz games are neutral and
@@ -157,7 +157,7 @@ private func scheduleEvent(seasonType: Int, venue: String, isHome: Bool,
     }
 
     @Test func theNFLReadsLumenField() throws {
-        let venue = try #require(fixtureVenue("nfl-team-schedule", league: .nfl))
+        let venue = try #require(try fixtureVenue("nfl-team-schedule", league: .nfl))
         #expect(venue.name == "Lumen Field")
         #expect(venue.city == "Seattle, WA")
         #expect(venue.homeGames == 2)
@@ -165,7 +165,7 @@ private func scheduleEvent(seasonType: Int, venue: String, isHome: Bool,
     }
 
     @Test func theNBAReadsCryptoDotComArena() throws {
-        let venue = try #require(fixtureVenue("nba-team-schedule", league: .nba))
+        let venue = try #require(try fixtureVenue("nba-team-schedule", league: .nba))
         #expect(venue.name == "crypto.com Arena")
         #expect(venue.city == "Los Angeles, CA")
         #expect(venue.homeGames == 41)
@@ -173,7 +173,7 @@ private func scheduleEvent(seasonType: Int, venue: String, isHome: Bool,
     }
 
     @Test func theNHLReadsScotiabankArena() throws {
-        let venue = try #require(fixtureVenue("nhl-team-schedule", league: .nhl))
+        let venue = try #require(try fixtureVenue("nhl-team-schedule", league: .nhl))
         #expect(venue.name == "Scotiabank Arena")
         #expect(venue.city == "Toronto, ON")
         #expect(venue.homeGames == 41)
