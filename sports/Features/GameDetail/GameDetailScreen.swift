@@ -477,21 +477,20 @@ struct GameDetailScreen: View {
                             LiveSituationCard(summary: summary, situation: situation)
                         }
                     }
-                    // Pre-kick, the sections below are all empty — these
-                    // two cards carry the whole "what do I need to know"
-                    // load (FotMob's Preview cards, monochrome). When
-                    // and where to watch is one question; the ground
-                    // it's played on is another.
-                    if !showsScores {
-                        if KickoffInfoRows.hasContent(game: game, summary: summary) {
-                            card(title: "Game info") {
-                                KickoffInfoRows(game: game, summary: summary)
-                            }
+                    // When and where to watch is one question; the
+                    // ground it's played on is another (FotMob's Preview
+                    // cards, monochrome). Pre-kick the sections below are
+                    // all empty, so the pair carries the whole "what do I
+                    // need to know" load — but the questions outlive the
+                    // kickoff, so Game info stays put once a game starts.
+                    if KickoffInfoRows.hasContent(game: game, summary: summary) {
+                        card(title: "Game info") {
+                            KickoffInfoRows(game: game, summary: summary)
                         }
-                        if GameInfoRows.hasVenueContent(summary) {
-                            card(title: "Venue") {
-                                GameInfoRows(summary: summary)
-                            }
+                    }
+                    if !showsScores, GameInfoRows.hasVenueContent(summary) {
+                        card(title: "Venue") {
+                            GameInfoRows(summary: summary)
                         }
                     }
                     if summary.away?.linescores.isEmpty == false {

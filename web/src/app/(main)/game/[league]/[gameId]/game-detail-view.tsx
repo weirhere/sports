@@ -171,11 +171,12 @@ export function GameDetailView({
           </div>
 
           <div className="flex min-w-0 flex-col gap-2">
-            {/* Pre-kick every section on the left is empty, so these two
-                carry the whole "what do I need to know" load. One card was
-                answering two questions: when and where to watch is one, the
-                ground it's played on is another. */}
-            {!scores && infoVisible && (
+            {/* One card was answering two questions: when and where to
+                watch is one, the ground it's played on is another. Pre-kick
+                every section on the left is empty, so the pair carries the
+                whole "what do I need to know" load — but the questions
+                outlive the kickoff, so both stay once a game starts. */}
+            {infoVisible && (
               <GameInfoCard game={game} detail={data} standings={standings} />
             )}
             {venueVisible && <VenueCard game={game} detail={data} />}
