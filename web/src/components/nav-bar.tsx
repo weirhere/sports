@@ -25,8 +25,23 @@ const NAV_LINKS = [
  * and each page names itself where a page should: `/rankings/poll` and
  * every entity page in their own hero, Leagues and Teams in a screen-reader
  * heading, since sighted users have the tab bar.
+ *
+ * Privacy and Support are in the set without being tabs, because what it
+ * actually gates is the back chevron — and a chevron is `router.back()`,
+ * which does nothing in a tab with no history. Those two URLs are the ones
+ * people arrive at cold: they're the App Store listing's Support and
+ * Privacy Policy fields, so the first StatSide page a visitor ever loads
+ * may well be one of them. A dead control is worse than no control, and the
+ * wordmark and the tabs are already a way in.
  */
-const TOP_LEVEL_ROUTES = new Set(["/", "/rankings", "/teams", "/search"]);
+const TOP_LEVEL_ROUTES = new Set([
+  "/",
+  "/rankings",
+  "/teams",
+  "/search",
+  "/privacy",
+  "/support",
+]);
 
 export function NavBar() {
   const pathname = usePathname();
