@@ -45,9 +45,14 @@ private struct ScheduleStub: ScoresProviding {
     nonisolated var league: League { .collegeFootball }
 
     let schedules: [String: [Game]]
+    /// Team ids whose schedule fetch throws — an ESPN blip, or a phone
+    /// with no network. Distinct from a team that simply has no games.
+    var failing: Set<String> = []
 
     func teamSchedule(teamId: String, year: Int?) async throws -> TeamSchedule {
-        TeamSchedule(team: nil, record: nil, standing: nil, year: year, games: schedules[teamId] ?? [])
+        if failing.contains(teamId) { throw ESPNError.invalidURL }
+        return TeamSchedule(team: nil, record: nil, standing: nil, year: year,
+                            games: schedules[teamId] ?? [])
     }
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
@@ -143,6 +148,97 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
 
         #expect(await center.removed.contains(originalId))
         #expect(await center.pending == [NotificationScheduler.requestId(gameId: "g1", kickoff: moved)])
+    }
+
+    /// The all-fetches-fail path (BACKLOG E5). An empty `desired` set is
+    /// authoritative only when every schedule answered: foregrounding on a
+    /// plane must not read "no answer" as "no games" and wipe all 24
+    /// reminders.
+    @Test func aFailedFanOutNeverDeletesReminders() async {
+        let kickoff = Date.now.addingTimeInterval(7 * 86_400)
+        let center = FakeCenter()
+        let defaults = makeDefaults()
+        let games = ["1": [preGame("g1", home: "1", away: "2", kickoff: kickoff)]]
+
+        let online = NotificationScheduler(
+            center: center, client: ScheduleStub(schedules: games), defaults: defaults
+        )
+        await online.requestAndEnable(followedKeys: ["cfb:1"])
+        let id = NotificationScheduler.requestId(gameId: "g1", kickoff: kickoff)
+        #expect(await center.pending == [id])
+
+        // Same follows, but ESPN is unreachable.
+        let offline = NotificationScheduler(
+            center: center,
+            client: ScheduleStub(schedules: games, failing: ["1"]),
+            defaults: defaults
+        )
+        await offline.refreshAuthorization()
+        await offline.resync(followedKeys: ["cfb:1"])
+
+        #expect(await center.pending == [id])
+        #expect(await center.removed.isEmpty)
+    }
+
+    /// The other half of the same rule: a team that genuinely answered
+    /// with nothing upcoming still gets its stale ids cleared.
+    @Test func aTeamWithNoGamesStillClearsItsStaleIds() async {
+        let kickoff = Date.now.addingTimeInterval(7 * 86_400)
+        let center = FakeCenter()
+        let defaults = makeDefaults()
+
+        let full = NotificationScheduler(
+            center: center,
+            client: ScheduleStub(schedules: ["1": [preGame("g1", home: "1", away: "2", kickoff: kickoff)]]),
+            defaults: defaults
+        )
+        await full.requestAndEnable(followedKeys: ["cfb:1"])
+        let id = NotificationScheduler.requestId(gameId: "g1", kickoff: kickoff)
+        #expect(await center.pending == [id])
+
+        // The season ended: the fetch succeeds and carries no games.
+        let empty = NotificationScheduler(
+            center: center, client: ScheduleStub(schedules: [:]), defaults: defaults
+        )
+        await empty.refreshAuthorization()
+        await empty.resync(followedKeys: ["cfb:1"])
+
+        #expect(await center.pending.isEmpty)
+        #expect(await center.removed == [id])
+    }
+
+    /// A partial answer creates but never deletes: the reachable team's
+    /// new game is scheduled, the unreachable team's reminder survives.
+    @Test func aPartialFanOutCreatesButNeverDeletes() async {
+        let first = Date.now.addingTimeInterval(7 * 86_400)
+        let second = Date.now.addingTimeInterval(8 * 86_400)
+        let center = FakeCenter()
+        let defaults = makeDefaults()
+
+        let online = NotificationScheduler(
+            center: center,
+            client: ScheduleStub(schedules: ["1": [preGame("g1", home: "1", away: "2", kickoff: first)]]),
+            defaults: defaults
+        )
+        await online.requestAndEnable(followedKeys: ["cfb:1"])
+        let firstId = NotificationScheduler.requestId(gameId: "g1", kickoff: first)
+        #expect(await center.pending == [firstId])
+
+        // Team 1 is now unreachable; team 2 answers with a game of its own.
+        let partial = NotificationScheduler(
+            center: center,
+            client: ScheduleStub(
+                schedules: ["2": [preGame("g2", home: "2", away: "3", kickoff: second)]],
+                failing: ["1"]
+            ),
+            defaults: defaults
+        )
+        await partial.refreshAuthorization()
+        await partial.resync(followedKeys: ["cfb:1", "cfb:2"])
+
+        let secondId = NotificationScheduler.requestId(gameId: "g2", kickoff: second)
+        #expect(await center.removed.isEmpty)
+        #expect(await Set(center.pending) == [firstId, secondId])
     }
 
     @Test func unfollowingEveryoneClearsPending() async {
