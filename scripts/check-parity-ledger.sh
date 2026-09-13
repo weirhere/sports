@@ -6,7 +6,7 @@
 # in the build couples them. The 2026-09-01 parity port had nothing holding
 # it and decayed to 1.x in eight days — 89 iOS decision rows, one of which
 # reached the web. This check is the coupling: a PR that adds a row to
-# CLAUDE.md's decisions log must also add one to docs/web-parity.md.
+# the decisions log must also add one to docs/web-parity.md.
 #
 # It is deliberately dumb. It counts rows, not meaning — it cannot tell
 # whether the row you added is the right one, only that you stopped and
@@ -27,16 +27,18 @@
 set -euo pipefail
 
 BASE_REF="${1:-origin/main}"
-CLAUDE_FILE="CLAUDE.md"
+DECISIONS_FILE="docs/decisions.md"
 LEDGER_FILE="docs/web-parity.md"
 
-# Rows in CLAUDE.md's decisions log are table lines opening with a date.
+# Rows in the decisions log are table lines opening with a date. The log
+# lived in CLAUDE.md until 2026-09-13, when that file passed the 150k
+# context limit; only its path moved.
 decision_rows() {
-  git show "$1:$CLAUDE_FILE" 2>/dev/null | grep -cE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' || true
+  git show "$1:$DECISIONS_FILE" 2>/dev/null | grep -cE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' || true
 }
 
 # Rows in the ledger are table lines too. The date cell is looser than
-# CLAUDE.md's on purpose: an `n/a` row often covers several decisions at once
+# the log's on purpose: an `n/a` row often covers several decisions at once
 # ("| 2026-09-06, 2026-09-07 | every widget decision |"), and a row that
 # records two things must not fail the check for doing the right thing. A
 # dateless `| — |` counts too.
@@ -75,7 +77,7 @@ fi
 
 cat <<EOF
 
-✗ This branch adds $added_decisions decision row(s) to $CLAUDE_FILE but only
+✗ This branch adds $added_decisions decision row(s) to $DECISIONS_FILE but only
   $added_ledger row(s) to $LEDGER_FILE.
 
   Every decision that changes user-visible behavior needs a line in the
