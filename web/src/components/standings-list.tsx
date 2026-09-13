@@ -18,6 +18,7 @@ import {
   standingSentence,
   standingValue,
   standingsColumns,
+  standingsScrollsHorizontally,
 } from "@/lib/standings-columns";
 
 interface StandingsListProps {
@@ -87,20 +88,34 @@ export function StandingsList({
     leaderRecord !== undefined &&
     leaderRecord !== "0-0";
 
+  // A table wider than the column it sits in pins its identity half and
+  // scrolls the numbers under it — ESPN's and FotMob's pattern, and the
+  // only honest way to show the NFL's twelve columns on a phone. Sticky
+  // rather than a second column, because CSS will hold the seam for us
+  // where iOS has to state it.
+  const pinned = standingsScrollsHorizontally(league);
+  const identity = pinned
+    ? "sticky left-0 z-10 flex w-[168px] shrink-0 items-center gap-3 pl-4"
+    : "flex min-w-0 flex-1 items-center gap-3 pl-4";
+
   return (
-    <div>
+    <div className={cn(pinned && "overflow-x-auto")}>
+      <div className={cn(pinned && "w-max min-w-full")}>
       {/* Visual-only captions — rows speak themselves as sentences.
-          Which columns these are is per league: football shows a
-          conference record beside the overall, the NBA win percentage and
-          games back, the NHL games played, its three-number record and the
-          points it's actually ranked on. */}
+          Which columns these are is per league: college football shows a
+          conference record beside the overall, the NFL its whole
+          ESPN-order spread, the NBA win percentage and games back, the
+          NHL games played, its three-number record and the points it's
+          actually ranked on. */}
       <div
         aria-hidden="true"
-        className="flex items-center gap-3 px-4 pb-2 pt-3 type-row-meta-medium text-text-secondary"
+        className="flex items-center gap-3 pb-2 pr-4 pt-3 type-row-meta-medium text-text-secondary"
       >
-        <span className="w-4 shrink-0 text-right">#</span>
-        <span className="w-5 shrink-0" />
-        <span className="min-w-0 flex-1">TEAM</span>
+        <span className={cn(identity, pinned && "bg-bg-card")}>
+          <span className="w-4 shrink-0 text-right">#</span>
+          <span className="w-5 shrink-0" />
+          <span className="min-w-0 flex-1">TEAM</span>
+        </span>
         {columns.map((column) => (
           <span
             key={column.field}
@@ -128,34 +143,44 @@ export function StandingsList({
               href={teamPath(standing.team)}
               aria-label={label}
               className={cn(
-                "relative flex items-center gap-3 py-2.5 pl-4 pr-4 transition-colors hover:bg-bg-header",
+                "group relative flex items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-bg-header",
                 isHighlighted && "bg-bg-header"
               )}
             >
-              {/* The championship cut: a bar down the qualifying rows'
-                  leading edge, FotMob's promotion mechanism. A divider
-                  could only say where the line fell; the bar says which
-                  teams are in, and survives a scroll that leaves the line
-                  off screen. Ink, not colour — the budget stays at three. */}
-              {qualifies && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-y-0 left-0 w-[3px] bg-text-primary"
+              <span
+                className={cn(
+                  identity,
+                  // The pinned half needs a ground of its own, or the
+                  // numbers would scroll through the names.
+                  pinned && "self-stretch bg-bg-card group-hover:bg-bg-header",
+                  pinned && isHighlighted && "bg-bg-header"
+                )}
+              >
+                {/* The championship cut: a bar down the qualifying rows'
+                    leading edge, FotMob's promotion mechanism. A divider
+                    could only say where the line fell; the bar says which
+                    teams are in, and survives a scroll that leaves the line
+                    off screen. Ink, not colour — the budget stays at three. */}
+                {qualifies && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 w-[3px] bg-text-primary"
+                  />
+                )}
+                <span className="w-4 shrink-0 text-right tnum type-meta-em text-text-secondary">
+                  {index + 1}
+                </span>
+                <Image
+                  src={standing.team.logoUrl}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="h-5 w-5 shrink-0 object-contain"
+                  unoptimized
                 />
-              )}
-              <span className="w-4 shrink-0 text-right tnum type-meta-em text-text-secondary">
-                {index + 1}
-              </span>
-              <Image
-                src={standing.team.logoUrl}
-                alt=""
-                width={20}
-                height={20}
-                className="h-5 w-5 shrink-0 object-contain"
-                unoptimized
-              />
-              <span className="min-w-0 flex-1 truncate type-team-name text-text-primary">
-                {standing.team.school}
+                <span className="min-w-0 flex-1 truncate type-team-name text-text-primary">
+                  {standing.team.school}
+                </span>
               </span>
               {columns.map((column) => (
                 <span
@@ -180,6 +205,7 @@ export function StandingsList({
           Championship game
         </p>
       )}
+      </div>
     </div>
   );
 }

@@ -54,6 +54,13 @@ struct TeamPage: View {
     /// Which edge incoming tab content pushes from — right when walking
     /// Games → Standings, left coming back, matching the tab order.
     @State private var tabSlideEdge: Edge = .trailing
+
+    /// Whether the pane itself is using the horizontal axis, so the tab
+    /// swipe stands down. Only the standings table does, and only where
+    /// the league's columns outgrow the screen.
+    private var tabOwnsHorizontalAxis: Bool {
+        tab == .standings && pageLeague.standingsScrollsHorizontally
+    }
     /// The Standings tab's tables, keyed by year like the schedules —
     /// ConferencePage's caching pattern. The tab gained past seasons when
     /// the season chip moved into the panes (Andy, 2026-08-31).
@@ -235,9 +242,15 @@ struct TeamPage: View {
                     // swipe on the content walks the tabs; the tab buttons
                     // stay, so nothing is swipe-gated. Simultaneous with a
                     // dominance check so vertical scrolling never tab-flips.
+                    //
+                    // Except on a Standings tab whose table is wider than
+                    // the screen (2026-09-13): there the same axis scrolls
+                    // the columns, so the swipe stands down — the bracket's
+                    // rule on ConferencePage, for the same reason.
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 20)
                             .onEnded { value in
+                                guard !tabOwnsHorizontalAxis else { return }
                                 let dx = value.translation.width
                                 guard abs(dx) > 50,
                                       abs(dx) > abs(value.translation.height) * 1.5,

@@ -19,7 +19,31 @@ export type StandingsField =
   | "gamesPlayed"
   | "points"
   | "winPercent"
-  | "gamesBehind";
+  | "gamesBehind"
+  | "wins"
+  | "losses"
+  | "ties"
+  | "homeRecord"
+  | "awayRecord"
+  | "divisionRecord"
+  | "pointsFor"
+  | "pointsAgainst"
+  | "pointDifferential"
+  | "streak";
+
+/**
+ * Whether the value is a record ("2-0") rather than a number. Only these
+ * get the dash-to-"and" treatment when spoken — a differential of "-12"
+ * read that way says "and 12".
+ */
+const RECORD_FIELDS: ReadonlySet<StandingsField> = new Set([
+  "inGroupRecord",
+  "overallRecord",
+  "winLossOTL",
+  "homeRecord",
+  "awayRecord",
+  "divisionRecord",
+]);
 
 export interface StandingsColumn {
   field: StandingsField;
@@ -36,9 +60,24 @@ const COLUMNS: Record<League, StandingsColumn[]> = {
     { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
     { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
   ],
+  // The NFL's own table, in ESPN's order (Andy, 2026-09-13). W-L-T
+  // replaces the OVR summary rather than sitting beside it: three columns
+  // and one string are the same three numbers, and the league that still
+  // plays ties is the one that needs them apart. Wider than a phone by
+  // design — see `standingsScrollsHorizontally`.
   nfl: [
-    { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
-    { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
+    { field: "wins", caption: "W", spoken: "wins", width: 22 },
+    { field: "losses", caption: "L", spoken: "losses", width: 22 },
+    { field: "ties", caption: "T", spoken: "ties", width: 22 },
+    { field: "winPercent", caption: "PCT", spoken: "win percentage", width: 42 },
+    { field: "homeRecord", caption: "HOME", spoken: "at home", width: 42 },
+    { field: "awayRecord", caption: "AWAY", spoken: "away", width: 42 },
+    { field: "divisionRecord", caption: "DIV", spoken: "in division", width: 42 },
+    { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 42 },
+    { field: "pointsFor", caption: "PF", spoken: "points for", width: 30 },
+    { field: "pointsAgainst", caption: "PA", spoken: "points against", width: 30 },
+    { field: "pointDifferential", caption: "DIFF", spoken: "point differential", width: 38 },
+    { field: "streak", caption: "STRK", spoken: "streak", width: 34 },
   ],
   nba: [
     { field: "overallRecord", caption: "W-L", spoken: "overall", width: 44 },
@@ -56,6 +95,17 @@ const COLUMNS: Record<League, StandingsColumn[]> = {
 
 export function standingsColumns(league: League): StandingsColumn[] {
   return COLUMNS[league];
+}
+
+/**
+ * Whether this league's table is wider than the column it sits in, so the
+ * identity column pins and the numbers scroll under it (ESPN's and
+ * FotMob's pattern). True for exactly the league whose set can't fit: a
+ * set that fits must never become a scroller, because a scroller says
+ * "there is more here" and there wouldn't be.
+ */
+export function standingsScrollsHorizontally(league: League): boolean {
+  return league === "nfl";
 }
 
 /**
@@ -89,6 +139,28 @@ export function standingValue(
       );
     case "gamesBehind":
       return entry.gamesBehind;
+    case "wins":
+      return entry.wins !== undefined ? String(entry.wins) : undefined;
+    case "losses":
+      return entry.losses !== undefined ? String(entry.losses) : undefined;
+    case "ties":
+      return entry.ties !== undefined ? String(entry.ties) : undefined;
+    case "homeRecord":
+      return entry.homeRecord;
+    case "awayRecord":
+      return entry.awayRecord;
+    case "divisionRecord":
+      return entry.divisionRecord;
+    case "pointsFor":
+      return entry.pointsFor !== undefined ? String(entry.pointsFor) : undefined;
+    case "pointsAgainst":
+      return entry.pointsAgainst !== undefined
+        ? String(entry.pointsAgainst)
+        : undefined;
+    case "pointDifferential":
+      return entry.pointDifferential;
+    case "streak":
+      return entry.streak;
   }
 }
 
@@ -127,5 +199,17 @@ function spokenValue(value: string, column: StandingsColumn): string {
     if (otLosses !== undefined) parts.push(`${otLosses} overtime losses`);
     return parts.join(", ");
   }
-  return `${value.replaceAll("-", " and ")} ${column.spoken}`;
+  if (column.field === "streak") {
+    // "W3" is a table's shorthand, not a sentence: the letter and the
+    // number run together in every voice that reads it.
+    const verb = value.startsWith("W") ? "won" : value.startsWith("L") ? "lost" : "";
+    if (verb) return `${verb} ${value.slice(1)} ${column.spoken}`;
+    return `${value} ${column.spoken}`;
+  }
+  // Records only. A differential's "-12" means minus, and saying "and 12"
+  // would invert it.
+  const spelled = RECORD_FIELDS.has(column.field)
+    ? value.replaceAll("-", " and ")
+    : value;
+  return `${spelled} ${column.spoken}`;
 }

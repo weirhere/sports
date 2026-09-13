@@ -14,6 +14,20 @@ nonisolated struct StandingsColumn: Hashable, Sendable, Identifiable {
     enum Field: String, Hashable, Sendable {
         case inGroupRecord, overallRecord, winLossOTL
         case gamesPlayed, points, winPercent, gamesBehind
+        case wins, losses, ties
+        case homeRecord, awayRecord, divisionRecord
+        case pointsFor, pointsAgainst, pointDifferential, streak
+
+        /// Whether the value is a record ("2-0") rather than a number.
+        /// Only these get the dash-to-"and" treatment when spoken — a
+        /// differential of "-12" read that way says "and 12".
+        var isRecord: Bool {
+            switch self {
+            case .inGroupRecord, .overallRecord, .winLossOTL,
+                 .homeRecord, .awayRecord, .divisionRecord: true
+            default: false
+            }
+        }
     }
 
     /// What the row reads off the standing.
@@ -32,11 +46,41 @@ nonisolated extension League {
     /// The columns this league's standings tables carry, left to right.
     var standingsColumns: [StandingsColumn] {
         switch self {
-        case .collegeFootball, .nfl:
+        case .collegeFootball:
             [StandingsColumn(field: .inGroupRecord, caption: "CONF",
                              spoken: "in conference", width: 44),
              StandingsColumn(field: .overallRecord, caption: "OVR",
                              spoken: "overall", width: 44)]
+        // The NFL's own table, in ESPN's order (Andy, 2026-09-13). W-L-T
+        // replaces the OVR summary rather than sitting beside it: three
+        // columns and one string are the same three numbers, and the
+        // league that still plays ties is the one that needs them apart.
+        // Wider than a phone by design — see `standingsScrollsHorizontally`.
+        case .nfl:
+            [StandingsColumn(field: .wins, caption: "W",
+                             spoken: "wins", width: 22),
+             StandingsColumn(field: .losses, caption: "L",
+                             spoken: "losses", width: 22),
+             StandingsColumn(field: .ties, caption: "T",
+                             spoken: "ties", width: 22),
+             StandingsColumn(field: .winPercent, caption: "PCT",
+                             spoken: "win percentage", width: 42),
+             StandingsColumn(field: .homeRecord, caption: "HOME",
+                             spoken: "at home", width: 42),
+             StandingsColumn(field: .awayRecord, caption: "AWAY",
+                             spoken: "away", width: 42),
+             StandingsColumn(field: .divisionRecord, caption: "DIV",
+                             spoken: "in division", width: 42),
+             StandingsColumn(field: .inGroupRecord, caption: "CONF",
+                             spoken: "in conference", width: 42),
+             StandingsColumn(field: .pointsFor, caption: "PF",
+                             spoken: "points for", width: 30),
+             StandingsColumn(field: .pointsAgainst, caption: "PA",
+                             spoken: "points against", width: 30),
+             StandingsColumn(field: .pointDifferential, caption: "DIFF",
+                             spoken: "point differential", width: 38),
+             StandingsColumn(field: .streak, caption: "STRK",
+                             spoken: "streak", width: 34)]
         case .nba:
             [StandingsColumn(field: .overallRecord, caption: "W-L",
                              spoken: "overall", width: 44),
@@ -54,6 +98,30 @@ nonisolated extension League {
              StandingsColumn(field: .points, caption: "PTS",
                              spoken: "points", width: 30)]
         }
+    }
+
+    /// Whether this league's table is wider than a phone, so the identity
+    /// column pins and the numbers scroll under it (ESPN's and FotMob's
+    /// pattern). True for exactly the league whose column set can't fit:
+    /// a set that fits must never become a scroller, because a scroller
+    /// says "there is more here" and there wouldn't be.
+    var standingsScrollsHorizontally: Bool { self == .nfl }
+
+    /// The columns the game page's matchup slice shows — two rows about
+    /// two teams, not a table.
+    ///
+    /// Every league's own set, except the one wide enough to scroll: a
+    /// twelve-column scroller inside a card about this game would be
+    /// answering the league page's question in the wrong place. The pair
+    /// it keeps instead is the one every football table kept before
+    /// 2026-09-13 — where these two sit in their conference, and what
+    /// they are overall.
+    var matchupStandingsColumns: [StandingsColumn] {
+        guard standingsScrollsHorizontally else { return standingsColumns }
+        return [StandingsColumn(field: .inGroupRecord, caption: "CONF",
+                                spoken: "in conference", width: 44),
+                StandingsColumn(field: .overallRecord, caption: "OVR",
+                                spoken: "overall", width: 44)]
     }
 }
 
@@ -73,6 +141,16 @@ nonisolated extension ConferenceStanding {
             String(format: "%.3f", $0).replacingOccurrences(of: "0.", with: ".")
         }
         case .gamesBehind: gamesBehind
+        case .wins: wins.map(String.init)
+        case .losses: losses.map(String.init)
+        case .ties: ties.map(String.init)
+        case .homeRecord: homeRecord
+        case .awayRecord: awayRecord
+        case .divisionRecord: divisionRecord
+        case .pointsFor: pointsFor.map(String.init)
+        case .pointsAgainst: pointsAgainst.map(String.init)
+        case .pointDifferential: pointDifferential
+        case .streak: streak
         }
     }
 

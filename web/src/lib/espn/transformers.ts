@@ -638,7 +638,8 @@ function transformStandingsEntry(
   const conferenceRecord =
     stat("vsconf")?.summary ?? stat("vsconf")?.displayValue ?? undefined;
   const overallRecord = composedRecord(stat, league);
-  const streak = stat("streak")?.displayValue;
+  const rawStreak = stat("streak")?.displayValue;
+  const streak = rawStreak && rawStreak !== "-" ? rawStreak : undefined;
   const rawSeed = stat("playoffseed")?.value;
   const playoffSeed = rawSeed != null ? Math.trunc(rawSeed) : undefined;
   // What a merged league table ranks on. Football and basketball keep a
@@ -652,6 +653,20 @@ function transformStandingsEntry(
   // zero stripped, and "-" for the leader's games back.
   const winPercentText = stat("winpercent")?.displayValue;
   const gamesBehind = stat("gamesbehind")?.displayValue;
+  // The NFL's own table is ESPN's whole spread (2026-09-13). Every one of
+  // these is in the payload the standings request already returns — it was
+  // only ever reading two of them.
+  const count = (type: string) => {
+    const value = stat(type)?.value;
+    return value != null ? Math.trunc(value) : undefined;
+  };
+  // Empty strings and ESPN's own "-" placeholder come back undefined, so a
+  // caption never promises a number a dash is standing in for.
+  const recordStat = (type: string) => {
+    const found = stat(type);
+    const value = found?.summary ?? found?.displayValue;
+    return value && value !== "-" ? value : undefined;
+  };
 
   const conf = parseRecordString(conferenceRecord);
   const overall = parseRecordString(overallRecord);
@@ -701,6 +716,18 @@ function transformStandingsEntry(
     gamesPlayed: gamesPlayed != null ? Math.trunc(gamesPlayed) : undefined,
     gamesBehind,
     winPercentText,
+    wins: count("wins"),
+    losses: count("losses"),
+    ties: count("ties"),
+    homeRecord: recordStat("home"),
+    awayRecord: recordStat("road"),
+    divisionRecord: recordStat("vsdiv") ?? recordStat("divisionrecord"),
+    pointsFor: count("pointsfor"),
+    pointsAgainst: count("pointsagainst"),
+    // `differential` and `pointdifferential` are the same number under two
+    // names in every payload we have read.
+    pointDifferential:
+      stat("pointdifferential")?.displayValue ?? stat("differential")?.displayValue,
   };
 }
 
