@@ -1022,18 +1022,47 @@ nonisolated enum ESPNMapper {
                 // conference record and now says so.
                 conferenceRecord: stat("vsconf")?.summary,
                 overallRecord: overallRecord(stat, league: league),
-                streak: stat("streak")?.displayValue,
+                streak: record(stat, "streak"),
                 playoffSeed: stat("playoffseed")?.value.map(Int.init),
                 winPercent: stat("winpercent")?.value,
                 winLossOTL: winLossOTL(stat),
                 gamesPlayed: stat("gamesplayed")?.value.map(Int.init),
                 points: stat("points")?.value.map(Int.init),
-                gamesBehind: stat("gamesbehind")?.displayValue
+                gamesBehind: stat("gamesbehind")?.displayValue,
+                wins: stat("wins")?.value.map(Int.init),
+                losses: stat("losses")?.value.map(Int.init),
+                ties: stat("ties")?.value.map(Int.init),
+                // `home` and `road` carry summaries; the division record
+                // is `vsdiv`'s, with `divisionrecord`'s display string as
+                // the fallback — ESPN ships both and they agree.
+                homeRecord: record(stat, "home"),
+                awayRecord: record(stat, "road"),
+                divisionRecord: record(stat, "vsdiv") ?? record(stat, "divisionrecord"),
+                pointsFor: stat("pointsfor")?.value.map(Int.init),
+                pointsAgainst: stat("pointsagainst")?.value.map(Int.init),
+                // ESPN signs it already ("+40"), and the sign is the whole
+                // column. `differential` and `pointdifferential` are the
+                // same number under two names in every payload we have read.
+                pointDifferential: stat("pointdifferential")?.displayValue
+                    ?? stat("differential")?.displayValue
             )
         }
         return ConferenceStandings(id: id, name: name,
                                    entries: ConferenceStandings.seedOrdered(entries),
                                    league: league, parentId: parentId)
+    }
+
+    /// A record column's string — the `summary` ESPN writes for the
+    /// record stats ("2-0"), falling back to `displayValue` for the stats
+    /// that carry the number there instead. Empty strings and ESPN's own
+    /// "-" placeholder come back nil, so a caption never promises a number
+    /// a dash is standing in for.
+    private static func record(_ stat: (String) -> StandingsStatDTO?,
+                               _ type: String) -> String? {
+        guard let found = stat(type) else { return nil }
+        guard let value = found.summary ?? found.displayValue,
+              !value.isEmpty, value != "-" else { return nil }
+        return value
     }
 
     /// Hockey's three-number record, composed rather than taken from the

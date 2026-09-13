@@ -50,7 +50,7 @@ struct MatchupStandings: View {
             // hidden at accessibility sizes, where rows stack their
             // records onto a labeled line.
             if !dynamicTypeSize.isAccessibilitySize {
-                StandingsColumnCaptions(league: away.league)
+                StandingsColumnCaptions(columns: away.league.matchupStandingsColumns)
             }
             let awaySlot = slot(for: away)
             let homeSlot = slot(for: home)
@@ -93,11 +93,15 @@ struct MatchupStandings: View {
                 name: entry.conference.name,
                 highlightTeamId: entry.standing.team.id
             )) {
-                ConferenceStandingRow(standing: entry.standing, position: entry.position)
+                ConferenceStandingRow(
+                    standing: entry.standing, position: entry.position,
+                    columns: away.league.matchupStandingsColumns)
             }
             .buttonStyle(.plain)
         } else {
-            ConferenceStandingRow(standing: entry.standing, position: entry.position)
+            ConferenceStandingRow(
+                standing: entry.standing, position: entry.position,
+                columns: away.league.matchupStandingsColumns)
         }
     }
 }

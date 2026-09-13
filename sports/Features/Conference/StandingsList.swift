@@ -6,6 +6,13 @@ import SwiftUI
 /// into the budget: a full-bleed hairline against the rows' inset ones,
 /// decoded by text instead of swatches. ConferencePage and TeamPage's
 /// Standings tab both render through here so the rule lives once.
+///
+/// Two layouts, chosen by whether the league's columns fit a phone
+/// (`League.standingsScrollsHorizontally`). College football, basketball
+/// and hockey keep two or three columns and render as whole rows. The NFL
+/// keeps twelve — ESPN's own spread — so its identity column pins and the
+/// numbers scroll under their captions beside it, which is what ESPN and
+/// FotMob both do with a table this wide.
 struct StandingsList: View {
     let entries: [ConferenceStanding]
     let highlightTeamId: String?
@@ -34,6 +41,34 @@ struct StandingsList: View {
     /// format that plays one — `cutIsVisible` is what decides whether this
     /// season's format does.
     private static let championshipPlaces = 2
+
+    private var league: League { entries.first?.team.league ?? .collegeFootball }
+    private var columns: [StandingsColumn] { league.standingsColumns }
+
+    /// The pinned-column layout, for a table wider than the screen. Not at
+    /// accessibility text sizes: the rows stack their numbers onto a
+    /// labeled line there, so there is nothing left to scroll.
+    private var isPinned: Bool {
+        league.standingsScrollsHorizontally && !dynamicTypeSize.isAccessibilitySize
+    }
+
+    /// The pinned column's width: place, mark, and enough room for a team
+    /// name. Fixed rather than flexible because the two columns are laid
+    /// out separately and have to agree on where the seam is.
+    @ScaledMetric(relativeTo: .subheadline) private var identityWidth: CGFloat = 150
+    /// Both columns frame every cell to these, which is what keeps the
+    /// numbers level with the names beside them.
+    @ScaledMetric(relativeTo: .subheadline) private var rowHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .subheadline) private var captionHeight: CGFloat = 35
+    /// Mirrors the cells' own metric so the scrolling column can be given
+    /// a known width — a `Divider` inside a horizontal scroll view has no
+    /// width to fill unless something states one.
+    @ScaledMetric(relativeTo: .subheadline) private var scale: CGFloat = 1
+
+    private var numbersWidth: CGFloat {
+        columns.map { $0.width * scale }.reduce(0, +)
+            + CGFloat(max(columns.count - 1, 0)) * Spacing.md
+    }
 
     private func cutBar(bridgesDivider: Bool) -> some View {
         Rectangle()
@@ -67,18 +102,31 @@ struct StandingsList: View {
         liveGames.lazy.compactMap { $0.liveResult(for: teamId) }.first
     }
 
+    private func qualifies(_ index: Int) -> Bool {
+        cutIsVisible && index < Self.championshipPlaces
+    }
+
     var body: some View {
+        VStack(spacing: 0) {
+            if isPinned { pinnedTable } else { wholeRowTable }
+            if cutIsVisible { legend }
+        }
+    }
+
+    // MARK: - Whole rows
+
+    @ViewBuilder
+    private var wholeRowTable: some View {
         // At accessibility sizes the rows stack their records onto a
         // labeled line, so the captions would caption nothing.
         if !dynamicTypeSize.isAccessibilitySize {
-            StandingsColumnCaptions(league: entries.first?.team.league ?? .collegeFootball)
+            StandingsColumnCaptions(league: league)
         }
         ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
-            let qualifies = cutIsVisible && index < Self.championshipPlaces
             NavigationLink(value: standing.team) {
                 ConferenceStandingRow(standing: standing, position: index + 1,
                                       liveResult: liveResult(for: standing.team.id),
-                                      qualifies: qualifies)
+                                      qualifies: qualifies(index))
             }
             .buttonStyle(.plain)
             .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
@@ -94,7 +142,7 @@ struct StandingsList: View {
                 // the group reads as one continuous mark rather than a bar
                 // per row — which is the difference between "these two are
                 // in" and "this one is, and so is this one".
-                if qualifies {
+                if qualifies(index) {
                     cutBar(bridgesDivider: index < Self.championshipPlaces - 1)
                 }
             }
@@ -103,6 +151,93 @@ struct StandingsList: View {
                 Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
             }
         }
-        if cutIsVisible { legend }
+    }
+
+    // MARK: - Pinned identity, scrolling numbers
+
+    /// Two columns laid out side by side: the identity one fixed at the
+    /// leading edge, the numeric one inside a horizontal scroll view.
+    ///
+    /// Both are built from the same row list and frame every cell to the
+    /// same heights, which is what keeps a name level with its numbers —
+    /// there is no single row view spanning the seam to do it for them.
+    private var pinnedTable: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                StandingsIdentityCaption(width: identityWidth)
+                    .padding(.leading, Spacing.lg)
+                    .captionCell(height: captionHeight)
+                ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
+                    NavigationLink(value: standing.team) {
+                        StandingsIdentityCell(
+                            standing: standing, position: index + 1,
+                            liveResult: liveResult(for: standing.team.id),
+                            width: identityWidth
+                        )
+                        .padding(.leading, Spacing.lg)
+                        .frame(height: rowHeight)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
+                    .overlay(alignment: .leading) {
+                        if qualifies(index) {
+                            cutBar(bridgesDivider: index < Self.championshipPlaces - 1)
+                        }
+                    }
+                    // The row's whole sentence lives here; the numbers
+                    // beside it are hidden from VoiceOver so a team is one
+                    // element, not two.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(StandingsSentence.spoken(
+                        standing, columns: columns, position: index + 1,
+                        liveResult: liveResult(for: standing.team.id),
+                        qualifies: qualifies(index)))
+                    .id(standing.id)
+                    if standing.id != entries.last?.id {
+                        Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
+                    }
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    StandingsNumbersCaption(columns: columns)
+                        .captionCell(height: captionHeight)
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
+                        NavigationLink(value: standing.team) {
+                            StandingsNumbersCell(standing: standing, columns: columns)
+                                .frame(height: rowHeight)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
+                        .accessibilityHidden(true)
+                        if standing.id != entries.last?.id {
+                            Divider().overlay(Color.divider)
+                        }
+                    }
+                }
+                .frame(width: numbersWidth, alignment: .leading)
+                .padding(.leading, Spacing.md)
+                .padding(.trailing, Spacing.lg)
+            }
+        }
+    }
+}
+
+private extension View {
+    /// A caption cell in the pinned layout: the caption row's own look,
+    /// framed to the height both columns agree on.
+    func captionCell(height: CGFloat) -> some View {
+        self
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+            .padding(.top, Spacing.md)
+            .padding(.bottom, Spacing.sm)
+            // After the padding, so this is the row's *total* height —
+            // which is the number the other column has to match.
+            .frame(height: height)
+            .accessibilityHidden(true)
     }
 }

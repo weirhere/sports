@@ -151,6 +151,23 @@ export interface ConferenceStanding {
   gamesBehind?: string;
   /** ESPN's own zero-stripped win percentage, ".732". */
   winPercentText?: string;
+  /** The three numbers a football record is made of. Separate from the
+   * `overallRecord` summary because the NFL's own table columns them
+   * apart — W, L and T are three columns there, not one string. */
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  /** Where the wins came from: ESPN's `home`, `road` and `vsdiv`
+   * summaries. Records, so they arrive as strings ("2-0"). */
+  homeRecord?: string;
+  awayRecord?: string;
+  divisionRecord?: string;
+  /** Points scored and conceded, and the difference ESPN already signs
+   * for us ("+40") — kept as its display string, because the sign is the
+   * whole column. */
+  pointsFor?: number;
+  pointsAgainst?: number;
+  pointDifferential?: string;
 }
 
 /**

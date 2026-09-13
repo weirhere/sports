@@ -27,6 +27,25 @@ nonisolated struct ConferenceStanding: Identifiable, Hashable, Sendable {
     /// arithmetic is a tiebreaker's, and inventing one is what the
     /// standings contract forbids.
     var gamesBehind: String? = nil
+    /// The three numbers a football record is made of. Separate from the
+    /// `overallRecord` summary because the NFL's own table columns them
+    /// apart — W, L and T are three columns there, not one string.
+    var wins: Int? = nil
+    var losses: Int? = nil
+    var ties: Int? = nil
+    /// Where the wins came from: ESPN's `home` and `road` summaries, and
+    /// its `vsdiv` one. Records, so they arrive as strings ("2-0") rather
+    /// than numbers.
+    var homeRecord: String? = nil
+    var awayRecord: String? = nil
+    var divisionRecord: String? = nil
+    /// Points scored and conceded, and the difference ESPN already signs
+    /// for us ("+40"). Kept as its display string rather than an Int: the
+    /// sign is the point, and re-deriving it is a formatter we'd own for
+    /// nothing.
+    var pointsFor: Int? = nil
+    var pointsAgainst: Int? = nil
+    var pointDifferential: String? = nil
 
     var id: String { team.id }
 }

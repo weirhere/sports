@@ -71,6 +71,14 @@ struct ConferencePage: View {
     /// principal slot then carries the conference name (TeamPage's rule).
     @State private var showsInlineTitle = false
 
+    /// Whether the pane itself is using the horizontal axis, so the tab
+    /// swipe stands down: the bracket walks its rounds on it, and a
+    /// standings table too wide for the screen scrolls its columns on it.
+    private var tabOwnsHorizontalAxis: Bool {
+        tab == .postseason
+            || (tab == .standings && destination.league.standingsScrollsHorizontally)
+    }
+
     /// Whether this page is the whole league rather than one of its
     /// conferences — the NFL's 32-team table (Andy, 2026-09-05).
     /// Whether this page is the root of a list of conferences rather than
@@ -314,13 +322,16 @@ struct ConferencePage: View {
                         // the content to walk the tabs; the buttons stay.
                         //
                         // Except on Postseason, where the same gesture walks
-                        // the bracket's rounds instead (Andy, 2026-09-06).
-                        // One horizontal axis, and on that tab the rounds
-                        // are what it moves — the tabs keep their buttons.
+                        // the bracket's rounds instead (Andy, 2026-09-06),
+                        // and on a Standings tab whose table is wider than
+                        // the screen, where it scrolls the columns
+                        // (2026-09-13). One horizontal axis, and on those
+                        // tabs something else is what it moves — the tabs
+                        // keep their buttons either way.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 20)
                                 .onEnded { value in
-                                    guard tab != .postseason else { return }
+                                    guard !tabOwnsHorizontalAxis else { return }
                                     let dx = value.translation.width
                                     guard abs(dx) > 50,
                                           abs(dx) > abs(value.translation.height) * 1.5,
