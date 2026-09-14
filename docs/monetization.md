@@ -48,18 +48,47 @@ not an escape — it is the same trademark. Open question #6 already notes
 that switching to CFBD does not change this, because CFBD's logo URLs point
 at ESPN's CDN too.
 
-**The three options, unchanged from open question #6, re-costed for a paid app:**
+**What it actually costs — published rates, gathered 2026-09-14.** The
+enterprise reputation of this category is misleading. Sportradar is the name
+everyone hears and it is the one tier StatSide never needs.
 
-| | Coverage | Cost | Posture under monetization |
+| Provider | Covers | Published rate | Notes |
 |---|---|---|---|
-| (a) CollegeFootballData.com | **College football only** | $1–30/mo Patreon tiers + a caching proxy | Covers one of four leagues. Does nothing for NFL, NBA, NHL — so it cannot be the answer for a four-league app |
-| (b) Paid provider (SportsDataIO, Sportradar, Stats Perform) | All four, with a real licence | Needs a quote. Real-time multi-league scores is their expensive tier, and logo rights are usually a separate line | The only option that makes "we sell this" defensible |
-| (c) Stay on ESPN and accept the risk | All four | $0 | Survivable for free. Under a paywall it is knowingly monetizing an unlicensed feed |
+| **CollegeFootballData.com** | College football (and CBB via CBBD) | **$10/mo** (Patreon Tier 3, 75k calls, GraphQL with realtime subscriptions) | **Commercial use is permitted**, and crediting CFBD as the source is strongly encouraged. Already implemented — `CFBDClient` conforms to `ScoresProviding` today |
+| **Goalserve — US Sports Package** | **NFL, NBA, MLB, NHL** | **$400/mo**, or $3,100/yr (~$258/mo) | Fixtures, live scores, in-game player stats, injuries, H2H, history since 2010. Licence is by application, reviewed case by case against your stated use |
+| Goalserve — NFL/NCAA live | NFL + NCAA football | $300/mo, $1,500/yr | Narrower, and overlaps what CFBD already covers for $10 |
+| **API-Sports** | American football, basketball, hockey, baseball + 5 more | **$29–39/mo** (Ultra 75k/day, Mega 150k/day) | Cheapest by an order of magnitude. Latency, coverage depth and licence terms all unverified |
+| SportsDataIO — Discovery Lab | Most US sports | $99–149/mo | **Explicitly not licensed for commercial redistribution**, and next-day delayed. Wrong product, and the trap to avoid |
+| SportsDataIO — production | Most US sports | Quote only; secondhand reports of **$300–500/mo per sport** | The real licence. Needs a sales conversation |
+| Sportradar | Everything, officially licensed | **$1,250/mo floor**, reports of $10,000+ | Enterprise B2B with no public rate card. Not this app's tier |
 
-**This is the first question and it is Andy's, not a task.** Get one quote
-for CFB + NFL + NBA + NHL real-time scores, with the logo question asked
-explicitly, before anything below gets built. The number decides whether
-there is a business here at all.
+**So the realistic stack for StatSide is two vendors, not one:**
+
+- **CFBD at $10/mo** for college football, which is already built and already
+  commercially licensed.
+- **Goalserve's US Sports Package at $400/mo**, or $258/mo paid annually, for
+  the NFL, NBA and NHL. MLB rides along, which is E17 answered for free.
+
+That's roughly **$270–410/month** for a licensed four-league app, and about
+**$40–50/month** if API-Sports turns out to be good enough for the three pro
+leagues. The range worth planning against is **$50 to $450 a month**, not the
+thousands the Sportradar number implies.
+
+*Every figure above is a published list price read on 2026-09-14, not a quote
+anyone gave us. Goalserve's licence is granted by application, so the price
+and the permission are two separate answers.*
+
+**The logos are still unsolved, by any of them.** None of these vendors sells
+the right to display Michigan's block M. StatSide renders team marks in full
+colour because the colour budget's first exception exists for exactly that,
+and a data licence does not carry a trademark licence. This stays a risk
+accepted rather than a problem paid away, and it should be written down as an
+accepted risk rather than left unmentioned.
+
+**Latency is an acceptance criterion, not a footnote.** The product promise is
+time-to-score. A feed that is 60 seconds behind ESPN makes StatSide the slow
+app, which is the one thing it cannot be. Any provider swap gets tested
+against a live Saturday with ESPN open beside it before it ships.
 
 ### The arithmetic that makes it concrete
 
@@ -71,12 +100,16 @@ So the monthly feed bill divided by $1.42 is roughly the number of annual
 subscribers required to break even **on data alone**, before a dollar of
 profit, before the APNs service, before the domain:
 
-| Feed costs | Annual subscribers to break even |
-|---|---|
-| $250/mo | ~175 |
-| $500/mo | ~350 |
-| $1,000/mo | ~700 |
-| $2,000/mo | ~1,410 |
+| Feed stack | Monthly | Annual subscribers to break even |
+|---|---|---|
+| API-Sports + CFBD | ~$50 | **~35** |
+| Goalserve US annual + CFBD | ~$270 | **~190** |
+| Goalserve US monthly + CFBD | ~$410 | **~290** |
+| SportsDataIO production (mid estimate) | ~$1,200 | ~845 |
+
+**35 to 290 subscribers.** That is a number a single good season can produce,
+which is the finding that moves this from "probably not worth it" to "worth
+pricing properly."
 
 Against that, the honest second question: how many installs does StatSide
 have today? The app collects no analytics by design, so the only place that
@@ -123,9 +156,10 @@ weekend per active user, 3 impressions a session.
 At **1,000 weekly actives** that is ~60,000 impressions a weekend, about
 **$120 a weekend**, call it **$500 a month in football season** and
 materially less the rest of the year even with basketball and hockey now
-running to June. That is a real number and it is not a business. It does not
-clear the feed bill in the table above, and it costs the app its entire
-positioning to earn.
+running to June. It would clear the cheap end of the feed bill and little
+else, and it costs the app its entire positioning to earn — against a
+membership that clears the same bill at 35 to 290 subscribers without
+rewriting a word of the README.
 
 ### The version worth considering
 
@@ -240,8 +274,10 @@ membership iOS-only in the first cut.** Whatever lands here needs a
 
 ## Recommendation
 
-1. **Get the feed quote first.** It is the only number that can kill the
-   idea, so it should not be the last one found out.
+1. **Apply to Goalserve and trial API-Sports.** The published rates say a
+   licensed four-league app costs $50–450/month, so the gate is no longer
+   "can this be afforded" but "is the cheap feed fast enough." Test latency
+   against a live Saturday with ESPN open beside it.
 2. **Memberships, not ads.** A subscription that pays for the live service
    is a story consistent with every word already written about this app. A
    banner is a small cheque and a rewritten identity.
@@ -254,11 +290,22 @@ membership iOS-only in the first cut.** Whatever lands here needs a
 
 Three, in order, and the first one gates the rest:
 
-1. **What does a four-league licensed feed actually cost?** Are you willing
-   to pay it, or is (c) — keep taking the ESPN risk — still the posture even
-   with money changing hands?
+1. **$270/month for a licensed feed, or keep taking the ESPN risk?** That is
+   CFBD at $10 plus Goalserve's US package paid annually, and it breaks even
+   at roughly 190 annual subscribers. The logos stay an accepted risk either
+   way, because no vendor sells that right.
 2. **Membership only, or membership plus a direct-sold sponsorship?** Saying
    "no ad SDK, ever" out loud is worth a decisions-log row on its own.
 3. **Is Live Activities the thing people pay for?** If yes, E12 stops being
    a P2 nice-to-have and becomes the product's first paid feature, which
    changes how it gets built and what "finished" means.
+
+## Sources for the pricing table
+
+Read 2026-09-14. List prices move, and none of these is a quote given to us.
+
+- CollegeFootballData.com — [API access tiers](https://collegefootballdata.com/api-tiers), [terms](https://collegefootballdata.com/terms)
+- Goalserve — [US Sports Package prices](https://www.goalserve.com/en/sport-data-feeds/ussports-api/prices), [NFL/NCAA prices](https://www.goalserve.com/en/sport-data-feeds/nfl-api/prices), [full package](https://www.goalserve.com/en/sport-data-feeds/full-package-api/prices)
+- API-Sports — [api-sports.io](https://api-sports.io/)
+- SportsDataIO — [sportsdata.io](https://sportsdata.io/), [Discovery Lab](https://discoverylab.sportsdata.io/personal-use-apis/ncaa-football)
+- Sportradar rates, secondhand — [SharpAPI's provider comparison](https://sharpapi.io/compare/sports-data-apis), [LSports' 2026 cost guide](https://www.lsports.eu/blog/sports-data-cost/)
