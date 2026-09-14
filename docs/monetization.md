@@ -111,10 +111,59 @@ profit, before the APNs service, before the domain:
 which is the finding that moves this from "probably not worth it" to "worth
 pricing properly."
 
-Against that, the honest second question: how many installs does StatSide
-have today? The app collects no analytics by design, so the only place that
-number lives is App Store Connect, and Andy is the only person who can read
-it. A 3–5% paid conversion rate is a healthy consumer app. Work backwards.
+### Answered 2026-09-14: about 200 installs, and that settles it
+
+Andy, asked directly: *"I think I have around 200 installs."* Run it through
+the table above at a healthy 3–5% paid conversion:
+
+| Installs | Subscribers at 3–5% | Revenue |
+|---|---|---|
+| **200 (today)** | **6–10** | **$102–170/yr, or $8–14/month** |
+| 1,000 | 30–50 | $510–850/yr |
+| 5,000 | 150–250 | $2,549–4,248/yr |
+
+**Today's membership revenue does not cover today's cheapest licensed feed.**
+$8–14/month against a $50/month floor loses money on every subscriber, and
+against Goalserve's $270 it isn't close. Working the same arithmetic
+backwards gives the thresholds:
+
+- **~700–1,200 installs** makes the cheap stack (API-Sports + CFBD, ~$50/mo)
+  pay for itself.
+- **~3,800–6,400 installs** makes the Goalserve stack (~$270/mo) pay for
+  itself.
+
+Ads are worse at this size, not better. 200 installs is maybe 50–100 weekly
+actives, which is roughly 6,000 impressions a weekend, which is about
+**$12 a weekend** at a $2 CPM. That is $50 a month in season, in exchange
+for the privacy label, the zero-dependency rule, an ATT prompt and the
+README's whole premise.
+
+**So the binding constraint is distribution, and monetization is downstream
+of it.** Charging at this size would also mean charging money while still
+serving ESPN's unlicensed feed, because the revenue can't fund the licence
+that would fix it — which is the worst of both postures at once.
+
+### What to do at 200 installs instead
+
+None of this is monetization work, and all of it is cheaper than it:
+
+1. **Turn on the review prompt.** Open question #7: `requestReview` appears
+   nowhere in the app, so a rating has no route to happen at all. Ratings
+   feed both App Store search ranking and conversion, and the proposed
+   trigger is already written down (after a kickoff reminder fires and the
+   user opens the game from it). This is the highest-leverage free thing on
+   the whole list.
+2. **Ship E12 free.** Live Activities is the roadmap's own "probably the
+   killer feature," and a lock-screen live score is the thing people
+   screenshot and show other people. It is the growth lever and the eventual
+   paid feature, in that order.
+3. **Let the web loop run.** The OpenGraph card (2026-09-09) and the download
+   CTA (2026-09-10) only just shipped. Every shared game link is now an
+   install funnel that didn't exist two weeks ago, and nobody has seen a full
+   season of it yet.
+4. **Revisit this doc at ~1,000 installs**, which is a trigger rather than a
+   date. That is where the cheap licensed stack starts paying for itself and
+   where a membership stops being a rounding error.
 
 ## Ads
 
@@ -274,31 +323,44 @@ membership iOS-only in the first cut.** Whatever lands here needs a
 
 ## Recommendation
 
-1. **Apply to Goalserve and trial API-Sports.** The published rates say a
-   licensed four-league app costs $50–450/month, so the gate is no longer
-   "can this be afforded" but "is the cheap feed fast enough." Test latency
-   against a live Saturday with ESPN open beside it.
-2. **Memberships, not ads.** A subscription that pays for the live service
-   is a story consistent with every word already written about this app. A
-   banner is a small cheque and a rewritten identity.
-3. **Ship E12 free to everybody for one weekend** before charging for it, so
-   the running cost is a measurement rather than a guess.
-4. **If ad money is wanted anyway, sell one sponsorship slot directly** and
+**Not yet, and the reason is a number rather than a taste.** At ~200 installs
+a membership earns $8–14/month and the cheapest licensed feed costs $50, so
+shipping one today would lose money and spend the goodwill of a small early
+user base to do it. Ads earn less than that and cost more.
+
+The order that follows from the arithmetic:
+
+1. **Grow to ~1,000 installs first.** That is where the cheap licensed stack
+   pays for itself and a membership stops being a rounding error. The three
+   levers cost nothing: the review prompt (open question #7, and `requestReview`
+   appears nowhere in the app today), E12 shipped free, and a full season of
+   the web share loop that only started on 2026-09-09.
+2. **Stay on ESPN while free.** Paying $270/month to serve 200 people for
+   free is the one clearly wrong move available. Revisit the feed when
+   revenue can fund it, which is the same threshold.
+3. **When it's time, memberships and no ad SDK.** A subscription that pays
+   for the live service is consistent with every word already written about
+   this app. A banner is a small cheque and a rewritten identity, and at this
+   size it is a $50 cheque.
+4. **Ship E12 free to everybody for a full weekend** before it is ever behind
+   a paywall, so the running cost is a measurement and the growth lever gets
+   used as one.
+5. **If ad money is wanted anyway, sell one sponsorship slot directly** and
    serve it ourselves. No SDK, no tracking, no label change.
 
 ## The question for Andy
 
-Three, in order, and the first one gates the rest:
+The pricing question is answered and parked. What's left:
 
-1. **$270/month for a licensed feed, or keep taking the ESPN risk?** That is
-   CFBD at $10 plus Goalserve's US package paid annually, and it breaks even
-   at roughly 190 annual subscribers. The logos stay an accepted risk either
-   way, because no vendor sells that right.
-2. **Membership only, or membership plus a direct-sold sponsorship?** Saying
-   "no ad SDK, ever" out loud is worth a decisions-log row on its own.
-3. **Is Live Activities the thing people pay for?** If yes, E12 stops being
-   a P2 nice-to-have and becomes the product's first paid feature, which
-   changes how it gets built and what "finished" means.
+1. **Is growing to ~1,000 installs something you want to work on?** If the
+   honest answer is that StatSide is for you and a few friends, then this
+   whole doc closes as "no monetization," which is a perfectly good outcome
+   and worth a decisions-log row saying so.
+2. **Review prompt now?** Open question #7 has been sitting unscheduled since
+   2026-09-08. It is the cheapest install-growth lever available and it is
+   one `requestReview` call at a trigger that's already been designed.
+3. **Membership only, or membership plus a direct-sold sponsorship, when the
+   time comes?** Saying "no ad SDK, ever" out loud is worth its own row.
 
 ## Sources for the pricing table
 
