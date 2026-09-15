@@ -1,4 +1,7 @@
 import SwiftUI
+// `EnvironmentValues.requestReview` is StoreKit's, surfaced into SwiftUI —
+// first-party, so the zero-dependency rule is untouched.
+import StoreKit
 import os
 
 /// Tap a game, land somewhere worth landing: header, linescore, scoring
@@ -9,6 +12,10 @@ struct GameDetailScreen: View {
     let game: Game
 
     @Environment(\.scenePhase) private var scenePhase
+    /// Optional on purpose: a preview or a host that never planted one
+    /// should render the page, not trap. `RootView` always provides it.
+    @Environment(ReviewPrompt.self) private var reviewPrompt: ReviewPrompt?
+    @Environment(\.requestReview) private var requestReview
 
     @State private var loadedSummary: GameSummary?
     /// Which game the loaded summary and standings describe. Belt and
@@ -268,7 +275,10 @@ struct GameDetailScreen: View {
         }
         // Keyed by the game, not fire-once: a screen reused for another
         // game must fetch that game rather than sit on what it holds.
-        .task(id: game.routeKey) { await load() }
+        .task(id: game.routeKey) {
+            await load()
+            await askForReviewIfEarned()
+        }
         // The series is fetched when its tab is first opened, not with the
         // page — twenty requests is a lot to spend on a tab most visits
         // never reach. The id carries the game so a screen handed another
@@ -297,6 +307,31 @@ struct GameDetailScreen: View {
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
+
+    /// The rating ask, at the only moment it is earned: a kickoff reminder
+    /// fired, the user tapped it, and the game it promised is on screen
+    /// and loaded (open question #7).
+    ///
+    /// After the page has something on it, never before. A sheet thrown up
+    /// over a spinner asks the user to rate a loading indicator, and one
+    /// thrown up over "Couldn't load this game" asks them to rate a
+    /// failure — which is why the load guard sits *above* the arm and a
+    /// failed fetch leaves the arm intact: the reminder promised a game,
+    /// and a game that never arrived hasn't earned anything yet.
+    ///
+    /// The settle delay lets the push animation finish first. Navigating
+    /// away inside it cancels the task, and by then the arm is spent, so a
+    /// user who left is neither asked on the way out nor chased on the
+    /// next launch.
+    private func askForReviewIfEarned() async {
+        guard let reviewPrompt else { return }
+        guard summary != nil, lastError == nil else { return }
+        guard reviewPrompt.earnedByOpening(gameId: game.id) else { return }
+        try? await Task.sleep(for: .seconds(1.5))
+        guard !Task.isCancelled else { return }
+        reviewPrompt.recordRequest()
+        requestReview()
+    }
 
     /// What restarts the poll loop: the game, and whether it should be
     /// running at all.

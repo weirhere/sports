@@ -15,16 +15,36 @@ import type { League } from "@/lib/leagues";
  * not of the install base, which is the only version the polite-guest rule
  * survives. Nothing here reads or writes anything about a user.
  *
- * Driven by Vercel Cron (see vercel.json). Guarded by a shared secret so it
- * isn't an open relay for anyone who finds the URL.
+ * **Driven by an external pinger at 60-second intervals** (Andy, 2026-09-15),
+ * not by Vercel Cron — Cron on the Hobby plan fires once a day, and minute
+ * granularity needs Pro, which this project does not need until it charges
+ * for something. There is no `vercel.json`, and the previous version of this
+ * comment pointed at one that never existed. See
+ * `docs/live-activities-service.md` § The scheduler decision.
+ *
+ * Guarded by a shared secret so it isn't an open relay for anyone who finds
+ * the URL. That matters more with a pinger than it would with Cron: the URL
+ * is configured in a third party's dashboard rather than in this repo.
+ *
+ * **The tick is unconditional, and the pinger's schedule is what bounds it.**
+ * Nothing here can know whether anything is live without asking ESPN, so
+ * every tick costs four scoreboard requests whether or not a ball is in the
+ * air. At 60s that is ~5,760 requests a day if the pinger runs around the
+ * clock, which is politeness spent on an empty Tuesday at 3am. Bound it by
+ * scheduling the pinger over plausible game windows instead. Doing better in
+ * code means caching the next kickoff and skipping the fetch until then,
+ * which is state this service deliberately does not hold yet.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const LEAGUES: League[] = ["cfb", "nfl", "nba", "nhl"];
 
-/** Two ticks' grace, matching the client's own staleDate. A card whose
- *  updates stop says so rather than freezing on a wrong score. */
+/** Two ticks' grace at the decided 60-second cadence, matching the client's
+ *  own staleDate. A card whose updates stop says so rather than freezing on
+ *  a wrong score. **Move this if the cadence moves** — it is 2 × the tick,
+ *  and it was the only thing in the repo that knew the cadence was 60s back
+ *  when the blocker still claimed the target was 30. */
 const STALE_AFTER_SECONDS = 120;
 
 function authorized(request: Request): boolean {
