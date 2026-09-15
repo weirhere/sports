@@ -14,6 +14,7 @@ struct RootView: View {
     @State private var scoreboards = LeagueScoreboards()
     @State private var directory = TeamDirectoryStore()
     @State private var router: Router
+    @State private var reviewPrompt: ReviewPrompt
     @State private var selectedTab: Tab = .scores
     /// Where Cancel on the search tab returns to.
     @State private var lastContentTab: Tab = .scores
@@ -21,8 +22,9 @@ struct RootView: View {
     @State private var showReminderOffer = false
     @Environment(\.scenePhase) private var scenePhase
 
-    init(router: Router = Router()) {
+    init(router: Router = Router(), reviewPrompt: ReviewPrompt = ReviewPrompt()) {
         _router = State(initialValue: router)
+        _reviewPrompt = State(initialValue: reviewPrompt)
     }
 
     var body: some View {
@@ -128,6 +130,7 @@ struct RootView: View {
         .environment(following)
         .environment(uiState)
         .environment(router)
+        .environment(reviewPrompt)
         .environment(notifications)
         .environment(scoreboards)
         .environment(directory)

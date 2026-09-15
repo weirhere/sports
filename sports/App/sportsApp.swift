@@ -11,6 +11,7 @@ import UserNotifications
 @main
 struct sportsApp: App {
     @State private var router: Router
+    @State private var reviewPrompt: ReviewPrompt
     private let notificationDelegate: NotificationDelegate
 
     init() {
@@ -18,15 +19,17 @@ struct sportsApp: App {
         // Must run after the App Group copy: it reads the suite's bare keys.
         AppGroup.migrateLeagueNamespacingIfNeeded()
         let router = Router()
-        let delegate = NotificationDelegate(router: router)
+        let review = ReviewPrompt()
+        let delegate = NotificationDelegate(router: router, reviewPrompt: review)
         _router = State(initialValue: router)
+        _reviewPrompt = State(initialValue: review)
         notificationDelegate = delegate
         UNUserNotificationCenter.current().delegate = delegate
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(router: router)
+            RootView(router: router, reviewPrompt: reviewPrompt)
         }
     }
 }
