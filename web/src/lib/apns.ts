@@ -179,17 +179,48 @@ export function broadcastHeaders(config: ApnsConfig, request: BroadcastRequest,
   return headers;
 }
 
+/**
+ * Why a send blew up before it ever reached Apple.
+ *
+ * Signing happens inside `broadcastHeaders`, and `createPrivateKey` throws
+ * on a PEM it can't decode — so the single most likely misconfiguration in
+ * this whole feature used to surface as an unhandled exception, which
+ * Vercel renders as **HTTP 500 with an empty body**. No reason, no league,
+ * nothing. Found the hard way 2026-09-15.
+ *
+ * A flattened PEM is the usual culprit: `APNS_PRIVATE_KEY` is a multi-line
+ * value pasted into a single-line dashboard field, and
+ * `apnsConfigFromEnv`'s `\n` restoration only helps when the newlines
+ * survived *as the two characters* `\` and `n`. Newlines stripped outright
+ * are not recoverable that way and produce exactly this.
+ */
+function sendFailureReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/DECODER|asn1|unsupported|PEM|private key/i.test(message)) {
+    return `apns-key-unreadable: ${message} — check APNS_PRIVATE_KEY still has its BEGIN/END lines and its line breaks`;
+  }
+  return `apns-send-threw: ${message}`;
+}
+
 export async function sendBroadcast(
   config: ApnsConfig,
   request: BroadcastRequest,
   fetchImpl: typeof fetch = fetch,
   now = Date.now(),
 ): Promise<BroadcastResult> {
-  const response = await fetchImpl(broadcastUrl(config), {
-    method: "POST",
-    headers: broadcastHeaders(config, request, now),
-    body: JSON.stringify(broadcastPayload(request, now)),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl(broadcastUrl(config), {
+      method: "POST",
+      headers: broadcastHeaders(config, request, now),
+      body: JSON.stringify(broadcastPayload(request, now)),
+    });
+  } catch (error) {
+    // Status 0: nothing was ever sent, so there is no HTTP status to
+    // report. A caller reading `ok` sees a failure either way, and the
+    // route files it under `failed` with a reason instead of dying.
+    return { ok: false, status: 0, reason: sendFailureReason(error) };
+  }
   const apnsId = response.headers.get("apns-id") ?? undefined;
   if (response.ok) return { ok: true, status: response.status, apnsId };
   let reason: string | undefined;

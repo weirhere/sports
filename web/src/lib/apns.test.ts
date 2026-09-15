@@ -131,3 +131,63 @@ describe("environment config", () => {
     expect(resolved?.environment).toBe("sandbox");
   });
 });
+
+describe("a send that never reaches Apple", () => {
+  // Found live 2026-09-15: a real broadcast against a real channel answered
+  // HTTP 500 with an empty body. Signing happens inside `broadcastHeaders`,
+  // `createPrivateKey` throws on a PEM it can't decode, and nothing caught
+  // it — so the likeliest misconfiguration in the whole feature produced
+  // the least debuggable possible response.
+  const unreadable: ApnsConfig = {
+    ...config,
+    privateKeyPem: "-----BEGIN PRIVATE KEY-----not-a-key-----END PRIVATE KEY-----",
+  };
+
+  it("reports an unreadable key instead of throwing", async () => {
+    const result = await sendBroadcast(unreadable, {
+      channelId: "channel",
+      contentState: {},
+      event: "update",
+    });
+
+    expect(result.ok).toBe(false);
+    // Status 0 because nothing was sent — there is no HTTP status to report.
+    expect(result.status).toBe(0);
+    expect(result.reason).toContain("apns-key-unreadable");
+    // The reason names the variable and what to look at, because the person
+    // reading it is looking at a dashboard rather than a stack trace.
+    expect(result.reason).toContain("APNS_PRIVATE_KEY");
+  });
+
+  it("reports a transport failure the same way", async () => {
+    const result = await sendBroadcast(
+      config,
+      { channelId: "channel", contentState: {}, event: "update" },
+      (async () => {
+        throw new Error("getaddrinfo ENOTFOUND api.sandbox.push.apple.com");
+      }) as unknown as typeof fetch,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(0);
+    expect(result.reason).toContain("apns-send-threw");
+    expect(result.reason).toContain("ENOTFOUND");
+  });
+
+  it("still returns APNs' own reason when Apple answers", async () => {
+    const result = await sendBroadcast(
+      config,
+      { channelId: "channel", contentState: {}, event: "update" },
+      (async () =>
+        new Response(JSON.stringify({ reason: "BadDeviceToken" }), {
+          status: 400,
+        })) as unknown as typeof fetch,
+    );
+
+    // The catch must not swallow the case it was never meant to cover: a
+    // send that reached Apple and was rejected still reports Apple's word.
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(400);
+    expect(result.reason).toBe("BadDeviceToken");
+  });
+});
