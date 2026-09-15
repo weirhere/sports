@@ -64,8 +64,16 @@ interface LeagueReport {
   league: League;
   /** Games the scoreboard returned. */
   games: number;
-  /** Of those, the ones past pre-game — the candidates for a push. */
-  live: number;
+  /**
+   * Of those, the ones past pre-game — the candidates for a push.
+   *
+   * **Not "in progress."** A final counts here, because a final is pushed
+   * too (as an `end` event). The first response this field ever produced
+   * read `nfl: games 16, live 16` on a night with exactly one game in
+   * progress and fifteen finished, which is accurate and reads as a lie —
+   * hence the name it has now.
+   */
+  eligible: number;
   /** Of those, the ones that resolved a channel id. */
   matched: number;
   /** Present only when the scoreboard fetch threw for this league. */
@@ -121,14 +129,14 @@ export async function GET(request: Request) {
   );
 
   for (const { league, games, error } of slates) {
-    const report: LeagueReport = { league, games: games.length, live: 0, matched: 0 };
+    const report: LeagueReport = { league, games: games.length, eligible: 0, matched: 0 };
     if (error) report.error = error;
     reports.push(report);
 
     for (const game of games) {
       const phase = activityPhase(game.status);
       if (phase === "pre") continue; // nothing on a pre-game card moves
-      report.live += 1;
+      report.eligible += 1;
       const channelId = await channels.channelId(game.id, league);
       if (!channelId) continue;
       report.matched += 1;
@@ -165,7 +173,9 @@ export async function GET(request: Request) {
     // the configured map, so `matched: 0` against a non-zero `channels`
     // says the ids don't line up, and `matched: 0` against `channels: 0`
     // says nothing is configured — two very different problems that used
-    // to produce the identical response.
+    // to produce the identical response. `eligible` counts everything past
+    // pre-game rather than everything in progress, finals included, because
+    // that is the set this loop will try to push to.
     channels: channelCount,
     leagues: reports,
   });
