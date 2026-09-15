@@ -97,6 +97,10 @@ and the TypeScript side asserts a 10-digit value. Both files say why.
    Apple caps an app at **10,000 channels** per environment, so they also
    have to be reaped. Nothing does that yet.
 
+   **The by-hand path is written out in § Provisioning a channel below**,
+   including the capability that has to be switched on before the console
+   will show you a Channels tab at all.
+
 ## Creating the provider key
 
 Written down 2026-09-15 because the blocker above named the credential and
@@ -368,12 +372,23 @@ Read the body, because all three answers mean different things:
 Do not move on until you get one of the first or third. The whole point of
 doing this by hand first is that a scheduler makes every failure quieter.
 
-**First light, such as it is, happened 2026-09-15.** The route answered an
-authorized request in production for the first time — `apns-not-configured`,
-which is the success case at that stage. What that proves: the deploy is
-live, the bearer guard rejects a wrong secret and accepts the right one, and
-the `www` host is the reachable one. What it does not prove: anything at all
-about Apple, which had not been configured yet.
+**First light, such as it is, happened 2026-09-15**, in two steps an hour
+apart. The route answered an authorized request in production for the first
+time — `apns-not-configured` — and then, once the three APNs variables
+landed and the deploy caught up, `{"status":"ok","at":"…","pushed":0,
+"failed":[]}`.
+
+What `ok` proves: the deploy is live, the bearer guard rejects a wrong secret
+and accepts the right one, `www` is the reachable host, the provider key
+**parsed**, and the route completed a full pass — four league scoreboards
+fetched from Vercel, no errors.
+
+What it does not prove: that **Apple accepts the key**. `ok` means
+`apnsConfigFromEnv()` returned a config rather than null, and nothing more.
+`pushed: 0` is correct at that point because `APNS_CHANNELS` is unset, so
+every game falls out at `if (!channelId) continue`. The first evidence Apple
+has ever seen this key is a delivered broadcast, which needs § Provisioning a
+channel.
 
 #### 5. Create the job at cron-job.org
 
@@ -435,6 +450,68 @@ Plan limits and prices read 2026-09-15; they move, and none is a quote.
 - Vercel — [cron usage and pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing), [Hobby plan](https://vercel.com/docs/plans/hobby), [pricing](https://vercel.com/pricing)
 - GitHub Actions — [scheduled-jobs frequency change](https://github.blog/changelog/2019-11-01-github-actions-scheduled-jobs-maximum-frequency-is-changing/), [workflow syntax](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions)
 - The polite-guest rule and the 60s assumption are ours: `CLAUDE.md` § Data source, and `STALE_AFTER_SECONDS` in `web/src/app/api/live-activity/broadcast/route.ts`
+
+## Provisioning a channel
+
+Walked live 2026-09-15. The order matters: the console will not let you make
+a channel until the App ID carries the capability, and the button it offers
+for that does not do it.
+
+#### 1. Turn on Broadcast for the App ID
+
+**Broadcast is a sub-capability of Push Notifications, separate from it and
+off by default.** Having Push Notifications on is not enough.
+
+[developer.apple.com/account](https://developer.apple.com/account) →
+Certificates, Identifiers & Profiles → **Identifiers** →
+`com.andyryanweir.sports` → **Push Notifications** → **Configure** → tick
+**Broadcast** → **Save**.
+
+**Not** from the console. Its Channels tab shows *"Broadcast capability is
+not enabled for this app"* with an **Enable broadcast capability** button,
+and that button opens
+[Apple's documentation](https://developer.apple.com/documentation/usernotifications/setting-up-broadcast-push-notifications)
+rather than enabling anything. Following it is a dead end that looks like a
+control.
+
+Changing App ID capabilities invalidates provisioning profiles. Automatic
+signing regenerates them on the next build, so there is nothing to download.
+
+#### 2. Create the channel
+
+The console is at
+[icloud.developer.apple.com/dashboard/notifications](https://icloud.developer.apple.com/dashboard/notifications),
+or from the account page under **Services → Push Notifications**. Pick the
+app, then **Channels** → **New Channel**:
+
+| Field | Value | Why |
+|---|---|---|
+| **Environment** | **Development** | This is sandbox, which is what `APNS_ENVIRONMENT` defaults to. Sandbox and production are separate channel namespaces, so a channel made here is invisible to a TestFlight build |
+| **Push type** | **Live Activity** | |
+| **Storage policy** | **Most Recent Message** | See below |
+
+**On the storage policy.** *No Storage* delivers only to devices connected
+right now and buys a higher publishing budget; *Most Recent Message* holds
+the latest deferred update for a device that reconnects. Most Recent is the
+better fit here and the reason is specific to scores: the most recent
+message **is** the current score, so a phone that dropped off for two minutes
+comes back correct rather than blank, with no staleness risk. The cost is
+budget, which matters at a 60-second tick and is the thing to watch first if
+updates start disappearing.
+
+#### 3. Wire it up
+
+Copy the channel id, then set `APNS_CHANNELS` on Vercel to a JSON map keyed
+`<league>:<gameId>` — `{"nfl:401772936":"<channel id>"}` — redeploy, and curl
+the route again. `pushed` goes to 1 when that game is **live**: the route
+skips anything pre-game (`if (phase === "pre") continue`), so an end-to-end
+test needs a game actually in progress, not merely scheduled.
+
+**This is the part that does not scale**, and it is worth being blunt about
+it rather than letting a working test imply otherwise. One channel per game,
+created by hand, against a slate that is ~60 games on a September Saturday.
+It is a test harness, not a season. The real version needs a durable store
+and a box that can reach :2196, which is blocker 3's unsolved half.
 
 ## What is *not* verified
 
