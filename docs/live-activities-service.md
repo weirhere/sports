@@ -74,6 +74,10 @@ and the TypeScript side asserts a 10-digit value. Both files say why.
    Without them `apnsConfigFromEnv()` returns null and the route reports
    `apns-not-configured` rather than failing — the normal state today.
 
+   **The step-by-step is in § Creating the provider key below**, because
+   "Andy has to create this" was the whole instruction for five days and it
+   turns out the key is step 2 of 5, not step 1 of 1.
+
 2. **A scheduler that can actually tick.** Vercel Cron on the Hobby plan is
    **once a day**, which is useless for a 30-second cadence; minute-level
    crons need Pro. A minute is also not 30 seconds. Options, none free and
@@ -93,6 +97,79 @@ and the TypeScript side asserts a 10-digit value. Both files say why.
 
    Apple caps an app at **10,000 channels** per environment, so they also
    have to be reaped. Nothing does that yet.
+
+## Creating the provider key
+
+Written down 2026-09-15 because the blocker above named the credential and
+not the sequence, and the sequence has a step before the key that is easy to
+miss: **the App ID does not have Push Notifications turned on.**
+`Config/sports.entitlements` says so in a comment and explains why —
+`aps-environment` was removed because it broke the archive against an App ID
+with no push capability. So the entitlement and the capability go back
+together, in the same change that ships this service.
+
+Everything here is done once, by the account holder, and none of it is code.
+
+**1. Turn on Push Notifications for the App ID.**
+[developer.apple.com/account](https://developer.apple.com/account) →
+Certificates, Identifiers & Profiles → **Identifiers** → `com.andyryanweir.sports`
+→ tick **Push Notifications** → Save. Xcode's automatic signing regenerates
+the profile on the next build; nothing has to be downloaded by hand.
+
+**2. Create the key.** Same portal → **Keys** → the **+** button.
+
+- Name it something a future person can identify (`StatSide APNs`).
+- Tick **Apple Push Notification service (APNs)**.
+- If the page offers an environment restriction (Sandbox / Production /
+  both), take **both** — one key for both environments is what the transport
+  assumes, and a sandbox-only key fails against production with an auth
+  error rather than an obvious one.
+- Continue → Register → **Download**.
+
+**The `.p8` downloads exactly once.** Apple keeps the Key ID forever and the
+private key never. Lose the file and the only move is to revoke the key and
+make another. An account holds at most **2** APNs auth keys, so "make another
+whenever" is not a plan.
+
+**3. Collect three values.**
+
+| Value | Where |
+|---|---|
+| **Key ID** | On the key's page after registering, and in the filename: `AuthKey_<KEYID>.p8` |
+| **Team ID** | Portal top-right, or Membership details |
+| **Private key** | The contents of the `.p8`, `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines included |
+
+**4. Put them on Vercel.** Project → Settings → Environment Variables:
+`APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. Two optional ones exist
+and both default correctly today: `APNS_BUNDLE_ID` (defaults to
+`com.andyryanweir.sports`) and `APNS_ENVIRONMENT` (**defaults to sandbox**,
+and anything other than the literal `production` is sandbox).
+
+On the PEM specifically: paste it either way. Real newlines survive
+untouched, and a flattened single line with literal `\n` sequences is
+restored by `apnsConfigFromEnv`'s `replace(/\\n/g, "\n")`. What does not
+survive is a missing BEGIN/END line.
+
+**5. Restore the entitlement.** Put `aps-environment` back into
+`Config/sports.entitlements` (`development` for a debug build), which the
+comment there is waiting for. Do this in the same change as the rest, never
+before step 1, or the archive breaks again for exactly the reason recorded.
+
+### Sandbox first, and what that means for testing
+
+A build Xcode installs on a device talks to **sandbox** APNs. TestFlight and
+App Store builds talk to **production**. They are separate namespaces with
+separate channels, so a channel provisioned in one is invisible to the other.
+First light is therefore: debug build on a real device (the simulator cannot
+receive pushes), `APNS_ENVIRONMENT` unset, channels created in the Push
+Notification Console's sandbox environment.
+
+### What the key does not unblock
+
+Blockers 2 and 3 above — a scheduler that can tick faster than once a day,
+and channel provisioning at :2196 — are untouched by any of this. The key
+makes a *single hand-driven broadcast* possible, which is what first light
+should be. It does not make a season possible.
 
 ## What is *not* verified
 
