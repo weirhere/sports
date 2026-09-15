@@ -1,7 +1,28 @@
 # The Live Activity broadcast service
 
-**Status:** code written and unit-tested 2026-09-10; **never once run against
-Apple.** It cannot be, until a provider key exists — see "What's blocked".
+**Status: APNs accepted a broadcast on 2026-09-15.** `{"status":"ok",
+"pushed":1,"failed":[]}` against a live NFL game, sandbox environment, from
+production. The server half of path 3 works end to end.
+
+**What that proves**, and it is worth enumerating because every step had been
+a guess until this response: `node:http2` reaches APNs from Vercel's runtime;
+the ES256 provider token signs and verifies against the real `.p8`; the
+channel id resolves and Apple recognises it; the payload and every header
+pass validation. Four things that had only ever been read about.
+
+**What it does not prove: that a card appears on anybody's lock screen.**
+`pushed: 1` means Apple accepted the broadcast *for fan-out to that channel's
+subscribers*, and the channel currently has none. The client half is built
+and gated off (`LiveActivityController.isAvailable` is a DEBUG-only default),
+so putting a card on glass still needs a debug build on a real device — the
+simulator cannot receive pushes — with the activity started from that game's
+detail page. **That is a separate milestone and it has not happened.**
+
+*Previous status, kept because the gap between it and the line above is the
+whole story: "code written and unit-tested 2026-09-10; never once run against
+Apple."* Three things were wrong in it and none could have been caught by
+reading: the transport, the missing `apns-expiration`, and the unhandled
+throw that hid both.
 
 Path 3 of [`live-activities.md`](./live-activities.md), decided 2026-09-10:
 one APNs broadcast channel per *game*, one push to that channel, Apple does
@@ -89,6 +110,13 @@ So `ContentState.asOf` has explicit `CodingKeys` and encodes epoch seconds,
 and the TypeScript side asserts a 10-digit value. Both files say why.
 
 ## What's blocked, and on whom
+
+*Written before any of this had run. Blockers 1 and 3 closed on 2026-09-15
+for a single hand-provisioned game; blocker 2 was decided the same day (60s
+on an external pinger). What remains of 3 is the part that was always the
+hard half: **provisioning at the scale of a slate**, rather than one channel
+made by a person in a console. The text below stands as the record of what
+each cost.*
 
 1. **An APNs provider key.** A `.p8` from the Apple Developer portal, plus
    its Key ID and the Team ID. **Andy has to create this** — it is a
