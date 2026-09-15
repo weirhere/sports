@@ -139,6 +139,20 @@ whenever" is not a plan.
 | **Team ID** | Portal top-right, or Membership details |
 | **Private key** | The contents of the `.p8`, `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines included |
 
+The `.p8` is a plain text file that **macOS has no default application for**,
+so double-clicking it does nothing and it looks unreadable. It isn't. The
+clean way to move it is straight onto the clipboard, which also keeps it out
+of terminal scrollback:
+
+```bash
+cat ~/Downloads/AuthKey_*.p8 | pbcopy
+```
+
+To read it instead: `open -a TextEdit ~/Downloads/AuthKey_*.p8`, and don't
+save from there — TextEdit can turn it into RTF. Store the file somewhere
+durable afterwards (a password manager), because Apple will not hand it over
+a second time.
+
 **4. Put them on Vercel.** Project → Settings → Environment Variables:
 `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. Two optional ones exist
 and both default correctly today: `APNS_BUNDLE_ID` (defaults to
