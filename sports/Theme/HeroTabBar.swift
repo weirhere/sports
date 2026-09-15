@@ -31,6 +31,10 @@ struct HeroTabBar<T: HeroTabItem>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                // "Games" is also the first root tab, so a bare title match
+                // is ambiguous the moment an entity page is pushed — the
+                // root tab bar never leaves the tree.
+                .accessibilityIdentifier("hero-tab-\(tab.title.lowercased())")
                 .accessibilityAddTraits(selection == tab ? [.isSelected] : [])
             }
         }

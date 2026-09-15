@@ -45,6 +45,11 @@ struct GameRow: View {
         // visual-only, and the spoken label is identical in both layouts.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenLabel)
+        // The sentence changes shape with the status — "at" is a *pre-game*
+        // word, and a kicked-off row says "Denver 7, Kansas City 14, half"
+        // instead. Anything identifying a row by its prose therefore works
+        // only until the games start. The identifier doesn't move.
+        .accessibilityIdentifier("scores-game-\(game.id)")
     }
 
     /// The league leads the sentence where a section mixes them — "NFL,

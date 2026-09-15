@@ -35,6 +35,24 @@ final class FCSOptInUITests: XCTestCase {
 
     @MainActor
     func testOptingIntoFCSWidensTheFetch() throws {
+        throw XCTSkip("""
+            There is no longer anything to opt in with. #79 took the slate \
+            filter off Scores on purpose — "Scores' header keeps Live and \
+            nothing else" — deleting ScoreFilterChip and ScoreFilterSheet, \
+            and the wiring went with the control: `UIStateStore.scoreFilter` \
+            is now assigned only from defaults in init and read by no view, \
+            while `ScoreFilter.init(token:)` deliberately refuses to restore \
+            a saved conference filter rather than narrow the slate with \
+            nothing on screen able to clear it. So this test has driven a \
+            dead surface since #79 and cannot be repaired by a better query.
+
+            Kept rather than deleted because what it asserts is still E8 \
+            scope (b) — FCS games absent from the default slate and present \
+            the moment someone asks — and the fixture it leans on (fx-fcs, \
+            group 81 only) is still the right instrument. It needs a new \
+            opt-in surface to point at, which is a product decision, not a \
+            test fix. See BACKLOG E8 and E19.
+            """)
         let app = launchFixtureApp()
 
         let funnel = app.buttons["Filter games"]

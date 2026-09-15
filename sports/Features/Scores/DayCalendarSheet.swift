@@ -213,6 +213,11 @@ struct DayCalendarSheet: View {
         // The number alone is meaningless out of context, so the cell
         // speaks the whole date the way the strip's chips do.
         .accessibilityLabel(day.date.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+        // The strip's chips speak the same sentence, and the strip is still
+        // in the tree behind this sheet — a whole season of it. A label
+        // match therefore finds a chip, not a cell, so the cells carry an
+        // identifier the strip has no equivalent of.
+        .accessibilityIdentifier("calendar-day-\(day.id)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
