@@ -47,6 +47,11 @@ const LEAGUES: League[] = ["cfb", "nfl", "nba", "nhl"];
  *  when the blocker still claimed the target was 30. */
 const STALE_AFTER_SECONDS = 120;
 
+/** How long a `end` push stays worth delivering. Well inside the 8 hours a
+ *  most-recent-message channel will store, and long enough that a phone put
+ *  down before the fourth quarter still comes back to the right result. */
+const FINAL_EXPIRY_SECONDS = 3600;
+
 /** Per-league accounting for the response.
  *
  * Added 2026-09-15, after a live game with a correctly configured channel
@@ -138,6 +143,13 @@ export async function GET(request: Request) {
         // nobody has opened.
         event: isFinal ? "end" : "update",
         staleDate: isFinal ? undefined : state.asOf + STALE_AFTER_SECONDS,
+        // Required by APNs, and the value is a product decision rather than
+        // a formality. An update is worthless once the card it would land on
+        // has already gone stale — that would put a two-tick-old score on a
+        // lock screen — so an update dies at its own stale date. A final is
+        // worth an hour: a phone that was off during the fourth quarter
+        // should still come back to a dismissed card and the right result.
+        expiration: state.asOf + (isFinal ? FINAL_EXPIRY_SECONDS : STALE_AFTER_SECONDS),
         priority: 10,
       });
       results.push({ gameId: game.id, league, ok: result.ok, reason: result.reason });

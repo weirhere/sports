@@ -152,7 +152,21 @@ export interface BroadcastRequest extends BroadcastPayloadInput {
   channelId: string;
   /** 10 for a score change a fan is waiting on, 5 for routine ticks. */
   priority?: 5 | 10;
-  expiration?: number;
+  /**
+   * UNIX seconds. **Required, and required by APNs rather than by us.**
+   *
+   * A broadcast with no `apns-expiration` is treated as expiration 0, and
+   * APNs rejects that with `BadExpirationDate` — which is exactly what the
+   * first broadcast that ever reached Apple came back with (2026-09-15).
+   * It was optional here, the route never set it, and nothing could catch
+   * that because the type allowed the omission.
+   *
+   * So it is required now: the compiler is the thing that stops this from
+   * regressing, since a live APNs round trip is not something CI can do.
+   * A channel storing the most recent message caps storage at 8 hours, so
+   * anything beyond that is silently the cap.
+   */
+  expiration: number;
 }
 
 export interface BroadcastResult {
@@ -174,9 +188,7 @@ export function broadcastHeaders(config: ApnsConfig, request: BroadcastRequest,
     "apns-priority": String(request.priority ?? 10),
     "content-type": "application/json",
   };
-  if (request.expiration !== undefined) {
-    headers["apns-expiration"] = String(request.expiration);
-  }
+  headers["apns-expiration"] = String(request.expiration);
   return headers;
 }
 

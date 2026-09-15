@@ -36,6 +36,9 @@ const config: ApnsConfig = {
   environment: "sandbox",
 };
 
+/** Any non-zero UNIX-seconds value. APNs rejects a broadcast without one. */
+const EXPIRY = 1_700_000_000;
+
 beforeEach(() => resetApnsCaches());
 
 describe("provider token", () => {
@@ -85,7 +88,7 @@ describe("broadcast request", () => {
   /** The topic carries the suffix; the path does not. Swapping them is the
    *  classic way to get a 400 out of APNs. */
   it("suffixes the topic but not the path", () => {
-    const headers = broadcastHeaders(config, { channelId: "abc", contentState: {}, event: "update" });
+    const headers = broadcastHeaders(config, { channelId: "abc", contentState: {}, event: "update", expiration: EXPIRY });
     expect(headers["apns-topic"]).toBe("com.andyryanweir.sports.push-type.liveactivity");
     expect(broadcastUrl(config)).not.toContain("push-type");
     expect(headers["apns-push-type"]).toBe("liveactivity");
@@ -110,7 +113,7 @@ describe("broadcast request", () => {
   it("surfaces APNs' reason string on failure rather than swallowing it", async () => {
     const result = await sendBroadcast(
       config,
-      { channelId: "nope", contentState: {}, event: "update" },
+      { channelId: "nope", contentState: {}, event: "update", expiration: EXPIRY },
       transport(400, JSON.stringify({ reason: "BadChannelId" }), "xyz"),
     );
     expect(result).toMatchObject({ ok: false, status: 400, reason: "BadChannelId", apnsId: "xyz" });
@@ -118,7 +121,7 @@ describe("broadcast request", () => {
 
   it("reports success without needing a body", async () => {
     const result = await sendBroadcast(
-      config, { channelId: "abc", contentState: {}, event: "update" }, transport(200));
+      config, { channelId: "abc", contentState: {}, event: "update", expiration: EXPIRY }, transport(200));
     expect(result.ok).toBe(true);
   });
 });
@@ -155,7 +158,7 @@ describe("a send that never reaches Apple", () => {
     const result = await sendBroadcast(unreadable, {
       channelId: "channel",
       contentState: {},
-      event: "update",
+      event: "update", expiration: EXPIRY,
     });
 
     expect(result.ok).toBe(false);
@@ -170,7 +173,7 @@ describe("a send that never reaches Apple", () => {
   it("reports a transport failure the same way", async () => {
     const result = await sendBroadcast(
       config,
-      { channelId: "channel", contentState: {}, event: "update" },
+      { channelId: "channel", contentState: {}, event: "update", expiration: EXPIRY },
       async () => {
         throw new Error("getaddrinfo ENOTFOUND api.sandbox.push.apple.com");
       },
@@ -189,7 +192,7 @@ describe("a send that never reaches Apple", () => {
   it("reports the HTTP/1.1-parser failure that started all this", async () => {
     const result = await sendBroadcast(
       config,
-      { channelId: "channel", contentState: {}, event: "update" },
+      { channelId: "channel", contentState: {}, event: "update", expiration: EXPIRY },
       async () => {
         throw new TypeError("fetch failed");
       },
@@ -204,7 +207,7 @@ describe("a send that never reaches Apple", () => {
   it("still returns APNs' own reason when Apple answers", async () => {
     const result = await sendBroadcast(
       config,
-      { channelId: "channel", contentState: {}, event: "update" },
+      { channelId: "channel", contentState: {}, event: "update", expiration: EXPIRY },
       transport(400, JSON.stringify({ reason: "BadDeviceToken" })),
     );
 
@@ -213,5 +216,37 @@ describe("a send that never reaches Apple", () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe(400);
     expect(result.reason).toBe("BadDeviceToken");
+  });
+});
+
+describe("apns-expiration", () => {
+  // The first broadcast that ever reached Apple came back `BadExpirationDate`
+  // (2026-09-15). The header was optional in `BroadcastRequest`, the route
+  // never set it, APNs read the absence as expiration 0, and rejected it.
+  // The field is required now, so the compiler catches the omission — these
+  // pin the behaviour the compiler cannot see.
+  it("is always sent, because a broadcast without one is rejected", () => {
+    const headers = broadcastHeaders(config, {
+      channelId: "abc",
+      contentState: {},
+      event: "update",
+      expiration: EXPIRY,
+    });
+
+    expect(headers["apns-expiration"]).toBe(String(EXPIRY));
+  });
+
+  it("is a string of UNIX seconds, not a Date and not milliseconds", () => {
+    // The same class of trap as `asOf` on the wire: a Date here would
+    // stringify to prose and a millisecond value would read as the year
+    // 55000-something, and APNs would reject both with the same terse word.
+    const headers = broadcastHeaders(config, {
+      channelId: "abc",
+      contentState: {},
+      event: "end",
+      expiration: EXPIRY,
+    });
+
+    expect(headers["apns-expiration"]).toMatch(/^\d{10}$/);
   });
 });

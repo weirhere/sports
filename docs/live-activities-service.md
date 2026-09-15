@@ -59,6 +59,14 @@ a socket.
 | `apns-topic` | `<bundleId>.push-type.liveactivity` |
 | `apns-channel-id` | the channel |
 | `apns-priority` | `10` for a score, `5` for a routine tick |
+| `apns-expiration` | UNIX seconds, and **required on a broadcast** |
+
+**`apns-expiration` is not optional here**, which the spec reading missed and
+the first real send caught: absent, APNs reads it as 0 and answers
+`BadExpirationDate`. It is a required field on `BroadcastRequest` now, so the
+compiler enforces it. The route sets an update to expire at its own stale
+date — a score two ticks old has no business arriving on a lock screen — and
+a final an hour out, inside the 8 hours a most-recent-message channel stores.
 
 **The path takes the bare bundle id; the topic takes the suffix.** Swapping
 them is the classic 400, and there's a test pinning it.
