@@ -289,35 +289,112 @@ arithmetic.
 
 ### Setting the pinger up
 
-Nothing here is code. In order:
+Nothing here is code. **Steps 1–3 are worth doing now** — the hand-driven
+first light needs the same secret, so they are not pinger-specific work.
+**Step 4 onward is only worth doing once there is something to push**, which
+means after the provider key and at least one channel exist. A pinger
+hammering an endpoint that answers `apns-not-configured` every minute is a
+scheduled no-op.
 
-1. **Generate the secret** — `openssl rand -hex 32` — and set it as
-   `LIVE_ACTIVITY_CRON_SECRET` on Vercel. Until it exists the route answers
-   401 to everyone, which is deliberate: an unguarded push relay is worse
-   than a missing feature.
-2. **Create the job** at [cron-job.org](https://cron-job.org) (free tier goes
-   down to 60-second intervals):
-   - URL `https://statside.co/api/live-activity/broadcast`, method **GET**
-   - Custom header `Authorization: Bearer <the secret>`
-   - Every **60 seconds**
-3. **Bound the schedule to game windows**, rather than running it around the
-   clock. Every tick costs four ESPN scoreboard requests whether or not
-   anything is live, because nothing can know without asking — 24/7 at 60s is
-   ~5,760 requests a day, much of it spent on an empty Tuesday at 3am. The
-   polite-guest rule says poll *only while games are live*, and with no state
-   in the service the pinger's own schedule is the only thing that can honor
-   it.
-4. **Watch the first responses.** `{"status":"apns-not-configured"}` until
-   the provider key lands, then `{"status":"ok","pushed":N}`. A `failed` array
-   with entries is APNs rejecting pushes, and its `reason` is the thing to
-   read.
+#### 1. Generate the secret
 
-**What this buys and what it does not.** A third party with no delivery
-contract now holds the URL and the secret. Rotating the secret is a Vercel
-edit and a dashboard edit, in that order. If cron-job.org is down, cards go
-stale and say so, which is exactly the failure the stale state was built
-for — and is the argument for why option D was rejected for the *normal*
-case but is an acceptable *degraded* one.
+```bash
+openssl rand -hex 32
+```
+
+Copy the output. It is 64 hex characters on one line. This is the only thing
+standing between the internet and a push relay, so treat it like the `.p8`:
+not in chat, not in the repo, into a password manager.
+
+#### 2. Put it on Vercel
+
+1. [vercel.com](https://vercel.com) → the **sports** project
+2. **Settings** → **Environment Variables**
+3. Key `LIVE_ACTIVITY_CRON_SECRET`, value the 64 characters from step 1
+4. Tick **Production** at minimum. Tick Preview too if you want the branch
+   preview URL to answer, which is handy while testing.
+5. Save
+
+#### 3. Redeploy, which is the step everyone skips
+
+**A new environment variable does not reach the deployment that is already
+running.** Vercel injects them at build time, so until there is a new
+deployment the route still sees no secret and still answers 401 to
+everything, including a correct request. This looks exactly like a wrong
+secret and it is not.
+
+Deployments → the current one → **⋯** → **Redeploy**. Or push any commit.
+
+#### 4. Prove it by hand, before any scheduler exists
+
+```bash
+curl -i https://statside.co/api/live-activity/broadcast \
+  -H "authorization: Bearer <the secret>"
+```
+
+Read the body, because all three answers mean different things:
+
+| Response | What it means |
+|---|---|
+| `{"status":"apns-not-configured","pushed":0}` | **Working.** Auth passed; the APNs key just isn't set yet. This is success today |
+| `{"error":"unauthorized"}` (401) | The secret is wrong, or step 3 never happened |
+| `{"status":"ok","pushed":N}` | Fully wired, and N cards were actually updated |
+
+Do not move on until you get one of the first or third. The whole point of
+doing this by hand first is that a scheduler makes every failure quieter.
+
+#### 5. Create the job at cron-job.org
+
+Free tier, and it goes down to 60-second intervals. Sign up, verify the
+email, then **Create cronjob**:
+
+- **Title** — `StatSide Live Activity broadcast`
+- **URL** — `https://statside.co/api/live-activity/broadcast`
+- **Schedule** — every **1 minute** (see step 6 before leaving this at 24/7)
+- **Advanced / request settings** → **Method** `GET`
+- **Advanced / request settings** → **Headers**, add one:
+  - Name `Authorization`
+  - Value `Bearer <the secret>` — the word `Bearer`, a space, then the secret
+
+Save, then use their **Test run** / **Execute now** button and check the
+response body matches what curl gave you in step 4. Their history view keeps
+the responses, which is the log we would otherwise not have.
+
+Two things to watch on their side: they time out a request before our
+`maxDuration = 60` does, and a timeout on their end does **not** mean the
+function did not run — it means they stopped listening. And their failure
+notification emails are the only alerting this service has.
+
+#### 6. Bound the schedule to game windows
+
+**Do not leave it at every minute, around the clock.** Every tick costs four
+ESPN scoreboard requests whether or not a ball is in the air, because nothing
+can know without asking. 24/7 at 60s is ~5,760 requests a day, most of them
+spent on an empty Tuesday at 3am, against a polite-guest rule that says poll
+*only while games are live*.
+
+cron-job.org's schedule editor takes days and hours, so use them:
+
+| | Roughly |
+|---|---|
+| College football | Saturdays, ~11:00–02:00 ET |
+| NFL | Sundays ~12:30–24:00 ET, plus Monday and Thursday evenings |
+| NBA / NHL | Nightly, ~19:00–01:30 ET |
+
+Start with **one day** — the Saturday you actually want to watch — rather
+than modelling the whole calendar up front. The point of the first unattended
+slate is to find out what breaks, and a narrow window makes that cheaper.
+
+Doing this properly in code means caching the next kickoff and skipping the
+fetch until then, which is state this service deliberately does not hold.
+Until it does, the pinger's schedule is the only thing that can honor the
+rule.
+
+#### Rotating the secret, when it comes to that
+
+Vercel first, then redeploy, then the cron-job.org header. In that order
+there is a gap where the pinger 401s; in the other order there is a gap where
+the old secret still works. The first is the safer failure.
 
 ### Sources
 
