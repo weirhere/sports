@@ -17,6 +17,7 @@
  * for a feature that already needed one conversation.
  */
 import { createSign, createPrivateKey, type KeyObject } from "node:crypto";
+import { connect, constants } from "node:http2";
 
 export type ApnsEnvironment = "sandbox" | "production";
 
@@ -180,19 +181,101 @@ export function broadcastHeaders(config: ApnsConfig, request: BroadcastRequest,
 }
 
 /**
+ * How a request actually reaches APNs.
+ *
+ * **APNs speaks HTTP/2 and nothing else, and Node's `fetch` speaks HTTP/1.1
+ * and nothing else.** `fetch` against `api.push.apple.com` does not fail
+ * politely — undici hands the HTTP/2 binary frames to its HTTP/1.1 parser
+ * and throws `TypeError: fetch failed` with an `HTTPParserError` cause,
+ * which Vercel then renders as a 500 with an empty body.
+ *
+ * Found in production logs 2026-09-15, the first time this code ever ran
+ * against Apple. The wire format above was verified against Apple's spec on
+ * 2026-09-10 and is fine; the transport under it could never have worked,
+ * and nothing caught that because nothing had run it.
+ *
+ * `node:http2` is built in, so this still adds no dependency — which is the
+ * same reason the JWT is signed with `node:crypto` rather than a JWT
+ * package.
+ */
+export interface ApnsTransportResult {
+  status: number;
+  apnsId?: string;
+  /** Raw body. APNs sends JSON on failure and nothing on success. */
+  body: string;
+}
+
+export type ApnsTransport = (
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+) => Promise<ApnsTransportResult>;
+
+/** Seconds before an unanswered session is abandoned. Well inside the
+ *  route's own `maxDuration = 60`, so a hung APNs connection costs one
+ *  game's update rather than the whole tick. */
+const REQUEST_TIMEOUT_MS = 10_000;
+
+export const http2Transport: ApnsTransport = (url, headers, body) =>
+  new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const session = connect(target.origin);
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      session.close();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
+    session.on("error", fail);
+    session.setTimeout(REQUEST_TIMEOUT_MS, () =>
+      fail(new Error(`apns session timed out after ${REQUEST_TIMEOUT_MS}ms`)),
+    );
+
+    // Pseudo-headers are the method and path; everything else is ours, and
+    // HTTP/2 requires header names be lowercase — `broadcastHeaders`
+    // already writes them that way.
+    const request = session.request({
+      ...headers,
+      [constants.HTTP2_HEADER_METHOD]: "POST",
+      [constants.HTTP2_HEADER_PATH]: target.pathname,
+    });
+
+    let status = 0;
+    let apnsId: string | undefined;
+    let data = "";
+
+    request.on("response", (responseHeaders) => {
+      status = Number(responseHeaders[constants.HTTP2_HEADER_STATUS] ?? 0);
+      const id = responseHeaders["apns-id"];
+      apnsId = typeof id === "string" ? id : undefined;
+    });
+    request.setEncoding("utf8");
+    request.on("data", (chunk: string) => {
+      data += chunk;
+    });
+    request.on("error", fail);
+    request.on("end", () => {
+      if (settled) return;
+      settled = true;
+      session.close();
+      resolve({ status, apnsId, body: data });
+    });
+    request.end(body);
+  });
+
+/**
  * Why a send blew up before it ever reached Apple.
  *
  * Signing happens inside `broadcastHeaders`, and `createPrivateKey` throws
- * on a PEM it can't decode — so the single most likely misconfiguration in
- * this whole feature used to surface as an unhandled exception, which
- * Vercel renders as **HTTP 500 with an empty body**. No reason, no league,
- * nothing. Found the hard way 2026-09-15.
+ * on a PEM it can't decode — so a misconfigured key used to surface as an
+ * unhandled exception, which Vercel renders as **HTTP 500 with an empty
+ * body**. No reason, no league, nothing.
  *
- * A flattened PEM is the usual culprit: `APNS_PRIVATE_KEY` is a multi-line
- * value pasted into a single-line dashboard field, and
- * `apnsConfigFromEnv`'s `\n` restoration only helps when the newlines
- * survived *as the two characters* `\` and `n`. Newlines stripped outright
- * are not recoverable that way and produce exactly this.
+ * A flattened PEM is one culprit: `apnsConfigFromEnv`'s `\n` restoration
+ * only helps when the newlines survived *as the two characters* `\` and
+ * `n`. Newlines stripped outright are not recoverable that way.
  */
 function sendFailureReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
@@ -205,31 +288,33 @@ function sendFailureReason(error: unknown): string {
 export async function sendBroadcast(
   config: ApnsConfig,
   request: BroadcastRequest,
-  fetchImpl: typeof fetch = fetch,
+  transport: ApnsTransport = http2Transport,
   now = Date.now(),
 ): Promise<BroadcastResult> {
-  let response: Response;
+  let result: ApnsTransportResult;
   try {
-    response = await fetchImpl(broadcastUrl(config), {
-      method: "POST",
-      headers: broadcastHeaders(config, request, now),
-      body: JSON.stringify(broadcastPayload(request, now)),
-    });
+    result = await transport(
+      broadcastUrl(config),
+      broadcastHeaders(config, request, now),
+      JSON.stringify(broadcastPayload(request, now)),
+    );
   } catch (error) {
     // Status 0: nothing was ever sent, so there is no HTTP status to
-    // report. A caller reading `ok` sees a failure either way, and the
-    // route files it under `failed` with a reason instead of dying.
+    // report. The route files it under `failed` with a reason instead of
+    // dying, which is what the empty-bodied 500 taught us to want.
     return { ok: false, status: 0, reason: sendFailureReason(error) };
   }
-  const apnsId = response.headers.get("apns-id") ?? undefined;
-  if (response.ok) return { ok: true, status: response.status, apnsId };
+
+  if (result.status >= 200 && result.status < 300) {
+    return { ok: true, status: result.status, apnsId: result.apnsId };
+  }
   let reason: string | undefined;
   try {
-    reason = ((await response.json()) as { reason?: string }).reason;
+    reason = (JSON.parse(result.body) as { reason?: string }).reason;
   } catch {
     reason = undefined;
   }
-  return { ok: false, status: response.status, apnsId, reason };
+  return { ok: false, status: result.status, apnsId: result.apnsId, reason };
 }
 
 /** Reads config from the environment, or null when it isn't configured —

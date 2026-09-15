@@ -34,7 +34,23 @@ error.
 
 **Send** — `POST https://api.push.apple.com/4/broadcasts/apps/<bundleId>`
 (sandbox: `api.sandbox.push.apple.com`), **port 443**, which is why an
-ordinary serverless runtime can do this at all.
+ordinary serverless runtime can reach it at all.
+
+**Over HTTP/2, which is not optional and is not what `fetch` does.**
+*(Amended 2026-09-15, from the first run against Apple.)* APNs has been
+HTTP/2-only since the provider API existed, and Node's `fetch` is undici,
+which is HTTP/1.1-only. Pointing `fetch` at Apple does not fail politely: it
+feeds HTTP/2 binary frames to an HTTP/1.1 parser and throws
+`TypeError: fetch failed` with an `HTTPParserError` cause, which Vercel
+renders as a **500 with an empty body**. The transport is `http2Transport`
+in `apns.ts`, built on `node:http2` — built in, so the no-dependency rule
+holds for the same reason `node:crypto` signs the JWT.
+
+**The heading below says "verified" and it is worth being exact about what
+was.** The headers and the payload were checked against Apple's published
+specification on 2026-09-10 and were right. The transport underneath them
+was never run, and could not have worked. Reading a document cannot verify
+a socket.
 
 | Header | Value |
 |---|---|

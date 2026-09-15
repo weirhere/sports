@@ -9,7 +9,18 @@ import {
   resetApnsCaches,
   sendBroadcast,
   type ApnsConfig,
+  type ApnsTransport,
 } from "@/lib/apns";
+
+/** A stand-in for the HTTP/2 transport. The real one is `http2Transport`,
+ *  which needs a socket to Apple — these exercise everything around it. */
+function transport(
+  status: number,
+  body = "",
+  apnsId?: string,
+): ApnsTransport {
+  return async () => ({ status, body, apnsId });
+}
 
 const { privateKey } = generateKeyPairSync("ec", {
   namedCurve: "P-256",
@@ -97,20 +108,17 @@ describe("broadcast request", () => {
   });
 
   it("surfaces APNs' reason string on failure rather than swallowing it", async () => {
-    const failing: typeof fetch = async () =>
-      new Response(JSON.stringify({ reason: "BadChannelId" }), {
-        status: 400,
-        headers: { "apns-id": "xyz" },
-      });
     const result = await sendBroadcast(
-      config, { channelId: "nope", contentState: {}, event: "update" }, failing);
+      config,
+      { channelId: "nope", contentState: {}, event: "update" },
+      transport(400, JSON.stringify({ reason: "BadChannelId" }), "xyz"),
+    );
     expect(result).toMatchObject({ ok: false, status: 400, reason: "BadChannelId", apnsId: "xyz" });
   });
 
   it("reports success without needing a body", async () => {
-    const ok: typeof fetch = async () => new Response(null, { status: 200 });
     const result = await sendBroadcast(
-      config, { channelId: "abc", contentState: {}, event: "update" }, ok);
+      config, { channelId: "abc", contentState: {}, event: "update" }, transport(200));
     expect(result.ok).toBe(true);
   });
 });
@@ -163,9 +171,9 @@ describe("a send that never reaches Apple", () => {
     const result = await sendBroadcast(
       config,
       { channelId: "channel", contentState: {}, event: "update" },
-      (async () => {
+      async () => {
         throw new Error("getaddrinfo ENOTFOUND api.sandbox.push.apple.com");
-      }) as unknown as typeof fetch,
+      },
     );
 
     expect(result.ok).toBe(false);
@@ -174,14 +182,30 @@ describe("a send that never reaches Apple", () => {
     expect(result.reason).toContain("ENOTFOUND");
   });
 
+  // The failure that actually happened, 2026-09-15. Node's fetch speaks
+  // HTTP/1.1 and APNs speaks HTTP/2, so undici fed binary frames to its
+  // HTTP/1.1 parser. The transport is `node:http2` now; this pins that the
+  // shape of that error still reports rather than escaping as a 500.
+  it("reports the HTTP/1.1-parser failure that started all this", async () => {
+    const result = await sendBroadcast(
+      config,
+      { channelId: "channel", contentState: {}, event: "update" },
+      async () => {
+        throw new TypeError("fetch failed");
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(0);
+    expect(result.reason).toContain("apns-send-threw");
+    expect(result.reason).toContain("fetch failed");
+  });
+
   it("still returns APNs' own reason when Apple answers", async () => {
     const result = await sendBroadcast(
       config,
       { channelId: "channel", contentState: {}, event: "update" },
-      (async () =>
-        new Response(JSON.stringify({ reason: "BadDeviceToken" }), {
-          status: 400,
-        })) as unknown as typeof fetch,
+      transport(400, JSON.stringify({ reason: "BadDeviceToken" })),
     );
 
     // The catch must not swallow the case it was never meant to cover: a
