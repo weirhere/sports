@@ -78,6 +78,16 @@ thousands the Sportradar number implies.
 anyone gave us. Goalserve's licence is granted by application, so the price
 and the permission are two separate answers.*
 
+**One cost the table leaves out, and it is not the feed.** `statside.co`
+runs on Vercel's **Hobby** plan, which Vercel's terms reserve for
+**non-commercial** projects. Free today because StatSide charges nothing;
+**$20/month the day a membership ships**, regardless of anything else. It
+lands in the same place as the Live Activity scheduler decision, which needs
+Pro for its own reasons — see `docs/live-activities-service.md` § The
+scheduler decision. Fold it in when the break-even stops being hypothetical:
+at the Goalserve stack it moves ~$270/month to ~$290, and ~190 break-even
+subscribers to ~205.
+
 **The logos are still unsolved, by any of them.** None of these vendors sells
 the right to display Michigan's block M. StatSide renders team marks in full
 colour because the colour budget's first exception exists for exactly that,

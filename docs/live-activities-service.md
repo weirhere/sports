@@ -79,11 +79,10 @@ and the TypeScript side asserts a 10-digit value. Both files say why.
    turns out the key is step 2 of 5, not step 1 of 1.
 
 2. **A scheduler that can actually tick.** Vercel Cron on the Hobby plan is
-   **once a day**, which is useless for a 30-second cadence; minute-level
-   crons need Pro. A minute is also not 30 seconds. Options, none free and
-   none decided: Vercel Pro, an external pinger, or accepting a coarser
-   cadence and leaning on the card's stale state. **This is a real decision
-   and it is not made.**
+   **once a day**. Still not decided — but the problem is smaller than this
+   entry made it sound, and **§ The scheduler decision** below is the
+   write-up: the 30-second figure was a misread of our own polite-guest
+   rule, and first light needs no scheduler at all.
 
 3. **Channel creation.** Channels are made on APNs' *management* host at
    **port 2196** — a non-standard port a serverless runtime can't be assumed
@@ -191,6 +190,110 @@ Blockers 2 and 3 above — a scheduler that can tick faster than once a day,
 and channel provisioning at :2196 — are untouched by any of this. The key
 makes a *single hand-driven broadcast* possible, which is what first light
 should be. It does not make a season possible.
+
+## The scheduler decision
+
+Written 2026-09-15, at Andy's ask. Nothing decided here either — but three
+things turned up that change what is being decided.
+
+### Three findings first
+
+**1. The 30-second target was a misread of our own rule.** CLAUDE.md says
+poll "no faster than every 30s." That is a **speed limit, not a
+requirement**, and blocker 2 above had been reading it as a floor for five
+days. The service already knows this: `broadcast/route.ts` sets
+`STALE_AFTER_SECONDS = 120` and calls it *"two ticks' grace"*, which is only
+true at a **60-second** tick. So the cadence to build against is 60 seconds,
+the code already assumes it, and "a minute is not 30 seconds" was an
+objection to a number nobody needs.
+
+**2. `vercel.json` does not exist.** The route's own header says *"Driven by
+Vercel Cron (see vercel.json)"* and there is no such file anywhere in the
+repo. No cron is configured on any plan. The Hobby limit is not what is
+stopping this today; nothing is scheduled at all, on any cadence.
+
+**3. Hobby is for non-commercial projects.** Vercel's own terms put
+commercial projects on Pro. Free today, because StatSide charges nothing —
+and **the day E18 ships a membership, statside.co needs Pro regardless of
+the scheduler**. That is $20/month the monetization break-even in
+`docs/monetization.md` does not currently carry. The two open questions are
+the same question wearing different hats.
+
+### And the reframe that follows
+
+**First light needs no scheduler.** One hand-driven broadcast is
+`curl -H "authorization: Bearer $LIVE_ACTIVITY_CRON_SECRET"` against the
+existing route. The scheduler only bites for an **unattended** slate, which
+is a later problem than the device test. This decision can wait, and knowing
+that is worth more than making it early.
+
+### The options
+
+`maxDuration = 60` is already set on the route and Hobby permits it, so one
+invocation can cover a full minute. Nothing here needs an internal sleep
+loop.
+
+| | Cadence | Cost | The catch |
+|---|---|---|---|
+| **A. Vercel Pro** | 60s, minute precision | **$20/mo** | None technically. Needed anyway the moment the app charges money |
+| **B. External pinger** (cron-job.org free) | **60s** | **$0** | A third party with no delivery contract, holding our cron secret in their dashboard |
+| **C. GitHub Actions** | 60s *inside* a run | **$0** (public repo) | 5-minute minimum schedule, 5–30 minute delays common, and **public-repo schedules silently disable after 60 days of inactivity** |
+| **D. Coarser cadence** | 5 min+ | $0 | Breaks the product |
+
+**On C, because it looks better than it is.** A job runs up to 6 hours, so an
+hourly-triggered workflow could loop internally at 60s and cover a whole
+Saturday on free minutes. Start-time jitter wouldn't matter, since a run
+covers the gap. What kills it is the silent disable: a quiet fortnight in
+the repo and the lock screens stop updating with nothing failing anywhere.
+A CI system is also not a thing to put production traffic through.
+
+**On D, which is the one that sounds reasonable and isn't.** The card has an
+`isStale` state on purpose, and it is the thing **none of the four reference
+apps has**. It exists so a card whose updates stop says so rather than
+freezing on a wrong score. It does not exist to make a 5-minute-old score
+acceptable. A score five minutes stale during a two-minute drill is the
+exact failure the app was built against, and shipping it would spend the one
+promise — time-to-score — on a $20 saving.
+
+### What the tick actually costs
+
+At 60s across a 12-hour Saturday: **720 ticks**, 4 ESPN requests each
+(one per league, whatever the slate), so ~2,880 ESPN requests in a day —
+*slower* than the 30s ceiling the polite-guest rule permits. APNs sees one
+push per live game per tick, so ~43,200 on a 60-game peak day, which is
+nothing to APNs. 720 Vercel invocations sits inside Hobby's free tier.
+
+**The load is a function of the slate, not the install base.** That is the
+whole path-3 argument and none of these options change it.
+
+### Recommendation
+
+**Defer it.** Do first light by hand, with curl and one manually provisioned
+channel, and learn what the thing actually does before paying anything to
+automate it.
+
+**Then B, then A.** The external pinger is $0 and honest about what it is:
+a way to run an unattended slate before there is any revenue to justify a
+plan. Move to Pro when E18 un-parks, because by then the terms require it
+anyway and the $20 has a reason to exist beyond the cron.
+
+### The question for Andy
+
+1. **Is 60 seconds the cadence?** The code already assumes it and the rule
+   permits it. Saying so out loud retires the 30-second number for good.
+2. **Pinger or Pro for the first unattended Saturday?** $0 with a third
+   party holding the secret, against $20 with nothing new in the stack.
+3. **Worth folding Vercel Pro's $20/month into `docs/monetization.md`'s
+   break-even now?** It is a real cost of charging money, and the table
+   currently leaves it out.
+
+### Sources
+
+Plan limits and prices read 2026-09-15; they move, and none is a quote.
+
+- Vercel — [cron usage and pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing), [Hobby plan](https://vercel.com/docs/plans/hobby), [pricing](https://vercel.com/pricing)
+- GitHub Actions — [scheduled-jobs frequency change](https://github.blog/changelog/2019-11-01-github-actions-scheduled-jobs-maximum-frequency-is-changing/), [workflow syntax](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions)
+- The polite-guest rule and the 60s assumption are ours: `CLAUDE.md` § Data source, and `STALE_AFTER_SECONDS` in `web/src/app/api/live-activity/broadcast/route.ts`
 
 ## What is *not* verified
 
