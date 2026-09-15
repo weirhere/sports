@@ -42,7 +42,12 @@ final class ConferenceLiveMergeUITests: XCTestCase {
         XCTAssertTrue(scrollUntilExists(sec, in: app), "SEC section never appeared")
         sec.tap()
 
-        let games = app.buttons["Games"]
+        // The page's own Games tab, by identifier. "Games" by label is
+        // ambiguous: the root tab bar's first tab has been called Games
+        // since the NBA and NHL landed (#105), and it does not leave the
+        // tree when a page is pushed over it — the query matched two
+        // elements and tapped neither.
+        let games = app.buttons["hero-tab-games"]
         XCTAssertTrue(games.waitForExistence(timeout: 10), "conference page never presented")
         games.tap()
 

@@ -22,12 +22,27 @@ final class ScreenshotTests: XCTestCase {
         // shot waits on whichever is there rather than naming it.
         let anyLeague = app.anyScoresSection
         XCTAssertTrue(anyLeague.waitForExistence(timeout: 20))
-        let gameLink = app.scrollViews.buttons.matching(NSPredicate(
-            format: "label CONTAINS %@", " at ")).firstMatch
-        if !gameLink.exists {
+        // Expand only when the header says it is shut. It publishes its own
+        // state as an accessibility value, so this needs no guessing.
+        //
+        // The old shape asked a *row* whether it existed the instant the
+        // header appeared — before any row is realized — and tapped when it
+        // didn't, which toggled an already-open section closed. Accordion
+        // expansion persists in UserDefaults, so that collapse outlived the
+        // run and every later run on the same simulator started shut: a
+        // test that broke itself, then stayed broken.
+        if (anyLeague.value as? String) == "collapsed" {
             anyLeague.tap()
         }
-        XCTAssertTrue(gameLink.waitForExistence(timeout: 10),
+        // By identifier, not by prose. "X at Y" is what a row says *before
+        // kickoff*; once a game starts it says "Denver 7, Kansas City 14,
+        // half" instead. Matching on " at " therefore quietly required the
+        // slate to hold a game nobody had played yet, and on a Sunday night
+        // in September there is no such game — the walk failed at the first
+        // screen for a reason that had nothing to do with screens.
+        let gameLink = app.scrollViews.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "scores-game-")).firstMatch
+        XCTAssertTrue(gameLink.waitForExistence(timeout: 20),
                       "An expanded section should reveal game rows")
         snapshot(app, "\(prefix)-scores")
 
