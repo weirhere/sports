@@ -332,12 +332,23 @@ Deployments → the current one → **⋯** → **Redeploy**. Or push any commit
 
 #### 4. Prove it by hand, before any scheduler exists
 
+Put the secret in a shell variable first, rather than into the command:
+
 ```bash
+read -rs SECRET        # press enter, paste, press enter again
+echo ${#SECRET}        # should print 64
 curl -i https://www.statside.co/api/live-activity/broadcast \
-  -H "authorization: Bearer PASTE_THE_REAL_SECRET_HERE"
+  -H "authorization: Bearer $SECRET"
 ```
 
-**`www`, not the apex, and this is not cosmetic.** `statside.co` answers
+`read -rs` does not echo, so the secret stays out of scrollback and shell
+history — and there is nothing left to substitute by hand. **A placeholder
+written as `<the secret>` gets pasted verbatim**; it happened twice on
+2026-09-15 and produced two clean 401s that looked like real failures.
+
+**`www`, not the apex, and this is not cosmetic.** *(Confirmed against
+production 2026-09-15: the apex 308s, `www` answers the route directly with
+`x-matched-path: /api/live-activity/broadcast`.)* `statside.co` answers
 **308** with `location: https://www.statside.co/...`, and curl strips the
 `Authorization` header when it follows a redirect to a *different host* —
 which `www.statside.co` is. So the apex URL either stops at the redirect
@@ -356,6 +367,13 @@ Read the body, because all three answers mean different things:
 
 Do not move on until you get one of the first or third. The whole point of
 doing this by hand first is that a scheduler makes every failure quieter.
+
+**First light, such as it is, happened 2026-09-15.** The route answered an
+authorized request in production for the first time — `apns-not-configured`,
+which is the success case at that stage. What that proves: the deploy is
+live, the bearer guard rejects a wrong secret and accepts the right one, and
+the `www` host is the reachable one. What it does not prove: anything at all
+about Apple, which had not been configured yet.
 
 #### 5. Create the job at cron-job.org
 
