@@ -193,8 +193,10 @@ should be. It does not make a season possible.
 
 ## The scheduler decision
 
-Written 2026-09-15, at Andy's ask. Nothing decided here either — but three
-things turned up that change what is being decided.
+Written 2026-09-15, at Andy's ask. **Resolved the same day: 60 seconds, and
+an external pinger** (Andy: *"60 seconds is fine, go with the pinger"*). The
+reasoning below stands as written; § Setting the pinger up is what to do
+about it.
 
 ### Three findings first
 
@@ -266,26 +268,56 @@ nothing to APNs. 720 Vercel invocations sits inside Hobby's free tier.
 **The load is a function of the slate, not the install base.** That is the
 whole path-3 argument and none of these options change it.
 
-### Recommendation
+### Resolved 2026-09-15: 60 seconds, option B
 
-**Defer it.** Do first light by hand, with curl and one manually provisioned
-channel, and learn what the thing actually does before paying anything to
-automate it.
+**60 seconds is the cadence.** The 30-second number is retired — it was the
+polite-guest *ceiling* read as a floor. `STALE_AFTER_SECONDS = 120` is two
+ticks' grace and stays; it moves only if the cadence does.
 
-**Then B, then A.** The external pinger is $0 and honest about what it is:
-a way to run an unattended slate before there is any revenue to justify a
-plan. Move to Pro when E18 un-parks, because by then the terms require it
-anyway and the $20 has a reason to exist beyond the cron.
+**The pinger, not Pro.** $0 while there is no revenue to justify a plan, and
+honest about what it is. Vercel Pro stays the destination rather than the
+starting point: the terms require it the day E18 ships anything paid, which
+is also the day the $20 has a reason to exist beyond the cron.
 
-### The question for Andy
+First light is still by hand — one curl, one manually provisioned channel —
+because a pinger against an endpoint that has never once talked to Apple
+tests nothing.
 
-1. **Is 60 seconds the cadence?** The code already assumes it and the rule
-   permits it. Saying so out loud retires the 30-second number for good.
-2. **Pinger or Pro for the first unattended Saturday?** $0 with a third
-   party holding the secret, against $20 with nothing new in the stack.
-3. **Worth folding Vercel Pro's $20/month into `docs/monetization.md`'s
-   break-even now?** It is a real cost of charging money, and the table
-   currently leaves it out.
+**Still open:** whether to fold Pro's $20/month into `docs/monetization.md`'s
+break-even now. It is noted there against the price table and not yet in the
+arithmetic.
+
+### Setting the pinger up
+
+Nothing here is code. In order:
+
+1. **Generate the secret** — `openssl rand -hex 32` — and set it as
+   `LIVE_ACTIVITY_CRON_SECRET` on Vercel. Until it exists the route answers
+   401 to everyone, which is deliberate: an unguarded push relay is worse
+   than a missing feature.
+2. **Create the job** at [cron-job.org](https://cron-job.org) (free tier goes
+   down to 60-second intervals):
+   - URL `https://statside.co/api/live-activity/broadcast`, method **GET**
+   - Custom header `Authorization: Bearer <the secret>`
+   - Every **60 seconds**
+3. **Bound the schedule to game windows**, rather than running it around the
+   clock. Every tick costs four ESPN scoreboard requests whether or not
+   anything is live, because nothing can know without asking — 24/7 at 60s is
+   ~5,760 requests a day, much of it spent on an empty Tuesday at 3am. The
+   polite-guest rule says poll *only while games are live*, and with no state
+   in the service the pinger's own schedule is the only thing that can honor
+   it.
+4. **Watch the first responses.** `{"status":"apns-not-configured"}` until
+   the provider key lands, then `{"status":"ok","pushed":N}`. A `failed` array
+   with entries is APNs rejecting pushes, and its `reason` is the thing to
+   read.
+
+**What this buys and what it does not.** A third party with no delivery
+contract now holds the URL and the secret. Rotating the secret is a Vercel
+edit and a dashboard edit, in that order. If cron-job.org is down, cards go
+stale and say so, which is exactly the failure the stale state was built
+for — and is the argument for why option D was rejected for the *normal*
+case but is an acceptable *degraded* one.
 
 ### Sources
 
