@@ -464,15 +464,22 @@ off by default.** Having Push Notifications on is not enough.
 
 [developer.apple.com/account](https://developer.apple.com/account) →
 Certificates, Identifiers & Profiles → **Identifiers** →
-`com.andyryanweir.sports` → **Push Notifications** → **Configure** → tick
-**Broadcast** → **Save**.
+`com.andyryanweir.sports`. Scroll the capability list to **Push
+Notifications** — already ticked — and **Broadcast Capability** is an
+**inline sub-checkbox directly beneath it**. Tick that, then **Save** at the
+top right.
 
-**Not** from the console. Its Channels tab shows *"Broadcast capability is
-not enabled for this app"* with an **Enable broadcast capability** button,
-and that button opens
-[Apple's documentation](https://developer.apple.com/documentation/usernotifications/setting-up-broadcast-push-notifications)
-rather than enabling anything. Following it is a dead end that looks like a
-control.
+**Two buttons nearby that are not it**, both walked into on 2026-09-15:
+
+- **Configure**, beside Push Notifications, opens *Apple Push Notification
+  service SSL Certificates* — the legacy certificate auth path. With a `.p8`
+  provider key there is **nothing to create there**; hit Done and ignore it.
+  A certificate made here is harmless and useless.
+- **Enable broadcast capability**, on the console's Channels tab, opens
+  [Apple's documentation](https://developer.apple.com/documentation/usernotifications/setting-up-broadcast-push-notifications)
+  rather than enabling anything. A dead end shaped like a control.
+
+The switch is the checkbox in the list. Neither button leads to it.
 
 Changing App ID capabilities invalidates provisioning profiles. Automatic
 signing regenerates them on the next build, so there is nothing to download.
