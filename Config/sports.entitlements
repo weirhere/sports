@@ -2,16 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- No `aps-environment` here on purpose. E12's Live Activity client
-	     added it for path 3's broadcast pushes, and it blocks the archive:
-	     the App ID carries no Push Notifications capability, so signing
-	     fails on a profile that can't include the entitlement. Nothing in
-	     a release build can use push anyway — `LiveActivityController
-	     .isAvailable` is a DEBUG-only default, no channels are configured,
-	     and the service has never run against Apple — so the capability
-	     buys a signing problem and no user anything. Restore it, and turn
-	     Push Notifications on for the App ID, in the same change that
-	     ships the broadcast service. -->
+	<!-- Restored 2026-09-15, ahead of the broadcast service rather than with
+	     it, because first light needs a real device and a real device needs
+	     this. It was removed for a precise reason — the App ID carried no
+	     Push Notifications capability, so signing failed on a profile that
+	     could not include the entitlement — and that reason is gone the
+	     moment the capability is ticked in the developer portal. Step 1 of
+	     `docs/live-activities-service.md` § Creating the provider key.
+
+	     **If an archive or a device build starts failing to sign, the
+	     capability is off.** Turn it on for `com.andyryanweir.sports` rather
+	     than deleting this key again; deleting it is how the sequence got
+	     lost the first time.
+
+	     `development` is correct here for both configurations: Xcode
+	     substitutes `production` when exporting for App Store distribution,
+	     so a second entitlements file would be two things to keep in step
+	     for no gain. Nothing in a build can use push until
+	     `LiveActivityController.isAvailable` is true, which is still a
+	     DEBUG-only default with no channels configured. -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.andyryanweir.sports</string>

@@ -164,10 +164,17 @@ untouched, and a flattened single line with literal `\n` sequences is
 restored by `apnsConfigFromEnv`'s `replace(/\\n/g, "\n")`. What does not
 survive is a missing BEGIN/END line.
 
-**5. Restore the entitlement.** Put `aps-environment` back into
-`Config/sports.entitlements` (`development` for a debug build), which the
-comment there is waiting for. Do this in the same change as the rest, never
-before step 1, or the archive breaks again for exactly the reason recorded.
+**5. Restore the entitlement.** ~~Put `aps-environment` back into
+`Config/sports.entitlements`.~~ **Done 2026-09-15** — the key is in the file
+as `development`, which is correct for both configurations because Xcode
+substitutes `production` when exporting for App Store distribution.
+
+This one is code, so it is the one step not done in a browser. It depends on
+**step 1**: if the App ID's Push Notifications capability is off, a device
+build or an archive fails to sign with a profile-mismatch error naming the
+entitlement. The fix is step 1, never deleting the key again — deleting it is
+how the sequence got lost the first time. CI is unaffected either way; it
+passes `CODE_SIGNING_ALLOWED=NO`.
 
 ### Sandbox first, and what that means for testing
 
