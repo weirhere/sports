@@ -304,7 +304,12 @@ openssl rand -hex 32
 
 Copy the output. It is 64 hex characters on one line. This is the only thing
 standing between the internet and a push relay, so treat it like the `.p8`:
-not in chat, not in the repo, into a password manager.
+not in chat, not in a screenshot, not in the repo, into a password manager.
+
+A secret that has been pasted anywhere shared is spent — generate another,
+which costs one command. That is cheap precisely while it is still only in a
+terminal; it stops being cheap once it is in Vercel and a third party's
+dashboard, which is the argument for being careful at exactly this step.
 
 #### 2. Put it on Vercel
 
@@ -328,9 +333,18 @@ Deployments → the current one → **⋯** → **Redeploy**. Or push any commit
 #### 4. Prove it by hand, before any scheduler exists
 
 ```bash
-curl -i https://statside.co/api/live-activity/broadcast \
-  -H "authorization: Bearer <the secret>"
+curl -i https://www.statside.co/api/live-activity/broadcast \
+  -H "authorization: Bearer PASTE_THE_REAL_SECRET_HERE"
 ```
+
+**`www`, not the apex, and this is not cosmetic.** `statside.co` answers
+**308** with `location: https://www.statside.co/...`, and curl strips the
+`Authorization` header when it follows a redirect to a *different host* —
+which `www.statside.co` is. So the apex URL either stops at the redirect
+(without `-L`) or arrives with no credentials (with it), and both look like
+a broken secret. Found 2026-09-15, from a real 308 against the apex.
+
+The same applies to the pinger's URL in step 5.
 
 Read the body, because all three answers mean different things:
 
@@ -349,7 +363,7 @@ Free tier, and it goes down to 60-second intervals. Sign up, verify the
 email, then **Create cronjob**:
 
 - **Title** — `StatSide Live Activity broadcast`
-- **URL** — `https://statside.co/api/live-activity/broadcast`
+- **URL** — `https://www.statside.co/api/live-activity/broadcast` — **`www`**, for the 308 reason in step 4
 - **Schedule** — every **1 minute** (see step 6 before leaving this at 24/7)
 - **Advanced / request settings** → **Method** `GET`
 - **Advanced / request settings** → **Headers**, add one:
