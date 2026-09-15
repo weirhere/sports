@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { scoreboard } from "@/lib/espn/provider";
 import { apnsConfigFromEnv, sendBroadcast } from "@/lib/apns";
-import { staticChannelDirectory } from "@/lib/live-activity-channels";
+import { parseChannelMap, staticChannelDirectory } from "@/lib/live-activity-channels";
 import { activityPhase, contentState } from "@/lib/live-activity-state";
 import type { League } from "@/lib/leagues";
 
@@ -47,6 +47,31 @@ const LEAGUES: League[] = ["cfb", "nfl", "nba", "nhl"];
  *  when the blocker still claimed the target was 30. */
 const STALE_AFTER_SECONDS = 120;
 
+/** Per-league accounting for the response.
+ *
+ * Added 2026-09-15, after a live game with a correctly configured channel
+ * produced `pushed: 0, failed: []` and there was no way to tell from the
+ * outside whether the slate was empty, the fetch had thrown, the phase had
+ * skipped it, or the channel id hadn't matched. Four causes, one response.
+ * The route's only consumer is a pinger and a person with curl, so the
+ * response *is* the log. */
+interface LeagueReport {
+  league: League;
+  /** Games the scoreboard returned. */
+  games: number;
+  /** Of those, the ones past pre-game — the candidates for a push. */
+  live: number;
+  /** Of those, the ones that resolved a channel id. */
+  matched: number;
+  /** Present only when the scoreboard fetch threw for this league. */
+  error?: string;
+}
+
+/** An error's message, never the object — this lands in a JSON response. */
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function authorized(request: Request): boolean {
   const expected = process.env.LIVE_ACTIVITY_CRON_SECRET;
   // No secret configured means the endpoint is closed, not open: an
@@ -70,26 +95,38 @@ export async function GET(request: Request) {
   }
 
   const channels = staticChannelDirectory();
+  const channelCount = Object.keys(parseChannelMap(process.env.APNS_CHANNELS)).length;
   const now = new Date();
   const results: { gameId: string; league: League; ok: boolean; reason?: string }[] = [];
+  const reports: LeagueReport[] = [];
 
   const slates = await Promise.all(
     LEAGUES.map(async (league) => {
       try {
-        return { league, games: (await scoreboard(league)).games };
-      } catch {
-        // One league failing must not take the others' updates down.
-        return { league, games: [] };
+        // `error: undefined` on the happy path so both branches carry the
+        // same shape — without it the union has no `error` to destructure.
+        return { league, games: (await scoreboard(league)).games, error: undefined };
+      } catch (error) {
+        // One league failing must not take the others' updates down — but
+        // it must not look like a quiet night either. The message rides
+        // into the response so a zero is attributable.
+        return { league, games: [], error: describe(error) };
       }
     }),
   );
 
-  for (const { league, games } of slates) {
+  for (const { league, games, error } of slates) {
+    const report: LeagueReport = { league, games: games.length, live: 0, matched: 0 };
+    if (error) report.error = error;
+    reports.push(report);
+
     for (const game of games) {
       const phase = activityPhase(game.status);
       if (phase === "pre") continue; // nothing on a pre-game card moves
+      report.live += 1;
       const channelId = await channels.channelId(game.id, league);
       if (!channelId) continue;
+      report.matched += 1;
 
       const state = contentState(game, { now });
       const isFinal = phase === "final";
@@ -112,5 +149,12 @@ export async function GET(request: Request) {
     at: now.toISOString(),
     pushed: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok),
+    // Why the number above is the number above. `channels` is the size of
+    // the configured map, so `matched: 0` against a non-zero `channels`
+    // says the ids don't line up, and `matched: 0` against `channels: 0`
+    // says nothing is configured — two very different problems that used
+    // to produce the identical response.
+    channels: channelCount,
+    leagues: reports,
   });
 }
