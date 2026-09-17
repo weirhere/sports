@@ -36,9 +36,15 @@ export default async function ScoresPage() {
           addDays(day, WINDOW_RADIUS)
         );
         return { league, games: board.games };
-      } catch {
+      } catch (reason) {
         // A dead response costs this league's section, not the page. The
         // client refetches on mount for anything that missed.
+        //
+        // Logged, though: this catch was silent, so the one half of the app
+        // that *can* keep a record of why ESPN said no kept none, and the
+        // Vercel log stayed empty while the screen sat under a skeleton
+        // (2026-09-17). `EspnApiError` carries the status and the URL.
+        console.error(`[scores] seed fetch failed for ${league}:`, reason);
         return undefined;
       }
     })

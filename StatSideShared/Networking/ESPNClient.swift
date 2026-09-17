@@ -228,17 +228,94 @@ actor ESPNClient: ScoresProviding {
 
     func scoreboard(days: ClosedRange<Date>,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
-        // `dates=20260904-20260908` — verified live 2026-09-05 for both
-        // leagues, past seasons included (a 2019 range returns 2019 games).
-        // What it does *not* return is the season calendar or an honest
-        // `season.year`: both come back empty or pinned to the current
-        // season, which is why the day strip's bounds come from the plain
-        // launch request instead.
-        let from = DayFormat.espnToken(for: days.lowerBound)
-        let to = DayFormat.espnToken(for: days.upperBound)
-        let value = from == to ? from : "\(from)-\(to)"
-        return try await scoreboard(query: [URLQueryItem(name: "dates", value: value)],
-                                    divisions: divisions)
+        // One request per day, because ESPN withdrew the range form.
+        // `dates=20260904-20260908` — the very window this comment used to
+        // cite as verified live 2026-09-05 — now answers 400
+        // `{"code":400,"message":"Failed to get events endpoint."}`, in all
+        // four leagues, for past seasons too (re-probed live 2026-09-17,
+        // six for six, and no separator, casing or parameter pairing
+        // revives it). Single-day, month and year tokens all still answer,
+        // so the day is the only granularity left that can state a
+        // five-day window exactly.
+        //
+        // What a day request still does *not* carry is the season calendar
+        // or an honest `season.year` — both come back empty or pinned to
+        // the current season, which is why the day strip's bounds come
+        // from the plain launch request instead.
+        //
+        // Any day's failure fails the whole window. `fetchWindow` records
+        // its inner days as loaded whether or not they came back carrying
+        // games, so a swallowed failure would file as "no games today" —
+        // which is the one answer worse than an error.
+        //
+        // Past a week the tokens go monthly instead, because one request
+        // per day stops being cheap and starts being rude. The Scores
+        // window is five days and **polls every 30s**, so it wants the
+        // small exact requests; `firstDayWithGames` sweeps a fortnight at
+        // a time, once, across all four leagues at once — 56 requests on a
+        // quiet launch at day granularity, against four at monthly. Either
+        // way the answer is clipped back to the span below, so the
+        // granularity is a cost decision and nothing else.
+        let tokens = Self.tokens(for: days)
+        guard !tokens.isEmpty else { throw ESPNError.invalidURL }
+        let boards = try await withThrowingTaskGroup(of: (Int, Scoreboard).self) { group in
+            for (index, token) in tokens.enumerated() {
+                group.addTask {
+                    let board = try await self.scoreboard(
+                        query: [URLQueryItem(name: "dates", value: token)],
+                        divisions: divisions)
+                    return (index, board)
+                }
+            }
+            var collected: [(Int, Scoreboard)] = []
+            for try await board in group { collected.append(board) }
+            // A task group finishes out of order; the merge keeps the
+            // first day's season metadata, so the days have to go back
+            // into calendar order before it runs.
+            return collected.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+        guard let base = boards.first else { throw ESPNError.invalidURL }
+        let merged = ESPNMapper.merged(base, with: Array(boards.dropFirst()))
+        return ESPNMapper.clipped(merged, to: days)
+    }
+
+    /// A span's `dates=` tokens, at whichever granularity costs less: one
+    /// per day up to a week, one per month beyond it.
+    ///
+    /// A month is always the cheaper *request*, never the cheaper
+    /// *answer* — college football's September is 323 events against a
+    /// Saturday's 70 — so the short end stays daily for the sake of the
+    /// 30s poll that rides it.
+    static func tokens(for days: ClosedRange<Date>,
+                       calendar: Calendar = .current) -> [String] {
+        let span = calendar.dateComponents([.day], from: days.lowerBound,
+                                           to: days.upperBound).day ?? 0
+        return span > Self.maxDailyFanOut
+            ? monthTokens(for: days)
+            : dayTokens(for: days, calendar: calendar)
+    }
+
+    /// The longest span still asked for a day at a time. A week, because
+    /// the Scores window is five days and nothing else polled is wider.
+    static let maxDailyFanOut = 7
+
+    /// Every day a span touches, as ESPN `dates=` tokens, in order.
+    ///
+    /// Deduped, because both ends are rendered on the Eastern clock: a
+    /// single-day range, or a span whose bounds fall inside one Eastern
+    /// day, has to ask once rather than twice for the same token.
+    static func dayTokens(for days: ClosedRange<Date>,
+                          calendar: Calendar = .current) -> [String] {
+        var tokens: [String] = []
+        var seen = Set<String>()
+        var cursor = days.lowerBound
+        while cursor <= days.upperBound {
+            let token = DayFormat.espnToken(for: cursor)
+            if seen.insert(token).inserted { tokens.append(token) }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return tokens
     }
 
     /// The shared half of every scoreboard request: one call per division,
@@ -320,93 +397,119 @@ actor ESPNClient: ScoresProviding {
             groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil)
     }
 
-    /// A span of a season, in as many windows as it takes to come back
-    /// whole, merged and deduped by event id.
+    /// A span of a season, one request per calendar month it touches,
+    /// merged and deduped by event id and clipped back to the span.
     ///
-    /// **ESPN truncates a `dates=` window at `limit` silently.** There is no
-    /// flag, no count, no next-page cursor — a response that came back at
-    /// exactly the limit is the only signal there is, and a slate quietly
-    /// missing February looks exactly like a slate that has no February.
-    /// That is the failure this exists to make impossible.
+    /// **The month is the coarsest token ESPN still honours.** The range
+    /// form this used to ask in — `dates=20260801-20270131`, halved
+    /// whenever it came back full — now answers 400 in every league
+    /// (2026-09-17), so an arbitrary span can no longer be stated in one
+    /// request at all. A season is six or seven months, which is the same
+    /// order of requests the halving rule already spent on the NHL, and
+    /// unlike a half-span a month is a fixed, knowable size.
     ///
-    /// So the split is a *rule* rather than a date. It used to be November 1
-    /// — right for college football, whose autumn is dense and whose
-    /// postseason thins out, and right for nothing else. A window that comes
-    /// back full is halved and both halves asked for instead, which needs to
-    /// know nothing about the league, the group's width, or the shape of its
-    /// calendar. Measured live 2026-09-10: an NBA division is 376 events and
-    /// takes one request; the NHL's Eastern Conference truncates at 900 and
-    /// its halves are 665 and 296; the NHL's whole league needs three.
+    /// **ESPN still truncates at `limit` silently.** There is no flag, no
+    /// count, no next-page cursor — a response that came back at the limit
+    /// is the only signal there is, and a slate quietly missing February
+    /// looks exactly like a slate that has no February. So a month that
+    /// comes back at the limit is re-asked as its own days, which is the
+    /// one granularity below it and is never itself truncatable at this
+    /// limit. Measured live 2026-09-17: college football's September is
+    /// 323 events, the NHL's January 241 — both well inside one request.
     ///
-    /// Bounded by `maxWindowSplits` so a pathological span can't fan out —
-    /// a single day over the limit is unsplittable, and returning the
-    /// truncated day beats hammering the endpoint over it.
-    ///
-    /// Any window failing fails the whole request: half a season passing for
-    /// a whole one is the one outcome worse than an error.
+    /// Any month failing fails the whole request: half a season passing
+    /// for a whole one is the one outcome worse than an error.
     func seasonGames(days: ClosedRange<Date>, groups: Int?) async throws -> [Game] {
+        let months = Self.monthTokens(for: days)
+        let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
+            for month in months {
+                group.addTask { try await self.seasonBoard(month: month, groups: groups) }
+            }
+            return try await group.reduce(into: [Game]()) { $0 += $1 }
+        }
+        // Months are whole and a span need not be, so the over-fetch is
+        // clipped on the same Eastern clock the range form read — a bare
+        // year's worth of January bowls is exactly what this keeps out.
         var byId: [String: Game] = [:]
         var order: [String] = []
-        for game in try await seasonBoard(days: days, groups: groups, depth: 0) {
-            if byId[game.id] == nil {
-                byId[game.id] = game
-                order.append(game.id)
-            }
+        for game in ESPNMapper.clipped(fetched, to: days) where byId[game.id] == nil {
+            byId[game.id] = game
+            order.append(game.id)
         }
         return order.compactMap { byId[$0] }
     }
 
-    /// One window, halved and re-asked when it comes back full.
-    private func seasonBoard(days: ClosedRange<Date>, groups: Int?,
-                             depth: Int) async throws -> [Game] {
-        var items = [URLQueryItem(name: "limit", value: String(Self.seasonWindowLimit)),
-                     URLQueryItem(name: "dates", value: Self.datesToken(for: days))]
-        if let groups {
-            items.insert(URLQueryItem(name: "groups", value: String(groups)), at: 0)
-        }
-        let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
-        let games = ESPNMapper.scoreboard(from: dto, league: league).games
-
-        guard games.count >= Self.seasonWindowLimit, depth < Self.maxWindowSplits,
-              let halves = Self.halve(days) else { return games }
-        // A window that legitimately holds exactly the limit is split for
-        // nothing — one extra request, and the merge dedupes it away.
+    /// One month, re-asked as its own days when it comes back at the limit.
+    private func seasonBoard(month: String, groups: Int?) async throws -> [Game] {
+        let games = try await seasonBoard(token: month, groups: groups)
+        guard games.count >= Self.seasonWindowLimit else { return games }
+        // A month that legitimately holds exactly the limit costs a fan-out
+        // for nothing — the merge dedupes it away, and guessing the other
+        // way loses days in silence.
         return try await withThrowingTaskGroup(of: [Game].self) { group in
-            for half in halves {
-                group.addTask { try await self.seasonBoard(days: half, groups: groups,
-                                                           depth: depth + 1) }
+            for day in Self.dayTokens(inMonth: month) {
+                group.addTask { try await self.seasonBoard(token: day, groups: groups) }
             }
             return try await group.reduce(into: []) { $0 += $1 }
         }
     }
 
-    /// A span cut down the middle, or nil where there is nothing left to
-    /// cut — a single day.
-    static func halve(_ days: ClosedRange<Date>,
-                      calendar: Calendar = .current) -> [ClosedRange<Date>]? {
-        let dayCount = calendar.dateComponents([.day], from: days.lowerBound,
-                                               to: days.upperBound).day ?? 0
-        guard dayCount >= 1,
-              let midpoint = calendar.date(byAdding: .day, value: dayCount / 2,
-                                           to: days.lowerBound),
-              let afterMidpoint = calendar.date(byAdding: .day, value: 1, to: midpoint),
-              afterMidpoint <= days.upperBound
-        else { return nil }
-        return [days.lowerBound...midpoint, afterMidpoint...days.upperBound]
+    /// One `dates=` token's worth of games, whatever its granularity.
+    private func seasonBoard(token: String, groups: Int?) async throws -> [Game] {
+        var items = [URLQueryItem(name: "limit", value: String(Self.seasonWindowLimit)),
+                     URLQueryItem(name: "dates", value: token)]
+        if let groups {
+            items.insert(URLQueryItem(name: "groups", value: String(groups)), at: 0)
+        }
+        let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
+        return ESPNMapper.scoreboard(from: dto, league: league).games
     }
 
-    /// ESPN's own ceiling on a `dates=` window, and the count that means
-    /// "this came back truncated".
-    static let seasonWindowLimit = 900
-    /// Three splits — up to eight windows — is past any real season and
-    /// short of a runaway.
-    static let maxWindowSplits = 3
+    /// ESPN's own ceiling on `limit`, and the count that means "this came
+    /// back truncated".
+    ///
+    /// 500 exactly: `limit=501` does not clamp, it collapses the response
+    /// to ESPN's default 25 events — a silent 93% loss dressed as a 200
+    /// (bisected live 2026-09-17). The 900 this used to hold was above
+    /// that ceiling, so every season request was quietly answering with 25
+    /// games and the truncation guard, which watches for a count at the
+    /// limit, could never once have fired.
+    static let seasonWindowLimit = 500
 
-    /// `20260801-20270131` — ESPN reads both ends on the Eastern clock.
-    private static func datesToken(for days: ClosedRange<Date>) -> String {
-        let from = DayFormat.espnToken(for: days.lowerBound)
-        let to = DayFormat.espnToken(for: days.upperBound)
-        return from == to ? from : "\(from)-\(to)"
+    /// Every calendar month a span touches, as ESPN `dates=` tokens
+    /// (`"202609"`), in order.
+    static func monthTokens(for days: ClosedRange<Date>) -> [String] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DayFormat.eastern
+        var tokens: [String] = []
+        var seen = Set<String>()
+        var cursor = days.lowerBound
+        while cursor <= days.upperBound {
+            let parts = calendar.dateComponents([.year, .month], from: cursor)
+            let token = String(format: "%04d%02d", parts.year ?? 0, parts.month ?? 0)
+            if seen.insert(token).inserted { tokens.append(token) }
+            guard let next = calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        // Stepping a month at a time can stride over the upper bound's own
+        // month — Jan 31 plus a month is Feb 28, and a span ending Mar 1
+        // would lose March.
+        let last = calendar.dateComponents([.year, .month], from: days.upperBound)
+        let lastToken = String(format: "%04d%02d", last.year ?? 0, last.month ?? 0)
+        if seen.insert(lastToken).inserted { tokens.append(lastToken) }
+        return tokens
+    }
+
+    /// A month token's own days, as `dates=` tokens.
+    static func dayTokens(inMonth month: String) -> [String] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DayFormat.eastern
+        guard month.count == 6,
+              let year = Int(month.prefix(4)), let number = Int(month.suffix(2)),
+              let start = calendar.date(from: DateComponents(year: year, month: number, day: 1)),
+              let range = calendar.range(of: .day, in: .month, for: start)
+        else { return [] }
+        return range.map { String(format: "%04d%02d%02d", year, number, $0) }
     }
 
     func rankings(year: Int?) async throws -> [Poll] {
@@ -676,6 +779,40 @@ nonisolated enum ESPNMapper {
     /// byte-identical calendar (probed 2026-09-01), so there is nothing
     /// to reconcile; if that ever stops being true, the base division is
     /// the one the user's slate is shaped around.
+    /// A board narrowed to the days actually asked for.
+    ///
+    /// Monthly tokens over-fetch by up to a month at each end, and the two
+    /// callers both mind: `fetchWindow` buckets by day and would file a
+    /// neighbouring month's games under days it never asked about, and
+    /// `firstDayWithGames` takes the earliest date it is handed, which an
+    /// over-fetch could place before the search even started.
+    ///
+    /// Read on the Eastern clock, which is where the withdrawn range form
+    /// read both of its ends — so a clipped month answers exactly what
+    /// `dates=A-B` used to. A game with no date can't be placed either
+    /// side of the line, and dropping it would thin a slate over a missing
+    /// field alone.
+    static func clipped(_ games: [Game], to days: ClosedRange<Date>) -> [Game] {
+        let from = DayFormat.espnToken(for: days.lowerBound)
+        let to = DayFormat.espnToken(for: days.upperBound)
+        return games.filter { game in
+            guard let date = game.date else { return true }
+            let token = DayFormat.espnToken(for: date)
+            return token >= from && token <= to
+        }
+    }
+
+    /// The same clip, for a whole board.
+    static func clipped(_ board: Scoreboard, to days: ClosedRange<Date>) -> Scoreboard {
+        let kept = clipped(board.games, to: days)
+        guard kept.count != board.games.count else { return board }
+        return Scoreboard(seasonYear: board.seasonYear,
+                          seasonType: board.seasonType,
+                          currentWeekNumber: board.currentWeekNumber,
+                          weeks: board.weeks,
+                          games: kept)
+    }
+
     static func merged(_ base: Scoreboard, with others: [Scoreboard]) -> Scoreboard {
         guard !others.isEmpty else { return base }
         var games = base.games

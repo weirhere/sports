@@ -11,7 +11,7 @@
 // a whole one.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getScoreboardDays } from "@/lib/api";
+import { ApiError, getScoreboardDays } from "@/lib/api";
 import { POLL_INTERVAL_LIVE } from "@/lib/constants";
 import {
   addDays,
@@ -68,6 +68,8 @@ export interface LeagueScoreboards {
   games: Game[];
   /** True once every league has answered for the selected day. */
   isLoaded: boolean;
+  /** Nothing in hand, nothing in flight, and an attempt already behind us. */
+  isStalled: boolean;
   isLoading: boolean;
   /** The refresh banner's copy — never a request we abandoned on purpose. */
   error: string | null;
@@ -89,6 +91,14 @@ export interface LeagueScoreboardsSeed {
   games: Game[];
   /** Which leagues the seed actually covers — the rest stay unloaded. */
   leagues: readonly League[];
+}
+
+/** What the screen says when a league's window fails. */
+function describeFailure(reason: unknown): string {
+  if (reason instanceof ApiError && reason.upstreamStatus !== undefined) {
+    return `The scoreboard is unavailable (${reason.upstreamStatus}).`;
+  }
+  return "Couldn't reach the scoreboard.";
 }
 
 export function useLeagueScoreboards(
@@ -130,6 +140,9 @@ export function useLeagueScoreboards(
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether a window has ever been asked for. The server seed counts: it is
+  // a fetch that already happened, just not in this runtime.
+  const [hasAttempted, setHasAttempted] = useState(seed !== undefined);
 
   // Windows already in flight, so a re-render mid-swipe can't stack
   // duplicate requests on the same days.
@@ -165,6 +178,12 @@ export function useLeagueScoreboards(
     [buckets, selectedId]
   );
 
+  // A dead end, not a wait. The screen showed the skeleton for *any*
+  // unloaded day, and a failed fetch never writes its day — so the error
+  // and its Retry, which live below the skeleton's branch, were
+  // unreachable exactly when they were needed (2026-09-17).
+  const isStalled = hasAttempted && !isLoading && !isLoaded;
+
   const hasLiveGames = useMemo(
     () => games.some((game) => isLiveStatus(game.status)),
     [games]
@@ -178,6 +197,7 @@ export function useLeagueScoreboards(
       if (!options?.force && inFlight.current.has(key)) return;
       inFlight.current.add(key);
       const seq = ++sequence.current;
+      setHasAttempted(true);
       setIsLoading(true);
 
       const from = addDays(centre, -WINDOW_RADIUS);
@@ -191,9 +211,14 @@ export function useLeagueScoreboards(
         LEAGUES.map(async (league) => {
           try {
             const board = await getScoreboardDays(league, from, to);
-            return { league, games: board.games, failed: false };
-          } catch {
-            return { league, games: [] as Game[], failed: true };
+            return {
+              league,
+              games: board.games,
+              failed: false,
+              reason: undefined as unknown,
+            };
+          } catch (reason) {
+            return { league, games: [] as Game[], failed: true, reason };
           }
         })
       );
@@ -235,10 +260,13 @@ export function useLeagueScoreboards(
         return next;
       });
 
+      // *Any* failed league is an error, not only a total wipe-out. A
+      // league that fails leaves its day unwritten, which blocks `isLoaded`
+      // — so a partial failure used to hold the skeleton up forever while
+      // the screen believed nothing was wrong.
+      const failures = results.filter((result) => result.failed);
       setError(
-        results.every((result) => result.failed)
-          ? "Couldn't reach the scoreboard."
-          : null
+        failures.length === 0 ? null : describeFailure(failures[0]!.reason)
       );
       setIsLoading(false);
     },
@@ -259,7 +287,16 @@ export function useLeagueScoreboards(
 
   // The debounced fetch for whatever day is selected.
   useEffect(() => {
-    if (covers(selectedDay)) return;
+    if (covers(selectedDay)) {
+      // Nothing to ask for. Release the hold, or a day reached by a cleared
+      // timer would sit "loading" with no request behind it.
+      setIsLoading(false);
+      return;
+    }
+    // Held before the timer, not after: for those 250ms the new day has no
+    // games and no request out, which `isStalled` would otherwise read as a
+    // failure and flash an error mid-swipe.
+    setIsLoading(true);
     const handle = setTimeout(() => {
       void fetchWindow(selectedDay);
     }, SETTLE_BEFORE_FETCH_MS);
@@ -399,6 +436,7 @@ export function useLeagueScoreboards(
     availableSeasons,
     games,
     isLoaded,
+    isStalled,
     isLoading,
     error,
     hasLiveGames,

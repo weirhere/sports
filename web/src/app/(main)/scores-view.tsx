@@ -51,6 +51,7 @@ export function ScoresView({ seed }: ScoresViewProps) {
     availableSeasons,
     games,
     isLoaded,
+    isStalled,
     error,
     showsTodayJump,
     selectDay,
@@ -248,14 +249,19 @@ export function ScoresView({ seed }: ScoresViewProps) {
               </div>
             )}
 
-            {!isLoaded ? (
+            {/* The skeleton covers a load that is still out, and nothing
+                else. It used to cover every unloaded day, and a failed
+                fetch never writes its day — so the error and its Retry
+                below were unreachable on exactly the failure that needed
+                them (2026-09-17). */}
+            {!isLoaded && !isStalled ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <ConferenceGroupSkeleton key={i} rows={i === 0 ? 4 : 3} />
                 ))}
               </div>
-            ) : error !== null && games.length === 0 ? (
-              <EmptySlate message="Couldn't load games">
+            ) : isStalled || (error !== null && games.length === 0) ? (
+              <EmptySlate message={error ?? "Couldn't load games"}>
                 <button
                   type="button"
                   onClick={refresh}

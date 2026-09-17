@@ -29,6 +29,16 @@ final class LeagueScoreboards {
 
     private(set) var isLoading = false
 
+    /// True once a load has been attempted, so the screen can tell "nobody
+    /// has asked yet" from "the ask came back with nothing".
+    private(set) var hasAttemptedLoad = false
+
+    /// Loads in flight, counting the settle delay before one goes out.
+    /// A counter rather than a flag: day changes overlap, and a flag
+    /// cleared by the first to finish would leave the screen claiming a
+    /// dead end while the second was still out.
+    @ObservationIgnored private var outstandingLoads = 0
+
     /// Set while the app is looking for a day worth showing (an August
     /// Tuesday, or a freshly picked past season). The strip keeps its
     /// place until the answer lands rather than flashing an empty day.
@@ -102,6 +112,19 @@ final class LeagueScoreboards {
 
     func isLoaded(_ day: Date) -> Bool {
         all.allSatisfy { $0.isLoaded(day) }
+    }
+
+    /// Nothing in hand for `day`, nothing in flight, and an attempt already
+    /// made behind us — a dead end, not a wait.
+    ///
+    /// The distinction is the whole of the 2026-09-17 field report. A
+    /// failed fetch leaves the day unwritten, and the screen read *any*
+    /// unwritten day as "still loading" — so a total failure (no signal, a
+    /// 4xx, a payload we can't read) sat under the skeleton forever, with
+    /// the error copy and its Retry button stranded in a branch only a
+    /// loaded day could reach.
+    func isStalled(on day: Date) -> Bool {
+        hasAttemptedLoad && !isLoading && !isLoaded(day)
     }
 
     // MARK: - The day strip
@@ -230,6 +253,11 @@ final class LeagueScoreboards {
     /// Fetch whatever day is selected — the other half of the split above.
     func loadSelectedDay() async {
         let day = selectedDay
+        // Open before the sleep, not after: for those 250ms the new day has
+        // no games and no request out, which `isStalled(on:)` would
+        // otherwise read as a failure and flash an error mid-swipe.
+        beginLoad(attempt: false)
+        defer { endLoad() }
         try? await Task.sleep(for: Self.settleBeforeFetch)
         // The thumb kept moving; the day it landed on will ask for itself.
         guard selectedDay == day else { return }
@@ -279,6 +307,8 @@ final class LeagueScoreboards {
 
     func refresh() async {
         let day = selectedDay
+        beginLoad()
+        defer { endLoad() }
         await withTaskGroup(of: Void.self) { group in
             for store in all {
                 group.addTask { await store.load(around: day, force: true) }
@@ -289,13 +319,33 @@ final class LeagueScoreboards {
     /// Every league's window in flight at once — two requests, not two
     /// round trips.
     private func load(around day: Date) async {
-        isLoading = true
-        defer { isLoading = false }
+        beginLoad()
+        defer { endLoad() }
         await withTaskGroup(of: Void.self) { group in
             for store in all {
                 group.addTask { await store.load(around: day) }
             }
         }
+    }
+
+    /// Nested and overlapping loads share one `isLoading`, so the screen
+    /// sees one continuous wait rather than a gap between two requests.
+    ///
+    /// `attempt` is false for the holds that dispatch nothing themselves —
+    /// the settle delay, and a divisions change that turns out to be a
+    /// no-op. They must not record an attempt: `select(divisions:)` runs on
+    /// every appear and returns instantly when nothing changed, which would
+    /// otherwise mark the very first frame as a failed load and flash an
+    /// error before the launch fetch had even gone out.
+    private func beginLoad(attempt: Bool = true) {
+        outstandingLoads += 1
+        if attempt, !hasAttemptedLoad { hasAttemptedLoad = true }
+        if !isLoading { isLoading = true }
+    }
+
+    private func endLoad() {
+        outstandingLoads = max(0, outstandingLoads - 1)
+        if outstandingLoads == 0, isLoading { isLoading = false }
     }
 
     /// Move to the next day anyone is playing, when the one we landed on
@@ -345,6 +395,11 @@ final class LeagueScoreboards {
 
     /// Widen or narrow every league's divisions together.
     func select(divisions: Set<Conference.Division>) async {
+        // Each store drops its cache before refetching, so the selected day
+        // is briefly unloaded with no request of ours out — a stall by
+        // every measure except the truth.
+        beginLoad(attempt: false)
+        defer { endLoad() }
         await withTaskGroup(of: Void.self) { group in
             for store in all {
                 group.addTask { await store.select(divisions: divisions) }

@@ -52,11 +52,16 @@ import {
   coreRankingUrl,
   coreWeeksUrl,
   dayWindowUrl,
+  espnDay,
+  espnDayTokens,
+  espnMonthTokens,
+  espnWindow,
   gameSummaryUrl,
   rankingsUrl,
   scoreboardUrl,
   seasonWindowUrl,
   standingsUrl,
+  WINDOW_LIMIT,
   teamRosterUrl,
   teamScheduleUrl,
   teamsUrl,
@@ -149,20 +154,68 @@ export async function scoreboardForDays(
   end: Date,
   options?: { groups?: number }
 ): Promise<Scoreboard> {
-  const url = dayWindowUrl(league, start, end, { groups: options?.groups });
-  const data = await fetchJson<EspnScoreboardResponse>(
-    url,
-    REVALIDATE.scoreboard
+  // One request per token, because ESPN withdrew the range form — five
+  // days is five requests, and a sweep wider than a week goes monthly.
+  // Any one of them failing fails the window: the caller records its inner
+  // days as loaded whether or not they came back carrying games, so a
+  // swallowed failure would file as "no games today", which is the one
+  // answer worse than an error.
+  const tokens = espnWindow(start, end);
+  const responses = await Promise.all(
+    tokens.map((dates) =>
+      fetchJson<EspnScoreboardResponse>(
+        dayWindowUrl(league, dates, { groups: options?.groups }),
+        REVALIDATE.scoreboard
+      )
+    )
   );
-  const seasonYear = scoreboardSeason(data, league);
+  // The first token's payload speaks for the window's season metadata, the
+  // way the whole range's used to; a later one can only repeat it.
+  const [first] = responses;
+  const seasonYear = first ? scoreboardSeason(first, league) : undefined;
+  const seen = new Set<string>();
+  const games: Game[] = [];
+  for (const data of responses) {
+    for (const game of transformScoreboard(data.events ?? [], league, {
+      seasonYear,
+    })) {
+      if (seen.has(game.id)) continue;
+      seen.add(game.id);
+      games.push(game);
+    }
+  }
   return {
     league,
     seasonYear,
-    seasonType: data.season?.type,
-    currentWeekNumber: data.week?.number,
-    weeks: transformCalendar(data),
-    games: transformScoreboard(data.events ?? [], league, { seasonYear }),
+    seasonType: first?.season?.type,
+    currentWeekNumber: first?.week?.number,
+    weeks: first ? transformCalendar(first) : [],
+    games: clipGames(games, start, end),
   };
+}
+
+/**
+ * A slate narrowed to the days actually asked for.
+ *
+ * Monthly tokens over-fetch by up to a month at each end, and both callers
+ * mind: the Scores screen buckets by day and would file a neighbouring
+ * month's games under days it never asked about, and a season span that
+ * opens mid-month would pull in the previous season's tail.
+ *
+ * Read with `espnDay`, the same spelling the tokens are built from, so the
+ * clip and the request can never disagree about which day a game is on. A
+ * kickoff that won't parse can't be placed either side of the line, and
+ * dropping it would thin a slate over a malformed field alone.
+ */
+function clipGames(games: Game[], start: Date, end: Date): Game[] {
+  const from = espnDay(start);
+  const to = espnDay(end);
+  return games.filter((game) => {
+    const at = new Date(game.scheduledAt);
+    if (Number.isNaN(at.getTime())) return true;
+    const token = espnDay(at);
+    return token >= from && token <= to;
+  });
 }
 
 /**
@@ -629,16 +682,20 @@ export async function teamTrophyCase(
  * One conference's full-season slate — every game with a side in the
  * conference, postseason included.
  *
- * Fetched as a **date window over the season's own span**, never as
+ * Fetched **month by month over the season's own span**, never as
  * `dates={year}`: a bare year is the *calendar* year, so it opens the slate
  * with the previous January's bowls and truncates before December (verified
- * live 2026-09-05). The span is split at November 1 into two requests
- * because ESPN caps a window at 900 events and truncates silently rather
- * than paging.
+ * live 2026-09-05).
  *
- * Only ever called for a league that can afford it — `groups=` is ignored
- * outside football, so there is no narrow fetch for the NBA or NHL and a
- * season-wide request there returns a truncated 12 MB.
+ * The month is the granularity because the range form that used to state a
+ * span whole was withdrawn (2026-09-17), and it replaces the November 1
+ * split — which was a college-football date wearing the shape of a rule,
+ * and which iOS had already retired. ESPN still truncates at `limit`
+ * silently rather than paging, so a month that comes back at
+ * `WINDOW_LIMIT` is re-asked as its own days, the one granularity below it.
+ * Measured live 2026-09-17: college football's September is 323 events and
+ * the NHL's January 231, so the fan-out is a guard that does not fire in
+ * normal operation.
  */
 export async function conferenceGames(
   league: League,
@@ -650,36 +707,51 @@ export async function conferenceGames(
     return rollingConferenceGames(league, conferenceId, seasonYear);
   }
   const span = seasonSpan(league, seasonYear);
-  const split = new Date(seasonYear, 10, 1); // November 1
-  const halves: [Date, Date][] =
-    split > span.start && split < span.end
-      ? [
-          [span.start, new Date(seasonYear, 9, 31)],
-          [split, span.end],
-        ]
-      : [[span.start, span.end]];
+  const months = espnMonthTokens(span.start, span.end);
 
-  const responses = await Promise.all(
-    halves.map(([start, end]) =>
-      fetchJson<EspnScoreboardResponse>(
-        seasonWindowUrl(league, start, end, { groups: conferenceId }),
-        REVALIDATE.conferenceGames
+  const perMonth = await Promise.all(
+    months.map((month) =>
+      seasonWindowEvents(league, month, conferenceId).then((events) =>
+        // A month at the limit came back truncated — there is no flag, no
+        // count and no cursor, so the count *is* the signal — and its own
+        // days are the only way left to ask for less than a month.
+        events.length >= WINDOW_LIMIT
+          ? Promise.all(
+              espnDayTokens(
+                new Date(Number(month.slice(0, 4)), Number(month.slice(4)) - 1, 1),
+                new Date(Number(month.slice(0, 4)), Number(month.slice(4)), 0)
+              ).map((day) => seasonWindowEvents(league, day, conferenceId))
+            ).then((byDay) => byDay.flat())
+          : events
       )
     )
   );
 
   const seen = new Set<string>();
   const games: Game[] = [];
-  for (const data of responses) {
-    for (const game of transformScoreboard(data.events ?? [], league, {
-      seasonYear,
-    })) {
-      if (seen.has(game.id)) continue;
-      seen.add(game.id);
-      games.push(game);
-    }
+  for (const game of transformScoreboard(perMonth.flat(), league, {
+    seasonYear,
+  })) {
+    if (seen.has(game.id)) continue;
+    seen.add(game.id);
+    games.push(game);
   }
-  return games;
+  // Months are whole and a season span need not be — the clip is what keeps
+  // a neighbouring season's tail out.
+  return clipGames(games, span.start, span.end);
+}
+
+/** One `dates=` token's worth of raw events, whatever its granularity. */
+async function seasonWindowEvents(
+  league: League,
+  dates: string,
+  groups: number
+): Promise<NonNullable<EspnScoreboardResponse["events"]>> {
+  const data = await fetchJson<EspnScoreboardResponse>(
+    seasonWindowUrl(league, dates, { groups }),
+    REVALIDATE.conferenceGames
+  );
+  return data.events ?? [];
 }
 
 /** How many windows forward a Games tab looks before giving up. */

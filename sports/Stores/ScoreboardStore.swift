@@ -351,8 +351,29 @@ final class ScoreboardStore {
         gamesByDay = gamesByDay.filter { keep.contains($0.key) }
     }
 
+    /// What the screen says when a window fails.
+    ///
+    /// Three failures, three sentences, because they need three different
+    /// things from the reader: wait for signal, wait for ESPN, or tell us.
+    /// The status code rides along on the third — ESPN's API is
+    /// undocumented and can change without notice, and a screenshot
+    /// carrying the number is the difference between "they moved the
+    /// endpoint" and "your wifi is out".
     private func describe(_ error: Error) -> String {
         if error is DecodingError { return "Couldn't read the scoreboard." }
+        if let url = error as? URLError {
+            switch url.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                return "No connection."
+            case .timedOut:
+                return "The scoreboard timed out."
+            default:
+                return "Couldn't reach the scoreboard."
+            }
+        }
+        if let espn = error as? ESPNError, case .badStatus(let code) = espn {
+            return "The scoreboard is unavailable (\(code))."
+        }
         return "Couldn't reach the scoreboard."
     }
 

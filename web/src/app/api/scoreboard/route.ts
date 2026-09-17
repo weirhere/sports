@@ -7,7 +7,7 @@
 // for, the week is what a football league's own pages still use.
 
 import { NextRequest, NextResponse } from "next/server";
-import { scoreboard, scoreboardForDays } from "@/lib/espn";
+import { EspnApiError, scoreboard, scoreboardForDays } from "@/lib/espn";
 import { parseLeague } from "@/lib/leagues";
 
 function numberParam(value: string | null): number | undefined {
@@ -53,8 +53,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(board);
   } catch (err) {
     console.error("Scoreboard fetch error:", err);
+    // Forward ESPN's own status, so the browser can say *which* failure it
+    // was rather than a flat "couldn't reach". The response stays a 502:
+    // the upstream status describes ESPN's answer, not ours.
     return NextResponse.json(
-      { error: "Failed to fetch scoreboard" },
+      {
+        error: "Failed to fetch scoreboard",
+        upstreamStatus: err instanceof EspnApiError ? err.status : undefined,
+      },
       { status: 502 }
     );
   }

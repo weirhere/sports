@@ -6,9 +6,45 @@ import { dayId } from "./day";
 
 const BASE = "/api";
 
+/**
+ * A failed call to our own API, carrying the upstream status where the
+ * route knew one.
+ *
+ * The route maps every ESPN failure to a flat 502, which told the browser
+ * only that something went wrong — and "something went wrong" is what the
+ * Scores screen had to print. `upstreamStatus` is ESPN's own answer, and
+ * it is the difference between "they moved the endpoint" and "ESPN is
+ * down".
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly upstreamStatus?: number;
+
+  constructor(status: number, upstreamStatus?: number) {
+    super(
+      upstreamStatus === undefined
+        ? `API error: ${status}`
+        : `API error: ${status} (upstream ${upstreamStatus})`
+    );
+    this.name = "ApiError";
+    this.status = status;
+    this.upstreamStatus = upstreamStatus;
+  }
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    let upstreamStatus: number | undefined;
+    try {
+      const body: unknown = await res.json();
+      const reported = (body as { upstreamStatus?: unknown })?.upstreamStatus;
+      if (typeof reported === "number") upstreamStatus = reported;
+    } catch {
+      // No JSON body, or an empty one. The status alone will have to do.
+    }
+    throw new ApiError(res.status, upstreamStatus);
+  }
   return res.json();
 }
 

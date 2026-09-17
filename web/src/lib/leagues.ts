@@ -359,11 +359,24 @@ export function hasPoll(league: League): boolean {
  * on a Games tab.
  *
  * College football's season is ~950 events, which one `dates=` window
- * carries. The NBA's is ~1,300 and it does not: probed live 2026-09-08,
- * `dates=20251001-20260630&limit=900` returns exactly 900 events and 12 MB,
- * silently truncating at February 20 — and adding `groups=5` returns the
- * identical 900, because ESPN ignores the group filter outside football, so
- * there is no narrow fetch to fall back on either.
+ * carried. The NBA's is ~1,300 and it did not: probed live 2026-09-08,
+ * `dates=20251001-20260630&limit=900` returned exactly 900 events and 12 MB,
+ * silently truncating at February 20.
+ *
+ * **Both halves of that reasoning have since expired, and this gate has
+ * not caught up.** The `groups=` clause was wrong outright — iOS re-probed
+ * it live 2026-09-10 and the filter narrows the slate in *every* league we
+ * cover, `groups=1` on a season-long NBA window returning the Atlantic's
+ * own 376 games rather than the league's. And the 900-event window it is
+ * sized against no longer exists in either direction: the range form was
+ * withdrawn (2026-09-17), so a season is fetched month by month now, and
+ * the densest month in any league we cover is ~240 events against a limit
+ * of 500. There is no longer a league whose season cannot be tabled.
+ *
+ * Retiring this and `rollingConferenceGames` with it is a product change —
+ * an NBA conference page would table a whole season where today it shows a
+ * rolling four-week window — so it is left standing here as a parity item
+ * rather than folded into the fix that outdated it.
  */
 export function canTableAWholeSeason(league: League): boolean {
   return !SPECS[league].seasonYearIsEndYear;
