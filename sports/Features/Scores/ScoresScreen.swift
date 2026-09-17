@@ -546,13 +546,34 @@ struct ScoresScreen: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if !scoreboards.isLoaded(shownDay) {
+        // The skeleton covers a load that is still out, and nothing else.
+        // It used to cover *every* unloaded day, which meant a day whose
+        // fetch failed sat under it forever — the error copy and the Retry
+        // button below were unreachable, because only a loaded day ever
+        // reached this `else` (Andy, 2026-09-17: "no games on any day, and
+        // no update"). A screen with no way to say what went wrong and no
+        // way to try again is indistinguishable from a broken app, which
+        // is exactly how it read.
+        if !scoreboards.isLoaded(shownDay), !scoreboards.isStalled(on: shownDay) {
             ScrollView { SkeletonRows() }
         } else {
             VStack(spacing: Spacing.md) {
                 Spacer()
                 if let error = scoreboards.lastError {
                     Text(error)
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Button("Retry") {
+                        Task { await scoreboards.refresh() }
+                    }
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
+                } else if !scoreboards.isLoaded(shownDay) {
+                    // Stalled with nothing to report: the day was never
+                    // written and no request is out — a cancelled first
+                    // load, most likely. Still a dead end, so it gets the
+                    // same way out rather than a spinner that never ends.
+                    Text("Couldn't load games.")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
                     Button("Retry") {
