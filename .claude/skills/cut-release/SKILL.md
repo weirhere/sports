@@ -31,8 +31,36 @@ copy that goes with it, unless he explicitly asks you to upload. See Phase 6.
 ```bash
 git -C . status --short && git log --oneline -1
 grep -m1 -E 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' sports.xcodeproj/project.pbxproj
-git log --oneline "$(git log -1 --format=%H --grep='Cut \|Bump version' -i)"..HEAD | wc -l
 ```
+
+Find the last bump **by the version string, not by the subject line** — read
+the current `MARKETING_VERSION` above, then ask git which commit introduced it:
+
+```bash
+LAST=$(git log --format=%h -1 -S'MARKETING_VERSION = 2.2.0;' -- sports.xcodeproj/project.pbxproj)
+git log --oneline "$LAST"..HEAD | wc -l
+```
+
+The `--grep='Cut \|Bump version'` form this used to carry is wrong, and it
+fails in the direction that costs you the release: at the 2.3.0 cut it matched
+*this skill's own commit* ("Make the release **cut** a skill") and reported **0
+commits since the last bump** on a branch with 34. A grep over subject lines
+answers "what was worded like a cut"; `-S` over the pbxproj answers "what
+actually changed the version", which is the question.
+
+Then classify them, because a subject line hides things too — the same cut
+found the entire Trophies tab shipped under "Backlog: E15 — team trophies":
+
+```bash
+for c in $(git log --format=%h --no-merges "$LAST"..HEAD); do
+  git show --name-only --format= $c | grep -qE '^(sports/|StatSideShared/|StatSideWidgets/)' \
+    && echo "iOS  $(git log -1 --format='%s' $c)" || echo "---  $(git log -1 --format='%s' $c)"
+done
+```
+
+Only the `iOS` lines can reach the release notes. This repo carries `web/` and
+a Vercel service too, and at the 2.3.0 cut exactly half the commits since the
+last bump touched neither the app nor the widget.
 
 Then decide the version with Andy if he hasn't named one. The build number
 always increments, even for a metadata-only resubmission.
