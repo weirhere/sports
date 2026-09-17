@@ -22,6 +22,9 @@ Alternates:
 - `Four leagues, at a glance` (25) — keeps the promise, names nothing, and
   spends no characters on search
 
+Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
+exactly what the app covers.
+
 Rewritten for 2.2.0. "CFB and NFL, at a glance" named half the app the moment
 basketball and hockey landed. Naming all four costs the "at a glance" promise,
 which is the trade taken on purpose: the subtitle is indexed and the promise
@@ -37,6 +40,44 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.3.0 (build 17)
+
+> • Trophies. A team page has a Trophies tab — the conference titles, bowls
+>   and championships the team has actually won, a row per trophy with the
+>   count and the years, back through 2014. Nothing is claimed on a title
+>   game that hasn't been played yet.
+> • Head to head. Every game page has an H2H tab: the series between these
+>   two teams, and each previous meeting as a row you can open. It says
+>   which window it counted rather than claiming an all-time record it
+>   can't see — ten seasons back in college football, fewer in the leagues
+>   where two teams meet more often.
+> • Where a team plays. The Overview tab has a Venue card — the ground and
+>   its city, the home games played there, and the average attendance.
+> • NFL standings are the full spread: W, L, T, PCT, home, away, division,
+>   conference, points for, points against, differential and streak. Twelve
+>   columns don't fit a phone, so the table scrolls sideways with the team
+>   names staying put.
+> • The day got easier to move around. The selected day is ink now instead
+>   of a filled pill, the calendar sheet opens on the month you're already
+>   in, and Today takes the slate home with it — the strip and the scroll
+>   both.
+> • Live means today. The Live filter applies to today and nowhere else:
+>   swipe off and it steps aside, come back and it's on again. Today reads
+>   "Ongoing" while it's on, and the active chip wears the live accent.
+> • The Top 25 header's name opens the poll, the way a conference header
+>   already opened its table. The count and the chevron still just open and
+>   close the section.
+> • A game page keeps its Game info card after kickoff, instead of hiding
+>   it the moment there's a score to show.
+> • Widget kickoffs read "Today" and "Tomorrow" on the near days.
+> • Fixed: a failed schedule refresh could quietly cancel a game reminder
+>   you'd already set. A reminder survives a bad network now.
+> • Fixed: a day that failed to load sat under a loading skeleton forever
+>   with nothing to tap. It says what went wrong and offers Retry — and in
+>   light mode the skeleton is visible while you wait, which it wasn't.
+> • Fixed: a season came back short after a change at the source. A Games
+>   tab runs the whole season again.
 
 ### 2.2.0 (build 16)
 
@@ -234,6 +275,12 @@ days of a week the app now covers most of. "Before they play" replaces
 leagues don't kick anything. This field is editable without review, so it
 should never be the stale one.
 
+Audited at 2.3.0 and left alone. Nothing in it has stopped being true, and
+the two candidates that named the release's headline both bought "the series
+history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
+one. If it wants to carry H2H and trophies later, it can: this is the one
+field that changes without a review.
+
 ## Description (4000 chars max) ✏️
 
 > StatSide is college football, the NFL, the NBA and the NHL, at a glance. One
@@ -262,9 +309,10 @@ should never be the stale one.
 > • Every FBS conference, the FCS, the AFC and NFC and their divisions, and
 >   every NBA and NHL division — each table in its own league's terms
 > • Game pages: line score, box score, scoring plays, team stats, leaders,
->   and the plays themselves — drives for football, periods for basketball
->   and hockey
-> • Team pages: the record, the full season, bye weeks, and the roster
+>   the head-to-head series, and the plays themselves — drives for football,
+>   periods for basketball and hockey
+> • Team pages: the record, the full season, bye weeks, the roster, the home
+>   ground, and the trophies the team has won
 > • Search any team, conference or game — across every league
 > • Browse past seasons back to 2014
 >
@@ -301,6 +349,10 @@ data" paragraph is unchanged, because nothing in this release collects any.
 Don't repeat words already in the name/subtitle — they're indexed
 automatically. That is why `cfb`, `nfl`, `nba` and `nhl` are *not* here: all
 four are in the subtitle, so repeating them would spend characters on nothing.
+
+Audited at 2.3.0 and unchanged: at 95 of 100 there are five characters
+spare, and nothing 2.3.0 added is a term this audience types into search —
+nobody looks for an app by "head to head" or "trophies".
 
 Changed for 2.2.0: `basketball`, `hockey`, `standings` and `box score` in;
 `rankings`, `schedule`, `sec` and `big ten` out. The two sport words are the
@@ -383,6 +435,29 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.3.0: carried forward, with one frame knowingly stale
+
+Not reshot. Andy's call at the cut, and the reasoning is a scheduling one
+rather than a claim that the set is current.
+
+**What went stale.** The frames were captured 2026-09-11; the day strip's
+selected day became ink instead of a filled capsule on 2026-09-12. So
+`01-hero` and `03-saturdays` both show "Sat, Sep 5" as a black pill the app
+no longer draws. That is the chrome-changed trigger for a reshoot, and it is
+the only thing in the set the release falsified — no frame makes a claim
+2.3.0 broke, and the copy is untouched.
+
+**Why it waits.** The set is already booked for a full reshoot in late
+October, when the NBA and NHL seasons open and basketball and hockey can
+appear in a slate frame for the first time — the thing the 2.2.0 note left
+open. Shooting now would mean shooting twice in five weeks to fix a capsule.
+The cheaper miss is the stale pill.
+
+**Worth doing in that October pass**, beyond the league frame: 2.3.0's own
+new surface can be shot on football teams that are in season — a team page's
+**Trophies** tab and a game page's **H2H** tab, neither of which appears in
+any frame today.
 
 ### 2.2.0: reshot, but still football
 
@@ -477,13 +552,20 @@ self-describes as displaying aggregated content.
 > seasons with full live-style data — useful if the current day is quiet. No
 > login required. The app collects no data (App Privacy: Data Not Collected).
 
-**Reviewer-timing note for this build.** It is submitted in September: college
-football and the NFL are in season, and the NBA and NHL regular seasons do not
-open until late October. A reviewer opening the app today sees football on the
-day strip and empty slates for basketball and hockey, which is the season and
-not a defect. The Leagues tab shows all four with their tables, and a past
-season on an NBA or NHL team page shows a full schedule — that is the fastest
-way to see the new leagues carrying real data.
+**Reviewer-timing note, still current at 2.3.0 (September 2026).** College
+football and the NFL are in season; the NBA and NHL regular seasons do not open
+until late October. A reviewer opening the app today sees football on the day
+strip and empty slates for basketball and hockey, which is the season and not a
+defect. The Leagues tab shows all four with their tables, and a past season on
+an NBA or NHL team page shows a full schedule — that is the fastest way to see
+basketball and hockey carrying real data.
+
+**Notes audit at 2.3.0: no rewrite needed.** Every native surface listed is
+still in the build and nothing 2.3.0 added contradicts the opener. The release
+adds depth to existing screens — a Trophies tab and an H2H tab, a Venue card,
+the NFL's full standings spread — rather than a new capability that needs
+declaring. Two demo paths worth naming if the reviewer wants the new surface:
+any team page → Trophies, and any game page → H2H.
 
 ## 4.2.2 resubmission (build 6) — Resolution Center reply ✏️
 
