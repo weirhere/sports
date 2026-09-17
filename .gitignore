@@ -1,5 +1,11 @@
 # Local build output (simulator derived data lands here)
 build/
 
-# Claude Code local config
-.claude/
+# Claude Code local config — except the skills, which are project
+# procedure and belong with the repo (a worktree or a fresh clone that
+# can't see them re-derives a release cut from scratch).
+# `.claude/*` rather than `.claude/`: git never descends into an
+# excluded directory, so a bare `.claude/` makes the negation below
+# unreachable and the skills stay invisible.
+.claude/*
+!.claude/skills/
