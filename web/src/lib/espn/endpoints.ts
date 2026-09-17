@@ -22,9 +22,82 @@ export function espnDay(date: Date): string {
   return `${year}${month}${day}`;
 }
 
-/** ESPN's `dates=` spelling for an inclusive range. */
-export function espnDayRange(start: Date, end: Date): string {
-  return `${espnDay(start)}-${espnDay(end)}`;
+/** ESPN's `dates=` spelling for one month: `202609`. */
+export function espnMonth(date: Date): string {
+  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * ESPN's own ceiling on `limit`, and the count that means "this came back
+ * truncated".
+ *
+ * 500 exactly: `limit=501` does not clamp, it collapses the response to
+ * ESPN's default 25 events — a silent 93% loss dressed as a 200 (bisected
+ * live 2026-09-17). The 900 that used to sit on both window builders was
+ * above that ceiling, so every season request had been quietly answering
+ * with 25 games.
+ */
+export const WINDOW_LIMIT = 500;
+
+/** The longest span still asked for a day at a time — see `espnWindow`. */
+export const MAX_DAILY_FAN_OUT = 7;
+
+/** Every day a span touches, as `dates=` tokens, in order and deduped. */
+export function espnDayTokens(start: Date, end: Date): string[] {
+  const tokens: string[] = [];
+  const seen = new Set<string>();
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const token = espnDay(cursor);
+    if (!seen.has(token)) {
+      seen.add(token);
+      tokens.push(token);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return tokens;
+}
+
+/** Every calendar month a span touches, as `dates=` tokens, in order. */
+export function espnMonthTokens(start: Date, end: Date): string[] {
+  const tokens: string[] = [];
+  const seen = new Set<string>();
+  // Walk on the first of the month: stepping from the 31st lands on the
+  // 28th of the month after next, and a span ending March 1 loses March.
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cursor <= last) {
+    const token = espnMonth(cursor);
+    if (!seen.has(token)) {
+      seen.add(token);
+      tokens.push(token);
+    }
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return tokens;
+}
+
+/**
+ * A span's `dates=` tokens, at whichever granularity costs less: one per
+ * day up to a week, one per month beyond it.
+ *
+ * **ESPN withdrew the range form.** `dates=20260915-20260919` now answers
+ * `400 {"code":400,"message":"Failed to get events endpoint."}` in all four
+ * leagues, past seasons included, and no separator or parameter pairing
+ * revives it (probed live 2026-09-17). A day, a month and a year still
+ * answer 200, so a span is now several requests rather than one.
+ *
+ * A month is always the cheaper *request* and never the cheaper *answer* —
+ * college football's September is 323 events against a Saturday's 70 — so
+ * the Scores window, which is five days and revalidates every 30s, stays
+ * daily. A season sweep does not and goes monthly. Either way the caller
+ * clips the answer back to the span, so this is a cost decision only.
+ */
+export function espnWindow(start: Date, end: Date): string[] {
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  return days > MAX_DAILY_FAN_OUT
+    ? espnMonthTokens(start, end)
+    : espnDayTokens(start, end);
 }
 
 /**
@@ -90,39 +163,42 @@ export function scoreboardUrl(
  * absorbs the ET-to-local offset for every time zone, and only the inner
  * days are recorded as loaded so a half-slate can't pass for a whole one.
  *
+ * Takes **one token**, not a span — `espnWindow` turns the span into as
+ * many as it needs, since the range form was withdrawn. The caller fans
+ * out and merges.
+ *
  * A `dates=` request returns **no calendar** and pins `season.year` to the
  * current season, so the day strip's bounds are derived rather than fetched.
  */
 export function dayWindowUrl(
   league: League,
-  start: Date,
-  end: Date,
+  dates: string,
   options?: { groups?: number; limit?: number }
 ): string {
   return scoreboardUrl(league, {
-    dates: espnDayRange(start, end),
+    dates,
     groups: options?.groups,
-    limit: options?.limit ?? 900,
+    limit: options?.limit ?? WINDOW_LIMIT,
   });
 }
 
 /**
- * A whole season's slate, as a date window.
+ * A whole season's slate, one token at a time.
  *
- * Split into two requests by the caller where the span is wide enough to
- * approach ESPN's 900-event ceiling — it truncates silently rather than
- * paging, so a season is asked for in halves rather than trusted whole.
+ * A season is asked for month by month — the range form that used to state
+ * it whole is gone, and the month is the coarsest token left. ESPN still
+ * truncates at `limit` silently rather than paging, so a month that comes
+ * back at `WINDOW_LIMIT` is re-asked as its own days by the caller.
  */
 export function seasonWindowUrl(
   league: League,
-  start: Date,
-  end: Date,
+  dates: string,
   options?: { groups?: number; limit?: number }
 ): string {
   return scoreboardUrl(league, {
-    dates: espnDayRange(start, end),
+    dates,
     groups: options?.groups,
-    limit: options?.limit ?? 900,
+    limit: options?.limit ?? WINDOW_LIMIT,
   });
 }
 

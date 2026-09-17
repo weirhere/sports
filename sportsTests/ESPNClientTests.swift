@@ -288,13 +288,17 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
-/// The season-window split — the rule that replaced November 1.
+/// The season window's tokens — the rule that replaced halving.
 ///
-/// ESPN truncates a `dates=` window at its `limit` **silently**: no flag, no
-/// count, no cursor. A response that came back at exactly the limit is the
-/// only signal there is, and a slate quietly missing February looks exactly
-/// like a slate with no February. So the client halves a full window and asks
-/// again, which needs to know nothing about the league or the group's width.
+/// ESPN withdrew the `dates=A-B` range form (400 in every league, 2026-09-17),
+/// so a span can no longer be stated in one request and halved when it comes
+/// back full. The month is the coarsest token left, and a month that comes
+/// back at the limit is re-asked as its own days.
+///
+/// ESPN still truncates at `limit` **silently**: no flag, no count, no cursor.
+/// A response that came back at exactly the limit is the only signal there is,
+/// and a slate quietly missing February looks exactly like a slate with no
+/// February.
 @Suite struct SeasonWindowTests {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
@@ -306,54 +310,122 @@ private func fixture(_ name: String) throws -> Data {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    @Test func halvingSplitsASpanDownTheMiddleWithNoOverlap() throws {
-        let span = day(2026, 10, 1)...day(2026, 10, 11)
-        let halves = try #require(ESPNClient.halve(span, calendar: calendar))
-
-        #expect(halves.count == 2)
-        #expect(halves[0].lowerBound == span.lowerBound)
-        #expect(halves[1].upperBound == span.upperBound)
-        // Contiguous and disjoint: the merge dedupes by event id anyway, but
-        // an overlap would pay for the same games twice.
-        let gap = calendar.dateComponents([.day], from: halves[0].upperBound,
-                                          to: halves[1].lowerBound).day
-        #expect(gap == 1)
+    /// Noon Eastern, so the clip's own Eastern reading can't be the thing
+    /// under test by accident — a midnight kickoff is a different suite's
+    /// problem (`DayFormat.placeholderKickoff`).
+    private func noon(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
     }
 
-    @Test func aSingleDayCannotBeHalved() {
-        // The recursion's floor. A day over the limit is unsplittable, and
-        // returning it truncated beats hammering the endpoint over it.
-        let oneDay = day(2026, 10, 1)...day(2026, 10, 1)
-        #expect(ESPNClient.halve(oneDay, calendar: calendar) == nil)
-    }
-
-    @Test func twoDaysHalveIntoOneEach() {
-        let span = day(2026, 10, 1)...day(2026, 10, 2)
-        let halves = ESPNClient.halve(span, calendar: calendar)
-        #expect(halves?.count == 2)
-        #expect(halves?[0].lowerBound == halves?[0].upperBound)
-        #expect(halves?[1].lowerBound == halves?[1].upperBound)
-    }
-
-    @Test func halvingAWholeSeasonTerminates() {
-        // Eight windows is the cap (`maxWindowSplits` = 3), and a season is
-        // ~300 days — so every window a real split produces is still many
-        // days wide and the recursion can't run away.
-        var spans = [SeasonSpan.days(of: .nhl, year: 2026, calendar: calendar)]
-        for _ in 0..<ESPNClient.maxWindowSplits {
-            spans = spans.flatMap { ESPNClient.halve($0, calendar: calendar) ?? [$0] }
+    private func clipStub(_ id: String, on date: Date?) -> Game {
+        func side(_ prefix: String, home: Bool) -> Competitor {
+            Competitor(team: Team(id: prefix + id, location: "Team " + id, name: nil,
+                                  abbreviation: nil, displayName: nil,
+                                  shortDisplayName: nil, logoURL: nil, conferenceId: nil),
+                       score: nil, record: nil, rank: nil, isHome: home, winner: nil)
         }
-        #expect(spans.count == 8)
-        // Still covering the whole season, end to end.
-        let season = SeasonSpan.days(of: .nhl, year: 2026, calendar: calendar)
-        #expect(spans.first?.lowerBound == season.lowerBound)
-        #expect(spans.last?.upperBound == season.upperBound)
+        return Game(id: id, date: date, name: nil, shortName: nil, weekNumber: nil,
+                    status: .pre(detail: nil),
+                    home: side("h", home: true), away: side("a", home: false),
+                    broadcast: nil)
+    }
+
+    @Test func aSpanBecomesEveryMonthItTouches() {
+        let span = day(2026, 8, 1)...day(2027, 2, 28)
+        #expect(ESPNClient.monthTokens(for: span) == ["202608", "202609", "202610",
+                                                      "202611", "202612", "202701", "202702"])
+    }
+
+    @Test func aSpanInsideOneMonthAsksOnce() {
+        #expect(ESPNClient.monthTokens(for: day(2026, 10, 3)...day(2026, 10, 27)) == ["202610"])
+    }
+
+    @Test func aShortMonthCannotStrideOverTheSpansLastMonth() {
+        // Jan 31 plus a month is Feb 28, so a naive walk from a month-end
+        // lands past March 1 and loses March entirely.
+        let span = day(2027, 1, 31)...day(2027, 3, 1)
+        #expect(ESPNClient.monthTokens(for: span) == ["202701", "202702", "202703"])
+    }
+
+    @Test func aMonthFansOutToItsOwnDays() {
+        // The fallback when a month comes back at the limit. February's
+        // length is never spelled out, so leap years are free.
+        #expect(ESPNClient.dayTokens(inMonth: "202702").count == 28)
+        #expect(ESPNClient.dayTokens(inMonth: "202802").count == 29)
+        #expect(ESPNClient.dayTokens(inMonth: "202609").count == 30)
+        #expect(ESPNClient.dayTokens(inMonth: "202610").count == 31)
+        #expect(ESPNClient.dayTokens(inMonth: "202609").first == "20260901")
+        #expect(ESPNClient.dayTokens(inMonth: "202609").last == "20260930")
+    }
+
+    @Test func aMalformedMonthFansOutToNothing() {
+        #expect(ESPNClient.dayTokens(inMonth: "2026").isEmpty)
+        #expect(ESPNClient.dayTokens(inMonth: "20260901").isEmpty)
+        #expect(ESPNClient.dayTokens(inMonth: "2026xx").isEmpty)
+    }
+
+    @Test func aDayWindowBecomesOneTokenPerDay() {
+        // The Scores screen's five-day window, since the range form died.
+        let window = day(2026, 9, 15)...day(2026, 9, 19)
+        #expect(ESPNClient.dayTokens(for: window, calendar: calendar)
+                == ["20260915", "20260916", "20260917", "20260918", "20260919"])
+    }
+
+    @Test func aSingleDayWindowAsksOnce() {
+        // Both ends render to the same Eastern token; asking twice would
+        // pay for the same slate twice.
+        let oneDay = day(2026, 9, 15)...day(2026, 9, 15)
+        #expect(ESPNClient.dayTokens(for: oneDay, calendar: calendar) == ["20260915"])
+    }
+
+    @Test func aShortSpanAsksPerDayAndALongOnePerMonth() {
+        // The Scores window polls every 30s, so it pays for small exact
+        // requests. A fortnight-wide sweep does not, and a month is one
+        // request where fourteen days are fourteen.
+        let window = day(2026, 9, 15)...day(2026, 9, 19)
+        #expect(ESPNClient.tokens(for: window, calendar: calendar)
+                == ESPNClient.dayTokens(for: window, calendar: calendar))
+
+        let fortnight = day(2026, 9, 15)...day(2026, 9, 28)
+        #expect(ESPNClient.tokens(for: fortnight, calendar: calendar) == ["202609"])
+    }
+
+    @Test func theSwitchHappensAtAWeek() {
+        let week = day(2026, 9, 1)...day(2026, 9, 8)
+        #expect(ESPNClient.tokens(for: week, calendar: calendar).count == 8)
+        let overAWeek = day(2026, 9, 1)...day(2026, 9, 9)
+        #expect(ESPNClient.tokens(for: overAWeek, calendar: calendar) == ["202609"])
+    }
+
+    @Test func aMonthsOverFetchIsClippedBackToTheSpan() {
+        // A monthly token answers for the whole month, and `fetchWindow`
+        // buckets by day — so a neighbouring day's game would file under a
+        // day nobody asked about.
+        let games = [
+            clipStub("before", on: noon(2026, 9, 14)),
+            clipStub("inside", on: noon(2026, 9, 17)),
+            clipStub("after", on: noon(2026, 9, 25)),
+        ]
+        let kept = ESPNMapper.clipped(games, to: day(2026, 9, 15)...day(2026, 9, 19))
+        #expect(kept.map(\.id) == ["inside"])
+    }
+
+    @Test func aGameWithNoDateSurvivesTheClip() {
+        // It can't be placed either side of the line, and dropping it
+        // would thin a slate over a missing field alone.
+        let games = [clipStub("undated", on: nil)]
+        let kept = ESPNMapper.clipped(games, to: day(2026, 9, 15)...day(2026, 9, 19))
+        #expect(kept.map(\.id) == ["undated"])
     }
 
     @Test func theLimitIsTheTruncationSignal() {
         // Not a magic number in two places: the query's `limit` and the
         // count that means "this came back full" are the same constant, or
         // a window could truncate without the client noticing.
-        #expect(ESPNClient.seasonWindowLimit == 900)
+        //
+        // And 500 is ESPN's own ceiling, not a taste call — `limit=501`
+        // does not clamp, it collapses the response to 25 events
+        // (bisected live 2026-09-17).
+        #expect(ESPNClient.seasonWindowLimit == 500)
     }
 }
