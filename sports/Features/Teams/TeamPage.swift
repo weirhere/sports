@@ -379,8 +379,9 @@ struct TeamPage: View {
         VStack(spacing: 0) {
             // Overview and Games always exist, so the row always renders;
             // only Standings is conference-gated.
+            // The row carries its own gutter — it scrolls, so the padding
+            // has to ride inside the scroll content.
             tabRow
-                .padding(.horizontal, Spacing.lg)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // The paint reaches above the strip's own frame: a pinned
                 // header settles a few points under the bar, and the

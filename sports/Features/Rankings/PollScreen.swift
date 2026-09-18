@@ -266,7 +266,6 @@ struct PollScreen: View {
         HeroTabBar(tabs: availableTabs, selection: tab,
                    onSelect: { select(tab: $0) })
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Spacing.lg)
             .background(Color.bgCard)
     }
 

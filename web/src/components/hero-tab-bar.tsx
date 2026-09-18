@@ -4,6 +4,12 @@
 // 40px gap, 14px vertical padding, bold 14 labels at −2% tracking, and
 // opacity alone separating active from inactive (no underline — the 3pt bar
 // retired 2026-08-31). Real tablist semantics: roving tabindex + arrow keys.
+//
+// The row scrolls sideways rather than squeezing (2026-09-18, with iOS):
+// five tabs and a long word — a team page carrying Standings, Roster and
+// Trophies — wrapped their labels onto two lines at phone width. Same
+// shape as the day strip, gutter inside the scroller so a tab leaving the
+// row meets the screen edge rather than a margin.
 
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -31,7 +37,10 @@ export function HeroTabBar({ tabs, selected, onSelect }: HeroTabBarProps) {
   };
 
   return (
-    <div role="tablist" className="flex items-center gap-10">
+    <div
+      role="tablist"
+      className="flex items-center gap-10 overflow-x-auto px-4 scrollbar-none"
+    >
       {tabs.map((tab) => {
         const isSelected = tab.id === selected;
         return (
@@ -58,7 +67,7 @@ export function HeroTabBar({ tabs, selected, onSelect }: HeroTabBarProps) {
               }
             }}
             className={cn(
-              "py-3.5 type-tab transition-opacity",
+              "shrink-0 whitespace-nowrap py-3.5 type-tab transition-opacity",
               isSelected
                 ? "text-text-primary"
                 : "text-text-primary opacity-50 hover:opacity-75"
