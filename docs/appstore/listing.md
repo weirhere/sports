@@ -476,14 +476,21 @@ keeps its rhythm and loses the price claim.
 editable state after a rejection, so replacing the 08 frame and resubmitting
 is the whole job — build 17 stands.
 
-**The re-render came off Linux, not the Mac.** `social.css` points `@font-face`
-at Andy's Dropbox copy of Inter, which a CI or cloud session doesn't have; this
-render used the Google Fonts Inter variable TTF under headless Chromium. The
-icon crop is pixel-identical (mean delta 0.3/255) so the layout and the zoom
-reflow are exactly right, but the glyph edges on "StatSide" and the fine print
-come from a slightly different Inter cut than frames 01–07. Invisible side by
-side, and re-rendering `as-08-closer.html` on the Mac per `docs/social/README.md`
-before upload makes it exact if you'd rather it matched to the pixel.
+**The first re-render came off Linux; the shipping one came off the Mac.**
+`social.css` points `@font-face` at Andy's Dropbox copy of Inter, which a CI or
+cloud session doesn't have, so the render in the rejection-fix commit used the
+Google Fonts Inter variable TTF under headless Chromium. The layout and the zoom
+reflow were exactly right (icon crop pixel-identical, mean delta 0.3/255), but the
+glyph edges on "StatSide" and the fine print came from a slightly different Inter
+cut than frames 01–07 — invisible side by side, and still not what the rest of
+the set is made of.
+
+**Re-rendered on the Mac 2026-09-19** with the real Dropbox Inter, per
+`docs/social/README.md` § Regenerating, and that is the version in the repo now.
+Both sizes land on their exact required dimensions (1284×2778 and 1320×2868 —
+anything else and the drop zone rejects it), the copy carries no price reference,
+and the diff against the Linux render is a mean 1.2/255 confined to the text band:
+same layout, matched glyphs. Nothing to redo before upload.
 
 ### 2.3.0: carried forward, with one frame knowingly stale
 
