@@ -76,6 +76,15 @@ frame of their own, which pushed "designed quiet" and the closer to 07 and 08.
 | 7 | `07-quiet.png` | Typographic — the four things the app doesn't do |
 | 8 | `08-closer.png` | Icon, wordmark, tagline, disclaimer |
 
+**`as-08-closer.html` and `07-closer.html` say different things now.** Apple
+rejected the 2.3.0 submission under Guideline 2.3.7 on 2026-09-19 because the
+App Store closer opened "Free. Fast." — a price reference, which that guideline
+bars from screenshots. The App Store frame reads "Fast. Focused." as of that
+date; the thread and Story closers keep "Free." because they aren't App Store
+metadata and nothing stops an app naming its price off the store. Don't
+"fix" the divergence by syncing them.
+
+
 Each `as-*.html` is its `story-*.html` counterpart plus a trailing `<style>`
 block that overrides the stage and the vertical positions. This is a reflow,
 not a resize: a story is 1080 × 1920 (ratio 0.5625) and the App Store slot is
