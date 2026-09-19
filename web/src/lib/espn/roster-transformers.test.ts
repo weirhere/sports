@@ -107,11 +107,64 @@ describe("transformRoster — the NBA's flat payload", () => {
   });
 
   it("keeps the age the pro leagues publish, and no class year", () => {
-    const player = transformRoster(flatResponse).groups[0].players[0];
+    // By name, not by index: the group is in jersey order, and Carr has no
+    // number, so he sits behind Doncic.
+    const player = transformRoster(flatResponse).groups[0].players.find(
+      (candidate) => candidate.name === "Cameron Carr"
+    )!;
     expect(player.age).toBe(21);
     // `experience: { years: 0 }` is seasons played, not a class — reading it
     // as one would put "0" under a CLASS caption.
     expect(player.classAbbreviation).toBeUndefined();
+  });
+});
+
+describe("transformRoster — jersey order", () => {
+  // ESPN sorts a group alphabetically by last name; the card sorts it by the
+  // number it prints. Numeric, not lexical: a string sort files 7 behind 14.
+  const numbered = (jerseys: (string | undefined)[]): EspnRosterResponse => ({
+    athletes: [
+      {
+        position: "offense",
+        items: jerseys.map((jersey, index) => ({
+          id: String(index),
+          displayName: `Player ${index}`,
+          jersey,
+        })),
+      },
+    ],
+  });
+
+  it("sorts a group by number, not by string", () => {
+    const roster = transformRoster(numbered(["14", "7", "70", "3"]));
+    expect(roster.groups[0].players.map((player) => player.jersey)).toEqual([
+      "3",
+      "7",
+      "14",
+      "70",
+    ]);
+  });
+
+  it("leaves the numberless at the end, in the order ESPN shipped them", () => {
+    const roster = transformRoster(numbered([undefined, "12", undefined, "4"]));
+    expect(roster.groups[0].players.map((player) => player.name)).toEqual([
+      "Player 3",
+      "Player 1",
+      "Player 0",
+      "Player 2",
+    ]);
+  });
+
+  // College football runs duplicate numbers on purpose, and an unreadable
+  // jersey is no number at all — both keep the order they arrived in.
+  it("keeps ties and unreadable numbers stable", () => {
+    const roster = transformRoster(numbered(["9B", "4", "4", "00"]));
+    expect(roster.groups[0].players.map((player) => player.name)).toEqual([
+      "Player 3",
+      "Player 1",
+      "Player 2",
+      "Player 0",
+    ]);
   });
 });
 

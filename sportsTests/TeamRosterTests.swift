@@ -119,6 +119,42 @@ private func roster(json: String) throws -> TeamRoster {
         #expect(!injured.isEmpty)
     }
 
+    /// ESPN sorts a group alphabetically by last name; the tab sorts it by
+    /// the number it prints. Kansas City's special teams are the case a
+    /// string sort gets wrong — 14 Araiza before 7 Butker.
+    @Test func aGroupIsOrderedByJerseyNumber() throws {
+        let groups = try roster("nfl-roster").groups
+        let special = try #require(groups.first { $0.name == "Special teams" })
+        #expect(special.players.map(\.jersey) == ["7", "14"])
+        let defense = try #require(groups.first { $0.name == "Defense" })
+        #expect(defense.players.map(\.jersey) == ["31", "91"])
+    }
+
+    /// The numberless don't get a number invented for them and don't go
+    /// first: they sit behind the numbered players, keeping the
+    /// alphabetical order ESPN shipped them in.
+    @Test func thePlayersWithNoJerseySitAtTheEndInESPNsOrder() throws {
+        let group = try #require(try roster("nba-roster").groups.first)
+        #expect(group.players.map(\.jersey) == ["77", nil, nil, nil])
+        #expect(group.players.dropFirst().map(\.name)
+            == ["Cameron Carr", "Quentin Grimes", "Jaden Hardy"])
+    }
+
+    /// Ties and unreadable numbers land in the tail's stable order too —
+    /// college football runs duplicate numbers on purpose, and a sort that
+    /// shuffled them on every decode would make the card jump.
+    @Test func tiesAndUnreadableNumbersKeepTheirArrivalOrder() throws {
+        let roster = try roster(json: """
+        {"athletes": [{"position": "offense",
+                       "items": [{"id": "1", "displayName": "Bo Ames", "jersey": "9B"},
+                                 {"id": "2", "displayName": "Cy Diaz", "jersey": "4"},
+                                 {"id": "3", "displayName": "Al Ford", "jersey": "4"},
+                                 {"id": "4", "displayName": "Jo Gray", "jersey": "00"}]}]}
+        """)
+        #expect(roster.groups.first?.players.map(\.name)
+            == ["Jo Gray", "Cy Diaz", "Al Ford", "Bo Ames"])
+    }
+
     @Test func aProviderWithNoRosterEndpointAnswersEmpty() {
         #expect(TeamRoster.empty.isEmpty)
         #expect(TeamRoster(coach: nil, groups: [RosterGroup(name: "Roster", players: [])]).isEmpty)

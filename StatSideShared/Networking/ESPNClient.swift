@@ -1792,8 +1792,9 @@ nonisolated enum ESPNMapper {
     ///
     /// The NFL, college football and the NHL group their athletes; the NBA
     /// sends a flat list. Both arrive as `RosterEntryDTO`s, so the only thing
-    /// left here is what to call each group — and, for the flat case, that the
-    /// whole roster is one group rather than a group per player.
+    /// left here is what to call each group, what order the players sit in —
+    /// and, for the flat case, that the whole roster is one group rather than
+    /// a group per player.
     static func roster(from dto: RosterResponseDTO) -> TeamRoster {
         var groups: [RosterGroup] = []
         /// Consecutive ungrouped athletes collect here. Not one group per
@@ -1808,15 +1809,48 @@ nonisolated enum ESPNMapper {
                 // Empty groups produce no card — the NFL ships `suspended: 0`
                 // most weeks, and a header over nothing is chrome.
                 guard !players.isEmpty else { continue }
-                groups.append(RosterGroup(name: groupName(group.position), players: players))
+                groups.append(RosterGroup(name: groupName(group.position),
+                                          players: sortedByJersey(players)))
             case .player(let athlete):
                 if let player = player(from: athlete) { ungrouped.append(player) }
             }
         }
         if !ungrouped.isEmpty {
-            groups.append(RosterGroup(name: ungroupedName, players: ungrouped))
+            groups.append(RosterGroup(name: ungroupedName, players: sortedByJersey(ungrouped)))
         }
         return TeamRoster(coach: coach(from: dto.coach?.elements ?? []), groups: groups)
+    }
+
+    /// A group's players in jersey order — the number the tab's leading
+    /// column already prints, ascending.
+    ///
+    /// ESPN ships each group alphabetical by last name, which answers a
+    /// question nobody asks a roster: the number is how a player is
+    /// identified on a broadcast graphic, a depth chart and the field, so
+    /// scanning for one should be scanning down a sorted column. The
+    /// grouping stays ESPN's; only the order inside it is ours.
+    ///
+    /// Numeric, not lexical — a string sort files 7 behind 14. Anyone
+    /// ESPN ships no readable number for keeps the tail in the
+    /// alphabetical order they arrived in, which is 10 of 18 Lakers in
+    /// preseason, so the tail is a real section of the card and not an
+    /// edge case. The stability is by hand because Swift's sort gives
+    /// none: ties fall back to the arrival index rather than whatever
+    /// introsort left behind.
+    private static func sortedByJersey(_ players: [RosterPlayer]) -> [RosterPlayer] {
+        players.enumerated()
+            .sorted { lhs, rhs in
+                let left = lhs.element.jersey.flatMap(Int.init)
+                let right = rhs.element.jersey.flatMap(Int.init)
+                if left != right {
+                    // A number, any number, comes before no number at all.
+                    guard let left else { return false }
+                    guard let right else { return true }
+                    return left < right
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 
     /// What a flat payload's one card is called. "Roster" rather than a

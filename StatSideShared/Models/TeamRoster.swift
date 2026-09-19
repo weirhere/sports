@@ -20,7 +20,8 @@ nonisolated struct TeamRoster: Sendable {
     var isEmpty: Bool { coach == nil && groups.allSatisfy(\.players.isEmpty) }
 }
 
-/// A titled run of players — ESPN's own grouping, never ours.
+/// A titled run of players — ESPN's own grouping, never ours, in jersey
+/// order, which is ours and not ESPN's.
 ///
 /// The NFL and college football ship six lowercase codes (offense, defense,
 /// specialTeam, injuredReserveOrOut, suspended, practiceSquad); the NHL ships
@@ -29,6 +30,11 @@ nonisolated struct TeamRoster: Sendable {
 /// from each athlete's position would be inventing a structure the payload
 /// doesn't have — the same rule that keeps drives and downs off a basketball
 /// game page.
+///
+/// Inside a group the players are sorted by jersey number ascending, the
+/// numberless behind them in ESPN's alphabetical order. See
+/// `ESPNMapper.sortedByJersey(_:)` for why the payload's own order doesn't
+/// survive here when its grouping does.
 nonisolated struct RosterGroup: Sendable, Identifiable, Hashable {
     /// Display name, already resolved from the provider's code.
     let name: String
