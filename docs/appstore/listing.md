@@ -326,6 +326,12 @@ field that changes without a review.
 > StatSide is an independent app and is not affiliated with or endorsed by the
 > NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
 
+Audited at 2.3.0 and left alone. The closing line's "Free." survived the
+2026-09-19 Guideline 2.3.7 rejection on purpose — that rejection is about
+*screenshots*, and Apple's own remedy names the description as where price
+belongs. The `08-closer` frame dropped the word; this field keeps it. See
+§ Screenshots.
+
 Rewritten for 2.2.0. Four things in the 2.0 copy stopped being true:
 
 - **"college football and the NFL"** named half the app, in the opening line
@@ -435,6 +441,49 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.3.7 rejection (build 17) — the closer frame said "Free"
+
+**Rejected 2026-09-19** under Guideline 2.3.7 (Accurate Metadata): "The app
+screenshots include references to the price of the app or the service it
+provides." Apple's note spells out that free counts — "references to free or
+discounted services are considered a price reference."
+
+One frame was the cause. `08-closer` read **"Free. Fast. / Four leagues, done
+right."** and that first word is the whole violation. It now reads **"Fast.
+Focused. / Four leagues, done right."** — the two words `CLAUDE.md` already
+uses for what the product is ("speed and focus are the product"), so the frame
+keeps its rhythm and loses the price claim.
+
+**What was checked and deliberately left alone:**
+
+- `01-hero`'s pill, "Live scores · No ads · No account". 2.3.7 is about price,
+  and an ad-free experience is a description of the product, not of what it
+  costs. Same for `07-quiet`'s four pills. If a future reviewer disagrees,
+  the fix is the same one-word class of edit and it's cheap.
+- The **Description**'s "Free. Fast. Four leagues, done right." stays. Apple's
+  own next step says price belongs there: "If you would like to advertise
+  changes to the app's price, consider including this information in the app
+  description." So the description and the closer frame now say different
+  things on purpose, and that divergence is the point rather than a drift.
+- `docs/social/`'s own closers (`07-closer.html`, `story-07-closer.html`) keep
+  "Free." They're Twitter and Stories graphics, not App Store metadata, and
+  nothing stops an app advertising its price off the store. (They do still say
+  "One sport, done right," which the 2.2.0 pass fixed in the App Store frames
+  and not in these. Stale, but stale about leagues, not price.)
+
+**No new build needed.** Screenshots are metadata. The version goes back to an
+editable state after a rejection, so replacing the 08 frame and resubmitting
+is the whole job — build 17 stands.
+
+**The re-render came off Linux, not the Mac.** `social.css` points `@font-face`
+at Andy's Dropbox copy of Inter, which a CI or cloud session doesn't have; this
+render used the Google Fonts Inter variable TTF under headless Chromium. The
+icon crop is pixel-identical (mean delta 0.3/255) so the layout and the zoom
+reflow are exactly right, but the glyph edges on "StatSide" and the fine print
+come from a slightly different Inter cut than frames 01–07. Invisible side by
+side, and re-rendering `as-08-closer.html` on the Mac per `docs/social/README.md`
+before upload makes it exact if you'd rather it matched to the pixel.
 
 ### 2.3.0: carried forward, with one frame knowingly stale
 
@@ -601,6 +650,24 @@ Tone: never argue; enumerate what changed.
 > In the offseason the current week can be quiet; the review notes include
 > steps to see the follow → reminders → widget flow and a completed season's
 > data. Happy to provide anything else that would help.
+
+## 2.3.7 rejection (build 17) — Resolution Center reply ✏️
+
+Sent in-thread in App Store Connect with the replaced screenshot. Same tone as
+the 4.2.2 reply below: don't argue, say what changed.
+
+> Hello, and thank you for the review.
+>
+> You're right. The final screenshot read "Free. Fast. Four leagues, done
+> right," and that first word is a price reference. We've replaced that
+> screenshot. It now reads "Fast. Focused. Four leagues, done right," and no
+> screenshot in the set references price, free service, or a discount.
+>
+> No other metadata changed and the binary is unchanged, so build 17 is the
+> build we'd like reviewed.
+>
+> Happy to make any further adjustment if something else in the set reads as a
+> price reference to you.
 
 ## Copyright
 
