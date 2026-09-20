@@ -27,8 +27,25 @@ struct RootView: View {
         _reviewPrompt = State(initialValue: reviewPrompt)
     }
 
+    /// The tab bar's selection, with the re-tap intercepted.
+    ///
+    /// Tapping the already-selected tab still runs this setter, with the
+    /// value it already holds — it is the only place that gesture is
+    /// visible, since the selection never changes. Games claims it and
+    /// sends the slate home (Andy, 2026-09-20).
+    private var tabSelection: Binding<Tab> {
+        Binding {
+            selectedTab
+        } set: { tab in
+            if tab == .scores, selectedTab == .scores {
+                router.scoresHomeCount += 1
+            }
+            selectedTab = tab
+        }
+    }
+
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: tabSelection) {
             SwiftUI.Tab("Games", systemImage: "sportscourt.fill", value: Tab.scores) {
                 ScoresScreen()
             }

@@ -64,6 +64,11 @@ final class Router {
     /// In-app "go browse teams" intent — the Scores follow prompt's CTA.
     /// RootView switches tabs and resets it; no id to resolve.
     var pendingTeamsBrowse = false
+    /// Bumped every time the Games tab is tapped while Games is already on
+    /// screen — the tab bar's "take me home" (Andy, 2026-09-20). A counter,
+    /// not a flag: the same tap has to register the second and fifth time
+    /// too, and there is nothing to consume or expire.
+    var scoresHomeCount = 0
 
     func open(_ link: DeepLink) {
         switch link {

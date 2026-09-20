@@ -51,8 +51,14 @@ struct ScoresScreen: View {
     /// The pending intent whose day is already being fetched — one attempt
     /// per intent, so a game missing from the day it claims can't spin.
     @State private var pendingDayFetch: String?
-    /// Bumped by the Today jump: the slate goes home with the strip.
+    /// Bumped whenever the slate has to go back to its top: the Today jump
+    /// takes it home with the strip, and the Games tab's re-tap takes it
+    /// home on its own.
     @State private var slateHomeCount = 0
+    /// How that trip home reads, mirroring `daySlideAnimation`: nil where
+    /// the slate is leaving or covered anyway and there is nothing to
+    /// watch, an animation where the user is looking straight at it.
+    @State private var slateHomeAnimation: Animation?
 
     private enum DragAxis { case horizontal, vertical }
 
@@ -181,6 +187,9 @@ struct ScoresScreen: View {
                 select(day: day)
             }
         }
+        // The tab bar is outside this hierarchy, so its re-tap arrives the
+        // way a widget tap does — through the router.
+        .onChange(of: router.scoresHomeCount) { _, _ in goHome() }
         .onChange(of: router.pendingGame) { _, pending in
             guard pending != nil else { return }
             // A fresh intent gets its own day fetch, even where it repeats
@@ -298,8 +307,33 @@ struct ScoresScreen: View {
         let today = Calendar.current.startOfDay(for: .now)
         daySlideEdge = today > scoreboards.selectedDay ? .trailing : .leading
         daySlideAnimation = .default
+        // The slate this scrolls is on its way out behind the push
+        // transition, so the trip home is instant — animating a pane that
+        // is already sliding off screen only muddies the slide.
+        slateHomeAnimation = nil
         slateHomeCount += 1
         Task { await scoreboards.selectToday() }
+    }
+
+    /// The Games tab tapped while Games is already on screen: the standard
+    /// iOS "take me home" (Andy, 2026-09-20). Whatever the tab has pushed
+    /// pops, and the slate returns to its top.
+    ///
+    /// Home is the top of *this* page, not a reset of it — the day, the
+    /// Live filter and the accordions are left exactly as they were. Going
+    /// back to today is the Today button's job, and that button is sitting
+    /// right there on every day that isn't.
+    private func goHome() {
+        guard path.isEmpty else {
+            // The slate scrolls behind the page that's popping, so it is
+            // already at the top by the time the pop uncovers it.
+            path = NavigationPath()
+            slateHomeAnimation = nil
+            slateHomeCount += 1
+            return
+        }
+        slateHomeAnimation = .easeOut(duration: 0.25)
+        slateHomeCount += 1
     }
 
     /// Every user day change funnels through here so chip taps and swipes
@@ -475,12 +509,19 @@ struct ScoresScreen: View {
                         }
                         .onEnded { _ in pinchHandled = false }
                 )
-                // The jump's other half. A day change rebuilds this pane, so
-                // the day arriving is at its top by construction — this is
-                // for the slate the jump is *leaving*, which otherwise
-                // slides out from wherever the thumb left it.
+                // The trip home, for both things that ask for one.
+                //
+                // For the Today jump it is the *leaving* slate's half: a day
+                // change rebuilds this pane, so the day arriving is at its
+                // top by construction, while the one sliding out would keep
+                // whatever scroll the thumb left it at. For the Games tab's
+                // re-tap it is the whole gesture — nothing else on the page
+                // moves — which is why the animation comes in as state
+                // rather than being hardcoded either way.
                 .onChange(of: slateHomeCount) { _, _ in
-                    proxy.scrollTo(Self.slateHome, anchor: .top)
+                    withAnimation(slateHomeAnimation) {
+                        proxy.scrollTo(Self.slateHome, anchor: .top)
+                    }
                 }
             }
         }
