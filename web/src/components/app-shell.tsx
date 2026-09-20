@@ -26,7 +26,12 @@ export function AppShell({ children }: AppShellProps) {
           route template transforms on entry — a transformed ancestor becomes
           the containing block for every `position: fixed` descendant. */}
       <div id={CHROME_PORTAL_ID} />
-      <main className="mx-auto max-w-[var(--page-max)] px-4 pt-3">
+      {/* `clip`, never `hidden`: it stops a too-wide row from dragging the
+          whole app sideways without turning <main> into a scroll container,
+          which would re-anchor every sticky header inside it. Rows that can
+          outgrow the viewport — the hero tabs, the day strip, the standings
+          table — scroll themselves; this is the net under them. */}
+      <main className="mx-auto max-w-[var(--page-max)] overflow-x-clip px-4 pt-3">
         {children}
       </main>
       {/* The bottom padding that clears the fixed tab bar lives on the

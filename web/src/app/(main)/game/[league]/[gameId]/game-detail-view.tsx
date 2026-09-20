@@ -154,7 +154,7 @@ export function GameDetailView({
       <div className="flex flex-col">
         <GameHeader game={game} />
         {showsTabs && (
-          <div className="-mt-2 rounded-b-[10px] bg-bg-card px-4">
+          <div className="-mt-2 rounded-b-[10px] bg-bg-card">
             <HeroTabBar tabs={tabs} selected={activeTab} onSelect={selectTab} />
           </div>
         )}
