@@ -87,7 +87,9 @@ export function HeroHeader({
         // colour and the control strip sits on the recessed ground, so the
         // seam between them is the same one the page has everywhere else.
         <div className="sticky top-14 z-20 -mx-4 sm:top-16">
-          <div className="bg-bg-card px-4">{tabs}</div>
+          {/* No padding here — the tab row carries its own gutter so it
+              can scroll edge-to-edge. */}
+          <div className="bg-bg-card">{tabs}</div>
           <div className="bg-bg-recessed px-4 pb-2 pt-2">
             {/* The gap renders whether or not this tab has a chip. */}
             <div className="flex min-h-9 items-center justify-end gap-2">
