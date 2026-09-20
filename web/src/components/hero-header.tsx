@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 interface HeroHeaderProps {
   /**
    * The entity mark in a 56px footprint. Teams pass a bare logo (no disc —
@@ -60,7 +62,19 @@ export function HeroHeader({
     // it. As siblings, the strip's parent is the page's own container,
     // which spans the content it has to pin over.
     <>
-      <header className="-mx-4 -mt-3 bg-bg-card px-4 pt-4">
+      <header
+        className={cn(
+          "-mx-4 -mt-3 bg-bg-card px-4 pt-4",
+          // The identity block never had a bottom padding of its own: the
+          // tab row supplies it, because its labels carry 14px above them
+          // on the same card surface. A hero with no tabs — the player
+          // page — therefore ended flush against its own subtitle, the
+          // surface stopping mid-descender. The padding is only optical
+          // where the tab row exists, so it is only added where it
+          // doesn't (2026-09-20).
+          !tabs && "pb-4"
+        )}
+      >
         <div className="flex items-center gap-3">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center">
             {logo}
