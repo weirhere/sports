@@ -1,0 +1,117 @@
+import Foundation
+
+/// Who a player is, and everything the screen that linked to them already
+/// knew about them.
+///
+/// **Deliberately not a fetched model.** ESPN's athlete endpoints are
+/// unprobed — see E20's P0 — so the only facts the app can state about a
+/// player today are the ones a roster row already holds. A roster row holds
+/// all of them, which is why the roster is the one door open in this first
+/// cut: a box score row knows a name, a number and a stat line, and a page
+/// built from that would be the row again.
+///
+/// The athlete id is ESPN's own and is the same value a box score row
+/// carries (`BoxScore.Player.id` where ESPN sent one), so the other doors
+/// open onto this same identity when there is something behind them.
+nonisolated struct PlayerIdentity: Sendable, Hashable, Identifiable {
+    let athleteId: String
+    let name: String
+    let league: League
+    /// The team this player was reached through — a roster belongs to one.
+    let teamName: String?
+    let teamLogoURL: URL?
+
+    var jersey: String?
+    var position: String?
+    var positionName: String?
+    var height: String?
+    var weight: String?
+    var age: Int?
+    var classAbbreviation: String?
+    var headshotURL: URL?
+    var injuryStatus: String?
+
+    /// Namespaced by league the way `FollowKey` is, and for the same reason:
+    /// two leagues can reuse an athlete id, and this value is a navigation
+    /// identity. A destination whose identity doesn't change is reused with
+    /// its `@State` intact (2026-09-10), which is how one entity's page came
+    /// to render another's.
+    var id: String { "\(league.rawValue)-\(athleteId)" }
+}
+
+nonisolated extension PlayerIdentity {
+    /// The roster row's own facts, carried into the page it now pushes.
+    init(player: RosterPlayer, team: Team, league: League) {
+        self.init(athleteId: player.id,
+                  name: player.name,
+                  league: league,
+                  teamName: team.shortDisplayName ?? team.location,
+                  teamLogoURL: team.logoURL,
+                  jersey: player.jersey,
+                  position: player.position,
+                  positionName: player.positionName,
+                  height: player.height,
+                  weight: player.weight,
+                  age: player.age,
+                  classAbbreviation: player.classAbbreviation,
+                  headshotURL: player.headshotURL,
+                  injuryStatus: player.injuryStatus)
+    }
+
+    /// The hero's second line: team · #11 · QB, each part dropping out on
+    /// its own so a player with none of them is just a name.
+    var metaLine: String {
+        [teamName, jersey.flatMap { $0.isEmpty ? nil : "#\($0)" }, position]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+
+    /// Profile's label/value pairs, in the design's order, skipping whatever
+    /// ESPN didn't send rather than printing a dash.
+    ///
+    /// The third row is the league's own, for `RosterMetric`'s reason:
+    /// college football publishes no age at all and a class year instead, so
+    /// an Age row there would label a value that never arrives.
+    ///
+    /// **No hometown row.** The design draws one; no payload we hold carries
+    /// a `birthPlace` and the fixtures are trimmed, so its source is unknown
+    /// rather than absent. The row lands when the probe finds it.
+    var profileRows: [(label: String, value: String)] {
+        var rows: [(label: String, value: String)] = []
+        if let height, !height.isEmpty { rows.append((label: "Height", value: height)) }
+        if let weight, !weight.isEmpty { rows.append((label: "Weight", value: weight)) }
+        switch league.rosterMetric {
+        case .age:
+            if let age { rows.append((label: "Age", value: String(age))) }
+        case .classYear:
+            if let classAbbreviation, !classAbbreviation.isEmpty {
+                // `spoken` maps the four known abbreviations and passes
+                // anything else straight back, so capitalizing blindly would
+                // turn an unmapped "GR" into "Gr". Only a mapped value has a
+                // long form to capitalize.
+                let spoken = RosterMetric.classYear.spoken(classAbbreviation)
+                let value = spoken == classAbbreviation ? classAbbreviation : spoken.capitalized
+                rows.append((label: "Class", value: value))
+            }
+        }
+        if let positionName, !positionName.isEmpty {
+            rows.append((label: "Position", value: positionName))
+        }
+        if let jersey, !jersey.isEmpty { rows.append((label: "Jersey", value: jersey)) }
+        if let injuryStatus, !injuryStatus.isEmpty {
+            rows.append((label: "Status", value: injuryStatus))
+        }
+        return rows
+    }
+
+    /// One sentence for the hero, so VoiceOver doesn't read a name and then
+    /// an unlabelled run of abbreviations — `RosterRow`'s rule.
+    var spokenSummary: String {
+        var parts: [String] = [name]
+        if let teamName, !teamName.isEmpty { parts.append(teamName) }
+        if let jersey, !jersey.isEmpty { parts.append("number \(jersey)") }
+        if let position = positionName ?? position, !position.isEmpty { parts.append(position) }
+        return parts.joined(separator: ", ")
+    }
+}

@@ -8,11 +8,17 @@ import SwiftUI
 /// `StandingsColumn`'s scaled-width convention, so the two tables in the app
 /// read as one language.
 ///
-/// Not a link. There is no player page anywhere in the app, and a row that
-/// looks tappable promises one.
+/// A link, as of 2026-09-20 — `RosterList` wraps it in the `PlayerIdentity`
+/// destination and sets `isLink`, which draws the chevron. It was
+/// deliberately not one until there was a page behind it (E13, 2026-09-10):
+/// a row that looks tappable promises one, so the promise and the page ship
+/// together or neither does.
 struct RosterRow: View {
     let player: RosterPlayer
     let league: League
+    /// Draws the trailing chevron. Off by default so the row still renders
+    /// honestly anywhere a provider has no player page to push.
+    var isLink: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var jerseyWidth: CGFloat = 24
@@ -59,6 +65,12 @@ struct RosterRow: View {
                     .font(.teamName.monospacedDigit())
                     .foregroundStyle(metricValue == nil ? Color.textSecondary : Color.textPrimary)
                     .frame(minWidth: metric.width * scale, alignment: .trailing)
+            }
+            if isLink {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.horizontal, Spacing.lg)

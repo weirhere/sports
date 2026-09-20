@@ -164,6 +164,10 @@ struct ScoresScreen: View {
                 TeamPage(team: team)
                     .id(team.followKey)
             }
+            .navigationDestination(for: PlayerIdentity.self) { player in
+                PlayerPage(player: player)
+                    .id(player.id)
+            }
         }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this

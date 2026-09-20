@@ -890,7 +890,7 @@ struct TeamPage: View {
     private var rosterContent: some View {
         VStack(spacing: Spacing.sm) {
             if let roster = currentRoster, !roster.isEmpty {
-                RosterList(roster: roster, league: pageLeague)
+                RosterList(roster: roster, league: pageLeague, team: team)
             } else if rosterLoading {
                 // A lone spinner gets no card — a surface around it hugs
                 // into a floating pill (Andy, 2026-08-31).
