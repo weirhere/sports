@@ -152,6 +152,33 @@ private func firstPlayer(_ roster: TeamRoster) throws -> RosterPlayer {
         #expect(identity(player(jersey: "")).metaLine == "Georgia · QB")
     }
 
+    /// The hero draws the team as a `HeaderLinkBadge` now, so the line
+    /// beside it is everything except the team. Same split as the web's.
+    @Test func metaLineWithoutTeamIsTheRestOfTheLine() {
+        #expect(identity(player()).metaLineWithoutTeam == "#11 · QB")
+        #expect(identity(player(jersey: nil)).metaLineWithoutTeam == "QB")
+        #expect(identity(player(jersey: "")).metaLineWithoutTeam == "QB")
+        #expect(identity(player(jersey: nil, position: nil)).metaLineWithoutTeam == "")
+    }
+
+    /// The badge pushes a `Team`, so the roster door has to carry one all
+    /// the way through — a name alone draws a badge that goes nowhere, which
+    /// is why `PlayerPage` tests for the team and not for the name.
+    @Test func theRosterDoorCarriesThePushableTeam() {
+        // Not named `identity`: that is the helper's own name, and a local
+        // binding initialized from a call to itself is a compile error.
+        let beck = identity(player())
+        #expect(beck.team?.id == "61")
+        #expect(beck.team?.league == .collegeFootball)
+        // The two team fields agree, because one init sets both.
+        #expect(beck.teamName == "Georgia")
+        // A door that knows neither still constructs, and draws no badge.
+        let teamless = PlayerIdentity(athleteId: "1", name: "Nobody",
+                                      league: .collegeFootball,
+                                      teamName: nil, teamLogoURL: nil)
+        #expect(teamless.team == nil)
+    }
+
     /// The design's order: the physical facts, then the league's own metric,
     /// then what they play and wear.
     @Test func profileRowsFollowTheDesignsOrder() {

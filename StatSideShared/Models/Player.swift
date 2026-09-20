@@ -20,6 +20,16 @@ nonisolated struct PlayerIdentity: Sendable, Hashable, Identifiable {
     /// The team this player was reached through — a roster belongs to one.
     let teamName: String?
     let teamLogoURL: URL?
+    /// The same team as a pushable value, so the hero's team badge has
+    /// somewhere to go (2026-09-20). `TeamPage` is registered for `Team` in
+    /// every stack a player page can appear in, so this needs no destination
+    /// of its own.
+    ///
+    /// A `var` with a default rather than a `let`, for `Team.league`'s
+    /// reason: Swift omits defaulted `let` properties from the memberwise
+    /// init, and the doors that know a name but not the team — a box score
+    /// row, when that door opens — construct one without this.
+    var team: Team?
 
     var jersey: String?
     var position: String?
@@ -47,6 +57,7 @@ nonisolated extension PlayerIdentity {
                   league: league,
                   teamName: team.shortDisplayName ?? team.location,
                   teamLogoURL: team.logoURL,
+                  team: team,
                   jersey: player.jersey,
                   position: player.position,
                   positionName: player.positionName,
@@ -62,6 +73,16 @@ nonisolated extension PlayerIdentity {
     /// its own so a player with none of them is just a name.
     var metaLine: String {
         [teamName, jersey.flatMap { $0.isEmpty ? nil : "#\($0)" }, position]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+
+    /// `metaLine` with the team taken out, for the hero that draws the team
+    /// as its own badge (2026-09-20). The badge is a control and the rest of
+    /// the line is not, so the two cannot be one string.
+    var metaLineWithoutTeam: String {
+        [jersey.flatMap { $0.isEmpty ? nil : "#\($0)" }, position]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
