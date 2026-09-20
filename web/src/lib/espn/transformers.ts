@@ -1607,6 +1607,38 @@ function transformRosterPlayer(
   };
 }
 
+/** A jersey read as a number, or undefined where there isn't one to read. */
+function jerseyNumber(player: RosterPlayer): number | undefined {
+  if (player.jersey === undefined) return undefined;
+  const parsed = Number(player.jersey);
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+/**
+ * A group's players in jersey order — the number the roster's leading column
+ * already prints, ascending. iOS `ESPNMapper.sortedByJersey`.
+ *
+ * ESPN ships each group alphabetical by last name, which answers a question
+ * nobody asks a roster: the number is how a player is identified on a
+ * broadcast graphic, a depth chart and the field. The grouping stays ESPN's;
+ * only the order inside it is ours.
+ *
+ * Numeric, not lexical — a string sort files 7 behind 14. Anyone with no
+ * readable number keeps the tail in the alphabetical order they arrived in
+ * (10 of 18 Lakers in preseason), which `Array.sort`'s stability guarantees.
+ */
+function sortedByJersey(players: RosterPlayer[]): RosterPlayer[] {
+  return [...players].sort((a, b) => {
+    const left = jerseyNumber(a);
+    const right = jerseyNumber(b);
+    if (left === right) return 0;
+    // A number, any number, comes before no number at all.
+    if (left === undefined) return 1;
+    if (right === undefined) return -1;
+    return left - right;
+  });
+}
+
 function transformRosterCoach(
   coaches: EspnRosterCoach[]
 ): RosterCoach | undefined {
@@ -1626,9 +1658,9 @@ function transformRosterCoach(
  * One team's roster, from either of the two shapes ESPN ships.
  *
  * The NFL, college football and the NHL group their athletes; the NBA sends a
- * flat list. The only decisions left here are what to call each group — and,
- * for the flat case, that the whole roster is one group rather than a group
- * per player.
+ * flat list. The only decisions left here are what to call each group, what
+ * order the players sit in — and, for the flat case, that the whole roster is
+ * one group rather than a group per player.
  */
 export function transformRoster(data: EspnRosterResponse): TeamRoster {
   const groups: RosterGroup[] = [];
@@ -1645,14 +1677,20 @@ export function transformRoster(data: EspnRosterResponse): TeamRoster {
       // Empty groups produce no card — the NFL ships `suspended: []` most
       // weeks, and a header over nothing is chrome.
       if (players.length === 0) continue;
-      groups.push({ name: rosterGroupName(entry.position), players });
+      groups.push({
+        name: rosterGroupName(entry.position),
+        players: sortedByJersey(players),
+      });
     } else {
       const player = transformRosterPlayer(entry);
       if (player) ungrouped.push(player);
     }
   }
   if (ungrouped.length > 0) {
-    groups.push({ name: UNGROUPED_ROSTER_NAME, players: ungrouped });
+    groups.push({
+      name: UNGROUPED_ROSTER_NAME,
+      players: sortedByJersey(ungrouped),
+    });
   }
 
   return { coach: transformRosterCoach(data.coach ?? []), groups };

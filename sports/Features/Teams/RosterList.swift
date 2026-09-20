@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The Roster tab's card stack: the head coach, then a card per position
-/// group in the payload's own order.
+/// group in the payload's own order, each group's players in jersey order.
 ///
 /// FotMob's squad screen is the reference — a card per group, its header
 /// carrying one right-aligned metric caption, rows of number · photo · name ·
