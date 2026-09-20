@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -141,16 +142,51 @@ struct WidgetScoreText: View {
     }
 }
 
-/// Honest-not-wrong: a failed refresh re-serves the last snapshot with a
-/// quiet timestamp instead of pretending it's current.
-struct StaleMarker: View {
+/// The footer line — and the widget's only control.
+///
+/// Honest-not-wrong on the copy, as it always was: a failed refresh
+/// re-serves the last snapshot under "as of" rather than presenting an old
+/// score as current. What's new (Andy, 2026-09-20) is that the line is a
+/// button, with the ↻ leading it and the pair taking one tap. The
+/// timestamp is where a person already looks when they suspect the score is
+/// stale — putting the remedy anywhere else would be a control nobody
+/// finds — and a reload a person asked for is the one WidgetKit's budget
+/// doesn't charge for, so this is the only refresh the app can promise.
+///
+/// Monochrome and `.plain` at the `meta` weight the line already had: the
+/// refresh is chrome, and the colour budget's red belongs to live.
+struct WidgetUpdatedFooter: View {
     let asOf: Date
+    let stale: Bool
+
+    private var timestamp: String {
+        let time = asOf.formatted(.dateTime.hour().minute())
+        return stale ? "as of \(time)" : "Updated \(time)"
+    }
 
     var body: some View {
-        Text("as of \(asOf.formatted(.dateTime.hour().minute()))")
+        Button(intent: RefreshWidgetIntent()) {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "arrow.clockwise")
+                Text(timestamp)
+                    .lineLimit(1)
+            }
             .font(.meta)
             .foregroundStyle(.textSecondary)
-            .lineLimit(1)
+            // A 10pt glyph and a five-character time make a target about
+            // as tall as a fingernail, so the line buys height it doesn't
+            // draw. Padding before `contentShape`, so the bought area is
+            // what takes the tap rather than the glyphs themselves.
+            .padding(.vertical, 4)
+            .padding(.horizontal, Spacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // VoiceOver hears the action first and the timestamp as its value,
+        // rather than "as of 8:01 PM, button" — which says what it shows
+        // and not what it does.
+        .accessibilityLabel("Refresh scores")
+        .accessibilityValue(timestamp)
     }
 }
 

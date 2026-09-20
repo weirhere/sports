@@ -3,8 +3,8 @@ import WidgetKit
 
 /// The stacked game list shared by the medium and large families: a
 /// ★ Following header, rounded bgHeader card rows 2pt apart (no dividers),
-/// and (large only) an updated/as-of footer. FotMob's breathing room in
-/// StatSide's row language.
+/// and (large only) an updated/as-of footer, which doubles as the widget's
+/// manual refresh. FotMob's breathing room in StatSide's row language.
 struct WidgetGameList: View {
     @Environment(\.widgetFamily) private var family
     let games: [WidgetGame]
@@ -26,30 +26,18 @@ struct WidgetGameList: View {
                     }
                 }
             }
-            if showsFooter {
-                footer
-                    .padding(.top, Spacing.md)
-            } else if stale {
-                StaleMarker(asOf: asOf)
-                    .padding(.top, 2)
+            // Medium shows the line only when it has bad news to break:
+            // its content box can't fit the masthead and two cards with
+            // chrome to spare (decision log, 2026-08-23), so the footer is
+            // large's. A stale medium still gets it — and with it, the
+            // refresh that clears the staleness.
+            if showsFooter || stale {
+                WidgetUpdatedFooter(asOf: asOf, stale: stale)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, showsFooter ? Spacing.md : 2)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    @ViewBuilder
-    private var footer: some View {
-        Group {
-            if stale {
-                StaleMarker(asOf: asOf)
-            } else {
-                Text("Updated \(asOf.formatted(.dateTime.hour().minute()))")
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 

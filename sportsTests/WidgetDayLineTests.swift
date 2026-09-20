@@ -124,13 +124,13 @@ private func game(_ id: String, home: String, away: String,
     }
 
     /// Midnight is a ceiling, not a target: a row wearing an absolute date
-    /// says the same thing tomorrow, so it keeps the hourly tick.
-    @Test func anAbsoluteDateKeepsTheHourlyTick() throws {
+    /// says the same thing tomorrow, so it keeps the quiet tick.
+    @Test func anAbsoluteDateKeepsTheQuietTick() throws {
         let calendar = try calendar()
         let lateEvening = try date(calendar, day: 12, hour: 23)
         let kickoff = try date(calendar, day: 19, hour: 19)
         let pre = [game("g", home: "1", away: "2", status: .pre(detail: nil), date: kickoff)]
         #expect(GameSelection.nextRefresh(after: lateEvening, games: pre, calendar: calendar)
-                    == lateEvening.addingTimeInterval(3600))
+                    == lateEvening.addingTimeInterval(GameSelection.quietInterval))
     }
 }
