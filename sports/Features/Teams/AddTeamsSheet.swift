@@ -29,6 +29,7 @@ struct AddTeamsSheet: View {
                 // destination (2026-09-10) — a replaced value at the same
                 // path position otherwise reuses the page's caches.
                 .navigationDestination(for: Team.self) { TeamPage(team: $0).id($0.followKey) }
+                .navigationDestination(for: PlayerIdentity.self) { PlayerPage(player: $0).id($0.id) }
                 .navigationTitle("Add teams")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

@@ -16,6 +16,9 @@ import SwiftUI
 struct RosterList: View {
     let roster: TeamRoster
     let league: League
+    /// The team the roster belongs to — a player page carries the crest and
+    /// name of the team it was reached through, and a roster belongs to one.
+    let team: Team
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
@@ -59,7 +62,15 @@ struct RosterList: View {
             // rows against the visible bounds instead.
             LazyVStack(spacing: 0) {
                 ForEach(Array(group.players.enumerated()), id: \.element.id) { index, player in
-                    RosterRow(player: player, league: league)
+                    // `.plain` rather than `SwipeSafeButtonStyle`, matching
+                    // `TeamScheduleSection` in the same swipeable pane: the
+                    // 2026-09-06 stray-push was the Scores day swipe's.
+                    NavigationLink(value: PlayerIdentity(player: player,
+                                                         team: team,
+                                                         league: league)) {
+                        RosterRow(player: player, league: league, isLink: true)
+                    }
+                    .buttonStyle(.plain)
                     if index < group.players.count - 1 {
                         Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
                     }

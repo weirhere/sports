@@ -73,6 +73,10 @@ struct TablesScreen: View {
                     TeamPage(team: team)
                         .id(team.followKey)
                 }
+                .navigationDestination(for: PlayerIdentity.self) { player in
+                    PlayerPage(player: player)
+                        .id(player.id)
+                }
                 // TeamPage's Next game card pushes game detail. Identity
                 // follows the game, exactly as the two destinations above
                 // follow theirs.

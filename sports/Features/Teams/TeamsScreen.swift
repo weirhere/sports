@@ -47,6 +47,10 @@ struct TeamsScreen: View {
                     TeamPage(team: team)
                         .id(team.followKey)
                 }
+                .navigationDestination(for: PlayerIdentity.self) { player in
+                    PlayerPage(player: player)
+                        .id(player.id)
+                }
                 // Identity follows the conference, for the reason the team
                 // destination below does: a replaced value at the same path
                 // position otherwise reuses the page and its caches.
