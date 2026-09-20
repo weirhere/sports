@@ -378,7 +378,7 @@ export function TeamView({
               Roster TBA
             </section>
           ) : (
-            <RosterList roster={roster} league={league} />
+            <RosterList roster={roster} league={league} teamId={teamId} />
           ))}
 
         {activeTab === "trophies" &&

@@ -15,9 +15,12 @@
 
 import { Fragment, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { CardHeader } from "@/components/card-header";
 import { cn } from "@/lib/utils";
 import { headshotThumbnail } from "@/lib/logos";
+import { playerHref } from "@/lib/player-profile";
 import type { League } from "@/lib/leagues";
 import {
   rosterMetric,
@@ -30,9 +33,12 @@ import type { RosterCoach, RosterPlayer, TeamRoster } from "@/lib/types";
 interface RosterListProps {
   roster: TeamRoster;
   league: League;
+  /** In the row's href: the player page rebuilds itself from this team's
+   *  roster, since no athlete endpoint exists to rebuild it from. */
+  teamId: string;
 }
 
-export function RosterList({ roster, league }: RosterListProps) {
+export function RosterList({ roster, league, teamId }: RosterListProps) {
   const metric = rosterMetric(league);
 
   return (
@@ -45,7 +51,12 @@ export function RosterList({ roster, league }: RosterListProps) {
           {group.players.map((player, index) => (
             <Fragment key={player.id}>
               {index > 0 && <div className="ml-4 border-t border-divider" />}
-              <PlayerRow player={player} metric={metric} />
+              <PlayerRow
+                player={player}
+                metric={metric}
+                league={league}
+                teamId={teamId}
+              />
             </Fragment>
           ))}
         </section>
@@ -90,6 +101,8 @@ function ColumnCaptions({ metric }: { metric: RosterMetric }) {
       <span style={{ width: metric.width }} className="shrink-0 text-right">
         {metric.caption}
       </span>
+      {/* The chevron's gutter, so the metric caption stays over its column. */}
+      <span className="w-3 shrink-0" />
     </div>
   );
 }
@@ -98,15 +111,21 @@ function ColumnCaptions({ metric }: { metric: RosterMetric }) {
  * One player's line: jersey gutter, headshot, name over the facts about
  * them, and the one metric column this league keeps.
  *
- * Not a link. There is no player page anywhere in the app, and a row that
- * looks tappable promises one.
+ * A link, as of 2026-09-20 — it pushes the player page, and draws the
+ * chevron that says so. It was deliberately not one until there was a page
+ * behind it: a row that looks tappable promises one, so the promise and the
+ * page ship together or neither does.
  */
 function PlayerRow({
   player,
   metric,
+  league,
+  teamId,
 }: {
   player: RosterPlayer;
   metric: RosterMetric;
+  league: League;
+  teamId: string;
 }) {
   const value = rosterMetricValue(player, metric);
   // Position, height, weight — and an injury designation where ESPN ships one
@@ -117,7 +136,10 @@ function PlayerRow({
     .join(" · ");
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2">
+    <Link
+      href={playerHref(league, teamId, player.id)}
+      className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-bg-elevated focus-visible:bg-bg-elevated focus-visible:outline-none"
+    >
       {/* The row speaks one sentence, since the captions above it are
           decoration — `StandingsList`'s treatment, and iOS's. The position is
           spoken in full inside it: "QB" is read as letters, and a roster is
@@ -151,7 +173,11 @@ function PlayerRow({
       >
         {value ?? "\u2014"}
       </span>
-    </div>
+      <ChevronRight
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 text-text-secondary"
+      />
+    </Link>
   );
 }
 
