@@ -195,6 +195,7 @@ export function GameDetailView({
                 leaders={leaders}
                 awayTeam={game.awayTeam}
                 homeTeam={game.homeTeam}
+                league={game.league}
               />
             )}
           </div>

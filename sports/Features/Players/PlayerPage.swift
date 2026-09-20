@@ -29,35 +29,78 @@ struct PlayerPage: View {
 
     /// The team page's hero, addressed to a person: the photo at page scale
     /// beside the name, over team · number · position.
+    ///
+    /// **The spoken sentence rides the name, not the whole hero.** It used
+    /// to sit on this `HStack` as `accessibilityElement(children: .ignore)`,
+    /// which was right while nothing in here was tappable. The team badge is
+    /// a control, and ignoring children would leave it reachable by touch
+    /// and absent from VoiceOver — so the title speaks the sentence and the
+    /// badge speaks for itself.
     private var hero: some View {
         HStack(alignment: .center, spacing: Spacing.lg) {
             headshot
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(player.name)
                     .font(.heroTitle)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
+                    .accessibilityLabel(player.spokenSummary)
                 metaRow
             }
             Spacer(minLength: 0)
         }
         .padding(.top, Spacing.sm)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(player.spokenSummary)
     }
 
+    /// The crest, the team as a tappable badge, then whatever is left of the
+    /// line. `HeaderLinkBadge` is the app's own word for this — the crumb
+    /// `TeamPage` and `ConferencePage` already use to say "this name is a
+    /// destination, and it ends here" — so the player hero borrows it rather
+    /// than drawing a second kind of pill.
     private var metaRow: some View {
         HStack(spacing: Spacing.xs) {
             if let logo = player.teamLogoURL {
                 LogoImage(url: logo)
                     .frame(width: 16, height: 16)
+                    .accessibilityHidden(true)
             }
-            Text(player.metaLine)
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
+            if let team = player.team, let title = teamBadgeTitle {
+                NavigationLink(value: team) {
+                    // `.bgCard`, not the default: this hero sits on
+                    // `bgRecessed`, which is what the default fills with.
+                    HeaderLinkBadge(title: title, fill: .bgCard)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("View team page")
+            }
+            if !metaTail.isEmpty {
+                Text(metaTail)
+                    // Already inside the title's sentence; spoken twice it
+                    // would read as "Wide Receiver" trailing a full stop.
+                    .accessibilityHidden(true)
+                    .font(.meta)
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
         }
+    }
+
+    /// The badge's text, and the test for whether there is a badge at all.
+    /// A door that knows the team's *name* but not the team — a box score
+    /// row, whenever that door opens — keeps the name in the line instead of
+    /// drawing a badge that pushes nothing.
+    private var teamBadgeTitle: String? {
+        guard player.team != nil,
+              let name = player.teamName, !name.isEmpty else { return nil }
+        return name
+    }
+
+    /// What the line says beside the badge, or the whole line when there
+    /// isn't one.
+    private var metaTail: String {
+        teamBadgeTitle == nil ? player.metaLine : player.metaLineWithoutTeam
     }
 
     /// The full-size press photo, which is the one place in the app it is the

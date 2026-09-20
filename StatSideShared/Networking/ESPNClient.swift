@@ -1589,7 +1589,12 @@ nonisolated enum ESPNMapper {
                           stats.count == columns.count
                     else { return nil }
                     return BoxScore.Player(
-                        id: athlete.id ?? "\(teamId)-\(name)",
+                        // `nonEmpty`, not `??`: ESPN's other way of not
+                        // knowing an athlete is an empty string, which `??`
+                        // passes through as the row's identity — and two
+                        // such rows in a category then collide in a
+                        // `ForEach`. Found on the web twin, fixed in both.
+                        id: nonEmpty(athlete.id) ?? "\(teamId)-\(name)",
                         name: name,
                         jersey: athlete.jersey,
                         headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),
@@ -1692,7 +1697,8 @@ nonisolated enum ESPNMapper {
             return LeaderCategory.Leader(
                 name: name,
                 statLine: entry.displayValue ?? "",
-                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)))
+                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)),
+                athleteId: nonEmpty(entry.athlete?.id))
         }
 
         func build(_ categories: [(name: String, label: String)]) -> [LeaderCategory] {

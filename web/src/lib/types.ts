@@ -248,6 +248,15 @@ export interface GameLeader {
   name: string;
   statLine: string;
   headshotUrl?: string;
+  /**
+   * ESPN's athlete id, present only when ESPN sent one. The card's link
+   * rides on this and nothing else: unlike a box score row there is no
+   * synthesized key here to confuse it with, because a leader without an
+   * athlete never becomes a `GameLeader` at all (the name comes off the
+   * same object). The team is the side the leader is filed under, which
+   * the card already knows, so it isn't carried here.
+   */
+  athleteId?: string;
 }
 
 /** A leader category ("Passing") with both sides filled in where known. */
@@ -376,7 +385,20 @@ export interface BoxScoreCategory {
 }
 
 export interface BoxScorePlayer {
+  /**
+   * The row's list key, and **never a navigation target**. It falls back to
+   * `${teamId}-${name}` when ESPN omits the athlete, so it is always present
+   * but not always real.
+   */
   id: string;
+  /**
+   * ESPN's athlete id, present only when ESPN actually sent one. This is the
+   * id a row may link on: `id` above is synthesized when it has to be, and a
+   * synthesized key routed to would push a page for an athlete that does not
+   * exist. Identity needs a value always; navigation needs one only when
+   * it's genuine, which is why these are two fields and not one (E20).
+   */
+  athleteId?: string;
   name: string;
   jersey?: string;
   headshotUrl?: string;

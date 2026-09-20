@@ -447,6 +447,12 @@ export interface EspnLeaderCategory {
 export interface EspnLeaderEntry {
   displayValue?: string;
   athlete?: {
+    /**
+     * Declared 2026-09-20, so the card can link. ESPN has always sent it
+     * here — iOS's `AthleteDTO` decodes the same object and has carried
+     * `id` all along — this shape just never asked for it.
+     */
+    id?: string;
     displayName?: string;
     shortName?: string;
     jersey?: string;

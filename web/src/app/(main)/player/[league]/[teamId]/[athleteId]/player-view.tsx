@@ -13,9 +13,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { CardHeader } from "@/components/card-header";
 import { HeroHeader } from "@/components/hero-header";
 import type { League } from "@/lib/leagues";
+import { teamPath } from "@/lib/routes";
 import {
   playerMetaLine,
   playerProfileRows,
@@ -26,6 +28,7 @@ import type { RosterPlayer } from "@/lib/types";
 interface PlayerViewProps {
   league: League;
   player: RosterPlayer;
+  teamId: string;
   teamName?: string;
   teamLogoUrl?: string;
 }
@@ -33,11 +36,17 @@ interface PlayerViewProps {
 export function PlayerView({
   league,
   player,
+  teamId,
   teamName,
   teamLogoUrl,
 }: PlayerViewProps) {
   const rows = playerProfileRows(player, league);
-  const meta = playerMetaLine(player, teamName);
+  // The team is a badge of its own now, so the line beside it is the rest:
+  // `playerMetaLine` handed no team name returns exactly "#2 · WR".
+  const meta = playerMetaLine(player);
+  // No team name means the schedule fetch failed, and a badge with no team
+  // in it is a link to nowhere. The line keeps every part it has instead.
+  const hasBadge = Boolean(teamName);
 
   return (
     <>
@@ -48,22 +57,45 @@ export function PlayerView({
         logo={<Headshot player={player} />}
         title={player.name}
         subtitle={
-          meta ? (
-            <div
-              aria-hidden="true"
-              className="flex items-center gap-1.5 type-meta text-text-secondary"
-            >
-              {teamLogoUrl && (
-                <Image
-                  src={teamLogoUrl}
-                  alt=""
-                  width={16}
-                  height={16}
-                  unoptimized
-                  className="h-4 w-4 shrink-0 object-contain"
-                />
+          hasBadge || meta ? (
+            <div className="flex min-w-0 items-center gap-1.5">
+              {/* The team is the one part of this line that goes somewhere,
+                  so it is the one part that looks like it does: a badge on
+                  the elevated ground, crest and name together. The rest of
+                  the line stays quiet text beside it.
+
+                  It is deliberately **not** inside the `aria-hidden` the
+                  rest of the line carries. A focusable element hidden from
+                  the accessibility tree is reachable by keyboard and
+                  invisible to a screen reader, which is worse than the
+                  duplication it would have saved. */}
+              {hasBadge && (
+                <Link
+                  href={teamPath({ league, id: teamId })}
+                  className="flex min-w-0 shrink items-center gap-1.5 rounded-full bg-bg-elevated py-1 pl-1 pr-2.5 type-chip-em text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
+                >
+                  {teamLogoUrl && (
+                    <Image
+                      src={teamLogoUrl}
+                      alt=""
+                      width={16}
+                      height={16}
+                      unoptimized
+                      className="h-4 w-4 shrink-0 object-contain"
+                    />
+                  )}
+                  <span className="truncate">{teamName}</span>
+                  <span className="sr-only">, view team page</span>
+                </Link>
               )}
-              <span className="truncate">{meta}</span>
+              {meta && (
+                <span
+                  aria-hidden="true"
+                  className="truncate type-meta text-text-secondary"
+                >
+                  {meta}
+                </span>
+              )}
             </div>
           ) : undefined
         }

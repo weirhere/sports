@@ -1,23 +1,33 @@
 #!/usr/bin/env bash
 #
-# E20's P0 gate: does ESPN serve an athlete anything worth a page?
+# E20's P0 gate: does ESPN serve an athlete anything worth a page, and can it
+# be searched for by name?
 #
 # The player page ships with one tab (Profile), built from the roster row that
 # pushed it. Games, Stats and Career have no confirmed source — nobody has ever
 # asked ESPN for one. This asks, across all four leagues, and prints enough to
 # decide.
 #
+# It also asks the **search** question (added 2026-09-20, Andy: "athletes
+# should also show up in search"). Search's corpus today is the team directory,
+# the conference registry and the current slate — all of it already in memory,
+# which is why typing costs zero requests. Athletes have no such corpus: the
+# roster endpoint is per team, so covering four leagues means ~228 roster
+# fetches, and that is not a search box. ESPN's own search API would be one
+# request, and this repo has never called it. The last section here asks.
+#
 # Run it from a machine that can reach ESPN (agent sessions cannot — the egress
 # proxy refuses the CONNECT), then paste the output into the E20 thread.
 #
-#     scripts/probe-athlete.sh              # all four leagues
-#     scripts/probe-athlete.sh nhl          # one
+#     scripts/probe-athlete.sh              # all four leagues, then search
+#     scripts/probe-athlete.sh nhl          # one league, then search
+#     scripts/probe-athlete.sh search       # the search endpoints alone
 #
 # Athlete ids are real, lifted from the roster fixtures in sportsTests/, so a
 # 404 means the endpoint is wrong rather than the player being made up.
 #
 # Reads nothing, writes nothing, sends no credentials. Be a polite guest: it
-# makes at most 20 requests and sleeps between them.
+# makes at most 27 requests and sleeps between them.
 
 set -uo pipefail
 
@@ -52,6 +62,36 @@ core|https://sports.core.api.espn.com/v2/sports/${sport}/leagues/${league}/athle
 EOF
 }
 
+# The search question, asked once rather than per league: ESPN's search is
+# league-agnostic, so a single query either finds people or it doesn't. The
+# names are real and spread across three of the four leagues, so an endpoint
+# that only indexes one sport says so by finding two of them.
+#
+# What a good answer looks like: a 200 whose body carries entries of type
+# "player"/"athlete" with an id we can route on. `limit` and a league filter
+# would be a bonus; neither is required for the feature to exist.
+SEARCH_QUERIES=(
+  "Baker Mayfield"
+  "Luka Doncic"
+  "Connor McDavid"
+)
+
+search_urls_for() {
+  # $1 is already URL-encoded by the caller.
+  local q="$1"
+  cat <<EOF
+search-v2|https://site.api.espn.com/apis/search/v2?query=${q}&limit=10
+search-web|https://site.web.api.espn.com/apis/search/v2?region=us&lang=en&query=${q}&limit=10
+search-common|https://site.web.api.espn.com/apis/common/v3/search?query=${q}&limit=10&mode=prefix
+EOF
+}
+
+# Spaces are the only character these names contain that needs it, so this
+# stays a substitution rather than dragging in a dependency.
+urlencode() {
+  printf '%s' "${1// /%20}"
+}
+
 # Top-level keys, plus the handful of words that decide a tab. Falls back to a
 # byte count if python3 is missing, which is still enough to tell 200-with-data
 # from 200-with-nothing.
@@ -74,7 +114,9 @@ else:
 text = raw.decode("utf-8", "replace")
 marks = ["birthPlace", "birthCity", "hometown", "college", "draft",
          "gamelog", "seasonTypes", "statistics", "splits", "displayValue",
-         "teamHistory", "careerStats", "$ref"]
+         "teamHistory", "careerStats", "$ref",
+         # search: does a result name a person, and can we route to them?
+         "player", "athlete", "results", "items", "uid", "link"]
 hits = [m for m in marks if "\"%s\"" % m in text or m == "$ref" and "$ref" in text]
 print("      carries: %s" % (", ".join(hits) if hits else "none of the markers"))
 '
@@ -109,16 +151,27 @@ run() {
   for row in "${LEAGUES[@]}"; do
     IFS='|' read -r lg sport league id who <<< "$row"
     [ "$want" = "all" ] || [ "$want" = "$lg" ] || continue
+    [ "$want" = "search" ] && continue
     printf '\n=== %s — athlete %s (%s) ===\n' "$lg" "$id" "$who"
     while IFS='|' read -r label url; do
       [ -n "$label" ] && probe_one "$label" "$url"
     done < <(urls_for "$sport" "$league" "$id")
   done
 
+  for name in "${SEARCH_QUERIES[@]}"; do
+    printf '\n=== search — "%s" ===\n' "$name"
+    while IFS='|' read -r label url; do
+      [ -n "$label" ] && probe_one "$label" "$url"
+    done < <(search_urls_for "$(urlencode "$name")")
+  done
+
   printf '\nWhat to look for:\n'
   printf '  A 200 whose "carries" line names gamelog/seasonTypes/statistics is the Games\n'
   printf '  and Stats tabs existing. birthPlace is the Profile hometown row. teamHistory\n'
   printf '  or careerStats is Career without having to derive it from logs.\n'
+  printf '  For search: a 200 carrying player/athlete entries with ids is athletes in\n'
+  printf '  the search box for one request. Nothing there means the only corpus is a\n'
+  printf '  roster crawl, and that answer is worth recording too.\n'
 }
 
 if [ -n "$OUT" ]; then

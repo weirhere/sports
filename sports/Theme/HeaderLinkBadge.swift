@@ -13,8 +13,20 @@ import SwiftUI
 /// Quiet on purpose: a recessed fill and secondary ink, so a header full
 /// of them still reads as a subtitle under the title rather than a row of
 /// buttons competing with it.
+///
+/// **The fill is the *other* surface colour, which is why it is a
+/// parameter** (2026-09-20). The default suits the header it was built for:
+/// `TeamPage` and `ConferencePage` put their heroes on `bgCard`, so a
+/// `bgRecessed` capsule reads as a shape cut into it. `PlayerPage`'s hero
+/// sits straight on `bgRecessed`, where that default is the ground itself
+/// and the badge disappears — in **both** appearances, since the two are the
+/// same value in light (0.93) and `bgElevated` collides there too. A badge
+/// on recessed ground passes `.bgCard` and gets the same one step of
+/// separation, in the other direction.
 struct HeaderLinkBadge: View {
     let title: String
+    /// One elevation step away from whatever this badge sits on.
+    var fill: Color = .bgRecessed
 
     var body: some View {
         Text(title)
@@ -23,16 +35,26 @@ struct HeaderLinkBadge: View {
             .lineLimit(1)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
-            .background(Capsule().fill(Color.bgRecessed))
+            .background(Capsule().fill(fill))
             .contentShape(Capsule())
     }
 }
 
-#Preview {
+#Preview("On a card header") {
     HStack(spacing: Spacing.xs) {
         HeaderLinkBadge(title: "Northwest (West)")
         HeaderLinkBadge(title: "NBA")
     }
     .padding()
     .background(Color.bgCard)
+}
+
+#Preview("On recessed ground — PlayerPage's hero") {
+    HStack(spacing: Spacing.xs) {
+        HeaderLinkBadge(title: "Tampa Bay", fill: .bgCard)
+        // What the default would look like here: nothing.
+        HeaderLinkBadge(title: "Invisible")
+    }
+    .padding()
+    .background(Color.bgRecessed)
 }

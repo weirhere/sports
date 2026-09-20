@@ -1326,7 +1326,16 @@ export function transformBoxScore(
         if (!athlete || !playerName || !row.stats) continue;
         if (row.stats.length !== columns.length) continue;
         players.push({
-          id: athlete.id ?? `${teamId}-${playerName}`,
+          // `nonEmpty`, not `??`: ESPN's other way of not knowing an
+          // athlete is an empty string, and `?? ` passes that straight
+          // through as the row's key — "" is not a key, and two such rows
+          // in a category collide. Surfaced by the `athleteId` test below
+          // rather than in the wild.
+          id: nonEmpty(athlete.id) ?? `${teamId}-${playerName}`,
+          // Genuinely optional, and deliberately not the line above: the
+          // fallback there keeps React keyed when ESPN omits an athlete,
+          // and must never become a link.
+          athleteId: nonEmpty(athlete.id),
           name: playerName,
           jersey: nonEmpty(athlete.jersey),
           headshotUrl: nonEmpty(athlete.headshot?.href),
@@ -1429,7 +1438,7 @@ function transformScoringPlay(
   };
 }
 
-function transformLeaders(
+export function transformLeaders(
   teamLeaders: EspnTeamLeaders[],
   awayTeamId: string | undefined,
   homeTeamId: string | undefined,
@@ -1449,6 +1458,8 @@ function transformLeaders(
       name,
       statLine: entry.displayValue ?? "",
       headshotUrl: entry.athlete?.headshot?.href,
+      // Decoded all along and dropped on the floor until now (E20).
+      athleteId: nonEmpty(entry.athlete?.id),
     };
   }
 

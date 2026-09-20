@@ -141,6 +141,20 @@ nonisolated struct LeaderCategory: Identifiable, Hashable, Sendable {
         let statLine: String
         /// Defaulted so CFBD's photo-less leaders construct unchanged.
         var headshotURL: URL? = nil
+        /// ESPN's athlete id, which `AthleteDTO` has always decoded and this
+        /// model dropped until 2026-09-20 (E20). Defaulted for the same
+        /// reason as the headshot: `CFBDMapper` builds a leader from a name
+        /// and a yardage and has no id to give.
+        ///
+        /// **Carried, not yet linked.** The web's Leaders card routes on
+        /// this because a URL rebuilds the page by re-fetching the team's
+        /// roster; iOS hands `PlayerPage` what the calling screen already
+        /// knows, and a leader row knows a name, a stat line and a photo.
+        /// `profileRows` would come back empty and the page would be a hero
+        /// over nothing — thinner than the row that pushed it. The link
+        /// lands with the athlete fetch (E20's P0); the id is here so that
+        /// is the only thing it waits on.
+        var athleteId: String? = nil
     }
 
     let id: String

@@ -9,10 +9,25 @@
 //
 // The table scrolls inside its own card rather than squeezing: a football
 // passing line is six columns wide and a phone is not.
+//
+// **A name links to the player page when ESPN sent an athlete id** and stays
+// plain text when it didn't: `BoxScorePlayer.id` synthesizes a key from the
+// team and the name in that case, and routing on a synthesized key pushes a
+// page for somebody who doesn't exist. `athleteId` is the genuine one.
+//
+// One known dead end, accepted rather than hidden: the link carries the team
+// this player suited up for **in this game**, and the player page finds the
+// athlete inside that team's *current* roster, since ESPN's roster endpoint
+// has no season axis (2026-09-10). A box score from a season the player has
+// since left therefore 404s. Every other door into the page has the same
+// floor, and the fix for all of them is the same athlete endpoint E20's P0
+// is waiting on.
 
 import Image from "next/image";
-import type { BoxScoreTeam, Game, GameTeam } from "@/lib/types";
+import Link from "next/link";
+import type { BoxScorePlayer, BoxScoreTeam, Game, GameTeam } from "@/lib/types";
 import { CardHeader } from "@/components/card-header";
+import { playerHref } from "@/lib/player-profile";
 
 export function BoxScoreList({
   boxScore,
@@ -72,24 +87,20 @@ export function BoxScoreList({
                         scope="row"
                         className="sticky left-0 z-10 max-w-[10rem] truncate bg-bg-card px-4 py-2 text-left type-row-name text-text-primary"
                       >
-                        <span className="flex items-center gap-1.5">
-                          {player.headshotUrl && (
-                            <Image
-                              src={player.headshotUrl}
-                              alt=""
-                              width={20}
-                              height={20}
-                              unoptimized
-                              className="h-5 w-5 shrink-0 rounded-full object-cover"
-                            />
-                          )}
-                          <span className="truncate">{player.name}</span>
-                          {player.jersey && (
-                            <span className="shrink-0 tnum type-row-meta text-text-secondary">
-                              {player.jersey}
-                            </span>
-                          )}
-                        </span>
+                        {player.athleteId ? (
+                          <Link
+                            href={playerHref(
+                              game.league,
+                              team.teamId,
+                              player.athleteId
+                            )}
+                            className="rounded-sm transition-colors hover:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
+                          >
+                            <PlayerCell player={player} />
+                          </Link>
+                        ) : (
+                          <PlayerCell player={player} />
+                        )}
                       </th>
                       {player.stats.map((stat, index) => (
                         <td
@@ -126,6 +137,34 @@ export function BoxScoreList({
         ));
       })}
     </div>
+  );
+}
+
+/**
+ * The name cell's contents, identical whether or not it's a link, so a row
+ * ESPN gave no athlete id reads exactly like one it did. The only difference
+ * is whether it can be tapped.
+ */
+function PlayerCell({ player }: { player: BoxScorePlayer }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {player.headshotUrl && (
+        <Image
+          src={player.headshotUrl}
+          alt=""
+          width={20}
+          height={20}
+          unoptimized
+          className="h-5 w-5 shrink-0 rounded-full object-cover"
+        />
+      )}
+      <span className="truncate">{player.name}</span>
+      {player.jersey && (
+        <span className="shrink-0 tnum type-row-meta text-text-secondary">
+          {player.jersey}
+        </span>
+      )}
+    </span>
   );
 }
 
