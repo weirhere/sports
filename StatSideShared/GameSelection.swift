@@ -81,16 +81,47 @@ nonisolated enum GameSelection {
         return now >= kickoff.addingTimeInterval(overnightGrace)
     }
 
+    /// How often a timeline carrying a live game asks for the next one.
+    ///
+    /// Five minutes, not the fifteen this shipped with (Andy, 2026-09-20:
+    /// "so much can change during this 8 minute window"). A widget cannot
+    /// poll — it can only *ask*, and WidgetKit answers out of a daily
+    /// reload budget it weights toward the widgets a person actually looks
+    /// at. Asking for fifteen therefore capped the app below what the
+    /// system would hand it on the one day it hands out the most: a fall
+    /// Saturday, when the target user checks twenty times. Asking for five
+    /// takes whatever the budget allows and degrades to the old cadence
+    /// when it allows nothing more.
+    ///
+    /// The ask is a ceiling, never a promise, which is exactly why the
+    /// footer's manual refresh ships beside it — a user-initiated reload is
+    /// the one the budget doesn't charge for.
+    static let liveInterval: TimeInterval = 5 * 60
+
+    /// The tick when nothing is live: four hours, not the hour this shipped
+    /// with.
+    ///
+    /// Nothing on a quiet board changes inside an hour that a reload could
+    /// catch — a fixture's kickoff, its network and its records read the
+    /// same at 2pm as at 1pm — and the two things that genuinely expire
+    /// already pull the timeline in on their own (the kickoff itself, and
+    /// midnight for a relative day line or a spent result). Hourly spent
+    /// twenty-odd reloads a day discovering nothing, out of the same
+    /// allowance the live window needs. This is where the five minutes
+    /// above is paid for.
+    static let quietInterval: TimeInterval = 4 * 3600
+
     /// When the widget should ask for a new timeline. Sparse by design:
     /// WidgetKit's daily reload budget is the app's politeness throttle
-    /// against ESPN, so a live game polls at 15 minutes, everything else
-    /// hourly (pulled earlier if a kickoff lands sooner).
+    /// against ESPN, so a live game asks every `liveInterval` and
+    /// everything else every `quietInterval` (pulled earlier if a kickoff
+    /// or a midnight expiry lands sooner).
     static func nextRefresh(after now: Date, games: [Game],
                             calendar: Calendar = .current) -> Date {
         if games.contains(where: \.isLive) {
-            return now.addingTimeInterval(15 * 60)
+            return now.addingTimeInterval(liveInterval)
         }
-        var target = now.addingTimeInterval(60 * 60)
+        var target = now.addingTimeInterval(quietInterval)
 
         // Never schedule in the past-adjacent window; give kickoff a beat
         // so ESPN has flipped the game live by the time we refetch.
@@ -105,9 +136,10 @@ nonisolated enum GameSelection {
         }
 
         // Anything on screen whose copy is true only *today* expires at
-        // midnight, so ask then rather than on whichever hourly tick
+        // midnight, so ask then rather than on whichever quiet tick
         // happens to land after it — a widget still showing yesterday's
-        // slate at 12:40am is the thing this whole rule exists to stop.
+        // slate at 12:40am is the thing this whole rule exists to stop,
+        // and a four-hour tick could leave it there until 4am.
         //
         // Two kinds qualify. A result, which stops being one of "my games"
         // the moment tomorrow arrives (`isSpent`). And a kickoff today or

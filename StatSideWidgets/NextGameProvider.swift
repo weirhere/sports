@@ -5,7 +5,11 @@ import WidgetKit
 
 /// Fetches ESPN directly: the widget's promise is a live score at 3:30 on
 /// Saturday without the app having been opened, and WidgetKit's daily
-/// reload budget keeps the request volume polite (~50/day worst case).
+/// reload budget keeps the request volume polite (~50/day worst case) —
+/// which is still true now the live ask is five minutes rather than
+/// fifteen, because the budget, not the ask, is what sets the volume.
+/// `GameSelection.liveInterval` carries that reasoning and
+/// `RefreshWidgetIntent` is the door out of it.
 ///
 /// One request per league you actually follow — so a college-football-only
 /// user still spends exactly one, and only somebody following both pays
@@ -48,7 +52,11 @@ nonisolated struct NextGameProvider: TimelineProvider {
         let followedKeys = Set(defaults.stringArray(forKey: AppGroup.followingKeysKey) ?? [])
         let leagues = followedKeys.followedLeagues
         guard !leagues.isEmpty else {
-            return (NextGameEntry(date: now, state: .noFollows), now.addingTimeInterval(60 * 60))
+            // Nothing to discover on a schedule here: this state changes
+            // when the user follows somebody, and `FollowingStore` reloads
+            // the timeline itself when they do.
+            return (NextGameEntry(date: now, state: .noFollows),
+                    now.addingTimeInterval(GameSelection.quietInterval))
         }
 
         let boards = await Self.currentGames(in: leagues)
@@ -70,7 +78,11 @@ nonisolated struct NextGameProvider: TimelineProvider {
                 in: games, followedKeys: followedKeys, limit: 4, now: now
             )
             guard !relevant.isEmpty else {
-                return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(60 * 60))
+                // A followed team with nothing inside a fortnight is a bye
+                // or an offseason, neither of which resolves within an
+                // hour — the quiet tick is the honest cadence.
+                return (NextGameEntry(date: now, state: .noGames),
+                        now.addingTimeInterval(GameSelection.quietInterval))
             }
             WidgetSnapshot(games: relevant).save(to: defaults)
             var widgetGames: [WidgetGame] = []

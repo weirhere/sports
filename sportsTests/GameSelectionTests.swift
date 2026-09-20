@@ -166,11 +166,14 @@ private func game(_ id: String, home: String, away: String,
 
     // MARK: - Refresh policy
 
-    @Test func liveGamePolls15Minutes() {
+    /// Five minutes, down from fifteen (Andy, 2026-09-20). WidgetKit may
+    /// hand back less; the point is that the ask no longer caps the app
+    /// below what the budget would give on a Saturday.
+    @Test func liveGameAsksEveryFiveMinutes() {
         let live = [game("g", home: "1", away: "2",
                          status: .live(displayClock: nil, period: nil, detail: nil, phase: .playing, possessionTeamId: nil),
                          date: now)]
-        #expect(GameSelection.nextRefresh(after: now, games: live) == now.addingTimeInterval(15 * 60))
+        #expect(GameSelection.nextRefresh(after: now, games: live) == now.addingTimeInterval(5 * 60))
     }
 
     @Test func imminentKickoffPullsRefreshEarlier() {
@@ -180,11 +183,25 @@ private func game(_ id: String, home: String, away: String,
         #expect(GameSelection.nextRefresh(after: now, games: pre) == kickoff.addingTimeInterval(60))
     }
 
-    @Test func quietWeeksRefreshHourly() {
+    /// A board with nothing live and nothing today reloads four-hourly,
+    /// not hourly: the reloads hourly was spending are what pays for the
+    /// live window's five minutes.
+    @Test func quietWeeksRefreshOnTheQuietTick() {
+        let quiet = GameSelection.quietInterval
         let farOff = [game("g", home: "1", away: "2", status: .pre(detail: nil),
                            date: now.addingTimeInterval(72 * 3600))]
-        #expect(GameSelection.nextRefresh(after: now, games: farOff) == now.addingTimeInterval(3600))
-        #expect(GameSelection.nextRefresh(after: now, games: []) == now.addingTimeInterval(3600))
+        #expect(GameSelection.nextRefresh(after: now, games: farOff) == now.addingTimeInterval(quiet))
+        #expect(GameSelection.nextRefresh(after: now, games: []) == now.addingTimeInterval(quiet))
+    }
+
+    /// The quiet tick is a ceiling like the hourly one was: a kickoff
+    /// inside it still pulls the refresh in, which is the rule that keeps
+    /// a four-hour tick from sleeping through a game starting in ninety
+    /// minutes.
+    @Test func aKickoffInsideTheQuietTickStillPullsItIn() {
+        let kickoff = now.addingTimeInterval(90 * 60)
+        let pre = [game("g", home: "1", away: "2", status: .pre(detail: nil), date: kickoff)]
+        #expect(GameSelection.nextRefresh(after: now, games: pre) == kickoff.addingTimeInterval(60))
     }
 
     /// A result on screen expires at midnight, so the timeline asks then
@@ -199,14 +216,15 @@ private func game(_ id: String, home: String, away: String,
         #expect(GameSelection.nextRefresh(after: lateEvening, games: final) == tomorrow)
     }
 
-    /// Midnight is a ceiling, not a target: an hour before the day ends is
-    /// still an hour away, so a board of fixtures keeps the hourly tick.
-    @Test func fixturesOnlyKeepTheHourlyTick() {
+    /// Midnight is a ceiling, not a target: a board of fixtures days out
+    /// has nothing that expires tonight, so it keeps the quiet tick even
+    /// twenty minutes before the day ends.
+    @Test func fixturesOnlyKeepTheQuietTick() {
         let calendar = Calendar.current
         let lateEvening = calendar.startOfDay(for: now).addingTimeInterval(23 * 3600 + 40 * 60)
         let pre = [game("g", home: "1", away: "2", status: .pre(detail: nil),
                         date: lateEvening.addingTimeInterval(5 * 24 * 3600))]
         #expect(GameSelection.nextRefresh(after: lateEvening, games: pre)
-                    == lateEvening.addingTimeInterval(3600))
+                    == lateEvening.addingTimeInterval(GameSelection.quietInterval))
     }
 }
