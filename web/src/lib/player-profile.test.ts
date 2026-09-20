@@ -108,6 +108,12 @@ describe("the hero's meta line", () => {
     // An empty string is ESPN's other way of not knowing.
     expect(playerMetaLine(player({ jersey: "" }), "Georgia")).toBe("Georgia · QB");
   });
+
+  // The hero draws the team as its own badge, linking to the team page, so
+  // the line beside it is everything except the team.
+  it("is the rest of the line when the team is drawn as a badge", () => {
+    expect(playerMetaLine(player())).toBe("#11 · QB");
+  });
 });
 
 describe("the spoken summary", () => {

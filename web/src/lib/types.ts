@@ -376,7 +376,20 @@ export interface BoxScoreCategory {
 }
 
 export interface BoxScorePlayer {
+  /**
+   * The row's list key, and **never a navigation target**. It falls back to
+   * `${teamId}-${name}` when ESPN omits the athlete, so it is always present
+   * but not always real.
+   */
   id: string;
+  /**
+   * ESPN's athlete id, present only when ESPN actually sent one. This is the
+   * id a row may link on: `id` above is synthesized when it has to be, and a
+   * synthesized key routed to would push a page for an athlete that does not
+   * exist. Identity needs a value always; navigation needs one only when
+   * it's genuine, which is why these are two fields and not one (E20).
+   */
+  athleteId?: string;
   name: string;
   jersey?: string;
   headshotUrl?: string;

@@ -413,6 +413,53 @@ describe("the box score carries its own columns", () => {
     expect(teams[0].categories[0].players[0].stats).toEqual(["11/19", "162", "2"]);
   });
 
+  // E20: `id` is the list key and is synthesized when ESPN omits the
+  // athlete; `athleteId` is the one a row may link on. Conflating them
+  // pushes a player page for somebody who doesn't exist.
+  it("separates the row's key from the id it can navigate on", () => {
+    const teams = transformBoxScore(
+      {
+        players: [
+          {
+            team: { id: "2390" },
+            statistics: [
+              group({
+                athletes: [
+                  {
+                    athlete: { id: "4430841", displayName: "Real Id" },
+                    stats: ["11/19", "162", "2"],
+                  },
+                  {
+                    athlete: { displayName: "No Id" },
+                    stats: ["9/12", "88", "1"],
+                  },
+                  {
+                    athlete: { id: "", displayName: "Blank Id" },
+                    stats: ["1/2", "9", "0"],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      "cfb"
+    );
+    const players = teams[0].categories[0].players;
+    expect(players.map((p) => p.id)).toEqual([
+      "4430841",
+      "2390-No Id",
+      "2390-Blank Id",
+    ]);
+    // Only the first is real, so only the first is a link. An empty string
+    // is ESPN's other way of not knowing, and must not become "/player//".
+    expect(players.map((p) => p.athleteId)).toEqual([
+      "4430841",
+      undefined,
+      undefined,
+    ]);
+  });
+
   it("drops a row whose stat count doesn't match the header", () => {
     const teams = transformBoxScore(
       {

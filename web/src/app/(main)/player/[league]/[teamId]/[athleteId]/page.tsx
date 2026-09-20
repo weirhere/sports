@@ -67,6 +67,7 @@ export default async function PlayerPage({ params }: PageProps) {
     <PlayerView
       league={league}
       player={player}
+      teamId={teamId}
       teamName={team?.school}
       teamLogoUrl={team?.logoUrl}
     />
