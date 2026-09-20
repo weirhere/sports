@@ -248,6 +248,15 @@ export interface GameLeader {
   name: string;
   statLine: string;
   headshotUrl?: string;
+  /**
+   * ESPN's athlete id, present only when ESPN sent one. The card's link
+   * rides on this and nothing else: unlike a box score row there is no
+   * synthesized key here to confuse it with, because a leader without an
+   * athlete never becomes a `GameLeader` at all (the name comes off the
+   * same object). The team is the side the leader is filed under, which
+   * the card already knows, so it isn't carried here.
+   */
+  athleteId?: string;
 }
 
 /** A leader category ("Passing") with both sides filled in where known. */

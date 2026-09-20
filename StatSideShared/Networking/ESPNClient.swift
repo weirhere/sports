@@ -1697,7 +1697,8 @@ nonisolated enum ESPNMapper {
             return LeaderCategory.Leader(
                 name: name,
                 statLine: entry.displayValue ?? "",
-                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)))
+                headshotURL: entry.athlete?.headshot?.href.flatMap(URL.init(string:)),
+                athleteId: nonEmpty(entry.athlete?.id))
         }
 
         func build(_ categories: [(name: String, label: String)]) -> [LeaderCategory] {

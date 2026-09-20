@@ -1438,7 +1438,7 @@ function transformScoringPlay(
   };
 }
 
-function transformLeaders(
+export function transformLeaders(
   teamLeaders: EspnTeamLeaders[],
   awayTeamId: string | undefined,
   homeTeamId: string | undefined,
@@ -1458,6 +1458,8 @@ function transformLeaders(
       name,
       statLine: entry.displayValue ?? "",
       headshotUrl: entry.athlete?.headshot?.href,
+      // Decoded all along and dropped on the floor until now (E20).
+      athleteId: nonEmpty(entry.athlete?.id),
     };
   }
 

@@ -8,6 +8,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import type { League } from "@/lib/leagues";
+import { playerHref } from "@/lib/player-profile";
 import type { GameLeader, GameTeam, LeaderCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DetailCard } from "./detail-card";
@@ -16,9 +19,15 @@ interface LeadersCardProps {
   leaders: LeaderCategory[];
   awayTeam: GameTeam;
   homeTeam: GameTeam;
+  league: League;
 }
 
-export function LeadersCard({ leaders, awayTeam, homeTeam }: LeadersCardProps) {
+export function LeadersCard({
+  leaders,
+  awayTeam,
+  homeTeam,
+  league,
+}: LeadersCardProps) {
   return (
     <DetailCard title="Leaders">
       <div className="flex flex-col gap-3 px-4 pb-3 pt-2">
@@ -32,11 +41,13 @@ export function LeadersCard({ leaders, awayTeam, homeTeam }: LeadersCardProps) {
                 leader={category.away}
                 team={awayTeam}
                 side="away"
+                league={league}
               />
               <LeaderSide
                 leader={category.home}
                 team={homeTeam}
                 side="home"
+                league={league}
               />
             </div>
           </div>
@@ -50,30 +61,41 @@ export function LeadersCard({ leaders, awayTeam, homeTeam }: LeadersCardProps) {
  * Half the row, claimed even when a side has no leader so the other side
  * stays anchored to its edge. One element per player — the team location
  * rides in the spoken sentence, since alignment carries it visually.
+ *
+ * **The whole side is the link**, photo and stat line included, rather than
+ * the name alone: this is a two-column card on a phone and a name is a small
+ * target. The `aria-label` that was already here becomes the link's own
+ * name, which is what it should have been doing all along — it was sitting
+ * on a plain `div`, where support for it is uneven.
+ *
+ * The team in the URL is the side this leader is filed under, which is what
+ * `transformLeaders` looked them up by, so it can't disagree with the crest
+ * on the photo.
  */
 function LeaderSide({
   leader,
   team,
   side,
+  league,
 }: {
   leader?: GameLeader;
   team: GameTeam;
   side: "away" | "home";
+  league: League;
 }) {
   if (!leader) {
     return <div className="flex-1" />;
   }
   const away = side === "away";
-  return (
-    <div
-      aria-label={[team.team.school, leader.name, leader.statLine]
-        .filter(Boolean)
-        .join(", ")}
-      className={cn(
-        "flex min-w-0 flex-1 items-start gap-2",
-        !away && "flex-row-reverse"
-      )}
-    >
+  const label = [team.team.school, leader.name, leader.statLine]
+    .filter(Boolean)
+    .join(", ");
+  const className = cn(
+    "flex min-w-0 flex-1 items-start gap-2",
+    !away && "flex-row-reverse"
+  );
+  const body = (
+    <>
       <Headshot leader={leader} team={team} side={side} />
       <div
         aria-hidden="true"
@@ -87,7 +109,28 @@ function LeaderSide({
           {leader.statLine}
         </span>
       </div>
-    </div>
+    </>
+  );
+
+  if (!leader.athleteId) {
+    return (
+      <div aria-label={label} className={className}>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={playerHref(league, String(team.team.espnId), leader.athleteId)}
+      aria-label={label}
+      className={cn(
+        className,
+        "rounded-md transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
+      )}
+    >
+      {body}
+    </Link>
   );
 }
 

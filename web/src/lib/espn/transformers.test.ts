@@ -22,6 +22,7 @@ import {
   transformPolls,
   transformTeamSchedule,
   transformBoxScore,
+  transformLeaders,
   transformPlays,
 } from "./transformers";
 
@@ -620,5 +621,62 @@ describe("a scoring play says whose points those were", () => {
       possessionText: "WSU 26",
       yardsToEndzone: 26,
     });
+  });
+});
+
+describe("a leader carries the id the card links on", () => {
+  const payload = (athlete: Record<string, unknown> | undefined) => [
+    {
+      team: { id: "27" },
+      leaders: [
+        {
+          name: "passingYards",
+          displayName: "Passing Leader",
+          leaders: [{ displayValue: "23/28, 216 YDS", athlete }],
+        },
+      ],
+    },
+  ];
+
+  // Decoded by ESPN all along and dropped on the floor until 2026-09-20:
+  // the web's DTO shape simply never declared `id`.
+  it("carries ESPN's athlete id through", () => {
+    const categories = transformLeaders(
+      payload({ id: "3052587", displayName: "Baker Mayfield" }),
+      undefined,
+      "27",
+      "nfl"
+    );
+    expect(categories[0].home?.name).toBe("Baker Mayfield");
+    expect(categories[0].home?.athleteId).toBe("3052587");
+    // The away side was never asked for, so it stays empty rather than
+    // borrowing the home leader.
+    expect(categories[0].away).toBeUndefined();
+  });
+
+  it("leaves the id off when ESPN sent none, so the card draws no link", () => {
+    const missing = transformLeaders(
+      payload({ displayName: "Baker Mayfield" }),
+      undefined,
+      "27",
+      "nfl"
+    );
+    expect(missing[0].home?.athleteId).toBeUndefined();
+    // An empty string is ESPN's other way of not knowing, and must not
+    // become "/player/nfl/27/".
+    const blank = transformLeaders(
+      payload({ id: "", displayName: "Baker Mayfield" }),
+      undefined,
+      "27",
+      "nfl"
+    );
+    expect(blank[0].home?.athleteId).toBeUndefined();
+  });
+
+  // A leader with no athlete has no name either, and a nameless leader is
+  // not a leader — the card must not render half a row.
+  it("drops an entry with no athlete at all", () => {
+    expect(transformLeaders(payload(undefined), undefined, "27", "nfl"))
+      .toEqual([]);
   });
 });
