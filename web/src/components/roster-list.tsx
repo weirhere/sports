@@ -2,7 +2,7 @@
 
 // The Roster tab's card stack — iOS `RosterList` + `RosterRow`
 // (Features/Teams/). A Coach card, then a card per position group in the
-// payload's own order.
+// payload's own order, each group's players in jersey order.
 //
 // FotMob's squad screen is the reference, built out of the app's existing
 // table language (`CardHeader`, a captions row, inset dividers), so a roster
