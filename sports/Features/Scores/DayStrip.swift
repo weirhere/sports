@@ -20,7 +20,21 @@ struct DayStrip: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.xs) {
+                // Lazy, because the strip is a season: `days()` walks
+                // `SeasonSpan` from July to June, so a plain `HStack` built
+                // all ~365 chips up front to show the eight a phone can
+                // hold (Andy, 2026-09-21, asking what the strip costs).
+                //
+                // It costs no *payload* — a `DaySlot` is one `Date` and the
+                // network only moves in `select(day:)`, per day landed on
+                // rather than per chip. The cost was construction, and this
+                // is the whole fix: same days, same bounds, same swipe
+                // no-op at either end, nothing built until it is scrolled to.
+                //
+                // `scrollTo` still reaches an unbuilt chip: the ids are
+                // stable `DaySlot.id`s and a lazy stack resolves them by
+                // index, which is what the reveal below depends on.
+                LazyHStack(spacing: Spacing.xs) {
                     ForEach(days) { day in
                         chip(for: day)
                     }
