@@ -28,6 +28,11 @@ struct ScoresScreen: View {
     // team page) too, and a typed path can't hold them all.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    /// True only for the swap the Live toggle causes while you are already
+    /// on today — the one case where nothing navigated and a sideways push
+    /// would be a lie (Andy, 2026-09-21). Every other swap is a day change
+    /// and keeps the horizontal push it has always had.
+    @State private var liveCollapse = false
     @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
@@ -108,6 +113,15 @@ struct ScoresScreen: View {
                             .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
                     }
                 }
+                // The transitions belong inside the slate, not over the
+                // chrome above it (Andy, 2026-09-21). `move(edge: .top)`
+                // enters from above this container's bounds, and with
+                // nothing clipping it the empty state animated across the
+                // masthead and the day strip on its way in. The sideways
+                // push had the same exposure and only got away with it
+                // because its travel is horizontal, where the container
+                // already reaches both edges of the screen.
+                .clipped()
                 .background(
                     GeometryReader { proxy in
                         Color.clear.onAppear { paneWidth = proxy.size.width }
@@ -244,6 +258,9 @@ struct ScoresScreen: View {
     /// filter is suspended rather than forgotten (Andy, 2026-09-12). That
     /// tap may change no state at all: the trip home is the whole action.
     private func toggleLive() {
+        // Only on today does the filter change the slate without changing
+        // the day; off today the tap is a trip home and slides like one.
+        liveCollapse = scoreboards.isOnToday
         guard uiState.liveOnly(on: scoreboards.selectedDay) else {
             withAnimation { uiState.liveOnly = true }
             guard !scoreboards.isOnToday else { return }
@@ -308,6 +325,7 @@ struct ScoresScreen: View {
     /// with it (Andy): a day you left scrolled to the bottom shouldn't
     /// hand today back the same way.
     private func jumpToToday() {
+        liveCollapse = false
         let today = Calendar.current.startOfDay(for: .now)
         daySlideEdge = today > scoreboards.selectedDay ? .trailing : .leading
         daySlideAnimation = .default
@@ -356,6 +374,7 @@ struct ScoresScreen: View {
     /// Every user day change funnels through here so chip taps and swipes
     /// share one direction rule: content slides the way the strip moves.
     private func select(day: Date) {
+        liveCollapse = false
         let day = Calendar.current.startOfDay(for: day)
         guard day != scoreboards.selectedDay else { return }
         daySlideEdge = day > scoreboards.selectedDay ? .trailing : .leading
@@ -480,14 +499,17 @@ struct ScoresScreen: View {
     /// as though the day had changed (Andy, 2026-09-21). It had not: the
     /// filter emptied the slate where you already were.
     ///
-    /// A transition on each branch overrides the inherited one. Vertical,
-    /// because that is what the change is: the slate collapses to nothing
-    /// and the empty state takes its place, in the same day, on the spot.
+    /// A transition on each branch overrides the inherited one — but only
+    /// the Live toggle on today wants a different one. A day change that
+    /// lands on an empty day is still a day change and still slides, so the
+    /// branches restate the inherited push rather than replacing it
+    /// wholesale (Andy, 2026-09-21, after the first cut collapsed
+    /// everything vertically).
     private var slate: some View {
         let sections = self.sections
         if sections.isEmpty {
             emptyState
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(slateTransition)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -558,8 +580,17 @@ struct ScoresScreen: View {
             // The other half of the pair above: both branches have to name
             // a transition, or the one that doesn't still inherits the
             // day-change push and the swap reads as half sideways.
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .transition(slateTransition)
         }
+    }
+
+    /// Vertical only for the Live toggle on today; the day change's own
+    /// push otherwise, which is what these branches inherited before they
+    /// named anything.
+    private var slateTransition: AnyTransition {
+        liveCollapse
+            ? .move(edge: .top).combined(with: .opacity)
+            : .push(from: daySlideEdge)
     }
 
     /// The incoming pane during a day drag. Render-only — no scrolling,
