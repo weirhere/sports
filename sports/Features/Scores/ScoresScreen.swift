@@ -122,6 +122,9 @@ struct ScoresScreen: View {
                 // because its travel is horizontal, where the container
                 // already reaches both edges of the screen.
                 .clipped()
+                // The slate's ground, held by the container so nothing that
+                // slides can take it with it.
+                .background(Color.bgRecessed)
                 .background(
                     GeometryReader { proxy in
                         Color.clear.onAppear { paneWidth = proxy.size.width }
@@ -482,10 +485,16 @@ struct ScoresScreen: View {
     /// first-load skeleton. `bgRecessed` is painted once out here so every
     /// one of those stands on the same ground — an empty day used to fall
     /// through to the window's `bgPrimary` and read as a different screen.
+    /// No background here — it belongs to the container (Andy, 2026-09-21).
+    ///
+    /// `bgRecessed` used to ride on this view, which is the one that
+    /// transitions, so the ground moved with the slate: a full-screen grey
+    /// rectangle sliding in over the white `bgPrimary` behind it. The grey
+    /// was the same grey the whole time, and it should never have been
+    /// something that arrives.
     private var content: some View {
         slate
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.bgRecessed)
     }
 
     @ViewBuilder

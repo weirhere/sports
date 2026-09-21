@@ -49,6 +49,11 @@ struct DayStrip: View {
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm)
             }
+            // Today's chip becomes "Ongoing" inside the Live toggle's
+            // `withAnimation`, and inherited it — so the word grew and the
+            // strip shuffled (Andy, 2026-09-21). It is a relabel, not a
+            // move: it snaps.
+            .animation(nil, value: liveOnly)
             .onAppear {
                 if let selectedId {
                     proxy.scrollTo(selectedId, anchor: .center)
