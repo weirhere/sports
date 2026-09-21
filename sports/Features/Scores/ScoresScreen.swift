@@ -33,6 +33,14 @@ struct ScoresScreen: View {
     /// would be a lie (Andy, 2026-09-21). Every other swap is a day change
     /// and keeps the horizontal push it has always had.
     @State private var liveCollapse = false
+
+    /// The Live toggle's own animation, and it is fast on purpose (Andy,
+    /// 2026-09-21: *"way too much of a delay"*). `withAnimation` with no
+    /// argument is a spring, and a spring's settle is exactly the drifting
+    /// tail that read as a delay and a dissolve — on a filter the whole
+    /// point of which is answering "who is playing right now" in one thumb.
+    /// 0.18s, eased out: gone before it can be watched.
+    private static let filterAnimation: Animation = .easeOut(duration: 0.18)
     @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
@@ -265,13 +273,13 @@ struct ScoresScreen: View {
         // the day; off today the tap is a trip home and slides like one.
         liveCollapse = scoreboards.isOnToday
         guard uiState.liveOnly(on: scoreboards.selectedDay) else {
-            withAnimation { uiState.liveOnly = true }
+            withAnimation(Self.filterAnimation) { uiState.liveOnly = true }
             guard !scoreboards.isOnToday else { return }
             daySlideAnimation = nil
             Task { await scoreboards.selectToday() }
             return
         }
-        withAnimation { uiState.liveOnly = false }
+        withAnimation(Self.filterAnimation) { uiState.liveOnly = false }
     }
 
     /// The way back to today: centred over the slate, just above the tab
@@ -597,8 +605,14 @@ struct ScoresScreen: View {
     /// push otherwise, which is what these branches inherited before they
     /// named anything.
     private var slateTransition: AnyTransition {
+        // Asymmetric, because moving *both* halves from the same edge is
+        // what made this read as a shift and a dissolve: the outgoing
+        // slate and the incoming empty state slid over each other while
+        // both faded. The slate leaves upward — a collapse — and what
+        // replaces it simply appears.
         liveCollapse
-            ? .move(edge: .top).combined(with: .opacity)
+            ? .asymmetric(insertion: .opacity,
+                          removal: .move(edge: .top).combined(with: .opacity))
             : .push(from: daySlideEdge)
     }
 
