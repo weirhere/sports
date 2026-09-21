@@ -37,25 +37,66 @@ struct HeroTabBar<T: HeroTabItem>: View {
     /// holds every one of those numbers to the surface it was measured on.
     private var inactiveInk: Color { .textSecondary }
 
+    /// The row scrolls itself, and carries its own `Spacing.lg` gutter.
+    ///
+    /// A five-tab team page — Overview, Games, Standings, Roster,
+    /// Trophies — measures wider than an iPhone's content width at bold 14
+    /// with 40pt gaps, so as a bare `HStack` it **wrapped**: "Overvie/w",
+    /// "Standi/ngs" (Andy, 2026-09-21, screenshot). Wrapping was the worse
+    /// half of the prediction in BACKLOG E5, which expected compression —
+    /// a truncated label keeps its row height where a wrapped one doesn't,
+    /// and this row is a pinned section header (2026-09-05), so the strip
+    /// content slides under was changing height.
+    ///
+    /// The web strip took the same fix a day earlier (`docs/decisions.md`
+    /// 2026-09-20) and its two rules carry over. The gutter lives on the
+    /// content rather than the scroller so tabs scroll out at the
+    /// **surface** edge instead of being sliced off 16pt short of it —
+    /// callers hand this an unpadded surface and keep painting their own
+    /// background full-bleed. And `lineLimit(1)` + `fixedSize` make the
+    /// labels refuse to squeeze: the row overflows into its scroller
+    /// rather than compressing, which is the failure that stays legible.
+    ///
+    /// `scrollBounceBehavior(.basedOnSize)` so a row that fits doesn't
+    /// rubber-band. A scroller says there is more here, and on the three-tab
+    /// conference, poll and game pages there isn't — the standings table's
+    /// rule (2026-09-13), applied to the control instead of the table.
     var body: some View {
-        HStack(spacing: 40) {
-            ForEach(tabs, id: \.self) { tab in
-                Button {
-                    onSelect(tab)
-                } label: {
-                    Text(tab.title)
-                        .font(.tab)
-                        .tracking(-0.28)
-                        .foregroundStyle(selection == tab ? Color.textPrimary : inactiveInk)
-                        .padding(.vertical, 14)
-                        .contentShape(Rectangle())
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 40) {
+                    ForEach(tabs, id: \.self) { tab in
+                        Button {
+                            onSelect(tab)
+                        } label: {
+                            Text(tab.title)
+                                .font(.tab)
+                                .tracking(-0.28)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .foregroundStyle(selection == tab ? Color.textPrimary : inactiveInk)
+                                .padding(.vertical, 14)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .id(tab)
+                        // "Games" is also the first root tab, so a bare title match
+                        // is ambiguous the moment an entity page is pushed — the
+                        // root tab bar never leaves the tree.
+                        .accessibilityIdentifier("hero-tab-\(tab.title.lowercased())")
+                        .accessibilityAddTraits(selection == tab ? [.isSelected] : [])
+                    }
                 }
-                .buttonStyle(.plain)
-                // "Games" is also the first root tab, so a bare title match
-                // is ambiguous the moment an entity page is pushed — the
-                // root tab bar never leaves the tree.
-                .accessibilityIdentifier("hero-tab-\(tab.title.lowercased())")
-                .accessibilityAddTraits(selection == tab ? [.isSelected] : [])
+                .padding(.horizontal, Spacing.lg)
+            }
+            .accessibilityIdentifier("hero-tab-row")
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            // Jump on first paint, animate afterwards — the DayStrip rule,
+            // so a tab restored off-screen is simply already in view rather
+            // than sliding in front of someone who didn't ask for motion.
+            .onAppear { proxy.scrollTo(selection, anchor: .center) }
+            .onChange(of: selection) { _, newValue in
+                withAnimation { proxy.scrollTo(newValue, anchor: .center) }
             }
         }
     }

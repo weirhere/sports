@@ -10,13 +10,20 @@ import XCTest
 /// the labels instead. The question this answers is which, and whether a
 /// user ever sees it.
 ///
-/// It is a measurement, not a regression guard. A pass says the row fits
-/// at this text size on this device; it does not say a `ScrollView` is
-/// unnecessary at every size on every device, which is what the backlog
-/// item actually asks. Run it at `large` and again at an accessibility
-/// size, and read the attached screenshot alongside the numbers — a
-/// truncated label still reports its full string through `label`, so the
-/// ellipsis is visible to the eye and to nothing else.
+/// **Rewritten 2026-09-21, when the question got answered.** Andy's
+/// screenshot showed the row *wrapping* — "Overvie/w", "Standi/ngs" —
+/// rather than truncating, and `HeroTabBar` became a horizontal
+/// `ScrollView`. So "does the row fit?" is no longer the question: it
+/// deliberately does not fit, and that is now correct. What must hold
+/// instead is that the labels are never squeezed to buy the fit (the
+/// 40pt gaps are the tell, and `fixedSize` makes them rigid) and that a
+/// tab scrolled off the edge is still reachable.
+///
+/// Still a measurement as much as a guard: the frames go in the log on
+/// every run. Run it at `large` and again at an accessibility size, and
+/// read the attached screenshot alongside the numbers — a truncated label
+/// still reports its full string through `label`, so an ellipsis is
+/// visible to the eye and to nothing else.
 ///
 ///     xcrun simctl ui <udid> content_size large
 ///     xcodebuild test -scheme sports \
@@ -79,22 +86,31 @@ final class HeroTabFitUITests: XCTestCase {
 
         guard let first = frames.first, let last = frames.last else { return }
 
-        // Clipping: a row wider than the screen, with the far end off it.
+        // The row starts at the leading edge. It may well end past the
+        // trailing one — that is the scroller doing its job — but nothing
+        // should begin off the left of the screen at rest.
         XCTAssertGreaterThanOrEqual(
             first.frame.minX, window.minX,
-            "\"\(first.title)\" starts off the left edge — the row is clipped")
-        XCTAssertLessThanOrEqual(
-            last.frame.maxX, window.maxX,
-            """
-            "\(last.title)" ends at \(last.frame.maxX) past the screen's \
-            \(window.maxX) — the row is wider than the phone. This is the \
-            iOS half of the 2026-09-20 web bug (BACKLOG E5).
-            """)
+            "\"\(first.title)\" starts off the left edge")
 
-        // Compression: the `HStack` holds 40pt spacing rigid, so a row that
-        // has to fit takes it out of the labels. Gaps that measure right
-        // while the row still spans the full screen is what a squeeze looks
-        // like from here; the screenshot shows the ellipses.
+        // No wrapping. `Games` is the shortest label and the last to wrap,
+        // so every tab matching its height is the cheap proof that none of
+        // them broke onto a second line — the exact failure Andy shot on
+        // 2026-09-21, where even "Game/s" had split.
+        let single = frames.map(\.frame.height).min() ?? 0
+        for (title, frame) in frames {
+            XCTAssertEqual(
+                frame.height, single, accuracy: 1,
+                """
+                "\(title)" is \(frame.height)pt tall against a single-line \
+                \(single)pt — the label wrapped. HeroTabBar's lineLimit(1) \
+                and fixedSize are what stop this.
+                """)
+        }
+
+        // No compression. `fixedSize` means the labels refuse to squeeze, so
+        // the 40pt gaps must survive intact; a gap that measures short is
+        // the row buying its fit out of the text instead of scrolling.
         for (before, after) in zip(frames, frames.dropFirst()) {
             let gap = after.frame.minX - before.frame.maxX
             XCTAssertEqual(
@@ -103,6 +119,23 @@ final class HeroTabFitUITests: XCTestCase {
                 Gap between "\(before.title)" and "\(after.title)" is \(gap), \
                 not \(tabSpacing) — the row is being squeezed to fit.
                 """)
+        }
+
+        // Reachability: whatever hangs off the trailing edge must still be
+        // gettable. This is the assertion that earns the ScrollView — a row
+        // that overflows without scrolling would pass everything above.
+        if last.frame.maxX > window.maxX {
+            let row = app.scrollViews["hero-tab-row"]
+            XCTAssertTrue(row.exists, "The hero tab row should be a scroller")
+            row.swipeLeft()
+            let trailing = app.buttons["hero-tab-\(last.title.lowercased())"]
+            XCTAssertTrue(trailing.waitForExistence(timeout: 5),
+                          "\"\(last.title)\" should survive the scroll")
+            XCTAssertTrue(trailing.isHittable,
+                          """
+                          "\(last.title)" is still not hittable after scrolling \
+                          the row — it overflows and cannot be reached.
+                          """)
         }
     }
 }
