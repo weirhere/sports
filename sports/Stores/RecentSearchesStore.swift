@@ -81,6 +81,14 @@ final class RecentSearchesStore {
         persist()
     }
 
+    /// Drops one entry — the dismiss affordance on its row (Andy,
+    /// 2026-09-21). Keyed on `id` rather than equality so a player whose
+    /// stored snapshot has drifted still matches the row you tapped.
+    func remove(_ entry: Entry) {
+        entries.removeAll { $0.id == entry.id }
+        persist()
+    }
+
     func clear() {
         entries = []
         persist()

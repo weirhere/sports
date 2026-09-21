@@ -69,13 +69,18 @@ struct AddTeamsSheet: View {
                 }
                 .padding(Spacing.sm)
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
+            // Bottom, not top (Andy, 2026-09-21) — the same move the search
+            // page made the same day, for the same reason: with the keyboard
+            // up, a field pinned to the top is the farthest point on screen
+            // from the thumb typing into it. `safeAreaInset` lifts it with
+            // the keys instead of letting them cover it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 SearchField(text: $searchText, prompt: "Find a team",
                             identifier: "search.addTeams")
                     .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.xs)
-                    .padding(.bottom, Spacing.sm)
-                    .background(Color.bgRecessed)
+                    .padding(.top, Spacing.sm)
+                    .padding(.bottom, Spacing.xs)
+                    .background(.bar)
             }
         }
     }

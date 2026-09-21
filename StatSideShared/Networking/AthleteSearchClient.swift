@@ -124,3 +124,85 @@ nonisolated extension PlayerIdentity {
             .flatMap { $0.isEmpty ? nil : $0 }
     }
 }
+
+// MARK: - Athlete profile
+
+/// The facts behind a player page, for the door that arrives without them.
+///
+/// A player reached from a roster already carries height, weight, position
+/// and the rest — the roster row had them, and `PlayerIdentity` brings them
+/// through the push. A player reached from **search** carries a name, a
+/// league, a club and a headshot, and nothing else: ESPN's search index does
+/// not serve a body. So the page opened empty (Andy, 2026-09-21: *"the
+/// player page has no information"*).
+///
+/// This is the fetch that fills it. `web/src/lib/player-profile.ts` says in
+/// its own header that no athlete endpoint had been proved out — that was
+/// true when it was written and stopped being true on 2026-09-21, when
+/// `scripts/probe-athlete.sh` finally ran and answered 200 in every league.
+/// The web twin can drop its caveat whenever someone ports this.
+nonisolated struct AthleteProfileClient {
+    private let session: URLSession
+    private let decoder = JSONDecoder()
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    /// Fills in everything a search result couldn't carry. Returns the
+    /// identity unchanged on any failure: a page that shows a name and a
+    /// club is the state we started from, and an error banner over it would
+    /// be louder than the thing it is apologising for.
+    func filling(_ player: PlayerIdentity) async -> PlayerIdentity {
+        let league = player.league
+        let url = URL(string: "https://site.web.api.espn.com/apis/common/v3/sports/"
+                      + "\(league.sportSegment)/\(league.pathSegment)/athletes/\(player.athleteId)")
+        guard let url else { return player }
+        guard let (data, _) = try? await session.data(from: url),
+              let payload = try? decoder.decode(AthleteProfileResponseDTO.self, from: data),
+              let athlete = payload.athlete
+        else { return player }
+
+        var filled = player
+        filled.jersey = filled.jersey ?? athlete.jersey
+        filled.position = filled.position ?? athlete.position?.abbreviation
+        filled.positionName = filled.positionName ?? athlete.position?.displayName
+        filled.height = filled.height ?? athlete.displayHeight
+        filled.weight = filled.weight ?? athlete.displayWeight
+        filled.headshotURL = filled.headshotURL ?? athlete.headshot?.href
+        // `status` is the roster's injury line in the other door's data, and
+        // ESPN says "Active" here for everyone who isn't hurt — which is not
+        // a fact worth a row of its own.
+        if let status = athlete.status?.type, status != "active" {
+            filled.injuryStatus = filled.injuryStatus ?? athlete.status?.name
+        }
+        return filled
+    }
+}
+
+nonisolated struct AthleteProfileResponseDTO: Decodable {
+    let athlete: ProfileAthleteDTO?
+}
+
+nonisolated struct ProfileAthleteDTO: Decodable {
+    let jersey: String?
+    let displayHeight: String?
+    let displayWeight: String?
+    let position: ProfilePositionDTO?
+    let headshot: ProfileHeadshotDTO?
+    let status: ProfileStatusDTO?
+}
+
+nonisolated struct ProfilePositionDTO: Decodable {
+    let abbreviation: String?
+    let displayName: String?
+}
+
+nonisolated struct ProfileHeadshotDTO: Decodable {
+    let href: URL?
+}
+
+nonisolated struct ProfileStatusDTO: Decodable {
+    let name: String?
+    let type: String?
+}

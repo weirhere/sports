@@ -22,6 +22,14 @@ struct SearchScreen: View {
     @State private var athleteSearch = AthleteSearchStore()
 
     @State private var searchText = ""
+    @State private var scope: SearchScope = .all
+
+    /// The Leagues accordion header's height (Andy, 2026-09-21: *"make the
+    /// search cards taller (like the league accordions)"*) — 34pt of
+    /// content plus its 7pt and `Spacing.xs` paddings. A minimum, never a
+    /// fixed height, so a two-line row at accessibility sizes can outgrow
+    /// it rather than clip.
+    private static let cardHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
 
     /// Every college football team the app has a page for — FBS and FCS
     /// both, since the directory is division-complete for the sport.
@@ -42,24 +50,37 @@ struct SearchScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: Spacing.md) {
-                SearchField(text: $searchText,
-                            prompt: "Teams, conferences, games",
-                            focusOnAppear: true,
-                            identifier: "search.appWide")
-                Button("Cancel", action: onCancel)
-                    .font(.chip)
-                    .foregroundStyle(.textPrimary)
-                    .buttonStyle(.plain)
-            }
-            .padding(.horizontal, Spacing.sm)
-            .padding(.vertical, Spacing.sm)
+            PageHeader("Search")
+            SearchScopePills(selection: scope) { scope = $0 }
             content
         }
         .background(Color.bgRecessed)
+        // The field rides the bottom, above the keyboard rather than a
+        // screen away from it (Andy, 2026-09-21). `safeAreaInset` is what
+        // makes that true of the keyboard as well as the home indicator:
+        // the content above keeps its own scrollable height and the field
+        // lifts with the keys instead of being covered by them.
+        .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
         .onChange(of: searchText) { _, text in
             athleteSearch.search(text, collegeTeamsInScope: collegeTeamNames)
         }
+    }
+
+    /// The field and the way out, at the foot of the screen.
+    private var searchBar: some View {
+        HStack(spacing: Spacing.md) {
+            SearchField(text: $searchText,
+                        prompt: "Teams, players, conferences, games",
+                        focusOnAppear: true,
+                        identifier: "search.appWide")
+            Button("Cancel", action: onCancel)
+                .font(.chip)
+                .foregroundStyle(.textPrimary)
+                .buttonStyle(.plain)
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .background(.bar)
     }
 
     @ViewBuilder
@@ -70,12 +91,12 @@ struct SearchScreen: View {
             // The sentence is kept for the one run where it is still true:
             // before anything has been opened there is nothing to hand back
             // and the corpus is worth naming (Andy, 2026-09-21).
-            if resolvedRecents.isEmpty {
+            if scopedRecents.isEmpty {
                 centeredMessage("Search teams, conferences, and this week's games")
             } else {
                 recentsList
             }
-        } else if results.isEmpty, athleteSearch.athletes.isEmpty {
+        } else if visibleResultsAreEmpty {
             // Not "no results" while the network half is still out — that
             // sentence would be true for a beat and then wrong, which is
             // worse than saying nothing.
@@ -84,74 +105,92 @@ struct SearchScreen: View {
                             : "No results for “\(trimmed)”")
         } else {
             ScrollView {
+                // One card per result, not one card per section (Andy,
+                // 2026-09-21). A game and a team are different shapes, and
+                // a shared card made them read as one list of one kind of
+                // thing. The scope pills carry the taxonomy the section
+                // headings used to.
                 LazyVStack(spacing: Spacing.sm) {
-                    if !results.teams.isEmpty {
-                        resultSection("Teams") {
-                            // Keyed on the follow key, never `Team.id`: the
-                            // bare ESPN id collides across leagues, and this
-                            // is the one list in the app that always spans
-                            // them. Two teams sharing an identity here let
-                            // SwiftUI reuse one row's state for the other as
-                            // the query changes — which is why the Bills'
-                            // row wore Auburn's mark, both being id 2 (Andy,
-                            // 2026-09-06). A query matching both at once
-                            // would corrupt the layout outright.
-                            ForEach(results.teams, id: \.followKey) { team in
-                                SearchTeamRow(team: team, leagueTag: team.league)
-                                { select(team) }
-                            }
+                    if shows(.teams) {
+                        // Keyed on the follow key, never `Team.id`: the
+                        // bare ESPN id collides across leagues, and this
+                        // is the one list in the app that always spans
+                        // them. Two teams sharing an identity here let
+                        // SwiftUI reuse one row's state for the other as
+                        // the query changes — which is why the Bills'
+                        // row wore Auburn's mark, both being id 2 (Andy,
+                        // 2026-09-06). A query matching both at once
+                        // would corrupt the layout outright.
+                        ForEach(results.teams, id: \.followKey) { team in
+                            SearchTeamRow(team: team) { select(team) }
+                                .frame(minHeight: Self.cardHeight)
+                                .cardSurface()
                         }
                     }
-                    if !results.conferences.isEmpty {
-                        resultSection("Conferences") {
-                            ForEach(results.conferences, id: \.rowId) { conference in
-                                SearchConferenceRow(conference: conference) { select(conference) }
-                            }
+                    if shows(.conferences) {
+                        ForEach(results.conferences, id: \.rowId) { conference in
+                            SearchConferenceRow(conference: conference) { select(conference) }
+                                .frame(minHeight: Self.cardHeight)
+                                .cardSurface()
                         }
                     }
-                    if !athleteSearch.athletes.isEmpty {
-                        // Above the games and below the teams: a name query
-                        // wants the person, a place query wants the club,
-                        // and the slate is the one section that is about
-                        // today rather than about the query.
-                        resultSection("Players") {
-                            ForEach(athleteSearch.athletes) { player in
-                                SearchPlayerRow(player: player) { select(player) }
-                            }
+                    if shows(.players) {
+                        ForEach(athleteSearch.athletes) { player in
+                            SearchPlayerRow(player: player) { select(player) }
+                                .frame(minHeight: Self.cardHeight)
+                                .cardSurface()
                         }
                     }
-                    if !results.games.isEmpty {
-                        resultSection("This Week") {
-                            ForEach(results.games) { game in
-                                Button { select(game) } label: {
-                                    GameRow(game: game)
-                                }
-                                .buttonStyle(.plain)
+                    if shows(.games) {
+                        ForEach(results.games) { game in
+                            Button { select(game) } label: {
+                                GameRow(game: game)
                             }
+                            .buttonStyle(.plain)
+                            .frame(minHeight: Self.cardHeight)
+                            .cardSurface()
                         }
                     }
                 }
-                .padding(Spacing.sm)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
             }
             .scrollDismissesKeyboard(.immediately)
         }
     }
 
+    /// Whether a kind of result belongs in the list right now. `all` shows
+    /// everything; any other pill shows only its own.
+    private func shows(_ kind: SearchScope) -> Bool {
+        scope == .all || scope == kind
+    }
+
+    /// True when the visible scope has nothing in it — which is not the
+    /// same as the query having no matches. Narrowed to Players, a query
+    /// that found three teams and no people is empty *here*, and saying so
+    /// beats an empty screen with no explanation.
+    private var visibleResultsAreEmpty: Bool {
+        let teams = shows(.teams) && !results.teams.isEmpty
+        let conferences = shows(.conferences) && !results.conferences.isEmpty
+        let players = shows(.players) && !athleteSearch.athletes.isEmpty
+        let games = shows(.games) && !results.games.isEmpty
+        return !(teams || conferences || players || games)
+    }
+
     /// A recent, resolved against the live directory. Persisted entries
     /// carry `(id, league)` only, so the row is drawn from today's `Team`
     /// rather than from a snapshot taken whenever it was tapped.
-    private enum ResolvedRecent: Identifiable {
-        case team(Team)
-        case conference(ConferenceTeams)
-        case player(PlayerIdentity)
+    private struct ResolvedRecent: Identifiable {
+        let entry: RecentSearchesStore.Entry
+        let kind: Kind
 
-        var id: String {
-            switch self {
-            case let .team(team): "team.\(team.followKey)"
-            case let .conference(conference): "conf.\(conference.rowId)"
-            case let .player(player): "player.\(player.id)"
-            }
+        enum Kind {
+            case team(Team)
+            case conference(ConferenceTeams)
+            case player(PlayerIdentity)
         }
+
+        var id: String { entry.id }
     }
 
     /// Entries the directory can still account for. One that resolves to
@@ -160,16 +199,16 @@ struct SearchScreen: View {
     /// whether a league is loaded yet, and a recent must not evaporate
     /// because the app was opened offline.
     private var resolvedRecents: [ResolvedRecent] {
-        recents.entries.compactMap { entry in
+        recents.entries.compactMap { entry -> ResolvedRecent? in
             switch entry {
             case let .team(id, league):
                 return directory.team(matching: TeamRef(id: id, league: league),
                                       followedKeys: following.teamKeys)
-                    .map(ResolvedRecent.team)
+                    .map { ResolvedRecent(entry: entry, kind: .team($0)) }
             case let .conference(id):
                 return directory.conferences(in: id.league)
                     .first { $0.id == id.id }
-                    .map(ResolvedRecent.conference)
+                    .map { ResolvedRecent(entry: entry, kind: .conference($0)) }
             case let .player(id, league, name, teamName, headshot):
                 // Already whole: the entry is the snapshot, so unlike the
                 // other two this resolves without asking anything.
@@ -177,7 +216,21 @@ struct SearchScreen: View {
                                             league: league, teamName: teamName,
                                             teamLogoURL: nil)
                 player.headshotURL = headshot
-                return ResolvedRecent.player(player)
+                return ResolvedRecent(entry: entry, kind: .player(player))
+            }
+        }
+    }
+
+    /// Recents, narrowed by the scope pills. Without this the pills looked
+    /// broken on the screen people see first: an empty query shows recents,
+    /// and recents ignored the filter entirely, so every pill rendered the
+    /// same list (Andy, 2026-09-21).
+    private var scopedRecents: [ResolvedRecent] {
+        resolvedRecents.filter { recent in
+            switch recent.kind {
+            case .team: shows(.teams)
+            case .conference: shows(.conferences)
+            case .player: shows(.players)
             }
         }
     }
@@ -185,30 +238,47 @@ struct SearchScreen: View {
     private var recentsList: some View {
         ScrollView {
             LazyVStack(spacing: Spacing.sm) {
-                resultSection("Recent", trailing: clearRecentsButton) {
-                    ForEach(resolvedRecents) { recent in
-                        switch recent {
-                        case let .team(team):
-                            SearchTeamRow(team: team, leagueTag: team.league) { select(team) }
-                        case let .conference(conference):
-                            SearchConferenceRow(conference: conference) { select(conference) }
-                        case let .player(player):
-                            SearchPlayerRow(player: player) { select(player) }
-                        }
+                ForEach(scopedRecents) { recent in
+                    HStack(spacing: 0) {
+                        row(for: recent.kind)
+                        dismissButton { recents.remove(recent.entry) }
                     }
+                    .frame(minHeight: Self.cardHeight)
+                    .cardSurface()
                 }
             }
-            .padding(Spacing.sm)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.sm)
         }
         .scrollDismissesKeyboard(.immediately)
     }
 
-    private var clearRecentsButton: some View {
-        Button("Clear") { recents.clear() }
-            .font(.chip)
-            .foregroundStyle(.textSecondary)
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("search.recents.clear")
+    @ViewBuilder
+    private func row(for kind: ResolvedRecent.Kind) -> some View {
+        switch kind {
+        case let .team(team):
+            SearchTeamRow(team: team) { select(team) }
+        case let .conference(conference):
+            SearchConferenceRow(conference: conference) { select(conference) }
+        case let .player(player):
+            SearchPlayerRow(player: player) { select(player) }
+        }
+    }
+
+    /// Clears one row from the list (Andy, 2026-09-21). Trailing, outside
+    /// the row's own button so a tap here can't be read as opening the
+    /// thing you meant to forget.
+    private func dismissButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 17))
+                .foregroundStyle(.textSecondary.opacity(0.5))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, Spacing.sm)
+        .accessibilityLabel("Remove from recent searches")
     }
 
     private func resultSection(_ title: String,

@@ -18,28 +18,21 @@ struct SearchPlayerRow: View {
     let player: PlayerIdentity
     let onSelect: () -> Void
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var headshotSize: CGFloat = 26
-
-    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: Spacing.md) {
                 headshot
-                if isStacked {
-                    VStack(alignment: .leading, spacing: 2) {
-                        nameText
-                        teamText
-                    }
-                } else {
+                // The club sits *under* the name, not beside it (Andy,
+                // 2026-09-21). A person and their team are one fact read
+                // top-down; side by side they compete for the same line and
+                // the longer of the two decides where the eye goes.
+                VStack(alignment: .leading, spacing: 2) {
                     nameText
                     teamText
                 }
                 Spacer(minLength: Spacing.sm)
-                Text(player.league.shortName)
-                    .font(.chip)
-                    .foregroundStyle(.textSecondary)
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.md)

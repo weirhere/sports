@@ -12,7 +12,16 @@ import SwiftUI
 /// rows avoided by not being links in the first place. The tab row appears
 /// here the moment a second tab can be filled.
 struct PlayerPage: View {
+    /// What the door that opened this page knew. A roster row knows
+    /// everything; a search result knows a name, a league and a club.
     let player: PlayerIdentity
+
+    /// The same person, with whatever the athlete endpoint could add. Starts
+    /// as `player` so the page paints immediately and fills in behind —
+    /// there is never a spinner over facts that are already on screen.
+    @State private var filled: PlayerIdentity?
+
+    private var shown: PlayerIdentity { filled ?? player }
 
     var body: some View {
         ScrollView {
@@ -25,6 +34,13 @@ struct PlayerPage: View {
         }
         .background(Color.bgRecessed)
         .navigationBarTitleDisplayMode(.inline)
+        // Only when the door left the page empty. Arriving from a roster,
+        // every row is already here and the request would buy nothing —
+        // the API rules say be a polite guest (Andy, 2026-09-21).
+        .task {
+            guard player.profileRows.isEmpty else { return }
+            filled = await AthleteProfileClient().filling(player)
+        }
     }
 
     /// The team page's hero, addressed to a person: the photo at page scale
@@ -41,12 +57,12 @@ struct PlayerPage: View {
             headshot
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(player.name)
+                Text(shown.name)
                     .font(.heroTitle)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
-                    .accessibilityLabel(player.spokenSummary)
+                    .accessibilityLabel(shown.spokenSummary)
                 metaRow
             }
             Spacer(minLength: 0)
@@ -61,12 +77,12 @@ struct PlayerPage: View {
     /// than drawing a second kind of pill.
     private var metaRow: some View {
         HStack(spacing: Spacing.xs) {
-            if let logo = player.teamLogoURL {
+            if let logo = shown.teamLogoURL {
                 LogoImage(url: logo)
                     .frame(width: 16, height: 16)
                     .accessibilityHidden(true)
             }
-            if let team = player.team, let title = teamBadgeTitle {
+            if let team = shown.team, let title = teamBadgeTitle {
                 NavigationLink(value: team) {
                     // `.bgCard`, not the default: this hero sits on
                     // `bgRecessed`, which is what the default fills with.
@@ -92,8 +108,8 @@ struct PlayerPage: View {
     /// row, whenever that door opens — keeps the name in the line instead of
     /// drawing a badge that pushes nothing.
     private var teamBadgeTitle: String? {
-        guard player.team != nil,
-              let name = player.teamName, !name.isEmpty else { return nil }
+        guard shown.team != nil,
+              let name = shown.teamName, !name.isEmpty else { return nil }
         return name
     }
 
@@ -107,7 +123,7 @@ struct PlayerPage: View {
     /// right asset: a roster shows a hundred of these discs and asks the CDN
     /// combiner for thumbnails, a page shows one.
     private var headshot: some View {
-        LogoImage(url: player.headshotURL, placeholder: nil, contentMode: .fill)
+        LogoImage(url: shown.headshotURL, placeholder: nil, contentMode: .fill)
             .frame(width: 76, height: 76)
             .background(Circle().fill(Color.bgElevated))
             .clipShape(Circle())
@@ -117,7 +133,7 @@ struct PlayerPage: View {
     /// same fact about a team read in one language.
     @ViewBuilder
     private var profileCard: some View {
-        let rows = player.profileRows
+        let rows = shown.profileRows
         if !rows.isEmpty {
             VStack(spacing: 0) {
                 CardHeader(title: "Profile")

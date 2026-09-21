@@ -69,6 +69,17 @@ struct TeamsScreen: View {
             resolvePendingTeam()
             resolvePendingConference()
         }
+        // Also on appear, not only on change: a tab's content is not built
+        // until the tab is first selected, so an intent set from Search
+        // changes `router` *before* this view exists and its `onChange`
+        // never fires. The team path got away with it because Teams is
+        // usually already built by the time you search; a player intent
+        // from a cold Search tab had nothing listening (Andy, 2026-09-21).
+        .onAppear {
+            resolvePendingPlayer()
+            resolvePendingTeam()
+            resolvePendingConference()
+        }
         .onChange(of: router.pendingTeam) { _, _ in resolvePendingTeam() }
         .onChange(of: router.pendingPlayer) { _, _ in resolvePendingPlayer() }
         .onChange(of: router.pendingConferenceId) { _, _ in resolvePendingConference() }
@@ -81,10 +92,6 @@ struct TeamsScreen: View {
         }
     }
 
-    /// Lands a deep-linked or searched team once the directory is loaded;
-    /// an unknown id degrades to landing on the Teams tab.
-    ///
-    /// The match is league-qualified — see `TeamDirectoryStore.team(matching:)`.
     /// Unlike a team or a conference, nothing is looked up: search hands
     /// over the whole `PlayerIdentity`, because there is no athlete
     /// directory for an id to be resolved against (2026-09-21).
@@ -94,6 +101,10 @@ struct TeamsScreen: View {
         path.append(player)
     }
 
+    /// Lands a deep-linked or searched team once the directory is loaded;
+    /// an unknown id degrades to landing on the Teams tab.
+    ///
+    /// The match is league-qualified — see `TeamDirectoryStore.team(matching:)`.
     private func resolvePendingTeam() {
         guard let pending = router.pendingTeam,
               let team = directory.team(matching: pending,
@@ -168,10 +179,15 @@ struct TeamsScreen: View {
             Image(systemName: "plus")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(Color.textPrimary)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        // The circle it had under the system toolbar, kept rather than
+        // lost to the custom header (Andy, 2026-09-21). It is the hero
+        // nav buttons' surface and the search tab's, so the plus reads as
+        // the same class of control it always did.
+        .glassCircleInteractive(fallback: Color.bgElevated)
         .accessibilityLabel("Add teams")
     }
 
