@@ -334,15 +334,15 @@ private func game(status: GameStatus,
                                         conferenceId: conference, league: league))
         }
         #expect(card("5", "Cleveland", in: .nba, conference: 5).spokenLabel
-                == "Cleveland, NBA Eastern")
+                == "Cleveland, NBA • Eastern")
         #expect(card("20", "Tampa Bay", in: .nhl, conference: 7).spokenLabel
-                == "Tampa Bay, NHL Eastern")
+                == "Tampa Bay, NHL • Eastern")
         #expect(card("194", "Ohio State", in: .collegeFootball, conference: 5).spokenLabel
-                == "Ohio State, CFB Big Ten")
+                == "Ohio State, NCAAF • Big Ten")
         // The NFL's group is its division, and a team the tables don't
         // know keeps its name alone.
         #expect(card("2", "Buffalo", in: .nfl, conference: 8).spokenLabel
-                == "Buffalo, NFL AFC East")
+                == "Buffalo, NFL • AFC East")
         #expect(card("179", "Tennessee State", in: .collegeFootball,
                      conference: 999).spokenLabel == "Tennessee State")
     }

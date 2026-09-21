@@ -625,8 +625,8 @@ private func fixture(_ name: String) throws -> Data {
     /// football, and it never says "shootout" — a shootout arrives as a
     /// final, never as a running clock.
     @Test func theLiveClockUsesTheLeaguesOwnPeriodLetter() {
-        #expect(GameStatus.periodLabel(2, in: .nhl) == "P2")
-        #expect(GameStatus.periodLabel(2, in: .nba) == "Q2")
+        #expect(GameStatus.periodLabel(2, in: .nhl) == "2nd")
+        #expect(GameStatus.periodLabel(2, in: .nba) == "2nd")
         #expect(GameStatus.periodLabel(4, in: .nhl) == "OT")
         #expect(GameStatus.periodLabel(5, in: .nhl) == "2OT")
         #expect(GameStatus.periodLabel(5, in: .nba) == "OT")

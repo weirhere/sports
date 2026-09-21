@@ -81,8 +81,8 @@ nonisolated enum GameStatus: Hashable, Sendable {
     /// Postponed, canceled, or anything ESPN invents later. Renders its detail.
     case other(detail: String?)
 
-    /// The live status line every surface renders — "Q3 5:24", "Half",
-    /// "End Q1", "OT 0:48" — nil unless the game is live. One formatter so
+    /// The live status line every surface renders — "5:24 • 3rd", "Half",
+    /// "End 1st", "0:48 • OT" — nil unless the game is live. One formatter so
     /// the row, detail header, widget, share text, and share card can't
     /// drift apart again; callers supply their own fallback for the rare
     /// live game with nothing to say (`?? "Live"`).
@@ -97,22 +97,45 @@ nonisolated enum GameStatus: Hashable, Sendable {
             // clock; the period alone carries the truth.
             return period.map { "End \(label($0))" } ?? detail
         case .playing:
-            let line = [period.map(label), clock].compactMap(\.self).joined(separator: " ")
+            // Clock first, then the period, with a bullet between (Andy,
+            // 2026-09-21). The clock is the part that changes and the part
+            // a glance is looking for; the period qualifies it. Either half
+            // can be missing, and the separator goes with it.
+            let line = [clock, period.map(label)].compactMap(\.self).joined(separator: " • ")
             return line.isEmpty ? detail : line
         }
     }
 
-    /// "Q3" in football and basketball, "P2" in hockey, and past
-    /// regulation whatever the overtime count is.
+    /// "3rd" in every league, and past regulation whatever the overtime
+    /// count is.
+    ///
+    /// **An ordinal, not "Q3" or "P2"** (Andy, 2026-09-21). The letter was
+    /// doing two jobs — naming the unit and numbering it — and the unit is
+    /// something a fan of the sport already knows: nobody watching hockey
+    /// needs to be told the thing being counted is a period. The ordinal
+    /// numbers it and says nothing else, which also means one spelling
+    /// across four leagues where there used to be two.
     ///
     /// No shootout label here on purpose: the status line only renders
     /// while a game is live, and a shootout arrives as a final. If one ever
     /// does show live, "1OT" is a wrong word rather than a wrong number.
     static func periodLabel(_ period: Int, in league: League = .collegeFootball) -> String {
         let format = league.periodFormat
-        if period <= format.regulationCount { return "\(format.shortName)\(period)" }
+        if period <= format.regulationCount { return ordinal(period) }
         if period == format.regulationCount + 1 { return "OT" }
         return "\(period - format.regulationCount)OT"
+    }
+
+    /// Regulation only, so the table covers every case a period can be:
+    /// four quarters, three periods, and nothing else reaches here.
+    private static func ordinal(_ value: Int) -> String {
+        switch value {
+        case 1: "1st"
+        case 2: "2nd"
+        case 3: "3rd"
+        case 4: "4th"
+        default: "\(value)th"
+        }
     }
 }
 

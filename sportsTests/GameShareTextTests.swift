@@ -78,7 +78,7 @@ private func game(status: GameStatus, awayScore: Int? = nil, homeScore: Int? = n
                         awayScore: 24, homeScore: 17).shareText
         #expect(text.contains("Georgia 24"))
         #expect(text.contains("Tennessee 17"))
-        #expect(text.contains("Q3 5:24"))
+        #expect(text.contains("5:24 • 3rd"))
     }
 
     @Test func halftimeSharesAsHalfNotQ2Zero() {
