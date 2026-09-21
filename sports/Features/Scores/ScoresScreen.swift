@@ -39,8 +39,9 @@ struct ScoresScreen: View {
     /// argument is a spring, and a spring's settle is exactly the drifting
     /// tail that read as a delay and a dissolve — on a filter the whole
     /// point of which is answering "who is playing right now" in one thumb.
-    /// 0.18s, eased out: gone before it can be watched.
-    private static let filterAnimation: Animation = .easeOut(duration: 0.18)
+    /// 0.12s, eased out: gone before it can be watched (Andy's number
+    /// after feeling 0.18).
+    private static let filterAnimation: Animation = .easeOut(duration: 0.12)
     @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
