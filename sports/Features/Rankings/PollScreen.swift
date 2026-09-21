@@ -263,10 +263,10 @@ struct PollScreen: View {
     }
 
     private var tabRow: some View {
+        // Unpadded: HeroTabBar carries its own gutter so tabs scroll out
+        // at the surface edge (2026-09-21).
         HeroTabBar(tabs: availableTabs, selection: tab,
                    onSelect: { select(tab: $0) })
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Spacing.lg)
             .background(Color.bgCard)
     }
 
