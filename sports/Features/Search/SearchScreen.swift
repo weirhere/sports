@@ -24,6 +24,18 @@ struct SearchScreen: View {
     @State private var searchText = ""
     @State private var scope: SearchScope = .all
 
+    /// Whether the field holds focus right now — a live mirror of
+    /// `SearchField`'s own state, which is private to it.
+    @State private var fieldFocused = false
+    /// What the keyboard should do when this screen next appears. True on
+    /// first open, then whatever it was at the moment a result was tapped.
+    ///
+    /// Two pieces of state rather than one, because the field reports
+    /// `false` on its way out of the tree: reading the live mirror on
+    /// return would always say the keyboard was down. The snapshot is taken
+    /// in `select` while the field is still there (Andy, 2026-09-21).
+    @State private var restoresKeyboard = true
+
     /// Search pushes onto its **own** stack (Andy, 2026-09-21: *"tapping
     /// back should take the user back to the search list rather than back
     /// to the teams page unnecessarily"*).
@@ -112,8 +124,9 @@ struct SearchScreen: View {
         HStack(spacing: Spacing.md) {
             SearchField(text: $searchText,
                         prompt: "Teams, players, conferences, games",
-                        focusOnAppear: true,
-                        identifier: "search.appWide")
+                        focusOnAppear: restoresKeyboard,
+                        identifier: "search.appWide",
+                        onFocusChange: { fieldFocused = $0 })
             Button("Cancel", action: onCancel)
                 .font(.chip)
                 .foregroundStyle(.textPrimary)
@@ -376,22 +389,26 @@ struct SearchScreen: View {
     /// The whole team, not its id: ids collide across leagues, and a
     /// result row that reads "Browns" must not open UAB (Andy, 2026-09-06).
     private func select(_ team: Team) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(team))
         path.append(team)
     }
 
     private func select(_ conference: ConferenceTeams) {
         guard let id = conference.conference else { return }
+        restoresKeyboard = fieldFocused
         recents.record(.conference(id))
         path.append(ConferenceDestination(conference: id, name: conference.name))
     }
 
     private func select(_ game: Game) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(game))
         path.append(game)
     }
 
     private func select(_ player: PlayerIdentity) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(player))
         path.append(player)
     }
