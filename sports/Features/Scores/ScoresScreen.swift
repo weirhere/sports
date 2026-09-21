@@ -694,9 +694,14 @@ struct ScoresScreen: View {
                     Text("No live games right now")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
-                    Button("Show all games") {
-                        withAnimation { uiState.liveOnly = false }
-                    }
+                    // Through `toggleLive`, not its own write to the flag
+                    // (Andy, 2026-09-21). Turning the filter off from here
+                    // is the same act as tapping the chip, and doing it
+                    // separately meant `liveCollapse` kept whatever the
+                    // last day change left — so leaving the filter on today
+                    // slid sideways, in the direction of a trip that had
+                    // already finished. One path for one action.
+                    Button("Show all games") { toggleLive() }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
                 } else {

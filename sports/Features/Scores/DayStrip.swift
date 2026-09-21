@@ -59,6 +59,20 @@ struct DayStrip: View {
                     withAnimation { proxy.scrollTo(newValue, anchor: .center) }
                 }
             }
+            // The label changes width without the day changing: today
+            // becomes "Ongoing" under the Live filter, which is longer than
+            // "Today". The chip stayed where it was and drifted off centre,
+            // because the only thing re-centring the strip was a change of
+            // *day* (Andy, 2026-09-21).
+            //
+            // Unanimated on purpose. Nothing moved — the same chip is the
+            // same chip, a word longer — so sliding the strip would suggest
+            // a navigation that did not happen. It snaps.
+            .onChange(of: liveOnly) { _, _ in
+                if let selectedId {
+                    proxy.scrollTo(selectedId, anchor: .center)
+                }
+            }
         }
     }
 
