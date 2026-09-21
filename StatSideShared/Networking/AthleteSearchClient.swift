@@ -153,17 +153,21 @@ nonisolated struct AthleteProfileClient {
     /// identity unchanged on any failure: a page that shows a name and a
     /// club is the state we started from, and an error banner over it would
     /// be louder than the thing it is apologising for.
-    func filling(_ player: PlayerIdentity) async -> PlayerIdentity {
+    /// Returns the team id alongside the player: the payload names the club
+    /// by id, and only the app's directory can turn that into a `Team` the
+    /// hero badge can push to. This type has no directory and shouldn't.
+    func filling(_ player: PlayerIdentity) async -> (player: PlayerIdentity, teamId: String?) {
         let league = player.league
         let url = URL(string: "https://site.web.api.espn.com/apis/common/v3/sports/"
                       + "\(league.sportSegment)/\(league.pathSegment)/athletes/\(player.athleteId)")
-        guard let url else { return player }
+        guard let url else { return (player, nil) }
         guard let (data, _) = try? await session.data(from: url),
               let payload = try? decoder.decode(AthleteProfileResponseDTO.self, from: data),
               let athlete = payload.athlete
-        else { return player }
+        else { return (player, nil) }
 
         var filled = player
+        filled.age = filled.age ?? athlete.age
         filled.jersey = filled.jersey ?? athlete.jersey
         filled.position = filled.position ?? athlete.position?.abbreviation
         filled.positionName = filled.positionName ?? athlete.position?.displayName
@@ -176,7 +180,7 @@ nonisolated struct AthleteProfileClient {
         if let status = athlete.status?.type, status != "active" {
             filled.injuryStatus = filled.injuryStatus ?? athlete.status?.name
         }
-        return filled
+        return (filled, athlete.team?.id)
     }
 }
 
@@ -185,12 +189,20 @@ nonisolated struct AthleteProfileResponseDTO: Decodable {
 }
 
 nonisolated struct ProfileAthleteDTO: Decodable {
+    /// Present for the pro leagues; nil for college football, whose roster
+    /// metric is the class year rather than an age, so nothing is lost.
+    let age: Int?
+    let team: ProfileTeamDTO?
     let jersey: String?
     let displayHeight: String?
     let displayWeight: String?
     let position: ProfilePositionDTO?
     let headshot: ProfileHeadshotDTO?
     let status: ProfileStatusDTO?
+}
+
+nonisolated struct ProfileTeamDTO: Decodable {
+    let id: String?
 }
 
 nonisolated struct ProfilePositionDTO: Decodable {

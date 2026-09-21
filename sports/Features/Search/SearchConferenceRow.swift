@@ -6,11 +6,18 @@ struct SearchConferenceRow: View {
     let conference: ConferenceTeams
     let onSelect: () -> Void
 
+    /// The same 26pt box the team logo and the player headshot sit in.
+    /// Without it the conference mark sized itself, and a mark narrower
+    /// than the others pulled its text left off the rail every other row
+    /// shares (Andy, 2026-09-21).
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
+
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: Spacing.md) {
                 ConferenceLogo(url: Conference.logoURL(for: conference.conference),
                                league: conference.league)
+                    .frame(width: logoSize, height: logoSize)
                 // Two lines, like the team and player rows (Andy,
                 // 2026-09-21: the one-line version left a visibly shorter
                 // card in a list where every other card is the accordion's

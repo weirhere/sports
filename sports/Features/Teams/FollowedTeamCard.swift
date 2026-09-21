@@ -18,7 +18,9 @@ struct FollowedTeamCard: View {
                     LogoImage(url: team.logoURL)
                         .frame(width: logoSize, height: logoSize)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(team.location)
+                        // The full name, with the nickname inside it —
+                        // matching the search row (Andy, 2026-09-21).
+                        Text(team.displayName ?? team.location)
                             .font(.teamNameEmphasis)
                             .foregroundStyle(.textPrimary)
                             .lineLimit(2)
@@ -43,12 +45,15 @@ struct FollowedTeamCard: View {
         .cardSurface()
     }
 
-    /// "Buckeyes · CFB Big Ten". Either half can be missing — an FCS
-    /// visitor carries no conference we know — and the separator goes with
-    /// it.
+    /// "NCAAF • SEC" — the search row's subtitle, so a team reads the same
+    /// wherever it is listed (Andy, 2026-09-21). The nickname left this
+    /// line and joined the title above it, where it belongs to the name
+    /// rather than competing with the league.
+    ///
+    /// Falls back to the league alone rather than a trailing bullet: an FCS
+    /// visitor carries no conference we know.
     private var subtitle: String? {
-        let parts = [team.name, groupName].compactMap(\.self)
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        groupName ?? team.league.shortName
     }
 
     /// The group the team plays in, with the league in front of it (Andy,
@@ -67,7 +72,7 @@ struct FollowedTeamCard: View {
     private var groupName: String? {
         guard let group = rawGroupName else { return nil }
         let league = team.league.shortName
-        return group.localizedCaseInsensitiveContains(league) ? group : "\(league) \(group)"
+        return group.localizedCaseInsensitiveContains(league) ? group : "\(league) • \(group)"
     }
 
     private var rawGroupName: String? {

@@ -24,6 +24,18 @@ struct SearchScreen: View {
     @State private var searchText = ""
     @State private var scope: SearchScope = .all
 
+    /// Search pushes onto its **own** stack (Andy, 2026-09-21: *"tapping
+    /// back should take the user back to the search list rather than back
+    /// to the teams page unnecessarily"*).
+    ///
+    /// It used to hand the Router a pending intent, which switched to the
+    /// Teams tab and pushed there — so Back landed on a list of followed
+    /// teams nobody had asked for, and the query was gone. The Router path
+    /// stays for the doors that genuinely come from outside the hierarchy
+    /// (a widget tap, a notification, a deep link); a tap on a row that is
+    /// already on screen is not one of those.
+    @State private var path = NavigationPath()
+
     /// The Leagues accordion header's height (Andy, 2026-09-21: *"make the
     /// search cards taller (like the league accordions)"*) — 34pt of
     /// content plus its 7pt and `Spacing.xs` paddings. A minimum, never a
@@ -49,12 +61,30 @@ struct SearchScreen: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            PageHeader("Search")
-            SearchScopePills(selection: scope) { scope = $0 }
-            content
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                PageHeader("Search")
+                SearchScopePills(selection: scope) { scope = $0 }
+                content
+            }
+            .background(Color.bgRecessed)
+            .toolbar(.hidden, for: .navigationBar)
+            // Identity follows the value, the rule every other stack in the
+            // app follows (2026-09-10): a destination whose identity doesn't
+            // change is reused with its `@State` intact.
+            .navigationDestination(for: Team.self) { team in
+                TeamPage(team: team).id(team.followKey)
+            }
+            .navigationDestination(for: PlayerIdentity.self) { player in
+                PlayerPage(player: player).id(player.id)
+            }
+            .navigationDestination(for: ConferenceDestination.self) { destination in
+                ConferencePage(destination: destination).id(destination)
+            }
+            .navigationDestination(for: Game.self) { game in
+                GameDetailScreen(game: game).id(game.id)
+            }
         }
-        .background(Color.bgRecessed)
         // The field rides the bottom, above the keyboard rather than a
         // screen away from it (Andy, 2026-09-21). `safeAreaInset` is what
         // makes that true of the keyboard as well as the home indicator:
@@ -188,6 +218,7 @@ struct SearchScreen: View {
             case team(Team)
             case conference(ConferenceTeams)
             case player(PlayerIdentity)
+            case game(Game)
         }
 
         var id: String { entry.id }
@@ -217,6 +248,13 @@ struct SearchScreen: View {
                                             teamLogoURL: nil)
                 player.headshotURL = headshot
                 return ResolvedRecent(entry: entry, kind: .player(player))
+            case let .game(id, _):
+                // Resolved live, so a score is never stale. Unresolvable
+                // when its day isn't loaded — skipped, like a team whose
+                // league directory hasn't arrived.
+                return scoreboards.allLoadedGames
+                    .first { $0.id == id }
+                    .map { ResolvedRecent(entry: entry, kind: .game($0)) }
             }
         }
     }
@@ -231,6 +269,7 @@ struct SearchScreen: View {
             case .team: shows(.teams)
             case .conference: shows(.conferences)
             case .player: shows(.players)
+            case .game: shows(.games)
             }
         }
     }
@@ -262,6 +301,9 @@ struct SearchScreen: View {
             SearchConferenceRow(conference: conference) { select(conference) }
         case let .player(player):
             SearchPlayerRow(player: player) { select(player) }
+        case let .game(game):
+            Button { select(game) } label: { GameRow(game: game) }
+                .buttonStyle(.plain)
         }
     }
 
@@ -324,21 +366,22 @@ struct SearchScreen: View {
     /// result row that reads "Browns" must not open UAB (Andy, 2026-09-06).
     private func select(_ team: Team) {
         recents.record(RecentSearchesStore.Entry(team))
-        router.pendingTeam = TeamRef(team)
+        path.append(team)
     }
 
     private func select(_ conference: ConferenceTeams) {
         guard let id = conference.conference else { return }
         recents.record(.conference(id))
-        router.pendingConferenceId = id
+        path.append(ConferenceDestination(conference: id, name: conference.name))
     }
 
     private func select(_ game: Game) {
-        router.pendingGame = GameRef(game)
+        recents.record(RecentSearchesStore.Entry(game))
+        path.append(game)
     }
 
     private func select(_ player: PlayerIdentity) {
         recents.record(RecentSearchesStore.Entry(player))
-        router.pendingPlayer = player
+        path.append(player)
     }
 }

@@ -35,6 +35,14 @@ final class RecentSearchesStore {
         /// can't draw itself (2026-09-21).
         case player(id: String, league: League, name: String,
                     teamName: String?, headshot: URL?)
+        /// Stored as the id and the day, and resolved against the loaded
+        /// slate — never a snapshot (Andy, 2026-09-21, asking for games
+        /// here after they were left out). A game is the one result whose
+        /// facts move: a stored score would be frozen the moment the game
+        /// went live, and a frozen score is worse than no row. The cost is
+        /// the other way round — a game whose day is no longer loaded
+        /// cannot draw itself and is skipped for that render.
+        case game(id: String, day: Date?)
 
         /// Stable across leagues, which is the whole point — the bare ESPN
         /// id collides between them, and this list always spans them
@@ -46,6 +54,7 @@ final class RecentSearchesStore {
                 "conf.\(conference.league.rawValue).\(conference.id)"
             case let .player(id, league, _, _, _):
                 "player.\(league.rawValue).\(id)"
+            case let .game(id, _): "game.\(id)"
             }
         }
     }
@@ -102,6 +111,8 @@ final class RecentSearchesStore {
 
 extension RecentSearchesStore.Entry {
     init(_ team: Team) { self = .team(id: team.id, league: team.league) }
+
+    init(_ game: Game) { self = .game(id: game.id, day: game.date) }
 
     init(_ player: PlayerIdentity) {
         self = .player(id: player.athleteId, league: player.league,

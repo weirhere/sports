@@ -344,11 +344,17 @@ struct TeamPage: View {
             HStack(spacing: Spacing.md) {
                 logoMark
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(team.location)
+                    // The full name — "Philadelphia Flyers", not
+                    // "Philadelphia" (Andy, 2026-09-21), matching the
+                    // search row and the followed card. Two lines are
+                    // allowed rather than shrinking the masthead: a hero
+                    // title scaled to 70% to keep one line reads as a
+                    // mistake, where a wrap reads as a long name.
+                    Text(team.displayName ?? team.location)
                         .font(.heroTitle)
                         .foregroundStyle(.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                     conferenceLine
                 }
                 Spacer(minLength: 0)

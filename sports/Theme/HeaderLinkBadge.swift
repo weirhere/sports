@@ -27,16 +27,29 @@ struct HeaderLinkBadge: View {
     let title: String
     /// One elevation step away from whatever this badge sits on.
     var fill: Color = .bgRecessed
+    /// A mark inside the capsule, where the badge names a team (Andy,
+    /// 2026-09-21). It rode outside on the player hero, which read as a
+    /// loose logo next to a pill rather than one badge naming one club.
+    var logoURL: URL? = nil
+
+    @ScaledMetric(relativeTo: .caption) private var logoSize: CGFloat = 14
 
     var body: some View {
-        Text(title)
-            .font(.chipEmphasis)
-            .foregroundStyle(.textSecondary)
-            .lineLimit(1)
-            .padding(.horizontal, Spacing.sm)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(fill))
-            .contentShape(Capsule())
+        HStack(spacing: Spacing.xs) {
+            if let logoURL {
+                LogoImage(url: logoURL)
+                    .frame(width: logoSize, height: logoSize)
+                    .accessibilityHidden(true)
+            }
+            Text(title)
+                .font(.chipEmphasis)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(fill))
+        .contentShape(Capsule())
     }
 }
 

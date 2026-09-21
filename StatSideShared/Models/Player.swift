@@ -19,7 +19,11 @@ nonisolated struct PlayerIdentity: Sendable, Hashable, Identifiable {
     let league: League
     /// The team this player was reached through — a roster belongs to one.
     let teamName: String?
-    let teamLogoURL: URL?
+    /// A `var` since 2026-09-21: search knows a club's name but not its
+    /// crest, so the player page backfills this once the athlete payload's
+    /// team id resolves through the directory. `team` beside it is a `var`
+    /// for the same class of reason.
+    var teamLogoURL: URL?
     /// The same team as a pushable value, so the hero's team badge has
     /// somewhere to go (2026-09-20). `TeamPage` is registered for `Team` in
     /// every stack a player page can appear in, so this needs no destination

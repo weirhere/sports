@@ -41,9 +41,20 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     }
 
     /// Row- and chip-width name.
+    ///
+    /// **"NCAAF", not "CFB" (Andy, 2026-09-21.)** It is what ESPN calls the
+    /// league in its own payloads — a search result's `description` reads
+    /// "NCAAF" — and what the scoreboards and broadcasts use, where "CFB"
+    /// is closer to shorthand this app invented for itself. One extra
+    /// character at chip width.
+    ///
+    /// Display only. `rawValue` stays `"cfb"`: it is the league half of
+    /// every `FollowKey`, every recent-search entry and the widget's
+    /// stored selection, so renaming it would silently orphan followed
+    /// teams on upgrade.
     var shortName: String {
         switch self {
-        case .collegeFootball: "CFB"
+        case .collegeFootball: "NCAAF"
         case .nfl: "NFL"
         case .nba: "NBA"
         case .nhl: "NHL"

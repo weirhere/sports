@@ -81,7 +81,11 @@ struct TeamsScreen: View {
             resolvePendingConference()
         }
         .onChange(of: router.pendingTeam) { _, _ in resolvePendingTeam() }
-        .onChange(of: router.pendingPlayer) { _, _ in resolvePendingPlayer() }
+        // `task(id:)`, not `onChange` plus `onAppear`: it runs when the view
+        // appears *and* on every id change, which is the union the two
+        // separate modifiers kept failing to cover between them — the tab
+        // switched and the push didn't happen (2026-09-21).
+        .task(id: router.playerIntentCount) { resolvePendingPlayer() }
         .onChange(of: router.pendingConferenceId) { _, _ in resolvePendingConference() }
         .onChange(of: directory.conferences) { _, _ in
             resolvePendingTeam()

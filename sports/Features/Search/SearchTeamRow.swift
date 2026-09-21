@@ -39,9 +39,7 @@ struct SearchTeamRow: View {
     /// VoiceOver keeps the disambiguation the league tag used to carry —
     /// "Miami, ACC" against "Miami, NFC East" — now that the tag is gone.
     var spokenLabel: String {
-        let name = team.displayName ?? team.location
-        let conference = conferenceName
-        return conference.isEmpty ? name : "\(name), \(conference)"
+        "\(team.displayName ?? team.location), \(subtitle)"
     }
 
     /// Empty rather than "Other" when the conference is unknown: a row that
@@ -51,18 +49,36 @@ struct SearchTeamRow: View {
         return name == "Other" ? "" : name
     }
 
-    @ViewBuilder
-    private var conferenceText: some View {
-        if !conferenceName.isEmpty {
-            Text(conferenceName)
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
-        }
+    /// "NFL • NFC", "NCAAF • Big Ten", "NHL • Eastern" (Andy, 2026-09-21,
+    /// league first).
+    ///
+    /// The league is here at all because the conference alone doesn't
+    /// identify the sport — "Eastern" is the Lightning's conference and the
+    /// Bucks', and on its own it was the least informative line on the
+    /// screen beside a "Big Ten" and an "NFC". Reading league-first puts
+    /// the four rows in a mixed list into four groups before the eye has to
+    /// parse the specific one, and it sorts wide-to-narrow the way an
+    /// address does. Falls back to the league alone rather than printing a
+    /// trailing bullet when the conference is unknown.
+    private var subtitle: String {
+        let league = team.league.shortName
+        return conferenceName.isEmpty ? league : "\(league) • \(conferenceName)"
     }
 
+    private var conferenceText: some View {
+        Text(subtitle)
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
+    }
+
+    /// The full name — "Tampa Bay Buccaneers", not "Tampa Bay" (Andy,
+    /// 2026-09-21). The nickname left this row as a second column an hour
+    /// earlier; it comes back inside the name, which is where it was always
+    /// legible. `location` remains the fallback for a team ESPN gives no
+    /// display name.
     private var locationText: some View {
-        Text(team.location)
+        Text(team.displayName ?? team.location)
             .font(.teamName)
             .foregroundStyle(.textPrimary)
             .lineLimit(1)

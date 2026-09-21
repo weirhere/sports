@@ -19,6 +19,8 @@ struct PlayerPage: View {
     /// The same person, with whatever the athlete endpoint could add. Starts
     /// as `player` so the page paints immediately and fills in behind —
     /// there is never a spinner over facts that are already on screen.
+    @Environment(TeamDirectoryStore.self) private var directory
+
     @State private var filled: PlayerIdentity?
 
     private var shown: PlayerIdentity { filled ?? player }
@@ -32,14 +34,37 @@ struct PlayerPage: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.bottom, Spacing.xl)
         }
+        // The entity pages' header, applied here too (Andy, 2026-09-21,
+        // from the web twin): `bgCard` through the status-bar strip and the
+        // top bounce, a solid card-color nav bar seamless against it, and
+        // the hero sitting on that band rather than bare on the recessed
+        // ground. TeamPage and ConferencePage have read this way since
+        // 2026-08-31; the player page was the one entity page that didn't.
+        .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.bgCard, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         // Only when the door left the page empty. Arriving from a roster,
         // every row is already here and the request would buy nothing —
         // the API rules say be a polite guest (Andy, 2026-09-21).
         .task {
             guard player.profileRows.isEmpty else { return }
-            filled = await AthleteProfileClient().filling(player)
+            let (fetched, teamId) = await AthleteProfileClient().filling(player)
+            var resolved = fetched
+            // The badge needs a `Team`, not a name: search hands over a club
+            // string with no id, so the crest chip couldn't render and the
+            // club sat there as plain text (Andy, 2026-09-21). The athlete
+            // payload names the team by id, and the directory — already in
+            // memory, league-scoped so ids can't collide — turns it into
+            // something pushable.
+            if let teamId {
+                resolved.team = directory.team(matching: TeamRef(id: teamId,
+                                                                 league: player.league))
+                resolved.teamLogoURL = resolved.teamLogoURL ?? resolved.team?.logoURL
+            }
+            filled = resolved
         }
     }
 
@@ -68,6 +93,13 @@ struct PlayerPage: View {
             Spacer(minLength: 0)
         }
         .padding(.top, Spacing.sm)
+        .padding(.bottom, Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Full-bleed: the band has to reach the screen edges, so the card
+        // paint is pushed back out past the page's own gutter.
+        .padding(.horizontal, Spacing.lg)
+        .background(Color.bgCard)
+        .padding(.horizontal, -Spacing.lg)
     }
 
     /// The crest, the team as a tappable badge, then whatever is left of the
@@ -77,16 +109,17 @@ struct PlayerPage: View {
     /// than drawing a second kind of pill.
     private var metaRow: some View {
         HStack(spacing: Spacing.xs) {
-            if let logo = shown.teamLogoURL {
-                LogoImage(url: logo)
-                    .frame(width: 16, height: 16)
-                    .accessibilityHidden(true)
-            }
             if let team = shown.team, let title = teamBadgeTitle {
                 NavigationLink(value: team) {
-                    // `.bgCard`, not the default: this hero sits on
-                    // `bgRecessed`, which is what the default fills with.
-                    HeaderLinkBadge(title: title, fill: .bgCard)
+                    // The default `bgRecessed` fill, same as the league and
+                    // conference crumbs on TeamPage (Andy, 2026-09-21). The
+                    // `.bgCard` override this carried was correct while the
+                    // hero sat on recessed ground; the hero moved onto the
+                    // card band earlier today and the override went stale,
+                    // filling the badge with the colour behind it — the
+                    // exact failure `HeaderLinkBadge`'s own comment warns
+                    // about, in the other direction.
+                    HeaderLinkBadge(title: title, logoURL: shown.teamLogoURL)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View team page")

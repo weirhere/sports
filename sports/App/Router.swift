@@ -74,6 +74,21 @@ final class Router {
     /// not a flag: the same tap has to register the second and fifth time
     /// too, and there is nothing to consume or expire.
     var scoresHomeCount = 0
+    /// Bumped on every player intent, for `scoresHomeCount`'s reason one
+    /// screen over: `pendingPlayer` alone is a value, and `onChange` does
+    /// not fire when a value is replaced by an equal one — so opening the
+    /// same player twice in a row silently did nothing the second time
+    /// (found 2026-09-21, after an `onAppear` fix that made it work
+    /// *sometimes*, which is the tell that the trigger and not the
+    /// listener was wrong).
+    var playerIntentCount = 0
+
+    /// The one way to ask for a player page, so the value and the signal
+    /// can never be set apart from each other.
+    func open(player: PlayerIdentity) {
+        pendingPlayer = player
+        playerIntentCount += 1
+    }
 
     func open(_ link: DeepLink) {
         switch link {
