@@ -470,10 +470,24 @@ struct ScoresScreen: View {
     }
 
     @ViewBuilder
+    /// The branches carry their own transition, and that is the point.
+    ///
+    /// `content` wears `.push(from: daySlideEdge)` so a day change slides
+    /// the old slate out sideways. This `if/else` is a conditional *inside*
+    /// that, so switching between the list and the empty state read as an
+    /// insert-and-remove of the same view and inherited the horizontal
+    /// push — which is why toggling Live on today swiped the page sideways
+    /// as though the day had changed (Andy, 2026-09-21). It had not: the
+    /// filter emptied the slate where you already were.
+    ///
+    /// A transition on each branch overrides the inherited one. Vertical,
+    /// because that is what the change is: the slate collapses to nothing
+    /// and the empty state takes its place, in the same day, on the spot.
     private var slate: some View {
         let sections = self.sections
         if sections.isEmpty {
             emptyState
+                .transition(.move(edge: .top).combined(with: .opacity))
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -541,6 +555,10 @@ struct ScoresScreen: View {
                     }
                 }
             }
+            // The other half of the pair above: both branches have to name
+            // a transition, or the one that doesn't still inherits the
+            // day-change push and the swap reads as half sideways.
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 
