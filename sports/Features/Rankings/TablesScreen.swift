@@ -47,12 +47,59 @@ struct TablesScreen: View {
     /// Set while a Following card is lifted, so the hub's ScrollView stops
     /// competing for the same vertical pan. See `FollowedTablesList`.
     @State private var isReordering = false
+    @State private var query = ""
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Groups narrowed by the query. A league survives if its own name
+    /// matches — "NFL" should hand back the whole NFL card — or if any
+    /// table inside it does, in which case only the matching tables show.
+    private var visibleGroups: [TableGroup] {
+        let q = trimmedQuery
+        guard !q.isEmpty else { return groups }
+        return groups.compactMap { group in
+            if group.title.localizedCaseInsensitiveContains(q) { return group }
+            let rows = group.rows.filter {
+                $0.searchTitle.localizedCaseInsensitiveContains(q)
+            }
+            guard !rows.isEmpty else { return nil }
+            return TableGroup(id: group.id, title: group.title,
+                              logoURL: group.logoURL, league: group.league,
+                              rows: rows)
+        }
+    }
+
+    /// Following, narrowed the same way — the ask was that the query filter
+    /// both lists, not just the one below it.
+    private var visibleFollowedRows: [FollowedTableRow] {
+        let q = trimmedQuery
+        guard !q.isEmpty else { return followedRows }
+        return followedRows.filter { row in
+            switch row.content {
+            case let .poll(_, league):
+                return "\(league.displayName) Poll".localizedCaseInsensitiveContains(q)
+            case let .conference(standings):
+                return standings.name.localizedCaseInsensitiveContains(q)
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Same masthead as Games and Teams (2026-09-21).
                 PageHeader("Leagues")
+                // Under the title, above everything it filters (Andy,
+                // 2026-09-21). Not at the bottom like the Search tab's:
+                // that field *is* the screen's purpose and belongs under
+                // the thumb, where this one narrows a list you are already
+                // reading and belongs at its head.
+                SearchField(text: $query, prompt: "Find a league",
+                            identifier: "search.leagues")
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.bottom, Spacing.sm)
                 content
             }
                 .background(Color.bgPrimary)
@@ -265,7 +312,7 @@ struct TablesScreen: View {
                 // list — followed rows repeat inside their league, sections
                 // stay complete, never deduplicated.
                 LazyVStack(spacing: Spacing.sm) {
-                    let followed = followedRows
+                    let followed = visibleFollowedRows
                     if !followed.isEmpty {
                         ListSectionHeading(title: "Following")
                         // The list owns its own cards' identities, which
@@ -280,7 +327,7 @@ struct TablesScreen: View {
                         // a nav bar already saying "Leagues".
                         ListSectionHeading(title: "Leagues")
                     }
-                    ForEach(groups) { group in
+                    ForEach(visibleGroups) { group in
                         groupSection(group)
                     }
                 }
@@ -323,7 +370,12 @@ struct TablesScreen: View {
     /// height.
     private func groupSection(_ group: TableGroup) -> some View {
         let sectionId = group.id
-        let isExpanded = leagueSections.isExpanded(sectionId)
+        // A search expands what it matched: a filtered accordion that
+        // stayed shut would hide the thing you just asked for behind one
+        // more tap (Andy, 2026-09-21, "relevantly expanded"). The stored
+        // state is untouched, so clearing the field returns the hub to
+        // whatever was open before.
+        let isExpanded = leagueSections.isExpanded(sectionId) || !trimmedQuery.isEmpty
         let rows = group.rows
         return VStack(spacing: 0) {
             Button {
@@ -480,6 +532,14 @@ private enum TableRow: Identifiable {
         switch self {
         case .poll: "poll"
         case .conference(let conference): conference.id.map(String.init) ?? conference.name
+        }
+    }
+
+    /// What "find a league" matches against.
+    var searchTitle: String {
+        switch self {
+        case let .poll(_, league): "\(league.displayName) Poll"
+        case let .conference(conference): conference.name
         }
     }
 }
