@@ -323,20 +323,33 @@ struct ScoresScreen: View {
     /// iOS "take me home" (Andy, 2026-09-20). Whatever the tab has pushed
     /// pops, and the slate returns to its top.
     ///
-    /// Home is the top of *this* page, not a reset of it — the day, the
-    /// Live filter and the accordions are left exactly as they were. Going
-    /// back to today is the Today button's job, and that button is sitting
-    /// right there on every day that isn't.
+    /// Home is the top of this page **and today** (Andy, 2026-09-21,
+    /// superseding the 2026-09-20 rule that left the day alone). The Live
+    /// filter and the accordions are still untouched — the day is the only
+    /// part of the page's state that home now resets.
+    ///
+    /// `canJumpToToday` is the whole gate, and it already answers both
+    /// cases that would go wrong: it is false when we are already on today,
+    /// and false in the offseason, where today sits outside every league's
+    /// span and `selectToday()` would land the strip on a day it cannot
+    /// show. So a re-tap in June still just scrolls to the top.
+    ///
+    /// `jumpToToday()` rather than `select(day:)` for the reason its own
+    /// comment gives: it re-bounds a strip still spanning a past season,
+    /// and it takes the slate home itself — so the `slateHomeCount` bump
+    /// belongs to it on that path and must not be made twice.
     private func goHome() {
-        guard path.isEmpty else {
+        let popped = !path.isEmpty
+        if popped {
             // The slate scrolls behind the page that's popping, so it is
             // already at the top by the time the pop uncovers it.
             path = NavigationPath()
-            slateHomeAnimation = nil
-            slateHomeCount += 1
+        }
+        if scoreboards.canJumpToToday {
+            jumpToToday()
             return
         }
-        slateHomeAnimation = .easeOut(duration: 0.25)
+        slateHomeAnimation = popped ? nil : .easeOut(duration: 0.25)
         slateHomeCount += 1
     }
 
