@@ -68,6 +68,23 @@ struct SearchScreen: View {
                 content
             }
             .background(Color.bgRecessed)
+            // The field rides the bottom, above the keyboard rather than a
+            // screen away from it (Andy, 2026-09-21). `safeAreaInset` is
+            // what makes that true of the keyboard as well as the home
+            // indicator: the content above keeps its own scrollable height
+            // and the field lifts with the keys instead of being covered.
+            //
+            // **Inside the stack, on this screen — not on the stack.** It
+            // was on the `NavigationStack`, which meant it belonged to
+            // every page the stack could show: tap a player and the field,
+            // the Cancel button and the keyboard stayed over their page
+            // (Andy, 2026-09-21). Attached here it is the search screen's
+            // own chrome, so a push removes it with the screen. That also
+            // dismisses the keyboard for free — the focused field leaves
+            // the view tree — and `focusOnAppear` brings both back when
+            // Back returns you to the results, which is the half of the
+            // behaviour worth keeping.
+            .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
             .toolbar(.hidden, for: .navigationBar)
             // Identity follows the value, the rule every other stack in the
             // app follows (2026-09-10): a destination whose identity doesn't
@@ -85,12 +102,6 @@ struct SearchScreen: View {
                 GameDetailScreen(game: game).id(game.id)
             }
         }
-        // The field rides the bottom, above the keyboard rather than a
-        // screen away from it (Andy, 2026-09-21). `safeAreaInset` is what
-        // makes that true of the keyboard as well as the home indicator:
-        // the content above keeps its own scrollable height and the field
-        // lifts with the keys instead of being covered by them.
-        .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
         .onChange(of: searchText) { _, text in
             athleteSearch.search(text, collegeTeamsInScope: collegeTeamNames)
         }
