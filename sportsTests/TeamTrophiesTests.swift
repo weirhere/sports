@@ -156,6 +156,40 @@ private let sec = TrophyKind(singular: "SEC Championship",
         #expect(TrophyKind.from(headline: "Big Ten Championship",
                                 league: .collegeFootball)?.tier == .conference)
     }
+
+    /// The Rams' Trophies tab showed "NFC Championship 2021" and "NFC
+    /// CHAMPIONSHIP 2018" as two rows each reading 1 (Andy, 2026-09-21).
+    /// ESPN spells one trophy both ways across seasons.
+    @Test("ESPN's shouting is not a second trophy")
+    func shoutingIsNotASecondTrophy() {
+        let shouted = TrophyKind.from(headline: "NFC CHAMPIONSHIP", league: .nfl)
+        #expect(shouted?.singular == "NFC Championship")
+        #expect(shouted?.plural == "NFC Championships")
+        #expect(shouted == TrophyKind.from(headline: "NFC Championship", league: .nfl))
+    }
+
+    /// Only the common noun is re-cased. Guessing at the conference's own
+    /// letters would have to tell "SEC" from "BIG TEN" on an all-caps
+    /// string, and would get one of the two wrong whichever way it went —
+    /// so identity carries that case instead of typography.
+    @Test("A conference's own letters are left as ESPN sent them")
+    func conferenceLettersAreNotGuessedAt() {
+        let shouted = TrophyKind.from(headline: "BIG TEN CHAMPIONSHIP",
+                                      league: .collegeFootball)
+        #expect(shouted?.singular == "BIG TEN Championship")
+        #expect(shouted == TrophyKind.from(headline: "Big Ten Championship",
+                                           league: .collegeFootball))
+    }
+
+    /// Safe to fix outright on this path, unlike the one above: it only
+    /// matches "<side> Conference Final(s)", which has no acronym in it.
+    @Test("A conference final is de-shouted whole")
+    func conferenceFinalDeshouted() {
+        #expect(TrophyKind.from(headline: "EASTERN CONFERENCE FINALS",
+                                league: .nba)?.singular == "Eastern Conference Finals")
+        #expect(TrophyKind.from(headline: "Western Conference Final",
+                                league: .nhl)?.singular == "Western Conference Final")
+    }
 }
 
 // MARK: - The payload gap this closed
@@ -269,11 +303,46 @@ private let sec = TrophyKind(singular: "SEC Championship",
             derived: [Trophy(kind: national, year: 2021)],
             registry: [Trophy(kind: national, year: 2021),
                        Trophy(kind: national, year: 1980)],
-            allTimeKinds: ["National Championship"], derivedFloor: 2014
+            allTimeKinds: ["national championship"], derivedFloor: 2014
         )
         #expect(shelf.groups.count == 1)
         #expect(shelf.groups.first?.years == [2021, 1980])
         #expect(shelf.groups.first?.count == 2)
+    }
+
+    /// The bug that reported all of this: the count read 1 and 1 where the
+    /// shelf holds two of one thing, because the 2018 season shouts and the
+    /// 2021 season does not.
+    @Test("Two spellings of one trophy are one row")
+    func spellingsMerge() throws {
+        let shouted = try #require(TrophyKind.from(headline: "NFC CHAMPIONSHIP",
+                                                   league: .nfl))
+        let calm = try #require(TrophyKind.from(headline: "NFC Championship",
+                                                league: .nfl))
+        let shelf = TrophyCase.assemble(
+            derived: [Trophy(kind: shouted, year: 2018), Trophy(kind: calm, year: 2021)],
+            registry: [], allTimeKinds: [], derivedFloor: 2014
+        )
+        #expect(shelf.groups.count == 1)
+        #expect(shelf.groups.first?.years == [2021, 2018])
+        #expect(shelf.groups.first?.title == "NFC Championships")
+    }
+
+    /// Which letters survive a merge is a rule, not a race — the derived
+    /// seasons arrive in no fixed order, so arrival order must not decide.
+    @Test("The merged spelling is chosen by rule, not by arrival order")
+    func mergedSpellingIsDeterministic() {
+        let loud = TrophyKind(singular: "BIG TEN Championship",
+                              plural: "BIG TEN Championships", tier: .conference)
+        let calm = TrophyKind(singular: "Big Ten Championship",
+                              plural: "Big Ten Championships", tier: .conference)
+        for derived in [[Trophy(kind: loud, year: 2018), Trophy(kind: calm, year: 2021)],
+                        [Trophy(kind: calm, year: 2021), Trophy(kind: loud, year: 2018)]] {
+            let shelf = TrophyCase.assemble(derived: derived, registry: [],
+                                            allTimeKinds: [], derivedFloor: 2014)
+            #expect(shelf.groups.count == 1)
+            #expect(shelf.groups.first?.kind.singular == "Big Ten Championship")
+        }
     }
 
     /// The caption is the honesty gate on a count. A trophy the registry
@@ -291,7 +360,7 @@ private let sec = TrophyKind(singular: "SEC Championship",
         let covered = TrophyCase.assemble(
             derived: [Trophy(kind: national, year: 2021)],
             registry: [Trophy(kind: national, year: 1980)],
-            allTimeKinds: ["National Championship"], derivedFloor: 2014
+            allTimeKinds: ["national championship"], derivedFloor: 2014
         )
         #expect(covered.groups.first?.coverage == .allTime)
         #expect(covered.coverageFloor == nil)
@@ -302,7 +371,7 @@ private let sec = TrophyKind(singular: "SEC Championship",
         let shelf = TrophyCase.assemble(
             derived: [Trophy(kind: national, year: 2021), Trophy(kind: sec, year: 2022)],
             registry: [Trophy(kind: national, year: 1980)],
-            allTimeKinds: ["National Championship"], derivedFloor: 2014
+            allTimeKinds: ["national championship"], derivedFloor: 2014
         )
         #expect(shelf.groups.first?.coverage == .allTime)
         #expect(shelf.groups.last?.coverage == .since(2014))

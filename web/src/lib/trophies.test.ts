@@ -10,6 +10,7 @@ import {
   deriveTrophies,
   trophyGroupTitle,
   trophyKindFromHeadline,
+  trophyKindIdentity,
   type TrophyKind,
 } from "./trophies";
 import { trophyFootnote } from "@/components/team-trophies-card";
@@ -82,6 +83,31 @@ describe("reading a trophy off a headline", () => {
     // A conference we have never heard of still reads correctly.
     expect(kind("Mountain West Championship")?.singular).toBe(
       "Mountain West Championship"
+    );
+  });
+
+  it("does not let ESPN's shouting become a second trophy", () => {
+    // The Rams' Trophies tab showed "NFC Championship 2021" and "NFC
+    // CHAMPIONSHIP 2018" as two rows reading 1 (Andy, 2026-09-21). ESPN
+    // spells the same trophy both ways across seasons.
+    const shouted = kind("NFC CHAMPIONSHIP", "nfl");
+    expect(shouted?.singular).toBe("NFC Championship");
+    expect(shouted?.plural).toBe("NFC Championships");
+    // The conference's own letters are left alone — re-casing those would
+    // have to guess "SEC" from "Big Ten", and would get one of them wrong.
+    expect(kind("BIG TEN CHAMPIONSHIP")?.singular).toBe("BIG TEN Championship");
+    // ...and identity folds case, so even that one is a single row.
+    expect(trophyKindIdentity(kind("BIG TEN CHAMPIONSHIP")!)).toBe(
+      trophyKindIdentity(kind("Big Ten Championship")!)
+    );
+  });
+
+  it("de-shouts a conference final, where no acronym can be mangled", () => {
+    expect(kind("EASTERN CONFERENCE FINALS", "nba")?.singular).toBe(
+      "Eastern Conference Finals"
+    );
+    expect(kind("Western Conference Final", "nhl")?.singular).toBe(
+      "Western Conference Final"
     );
   });
 
@@ -261,12 +287,62 @@ describe("assembling the shelf", () => {
         { kind: national, year: 2021 },
         { kind: national, year: 1980 },
       ],
-      allTimeKinds: new Set(["National Championship"]),
+      allTimeKinds: new Set(["national championship"]),
       derivedFloor: 2014,
     });
     expect(shelf.groups).toHaveLength(1);
     expect(shelf.groups[0].years).toEqual([2021, 1980]);
     expect(shelf.groups[0].coverage).toEqual({ kind: "allTime" });
+  });
+
+  it("merges two spellings of one trophy into one row", () => {
+    // The bug this test exists for: the count read 1 and 1 where the shelf
+    // holds two of one thing, because the 2018 season shouts and 2021 does
+    // not. The calmer spelling is the one that prints.
+    const shelf = assembleTrophyCase({
+      derived: [
+        { kind: kind("NFC CHAMPIONSHIP", "nfl")!, year: 2018 },
+        { kind: kind("NFC Championship", "nfl")!, year: 2021 },
+      ],
+      registry: [],
+      allTimeKinds: new Set(),
+      derivedFloor: 2014,
+    });
+    expect(shelf.groups).toHaveLength(1);
+    expect(shelf.groups[0].years).toEqual([2021, 2018]);
+    expect(trophyGroupTitle(shelf.groups[0])).toBe("NFC Championships");
+  });
+
+  it("picks the merged spelling by rule, not by arrival order", () => {
+    const loud: TrophyKind = {
+      singular: "BIG TEN Championship",
+      plural: "BIG TEN Championships",
+      tier: "conference",
+    };
+    const calm: TrophyKind = {
+      singular: "Big Ten Championship",
+      plural: "Big Ten Championships",
+      tier: "conference",
+    };
+    for (const derived of [
+      [
+        { kind: loud, year: 2018 },
+        { kind: calm, year: 2021 },
+      ],
+      [
+        { kind: calm, year: 2021 },
+        { kind: loud, year: 2018 },
+      ],
+    ]) {
+      const shelf = assembleTrophyCase({
+        derived,
+        registry: [],
+        allTimeKinds: new Set(),
+        derivedFloor: 2014,
+      });
+      expect(shelf.groups).toHaveLength(1);
+      expect(shelf.groups[0].kind.singular).toBe("Big Ten Championship");
+    }
   });
 
   it("says what each row can speak for, and says it once", () => {
@@ -287,7 +363,7 @@ describe("assembling the shelf", () => {
     const mixed = assembleTrophyCase({
       derived: [{ kind: sec, year: 2025 }],
       registry: [{ kind: national, year: 1980 }],
-      allTimeKinds: new Set(["National Championship"]),
+      allTimeKinds: new Set(["national championship"]),
       derivedFloor: 2014,
     });
     expect(trophyFootnote(mixed)).toBe("SEC Championship since 2014");
@@ -295,7 +371,7 @@ describe("assembling the shelf", () => {
     const allTime = assembleTrophyCase({
       derived: [],
       registry: [{ kind: national, year: 1980 }],
-      allTimeKinds: new Set(["National Championship"]),
+      allTimeKinds: new Set(["national championship"]),
       derivedFloor: 2014,
     });
     // Silence is only the truth when every row is all-time.

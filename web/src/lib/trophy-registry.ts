@@ -34,6 +34,7 @@
 // row costs a missing trophy rather than a misplaced one.
 
 import type { League } from "@/lib/leagues";
+import { trophyKindIdentity } from "@/lib/trophies";
 import type { Trophy, TrophyKind } from "@/lib/trophies";
 
 /**
@@ -83,6 +84,6 @@ export function registryCoveredKinds(league: League): Set<string> {
   return new Set(
     (LISTS[league] ?? [])
       .filter((list) => list.verified)
-      .map((list) => list.kind.singular)
+      .map((list) => trophyKindIdentity(list.kind))
   );
 }
