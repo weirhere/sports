@@ -97,9 +97,18 @@ nonisolated extension Game {
     /// how `ConferencePage` came to show a live game stuck at halftime
     /// (2026-09-01). `merging(_:withLive:)` already encodes the rule; this
     /// is the union that needs it, deduped so a game in both appears once.
+    /// Deduped on **both** sides, which the first cut was not: a query for
+    /// "new york" matches the Islanders and the Rangers, and the game they
+    /// play each other arrives in both schedules. Two rows with one id in a
+    /// `LazyVStack` do not render twice — they corrupt its layout and leave
+    /// a blank card-sized gap, the failure `FollowedTablesList`'s own
+    /// comment names (Andy, 2026-09-21: "weird awkward gaps").
     static func union(_ schedule: [Game], loaded: [Game]) -> [Game] {
-        let loadedIds = Set(loaded.map(\.id))
-        let extra = schedule.filter { !loadedIds.contains($0.id) }
+        var seen = Set(loaded.map(\.id))
+        var extra: [Game] = []
+        for game in schedule where seen.insert(game.id).inserted {
+            extra.append(game)
+        }
         return merging(loaded + extra, withLive: loaded)
     }
 

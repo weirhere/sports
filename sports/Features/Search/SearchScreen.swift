@@ -107,6 +107,21 @@ struct SearchScreen: View {
             // Back returns you to the results, which is the half of the
             // behaviour worth keeping.
             .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
+            // Leaving by tab and leaving by push both disappear this view,
+            // and the nav path is what tells them apart (Andy, 2026-09-21):
+            // `select` appends before the push, so a result tap disappears
+            // with a non-empty path, where switching to Games or Leagues
+            // leaves it empty.
+            //
+            // A tab switch is someone finishing with search; coming back
+            // should be a fresh box, not a stale query and a scope they
+            // set two screens ago. A push is someone still in the middle of
+            // one, which is why that case restores everything down to the
+            // keyboard.
+            .onDisappear {
+                guard path.isEmpty else { return }
+                resetSearch()
+            }
             .toolbar(.hidden, for: .navigationBar)
             // Identity follows the value, the rule every other stack in the
             // app follows (2026-09-10): a destination whose identity doesn't
@@ -239,6 +254,17 @@ struct SearchScreen: View {
             }
             .scrollDismissesKeyboard(.immediately)
         }
+    }
+
+    /// Back to the box you would get on a first open: no query, every
+    /// scope, no athlete or schedule results in flight, and the keyboard
+    /// ready to come up.
+    private func resetSearch() {
+        searchText = ""
+        scope = .all
+        athleteSearch.clear()
+        schedules.clear()
+        restoresKeyboard = true
     }
 
     /// Whether a kind of result belongs in the list right now. `all` shows
