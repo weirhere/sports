@@ -7,10 +7,12 @@ import SwiftUI
 /// mixed "All" list broken into one card per result, the headings were
 /// doing less work than the row's own league tag already does.
 ///
-/// `players` is here although the ask named only teams, games and
-/// conferences: athletes joined search the same day, and a taxonomy that
-/// can't narrow to the newest kind of result would be wrong the moment it
-/// shipped.
+/// `players` is the fourth pill against an ask that named three — teams,
+/// games and conferences. It went in because athletes joined search the
+/// same day and a taxonomy that cannot narrow to the newest kind of result
+/// would be wrong the moment it shipped; it **stays** because Andy said so
+/// (2026-09-21) after asking what it was for, which is the difference
+/// between a kept decision and an unreviewed one.
 enum SearchScope: String, CaseIterable, Identifiable, Hashable {
     case all, teams, players, games, conferences
 
