@@ -113,19 +113,19 @@ private func fixture(_ name: String) throws -> Data {
         } else {
             Issue.record("expected live status")
         }
-        #expect(mapped.liveStatusText() == "End Q1")
+        #expect(mapped.liveStatusText() == "End 1st")
     }
 
     @Test func inProgressKeepsQuarterAndClock() {
         let mapped = status(name: "STATUS_IN_PROGRESS", clock: "5:24", period: 3)
-        #expect(mapped.liveStatusText() == "Q3 5:24")
+        #expect(mapped.liveStatusText() == "5:24 • 3rd")
     }
 
     @Test func overtimePeriodsKeepTheirLabels() {
         #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 5)
-            .liveStatusText() == "OT 0:48")
+            .liveStatusText() == "0:48 • OT")
         #expect(status(name: "STATUS_IN_PROGRESS", clock: "0:48", period: 6)
-            .liveStatusText() == "2OT 0:48")
+            .liveStatusText() == "0:48 • 2OT")
     }
 
     @Test func bareLiveStatusFallsBackToDetailThenCaller() {

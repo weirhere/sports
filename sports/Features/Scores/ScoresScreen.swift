@@ -28,6 +28,20 @@ struct ScoresScreen: View {
     // team page) too, and a typed path can't hold them all.
     @State private var path = NavigationPath()
     @State private var refreshCount = 0
+    /// True only for the swap the Live toggle causes while you are already
+    /// on today — the one case where nothing navigated and a sideways push
+    /// would be a lie (Andy, 2026-09-21). Every other swap is a day change
+    /// and keeps the horizontal push it has always had.
+    @State private var liveCollapse = false
+
+    /// The Live toggle's own animation, and it is fast on purpose (Andy,
+    /// 2026-09-21: *"way too much of a delay"*). `withAnimation` with no
+    /// argument is a spring, and a spring's settle is exactly the drifting
+    /// tail that read as a delay and a dissolve — on a filter the whole
+    /// point of which is answering "who is playing right now" in one thumb.
+    /// 0.12s, eased out: gone before it can be watched (Andy's number
+    /// after feeling 0.18).
+    private static let filterAnimation: Animation = .easeOut(duration: 0.12)
     @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
@@ -108,6 +122,18 @@ struct ScoresScreen: View {
                             .offset(x: dragOffset + (dragOffset < 0 ? paneWidth : -paneWidth))
                     }
                 }
+                // The transitions belong inside the slate, not over the
+                // chrome above it (Andy, 2026-09-21). `move(edge: .top)`
+                // enters from above this container's bounds, and with
+                // nothing clipping it the empty state animated across the
+                // masthead and the day strip on its way in. The sideways
+                // push had the same exposure and only got away with it
+                // because its travel is horizontal, where the container
+                // already reaches both edges of the screen.
+                .clipped()
+                // The slate's ground, held by the container so nothing that
+                // slides can take it with it.
+                .background(Color.bgRecessed)
                 .background(
                     GeometryReader { proxy in
                         Color.clear.onAppear { paneWidth = proxy.size.width }
@@ -244,14 +270,17 @@ struct ScoresScreen: View {
     /// filter is suspended rather than forgotten (Andy, 2026-09-12). That
     /// tap may change no state at all: the trip home is the whole action.
     private func toggleLive() {
+        // Only on today does the filter change the slate without changing
+        // the day; off today the tap is a trip home and slides like one.
+        liveCollapse = scoreboards.isOnToday
         guard uiState.liveOnly(on: scoreboards.selectedDay) else {
-            withAnimation { uiState.liveOnly = true }
+            withAnimation(Self.filterAnimation) { uiState.liveOnly = true }
             guard !scoreboards.isOnToday else { return }
             daySlideAnimation = nil
             Task { await scoreboards.selectToday() }
             return
         }
-        withAnimation { uiState.liveOnly = false }
+        withAnimation(Self.filterAnimation) { uiState.liveOnly = false }
     }
 
     /// The way back to today: centred over the slate, just above the tab
@@ -308,6 +337,7 @@ struct ScoresScreen: View {
     /// with it (Andy): a day you left scrolled to the bottom shouldn't
     /// hand today back the same way.
     private func jumpToToday() {
+        liveCollapse = false
         let today = Calendar.current.startOfDay(for: .now)
         daySlideEdge = today > scoreboards.selectedDay ? .trailing : .leading
         daySlideAnimation = .default
@@ -356,6 +386,7 @@ struct ScoresScreen: View {
     /// Every user day change funnels through here so chip taps and swipes
     /// share one direction rule: content slides the way the strip moves.
     private func select(day: Date) {
+        liveCollapse = false
         let day = Calendar.current.startOfDay(for: day)
         guard day != scoreboards.selectedDay else { return }
         daySlideEdge = day > scoreboards.selectedDay ? .trailing : .leading
@@ -463,17 +494,40 @@ struct ScoresScreen: View {
     /// first-load skeleton. `bgRecessed` is painted once out here so every
     /// one of those stands on the same ground — an empty day used to fall
     /// through to the window's `bgPrimary` and read as a different screen.
+    /// No background here — it belongs to the container (Andy, 2026-09-21).
+    ///
+    /// `bgRecessed` used to ride on this view, which is the one that
+    /// transitions, so the ground moved with the slate: a full-screen grey
+    /// rectangle sliding in over the white `bgPrimary` behind it. The grey
+    /// was the same grey the whole time, and it should never have been
+    /// something that arrives.
     private var content: some View {
         slate
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.bgRecessed)
     }
 
     @ViewBuilder
+    /// The branches carry their own transition, and that is the point.
+    ///
+    /// `content` wears `.push(from: daySlideEdge)` so a day change slides
+    /// the old slate out sideways. This `if/else` is a conditional *inside*
+    /// that, so switching between the list and the empty state read as an
+    /// insert-and-remove of the same view and inherited the horizontal
+    /// push — which is why toggling Live on today swiped the page sideways
+    /// as though the day had changed (Andy, 2026-09-21). It had not: the
+    /// filter emptied the slate where you already were.
+    ///
+    /// A transition on each branch overrides the inherited one — but only
+    /// the Live toggle on today wants a different one. A day change that
+    /// lands on an empty day is still a day change and still slides, so the
+    /// branches restate the inherited push rather than replacing it
+    /// wholesale (Andy, 2026-09-21, after the first cut collapsed
+    /// everything vertically).
     private var slate: some View {
         let sections = self.sections
         if sections.isEmpty {
             emptyState
+                .transition(slateTransition)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -541,7 +595,26 @@ struct ScoresScreen: View {
                     }
                 }
             }
+            // The other half of the pair above: both branches have to name
+            // a transition, or the one that doesn't still inherits the
+            // day-change push and the swap reads as half sideways.
+            .transition(slateTransition)
         }
+    }
+
+    /// Vertical only for the Live toggle on today; the day change's own
+    /// push otherwise, which is what these branches inherited before they
+    /// named anything.
+    private var slateTransition: AnyTransition {
+        // Asymmetric, because moving *both* halves from the same edge is
+        // what made this read as a shift and a dissolve: the outgoing
+        // slate and the incoming empty state slid over each other while
+        // both faded. The slate leaves upward — a collapse — and what
+        // replaces it simply appears.
+        liveCollapse
+            ? .asymmetric(insertion: .opacity,
+                          removal: .move(edge: .top).combined(with: .opacity))
+            : .push(from: daySlideEdge)
     }
 
     /// The incoming pane during a day drag. Render-only — no scrolling,
@@ -645,9 +718,14 @@ struct ScoresScreen: View {
                     Text("No live games right now")
                         .font(.teamName)
                         .foregroundStyle(.textSecondary)
-                    Button("Show all games") {
-                        withAnimation { uiState.liveOnly = false }
-                    }
+                    // Through `toggleLive`, not its own write to the flag
+                    // (Andy, 2026-09-21). Turning the filter off from here
+                    // is the same act as tapping the chip, and doing it
+                    // separately meant `liveCollapse` kept whatever the
+                    // last day change left — so leaving the filter on today
+                    // slid sideways, in the direction of a trip that had
+                    // already finished. One path for one action.
+                    Button("Show all games") { toggleLive() }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
                 } else {

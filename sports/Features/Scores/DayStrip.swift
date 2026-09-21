@@ -20,6 +20,27 @@ struct DayStrip: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
+                // A plain `HStack`, deliberately, after a `LazyHStack`
+                // was tried and reverted the same day (2026-09-21).
+                //
+                // The strip is a season — `days()` walks `SeasonSpan` from
+                // July to June — so building ~365 chips to show eight looks
+                // like the obvious thing to make lazy. It is not worth it,
+                // and the attempt broke two things at once. A `LazyHStack`
+                // does not size to its children the way an `HStack` does,
+                // so the strip stretched to whatever height the ScrollView
+                // proposed and left the chips floating in a band. And the
+                // reveal stopped landing: `scrollTo` on `onAppear` ran
+                // before the target chip existed, so the strip opened on
+                // July 1 instead of the selected day — with today's chip
+                // hundreds of positions away, which is the one thing this
+                // control cannot do.
+                //
+                // The cost it was buying is small: a `DaySlot` is one
+                // `Date`, and the strip moves no network at all — the fetch
+                // is in `select(day:)`, per day landed on rather than per
+                // chip. Eager construction of 365 tiny text views is the
+                // cheaper mistake.
                 HStack(spacing: Spacing.xs) {
                     ForEach(days) { day in
                         chip(for: day)
@@ -28,6 +49,11 @@ struct DayStrip: View {
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm)
             }
+            // Today's chip becomes "Ongoing" inside the Live toggle's
+            // `withAnimation`, and inherited it — so the word grew and the
+            // strip shuffled (Andy, 2026-09-21). It is a relabel, not a
+            // move: it snaps.
+            .animation(nil, value: liveOnly)
             .onAppear {
                 if let selectedId {
                     proxy.scrollTo(selectedId, anchor: .center)
@@ -36,6 +62,20 @@ struct DayStrip: View {
             .onChange(of: selectedId) { _, newValue in
                 if let newValue {
                     withAnimation { proxy.scrollTo(newValue, anchor: .center) }
+                }
+            }
+            // The label changes width without the day changing: today
+            // becomes "Ongoing" under the Live filter, which is longer than
+            // "Today". The chip stayed where it was and drifted off centre,
+            // because the only thing re-centring the strip was a change of
+            // *day* (Andy, 2026-09-21).
+            //
+            // Unanimated on purpose. Nothing moved — the same chip is the
+            // same chip, a word longer — so sliding the strip would suggest
+            // a navigation that did not happen. It snaps.
+            .onChange(of: liveOnly) { _, _ in
+                if let selectedId {
+                    proxy.scrollTo(selectedId, anchor: .center)
                 }
             }
         }

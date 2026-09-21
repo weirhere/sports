@@ -82,7 +82,7 @@ private let halftime = GameStatus.live(displayClock: "0:00", period: 2, detail: 
 
     @Test func livePeriodComesFromTheSharedFormatter() {
         let state = LiveActivityContent.state(for: game(status: playing))
-        #expect(state.headline == "Q3 5:24")
+        #expect(state.headline == "5:24 • 3rd")
     }
 
     @Test func unannouncedKickoffSaysTBDRatherThanMidnight() {

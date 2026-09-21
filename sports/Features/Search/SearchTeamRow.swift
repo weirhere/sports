@@ -42,9 +42,25 @@ struct SearchTeamRow: View {
         "\(team.displayName ?? team.location), \(subtitle)"
     }
 
-    /// Empty rather than "Other" when the conference is unknown: a row that
-    /// says nothing beats one that says the wrong thing confidently.
+    /// The group a team plays in — the **division** for the NFL, where the
+    /// directory files every team under its conference so `conferenceId`
+    /// could only ever say AFC or NFC. The Jets are AFC East (Andy,
+    /// 2026-09-21); "AFC" names a sixteenth of the league and answers
+    /// nothing a fan asked.
+    ///
+    /// `FollowedTeamCard` has resolved it this way since 2026-09-09 and
+    /// this row did not, which is how the same team read two ways on two
+    /// screens. Same two calls, deliberately — a shared helper is the right
+    /// answer the third time, not the second.
+    ///
+    /// Empty rather than "Other" when nothing is known: a row that says
+    /// nothing beats one that says the wrong thing confidently.
     private var conferenceName: String {
+        if team.league == .nfl,
+           let division = Conference.division(forTeamId: team.id, in: .nfl) {
+            let name = Conference.name(for: division, in: .nfl)
+            return name == "Other" ? "" : name
+        }
         let name = Conference.name(for: team.conferenceId, in: team.league)
         return name == "Other" ? "" : name
     }

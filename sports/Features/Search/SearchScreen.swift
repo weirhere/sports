@@ -21,8 +21,23 @@ struct SearchScreen: View {
     /// warm for the next visit.
     @State private var athleteSearch = AthleteSearchStore()
 
+    /// Games beyond the loaded window, from the matched teams' schedules.
+    @State private var schedules = TeamScheduleSearchStore()
+
     @State private var searchText = ""
     @State private var scope: SearchScope = .all
+
+    /// Whether the field holds focus right now — a live mirror of
+    /// `SearchField`'s own state, which is private to it.
+    @State private var fieldFocused = false
+    /// What the keyboard should do when this screen next appears. True on
+    /// first open, then whatever it was at the moment a result was tapped.
+    ///
+    /// Two pieces of state rather than one, because the field reports
+    /// `false` on its way out of the tree: reading the live mirror on
+    /// return would always say the keyboard was down. The snapshot is taken
+    /// in `select` while the field is still there (Andy, 2026-09-21).
+    @State private var restoresKeyboard = true
 
     /// Search pushes onto its **own** stack (Andy, 2026-09-21: *"tapping
     /// back should take the user back to the search list rather than back
@@ -52,6 +67,13 @@ struct SearchScreen: View {
             .compactMap(\.displayName))
     }
 
+    /// The slate's games for this query, plus the matched teams' remaining
+    /// season, ordered so the next kickoff leads.
+    private var visibleGames: [Game] {
+        Game.orderedAroundNow(
+            Game.union(schedules.games, loaded: results.games))
+    }
+
     private var results: SearchResults {
         SearchResults.compute(query: searchText,
                               conferences: directory.conferences,
@@ -68,6 +90,38 @@ struct SearchScreen: View {
                 content
             }
             .background(Color.bgRecessed)
+            // The field rides the bottom, above the keyboard rather than a
+            // screen away from it (Andy, 2026-09-21). `safeAreaInset` is
+            // what makes that true of the keyboard as well as the home
+            // indicator: the content above keeps its own scrollable height
+            // and the field lifts with the keys instead of being covered.
+            //
+            // **Inside the stack, on this screen — not on the stack.** It
+            // was on the `NavigationStack`, which meant it belonged to
+            // every page the stack could show: tap a player and the field,
+            // the Cancel button and the keyboard stayed over their page
+            // (Andy, 2026-09-21). Attached here it is the search screen's
+            // own chrome, so a push removes it with the screen. That also
+            // dismisses the keyboard for free — the focused field leaves
+            // the view tree — and `focusOnAppear` brings both back when
+            // Back returns you to the results, which is the half of the
+            // behaviour worth keeping.
+            .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
+            // Leaving by tab and leaving by push both disappear this view,
+            // and the nav path is what tells them apart (Andy, 2026-09-21):
+            // `select` appends before the push, so a result tap disappears
+            // with a non-empty path, where switching to Games or Leagues
+            // leaves it empty.
+            //
+            // A tab switch is someone finishing with search; coming back
+            // should be a fresh box, not a stale query and a scope they
+            // set two screens ago. A push is someone still in the middle of
+            // one, which is why that case restores everything down to the
+            // keyboard.
+            .onDisappear {
+                guard path.isEmpty else { return }
+                resetSearch()
+            }
             .toolbar(.hidden, for: .navigationBar)
             // Identity follows the value, the rule every other stack in the
             // app follows (2026-09-10): a destination whose identity doesn't
@@ -85,14 +139,12 @@ struct SearchScreen: View {
                 GameDetailScreen(game: game).id(game.id)
             }
         }
-        // The field rides the bottom, above the keyboard rather than a
-        // screen away from it (Andy, 2026-09-21). `safeAreaInset` is what
-        // makes that true of the keyboard as well as the home indicator:
-        // the content above keeps its own scrollable height and the field
-        // lifts with the keys instead of being covered by them.
-        .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
         .onChange(of: searchText) { _, text in
             athleteSearch.search(text, collegeTeamsInScope: collegeTeamNames)
+            // Driven by the matched teams rather than the raw string, so a
+            // request only follows a search that already found something.
+            schedules.load(for: text.trimmingCharacters(in: .whitespaces).isEmpty
+                           ? [] : results.teams)
         }
     }
 
@@ -101,8 +153,9 @@ struct SearchScreen: View {
         HStack(spacing: Spacing.md) {
             SearchField(text: $searchText,
                         prompt: "Teams, players, conferences, games",
-                        focusOnAppear: true,
-                        identifier: "search.appWide")
+                        focusOnAppear: restoresKeyboard,
+                        identifier: "search.appWide",
+                        onFocusChange: { fieldFocused = $0 })
             Button("Cancel", action: onCancel)
                 .font(.chip)
                 .foregroundStyle(.textPrimary)
@@ -172,7 +225,21 @@ struct SearchScreen: View {
                         }
                     }
                     if shows(.games) {
-                        ForEach(results.games) { game in
+                        // The scope, said out loud. These games come from
+                        // the slate *and* from the schedules of the teams
+                        // this query matched — so a game between two teams
+                        // you didn't type is not here, and a silent partial
+                        // list is the one thing not to ship (the rule the
+                        // athlete search was held to, 2026-09-21).
+                        if !schedules.games.isEmpty {
+                            Text("Games for matching teams")
+                                .font(.meta)
+                                .foregroundStyle(.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Spacing.xs)
+                                .padding(.top, Spacing.xs)
+                        }
+                        ForEach(visibleGames) { game in
                             Button { select(game) } label: {
                                 GameRow(game: game)
                             }
@@ -189,6 +256,17 @@ struct SearchScreen: View {
         }
     }
 
+    /// Back to the box you would get on a first open: no query, every
+    /// scope, no athlete or schedule results in flight, and the keyboard
+    /// ready to come up.
+    private func resetSearch() {
+        searchText = ""
+        scope = .all
+        athleteSearch.clear()
+        schedules.clear()
+        restoresKeyboard = true
+    }
+
     /// Whether a kind of result belongs in the list right now. `all` shows
     /// everything; any other pill shows only its own.
     private func shows(_ kind: SearchScope) -> Bool {
@@ -203,7 +281,7 @@ struct SearchScreen: View {
         let teams = shows(.teams) && !results.teams.isEmpty
         let conferences = shows(.conferences) && !results.conferences.isEmpty
         let players = shows(.players) && !athleteSearch.athletes.isEmpty
-        let games = shows(.games) && !results.games.isEmpty
+        let games = shows(.games) && !visibleGames.isEmpty
         return !(teams || conferences || players || games)
     }
 
@@ -365,22 +443,26 @@ struct SearchScreen: View {
     /// The whole team, not its id: ids collide across leagues, and a
     /// result row that reads "Browns" must not open UAB (Andy, 2026-09-06).
     private func select(_ team: Team) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(team))
         path.append(team)
     }
 
     private func select(_ conference: ConferenceTeams) {
         guard let id = conference.conference else { return }
+        restoresKeyboard = fieldFocused
         recents.record(.conference(id))
         path.append(ConferenceDestination(conference: id, name: conference.name))
     }
 
     private func select(_ game: Game) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(game))
         path.append(game)
     }
 
     private func select(_ player: PlayerIdentity) {
+        restoresKeyboard = fieldFocused
         recents.record(RecentSearchesStore.Entry(player))
         path.append(player)
     }

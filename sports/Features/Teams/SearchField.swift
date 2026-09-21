@@ -14,6 +14,11 @@ struct SearchField: View {
     /// Distinguishes the cover's field from the Teams tab's pinned one when
     /// both exist — UI tests can't rely on `searchFields.firstMatch` then.
     var identifier = ""
+    /// Lets an owner mirror the field's focus — the app-wide search screen
+    /// uses it to remember whether the keyboard was up when you left, so
+    /// coming back restores what you had rather than always opening or
+    /// always staying shut (Andy, 2026-09-21).
+    var onFocusChange: ((Bool) -> Void)? = nil
 
     @FocusState private var isFocused: Bool
 
@@ -31,6 +36,7 @@ struct SearchField: View {
                 .focused($isFocused)
                 .accessibilityAddTraits(.isSearchField)
                 .accessibilityIdentifier(identifier)
+                .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
                 .task {
                     guard focusOnAppear else { return }
                     // The presentation transition steals first responder; a

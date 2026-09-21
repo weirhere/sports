@@ -158,7 +158,10 @@ struct FollowedTablesList: View {
         case .poll(let polls, let league):
             Top25Row(polls: polls, league: league)
         case .conference(let conference):
-            ConferenceListRow(conference: conference)
+            // No leader, no record (Andy, 2026-09-21). The hub answers
+            // "which league", and a name plus a standing was two answers
+            // to two questions in one row.
+            ConferenceListRow(conference: conference, showsLeader: false)
         }
     }
 

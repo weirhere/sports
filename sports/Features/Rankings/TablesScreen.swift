@@ -49,6 +49,9 @@ struct TablesScreen: View {
     @State private var isReordering = false
     @State private var query = ""
 
+    /// One mark box across the hub and the search rows.
+    @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 26
+
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespaces)
     }
@@ -324,8 +327,14 @@ struct TablesScreen: View {
                         FollowedTablesList(rows: followed, isReordering: $isReordering)
                         // Only ever the boundary under Following: with no
                         // Following section the heading sits one line under
-                        // a nav bar already saying "Leagues".
-                        ListSectionHeading(title: "Leagues")
+                        // a page title already saying "Leagues".
+                        //
+                        // It names the contents rather than repeating that
+                        // title (Andy, 2026-09-21) — "Leagues" under
+                        // "Leagues" said nothing, and what is actually below
+                        // is every table the app has: the four leagues,
+                        // their conferences, and the divisions inside those.
+                        ListSectionHeading(title: "All leagues, conferences, divisions")
                     }
                     ForEach(visibleGroups) { group in
                         groupSection(group)
@@ -381,14 +390,25 @@ struct TablesScreen: View {
             Button {
                 withAnimation { leagueSections.toggle(sectionId) }
             } label: {
-                HStack(spacing: Spacing.sm) {
+                // `Spacing.md` and a 26pt mark, the same pair the rows
+                // below use — at `Spacing.sm` and 18pt the header's title
+                // started a few points left of every conference under it
+                // (Andy, 2026-09-21).
+                HStack(spacing: Spacing.md) {
                     ConferenceLogo(url: group.logoURL, league: group.league)
+                        .frame(width: markSize, height: markSize)
                     Text(group.title)
-                        .font(.sectionHeader)
+                        // `teamNameEmphasis`, not `sectionHeader`: at 13pt
+                        // the league name was *smaller* than the 15pt
+                        // conference names beneath it, so the parent read
+                        // as the child's caption. Same size, heavier weight
+                        // — the app's own way of saying rank (2026-09-21).
+                        .font(.teamNameEmphasis)
                         .foregroundStyle(.textPrimary)
-                    Text("\(rows.count)")
-                        .font(.meta)
-                        .foregroundStyle(.textSecondary)
+                    // No count (Andy, 2026-09-21). How many tables a league
+                    // holds is not a question anyone arrives with, and it
+                    // read as a score beside the name. The chevron already
+                    // says there is something inside.
                     Spacer()
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
