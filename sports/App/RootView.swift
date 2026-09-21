@@ -13,6 +13,7 @@ struct RootView: View {
     // follows the scene's lifecycle instead of one tab's.
     @State private var scoreboards = LeagueScoreboards()
     @State private var directory = TeamDirectoryStore()
+    @State private var recents = RecentSearchesStore()
     @State private var router: Router
     @State private var reviewPrompt: ReviewPrompt
     @State private var selectedTab: Tab = .scores
@@ -99,6 +100,9 @@ struct RootView: View {
         .onChange(of: router.pendingTeam) { _, team in
             if team != nil { selectedTab = .teams }
         }
+        .onChange(of: router.pendingPlayer) { _, player in
+            if player != nil { selectedTab = .teams }
+        }
         .onChange(of: router.pendingConferenceId) { _, id in
             if id != nil { selectedTab = .teams }
         }
@@ -151,6 +155,7 @@ struct RootView: View {
         .environment(notifications)
         .environment(scoreboards)
         .environment(directory)
+        .environment(recents)
     }
 }
 

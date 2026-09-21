@@ -49,10 +49,13 @@ struct TablesScreen: View {
 
     var body: some View {
         NavigationStack {
-            content
+            VStack(spacing: 0) {
+                // Same masthead as Games and Teams (2026-09-21).
+                PageHeader("Leagues")
+                content
+            }
                 .background(Color.bgPrimary)
-                .navigationTitle("Leagues")
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .navigationBar)
                 // TeamPage is pushed view-based here, but its standing line
                 // and a standings row's team both push values — register
                 // them so those links work inside this stack too.

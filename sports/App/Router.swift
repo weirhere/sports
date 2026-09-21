@@ -57,6 +57,11 @@ nonisolated struct GameRef: Equatable, Sendable {
 final class Router {
     var pendingGame: GameRef?
     var pendingTeam: TeamRef?
+    /// An athlete to open, carried whole rather than by id: search is the
+    /// only door that knows a player without a roster behind them, so
+    /// there is nothing on the other side to resolve an id against
+    /// (2026-09-21).
+    var pendingPlayer: PlayerIdentity?
     /// Search's conference intent. Today the Teams tab consumes it (expand
     /// + scroll to the section); a dedicated conference destination can take
     /// it over without search changing.

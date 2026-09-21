@@ -151,8 +151,12 @@ extension XCTestCase {
     @MainActor
     @discardableResult
     func openTeamPage(_ name: String, in app: XCUIApplication) -> Bool {
-        let field = app.searchFields["search.appWide"]
+        let field = appWideSearchField(in: app)
         guard openTab("Search", in: app, until: field) else { return false }
+        // Tap the settled frame rather than the element: `focusOnAppear`
+        // means SwiftUI may still be installing focus when the query first
+        // resolves, and a tap that lands mid-rebuild misses.
+        guard waitForHittable(field, timeout: 10) else { return false }
         field.tap()
         field.typeText(name)
         // A prefix, not the bare name: a search result says which league it
@@ -167,6 +171,51 @@ extension XCTestCase {
         // Follow may already read Following from a prior run.
         return app.buttons["Follow"].firstMatch.waitForExistence(timeout: 10)
             || app.buttons["Following"].firstMatch.waitForExistence(timeout: 5)
+    }
+
+    /// Waits for an element to become hittable, not merely to exist.
+    ///
+    /// `waitForExistence` answers a different question: a SwiftUI view can
+    /// resolve in the accessibility tree a frame before it is tappable, and
+    /// a tap in that window throws rather than missing quietly.
+    @MainActor
+    @discardableResult
+    func waitForHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        guard element.waitForExistence(timeout: timeout) else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.isHittable { return true }
+            _ = XCTWaiter.wait(for: [XCTestExpectation(description: "settle")],
+                               timeout: 0.2)
+        }
+        return element.isHittable
+    }
+
+    /// The app-wide search field, found by identifier across element types.
+    ///
+    /// `SearchField` is a SwiftUI `TextField` wearing `.isSearchField` as a
+    /// trait (`SearchField.swift`). A trait is not a type: XCUITest resolved
+    /// that pairing as `.searchField` for years, and on iOS 26.5 it reports
+    /// `.textField` instead, so `app.searchFields["search.appWide"]` matches
+    /// nothing and the failure reads as the app having lost its search box.
+    /// Found 2026-09-21 on `HeroTabFitUITests`' first ever run.
+    ///
+    /// Matching on the identifier alone rather than picking the other type
+    /// is the point: this has now moved once, so a query that survives it
+    /// moving back is worth more than one pinned to today's answer.
+    @MainActor
+    func appWideSearchField(in app: XCUIApplication) -> XCUIElement {
+        // Constrained to the two types the field can report as. A bare
+        // identifier match over `.any` also catches the container that
+        // carries it, and a container is never hittable — which fails in a
+        // way that reads exactly like the field being missing.
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier == %@ AND (elementType == %d OR elementType == %d)",
+                "search.appWide",
+                XCUIElement.ElementType.searchField.rawValue,
+                XCUIElement.ElementType.textField.rawValue))
+            .firstMatch
     }
 
     /// Which way an off-screen element is expected to lie.

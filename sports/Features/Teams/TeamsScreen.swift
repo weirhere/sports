@@ -22,21 +22,16 @@ struct TeamsScreen: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            content
+            VStack(spacing: 0) {
+                // The masthead every root tab shares (2026-09-21) — the
+                // centred inline title put "Teams" somewhere "StatSide"
+                // never is, and the toolbar plus sat higher than the Live
+                // and calendar chips it lines up with one tab over.
+                PageHeader(title: "Teams") { addButton }
+                content
+            }
                 .background(Color.bgRecessed)
-                .navigationTitle("Teams")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            isAddingTeams = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .tint(.textPrimary)
-                        .accessibilityLabel("Add teams")
-                    }
-                }
+                .toolbar(.hidden, for: .navigationBar)
                 // Identity follows the team (2026-09-10). Search and the
                 // widget route by *replacing* the value at this path position
                 // rather than pushing a second page, and a destination whose
@@ -75,6 +70,7 @@ struct TeamsScreen: View {
             resolvePendingConference()
         }
         .onChange(of: router.pendingTeam) { _, _ in resolvePendingTeam() }
+        .onChange(of: router.pendingPlayer) { _, _ in resolvePendingPlayer() }
         .onChange(of: router.pendingConferenceId) { _, _ in resolvePendingConference() }
         .onChange(of: directory.conferences) { _, _ in
             resolvePendingTeam()
@@ -89,6 +85,15 @@ struct TeamsScreen: View {
     /// an unknown id degrades to landing on the Teams tab.
     ///
     /// The match is league-qualified — see `TeamDirectoryStore.team(matching:)`.
+    /// Unlike a team or a conference, nothing is looked up: search hands
+    /// over the whole `PlayerIdentity`, because there is no athlete
+    /// directory for an id to be resolved against (2026-09-21).
+    private func resolvePendingPlayer() {
+        guard let player = router.pendingPlayer else { return }
+        router.pendingPlayer = nil
+        path.append(player)
+    }
+
     private func resolvePendingTeam() {
         guard let pending = router.pendingTeam,
               let team = directory.team(matching: pending,
@@ -153,6 +158,23 @@ struct TeamsScreen: View {
     }
 
     /// The second door to the sheet, and the only one that reads as an
+    /// The way to the directory, in the slot Games gives Live and the
+    /// calendar. `PageHeader` holds the row at 52pt so this centres on the
+    /// same line they do rather than riding a few points higher.
+    private var addButton: some View {
+        Button {
+            isAddingTeams = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add teams")
+    }
+
     /// invitation — the toolbar plus is the one that's always in reach.
     private var addTeamsCard: some View {
         Button {
