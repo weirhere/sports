@@ -166,7 +166,8 @@ struct SectionAccordion: View {
     /// The header's spoken sentence, carrying the same league anchor the
     /// caption does — a VoiceOver swipe lands on "ACC" with no marks and no
     /// screen to read it against, so the ambiguity is worse here, not less.
-    /// Spelled out rather than abbreviated: "NCAAF" is a caption, not a word.
+    /// Spelled out rather than abbreviated — see `League.spokenName`, which
+    /// is where that rule now lives so every spoken surface inherits it.
     private var headerLabel: String {
         let games = "\(section.games.count) \(section.games.count == 1 ? "game" : "games")"
         guard let league = tagLeague else { return "\(section.title), \(games)" }

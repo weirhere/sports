@@ -14,6 +14,7 @@ struct RootView: View {
     @State private var scoreboards = LeagueScoreboards()
     @State private var directory = TeamDirectoryStore()
     @State private var recents = RecentSearchesStore()
+    @State private var leagueSections = LeagueSectionExpansion()
     @State private var router: Router
     @State private var reviewPrompt: ReviewPrompt
     @State private var selectedTab: Tab = .scores
@@ -156,6 +157,7 @@ struct RootView: View {
         .environment(scoreboards)
         .environment(directory)
         .environment(recents)
+        .environment(leagueSections)
     }
 }
 

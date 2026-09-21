@@ -33,6 +33,7 @@ import SwiftUI
 struct TablesScreen: View {
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
+    @Environment(LeagueSectionExpansion.self) private var leagueSections
 
     @State private var polls: [Poll] = []
     /// Standings per league, each fetched and failing independently.
@@ -306,10 +307,13 @@ struct TablesScreen: View {
         }
     }
 
-    /// One group's accordion, the Teams-browse card: a bgHeader toggle row
-    /// over its rows, collapse state persisted like every other accordion
-    /// in the app. A league arrives open — absence of a stored collapse
-    /// means expanded, so a new league needs no migration.
+    /// One group's accordion: a bgHeader toggle row over its rows.
+    ///
+    /// **Closed until opened, and only for this run of the app** (Andy,
+    /// 2026-09-21) — see `LeagueSectionExpansion` for why the state lives in
+    /// memory rather than in `UIStateStore` beside every other accordion's.
+    /// A league arriving closed needs no migration either: the set starts
+    /// empty every launch.
     ///
     /// The header stands a followed card's height (Andy, 2026-09-06), not
     /// the 12pt padding alone its content asks for — the hub is a stack of
@@ -319,11 +323,11 @@ struct TablesScreen: View {
     /// height.
     private func groupSection(_ group: TableGroup) -> some View {
         let sectionId = group.id
-        let isExpanded = !uiState.isConferenceCollapsed(sectionId)
+        let isExpanded = leagueSections.isExpanded(sectionId)
         let rows = group.rows
         return VStack(spacing: 0) {
             Button {
-                withAnimation { uiState.toggleConference(sectionId) }
+                withAnimation { leagueSections.toggle(sectionId) }
             } label: {
                 HStack(spacing: Spacing.sm) {
                     ConferenceLogo(url: group.logoURL, league: group.league)

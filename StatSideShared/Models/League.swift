@@ -61,12 +61,33 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// The name on screen. **"NCAAF", not "College Football"** (Andy,
+    /// 2026-09-21) — the app calls the league what ESPN and the broadcasts
+    /// call it, at every width, so the hub header and a row's league tag
+    /// agree.
     var displayName: String {
         switch self {
-        case .collegeFootball: "College Football"
+        case .collegeFootball: "NCAAF"
         case .nfl: "NFL"
         case .nba: "NBA"
         case .nhl: "NHL"
+        }
+    }
+
+    /// The name VoiceOver says, which is **not** the name on screen for
+    /// college football.
+    ///
+    /// `SectionAccordion`'s header has made this argument since it was
+    /// written: an initialism is a caption, not a word. A swipe that lands
+    /// on "ACC" has no marks and no screen to read it against, so the
+    /// spoken sentence is where the ambiguity costs most — and "N-C-A-A-F"
+    /// spelled letter by letter is worse than the phrase it abbreviates.
+    /// The three pro leagues are initialisms people say aloud, so they are
+    /// their own spoken form.
+    var spokenName: String {
+        switch self {
+        case .collegeFootball: "College Football"
+        case .nfl, .nba, .nhl: displayName
         }
     }
 
