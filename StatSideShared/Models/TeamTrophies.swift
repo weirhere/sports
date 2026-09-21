@@ -55,6 +55,63 @@ nonisolated struct TrophyKind: Hashable, Sendable {
     }
 
     func named(_ count: Int) -> String { count == 1 ? singular : plural }
+
+    /// What makes two trophies the same trophy, and it **folds case**.
+    ///
+    /// ESPN does not spell a headline the same way twice: the Rams' 2021
+    /// season calls it "NFC Championship" and their 2018 season calls it
+    /// "NFC CHAMPIONSHIP", which is two kinds under a synthesized
+    /// `Hashable` and so two rows reading "1" where the shelf holds two of
+    /// one thing (Andy, 2026-09-21). Since the name is taken from the wire
+    /// by design — see `from(headline:league:)` — the wire's typography
+    /// cannot be allowed to be identity.
+    var identity: String { singular.lowercased() }
+
+    /// Identity as a dictionary key. Spelled out rather than leaning on
+    /// `Hashable`, because a `Dictionary` keeps the key it already holds
+    /// when an equal one is assigned — which would hand the choice of
+    /// letters to arrival order, and the derived seasons arrive in none.
+    var key: String { "\(tier.rawValue)\u{0}\(identity)" }
+
+    // Spelling is presentation, so it is deliberately out of both of
+    // these; `preferredSpelling(_:_:)` is what decides which letters a
+    // merged row actually prints. `plural` is out for the same reason: it
+    // is derived from `singular` at the one place either is made.
+    static func == (lhs: TrophyKind, rhs: TrophyKind) -> Bool {
+        lhs.tier == rhs.tier && lhs.identity == rhs.identity
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tier)
+        hasher.combine(identity)
+    }
+
+    /// Which of two spellings of one trophy a row prints.
+    ///
+    /// Never a third spelling: both candidates are ESPN's own words, and
+    /// the calmer one wins — counted, rather than an all-caps test, because
+    /// the pair that needs deciding is often only half-shouted ("BIG TEN
+    /// Championship" against "Big Ten Championship", once the common noun
+    /// above has been fixed). A genuine tie breaks lexicographically, so a
+    /// shelf can't reorder its own letters between launches.
+    static func preferredSpelling(_ lhs: TrophyKind, _ rhs: TrophyKind) -> TrophyKind {
+        let (left, right) = (lhs.singular.shoutiness, rhs.singular.shoutiness)
+        if left != right { return left < right ? lhs : rhs }
+        return lhs.singular <= rhs.singular ? lhs : rhs
+    }
+}
+
+extension String {
+    /// All caps, and not merely for want of a lowercase form — "NFC
+    /// CHAMPIONSHIP" is shouting, "Big 12" and "2018" are not.
+    fileprivate var isShouting: Bool {
+        contains(where: \.isUppercase) && !contains(where: \.isLowercase)
+    }
+
+    /// How loud a spelling is, for choosing between two of them.
+    fileprivate var shoutiness: Int {
+        reduce(0) { $0 + ($1.isUppercase ? 1 : 0) }
+    }
 }
 
 extension TrophyKind {
@@ -142,7 +199,15 @@ extension TrophyKind {
             name = String(name.dropLast(5)).trimmingCharacters(in: .whitespaces)
         }
         guard tail.hasSuffix("championship"), tail != "championship" else { return nil }
-        return TrophyKind(singular: name, plural: name + "s", tier: .conference)
+        // One word is re-cased, and only one: ESPN shouts "NFC CHAMPIONSHIP"
+        // in some seasons and writes "NFC Championship" in others, and a row
+        // must not print a shout because of which season it was derived
+        // from. The conference's own letters stay ESPN's, because re-casing
+        // those would have to guess whether a token is an acronym ("SEC") or
+        // a word ("Big Ten") — and on an all-caps string it would guess
+        // wrong either way round. `identity` covers the prefix instead.
+        let named = String(name.dropLast("championship".count)) + "Championship"
+        return TrophyKind(singular: named, plural: named + "s", tier: .conference)
     }
 
     /// Whether a round name is the one that hands over a trophy.
@@ -161,7 +226,12 @@ extension TrophyKind {
     /// Already plural, like the NBA Finals it sits under.
     private static func conferenceFinals(headline: String, text: String) -> TrophyKind? {
         guard text.contains("conference final") else { return nil }
-        let name = headline.trimmingCharacters(in: .whitespaces)
+        var name = headline.trimmingCharacters(in: .whitespaces)
+        // The same shout as above, and here it can be fixed outright rather
+        // than a word at a time: this path only matches "<side> Conference
+        // Final(s)", which is ordinary words with no acronym for a
+        // capitalization pass to mangle.
+        if name.isShouting { name = name.capitalized }
         return TrophyKind(singular: name, plural: name, tier: .conference)
     }
 }
@@ -265,24 +335,34 @@ extension TrophyCase {
         // row rather than two. The registry's window and the derivation's
         // are meant to abut rather than overlap, but a registry populated
         // past the floor is the normal end state of this feature, not an
-        // error — so the overlap dedupes silently.
-        var wins: [TrophyKind: Set<Int>] = [:]
+        // error — so the overlap dedupes silently. Identity folds case, so
+        // the spelling a merged row prints is chosen by rule as it goes
+        // rather than left to whichever season happened to land first.
+        var wins: [String: (kind: TrophyKind, years: Set<Int>)] = [:]
         for trophy in registry + derived {
-            wins[trophy.kind, default: []].insert(trophy.year)
+            guard var entry = wins[trophy.kind.key] else {
+                wins[trophy.kind.key] = (trophy.kind, [trophy.year])
+                continue
+            }
+            entry.kind = TrophyKind.preferredSpelling(entry.kind, trophy.kind)
+            entry.years.insert(trophy.year)
+            wins[trophy.kind.key] = entry
         }
 
-        let groups = wins.map { kind, wonIn -> TrophyGroup in
-            let years = wonIn.sorted(by: >)
+        let groups = wins.values.map { entry -> TrophyGroup in
+            let years = entry.years.sorted(by: >)
             // All-time only where the registry says it speaks for this
             // trophy's whole history. Inferring it from the rows instead
             // would read "the oldest one we happen to know about" as "the
             // oldest one there is" — so a team whose only league title
             // came in the derived era would claim a complete shelf, which
-            // is the omission this caption exists to prevent.
-            let coverage: TrophyGroup.Coverage = allTimeKinds.contains(kind.singular)
+            // is the omission this caption exists to prevent. Matched on
+            // identity, like everything else here: a registry row and a
+            // derived one must not miss each other over a capital.
+            let coverage: TrophyGroup.Coverage = allTimeKinds.contains(entry.kind.identity)
                 ? .allTime
                 : .since(derivedFloor)
-            return TrophyGroup(kind: kind, years: years, coverage: coverage)
+            return TrophyGroup(kind: entry.kind, years: years, coverage: coverage)
         }
 
         return TrophyCase(groups: groups.sorted { lhs, rhs in

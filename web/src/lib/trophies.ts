@@ -82,6 +82,59 @@ export function trophyName(kind: TrophyKind, count: number): string {
   return count === 1 ? kind.singular : kind.plural;
 }
 
+/**
+ * What makes two trophies the same trophy, and it **folds case**.
+ *
+ * ESPN does not spell a headline the same way twice: the Rams' 2021 season
+ * calls it "NFC Championship" and their 2018 season calls it "NFC
+ * CHAMPIONSHIP", which grouped as two kinds and so printed two rows reading
+ * "1" where the shelf holds two of one thing (Andy, 2026-09-21). Since the
+ * name is taken from the wire by design — see `trophyKindFromHeadline` — the
+ * wire's typography cannot be allowed to be identity.
+ */
+export function trophyKindIdentity(kind: TrophyKind): string {
+  return kind.singular.toLowerCase();
+}
+
+/** Identity as a map key. The tier is part of it, as it is on iOS. */
+function trophyKindKey(kind: TrophyKind): string {
+  return `${kind.tier}\u0000${trophyKindIdentity(kind)}`;
+}
+
+/**
+ * All caps, and not merely for want of a lowercase form — "NFC CHAMPIONSHIP"
+ * is shouting, "Big 12" and "2018" are not.
+ */
+function isShouting(text: string): boolean {
+  return text !== text.toLowerCase() && text === text.toUpperCase();
+}
+
+/** How loud a spelling is, for choosing between two of them. */
+function shoutiness(text: string): number {
+  let loud = 0;
+  for (const character of text) {
+    if (character !== character.toLowerCase()) loud += 1;
+  }
+  return loud;
+}
+
+/**
+ * Which of two spellings of one trophy a row prints.
+ *
+ * Never a third spelling: both candidates are ESPN's own words, and the
+ * calmer one wins — counted, rather than an all-caps test, because the pair
+ * that needs deciding is often only half-shouted ("BIG TEN Championship"
+ * against "Big Ten Championship", once the common noun above has been
+ * fixed). A genuine tie breaks lexicographically, so a shelf can't reorder
+ * its own letters between loads.
+ */
+function preferredSpelling(lhs: TrophyKind, rhs: TrophyKind): TrophyKind {
+  const left = shoutiness(lhs.singular);
+  const right = shoutiness(rhs.singular);
+  if (left !== right) return left < right ? lhs : rhs;
+  return lhs.singular <= rhs.singular ? lhs : rhs;
+}
+
 export function trophyGroupTitle(group: TrophyGroup): string {
   return trophyName(group.kind, group.years.length);
 }
@@ -145,7 +198,15 @@ function conferenceChampionship(
     name = name.slice(0, -5).trim();
   }
   if (!tail.endsWith("championship") || tail === "championship") return undefined;
-  return { singular: name, plural: `${name}s`, tier: "conference" };
+  // One word is re-cased, and only one: ESPN shouts "NFC CHAMPIONSHIP" in
+  // some seasons and writes "NFC Championship" in others, and a row must not
+  // print a shout because of which season it was derived from. The
+  // conference's own letters stay ESPN's, because re-casing those would have
+  // to guess whether a token is an acronym ("SEC") or a word ("Big Ten") —
+  // and on an all-caps string it would guess wrong either way round.
+  // `trophyKindIdentity` covers the prefix instead.
+  const named = `${name.slice(0, -"championship".length)}Championship`;
+  return { singular: named, plural: `${named}s`, tier: "conference" };
 }
 
 /**
@@ -157,7 +218,14 @@ function conferenceFinals(
   text: string
 ): TrophyKind | undefined {
   if (!text.includes("conference final")) return undefined;
-  const name = headline.trim();
+  const trimmed = headline.trim();
+  // The same shout as above, and here it can be fixed outright rather than a
+  // word at a time: this path only matches "<side> Conference Final(s)",
+  // which is ordinary words with no acronym for a capitalization pass to
+  // mangle.
+  const name = isShouting(trimmed)
+    ? trimmed.replace(/\S+/g, (word) => word[0] + word.slice(1).toLowerCase())
+    : trimmed;
   return { singular: name, plural: name, tier: "conference" };
 }
 
@@ -259,9 +327,9 @@ export function deriveTrophies(
     ) {
       continue;
     }
-    const bucket = byKind.get(kind.singular) ?? { kind, games: [] };
+    const bucket = byKind.get(trophyKindKey(kind)) ?? { kind, games: [] };
     bucket.games.push(game);
-    byKind.set(kind.singular, bucket);
+    byKind.set(trophyKindKey(kind), bucket);
   }
 
   const won: Trophy[] = [];
@@ -292,7 +360,11 @@ export function deriveTrophies(
 export function assembleTrophyCase(input: {
   derived: Trophy[];
   registry: Trophy[];
-  /** `TrophyKind.singular`s whose *whole* history the registry speaks for. */
+  /**
+   * `trophyKindIdentity`s whose *whole* history the registry speaks for —
+   * case-folded, so a list spelled one way and a derived row spelled another
+   * still meet.
+   */
   allTimeKinds: Set<string>;
   derivedFloor: number;
 }): TrophyCase {
@@ -300,14 +372,18 @@ export function assembleTrophyCase(input: {
   // than two. The registry's window and the derivation's are meant to abut
   // rather than overlap, but a registry populated past the floor is the normal
   // end state of this feature, not an error — so the overlap dedupes silently.
+  // Keyed on identity, which folds case, so the surviving spelling is
+  // chosen rather than left to whichever season arrived first.
   const wins = new Map<string, { kind: TrophyKind; years: Set<number> }>();
   for (const trophy of [...input.registry, ...input.derived]) {
-    const bucket = wins.get(trophy.kind.singular) ?? {
-      kind: trophy.kind,
-      years: new Set<number>(),
-    };
+    const key = trophyKindKey(trophy.kind);
+    const bucket = wins.get(key);
+    if (!bucket) {
+      wins.set(key, { kind: trophy.kind, years: new Set([trophy.year]) });
+      continue;
+    }
+    bucket.kind = preferredSpelling(bucket.kind, trophy.kind);
     bucket.years.add(trophy.year);
-    wins.set(trophy.kind.singular, bucket);
   }
 
   const groups: TrophyGroup[] = [...wins.values()].map(({ kind, years }) => ({
@@ -319,7 +395,9 @@ export function assembleTrophyCase(input: {
     // we happen to know about" as "the oldest one there is" — so a team whose
     // only league title came in the derived era would claim a complete shelf,
     // which is the omission this caption exists to prevent.
-    coverage: input.allTimeKinds.has(kind.singular)
+    // Matched on identity, like everything else here — a registry row and a
+    // derived one must not miss each other over a capital.
+    coverage: input.allTimeKinds.has(trophyKindIdentity(kind))
       ? { kind: "allTime" as const }
       : { kind: "since" as const, year: input.derivedFloor },
   }));

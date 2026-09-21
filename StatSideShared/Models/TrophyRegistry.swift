@@ -80,7 +80,8 @@ nonisolated enum TrophyRegistry {
     }
 
     /// The trophies whose *whole* history this registry speaks for, by
-    /// `TrophyKind.singular`.
+    /// `TrophyKind.identity` — case-folded, so a list spelled one way and a
+    /// derived row spelled another still meet.
     ///
     /// What makes a row's coverage caption honest. A league title in here
     /// is all-time; anything else — every conference title, always — is
@@ -90,6 +91,6 @@ nonisolated enum TrophyRegistry {
     /// and a conference table is the one part of this a season fetch
     /// already answers correctly.
     static func coveredKinds(in league: League) -> Set<String> {
-        Set((lists[league] ?? []).filter(\.verified).map(\.kind.singular))
+        Set((lists[league] ?? []).filter(\.verified).map(\.kind.identity))
     }
 }
