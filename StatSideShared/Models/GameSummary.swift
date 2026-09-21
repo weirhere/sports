@@ -39,6 +39,13 @@ nonisolated struct GameSummary: Sendable {
     var grassSurface: Bool? = nil
     var weatherCondition: String? = nil
     var weatherTemperature: Int? = nil
+    /// The two sides' own standings tables, read out of the summary
+    /// rather than fetched (E21, 2026-09-21). Empty for every league
+    /// whose summary ships a division instead of a conference, and for
+    /// CFBD, which ships no standings block at all — the game page falls
+    /// back to `conferenceStandings()` when this is empty, so an absent
+    /// block costs a request, never the card.
+    var matchupStandings: [ConferenceStandings] = []
 }
 
 extension GameSummary {

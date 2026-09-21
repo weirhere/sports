@@ -961,6 +961,7 @@ nonisolated enum ESPNMapper {
             // The NFL scoreboard ships no conferenceId, so the registry
             // supplies the division; college football carries its own.
             conferenceId: dto.conferenceId?.value
+                ?? conferenceId(from: dto.groups, league: league)
                 ?? Conference.division(forTeamId: id, in: league),
             league: league
         )
@@ -1130,21 +1131,29 @@ nonisolated enum ESPNMapper {
             : Conference.name(for: id, in: league)
         let entries = (group.standings?.entries?.elements ?? []).compactMap { entry -> ConferenceStanding? in
             guard let mapped = team(from: entry.team, league: league) else { return nil }
-            func stat(_ type: String) -> StandingsStatDTO? {
-                entry.stats?.first { $0.type == type }
-            }
-            guard played else {
-                // The roster still stands — who is in this division is
-                // true all summer. Only the numbers are last season's.
-                return ConferenceStanding(
-                    team: Team(
-                        id: mapped.id, location: mapped.location, name: mapped.name,
-                        abbreviation: mapped.abbreviation, displayName: mapped.displayName,
-                        shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
-                        conferenceId: id, league: league
-                    ),
-                    conferenceRecord: nil, overallRecord: nil, streak: nil)
-            }
+            return standing(team: mapped, stats: entry.stats,
+                            conferenceId: id, league: league, played: played)
+        }
+        return ConferenceStandings(id: id, name: name,
+                                   entries: ConferenceStandings.seedOrdered(entries),
+                                   league: league, parentId: parentId)
+    }
+
+    /// One team's line, out of whatever `stats` array carried it.
+    ///
+    /// Shared by the standings endpoint and the summary's own copy of the
+    /// same table (E21, 2026-09-21): the two responses disagree about the
+    /// shape of the *team* beside the stats and agree exactly about the
+    /// stats, so this is the half that can be one function.
+    private static func standing(team mapped: Team, stats: [StandingsStatDTO]?,
+                                 conferenceId id: Int?, league: League,
+                                 played: Bool) -> ConferenceStanding {
+        func stat(_ type: String) -> StandingsStatDTO? {
+            stats?.first { $0.type == type }
+        }
+        guard played else {
+            // The roster still stands — who is in this division is
+            // true all summer. Only the numbers are last season's.
             return ConferenceStanding(
                 team: Team(
                     id: mapped.id, location: mapped.location, name: mapped.name,
@@ -1152,41 +1161,113 @@ nonisolated enum ESPNMapper {
                     shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
                     conferenceId: id, league: league
                 ),
-                // Both leagues ship `vsconf`. The NFL also ships a
-                // division record, spelled `divisionrecord` — the
-                // camel-cased fallback that used to sit here never
-                // matched a payload, so the column has always held the
-                // conference record and now says so.
-                conferenceRecord: stat("vsconf")?.summary,
-                overallRecord: overallRecord(stat, league: league),
-                streak: record(stat, "streak"),
-                playoffSeed: stat("playoffseed")?.value.map(Int.init),
-                winPercent: stat("winpercent")?.value,
-                winLossOTL: winLossOTL(stat),
-                gamesPlayed: stat("gamesplayed")?.value.map(Int.init),
-                points: stat("points")?.value.map(Int.init),
-                gamesBehind: stat("gamesbehind")?.displayValue,
-                wins: stat("wins")?.value.map(Int.init),
-                losses: stat("losses")?.value.map(Int.init),
-                ties: stat("ties")?.value.map(Int.init),
-                // `home` and `road` carry summaries; the division record
-                // is `vsdiv`'s, with `divisionrecord`'s display string as
-                // the fallback — ESPN ships both and they agree.
-                homeRecord: record(stat, "home"),
-                awayRecord: record(stat, "road"),
-                divisionRecord: record(stat, "vsdiv") ?? record(stat, "divisionrecord"),
-                pointsFor: stat("pointsfor")?.value.map(Int.init),
-                pointsAgainst: stat("pointsagainst")?.value.map(Int.init),
-                // ESPN signs it already ("+40"), and the sign is the whole
-                // column. `differential` and `pointdifferential` are the
-                // same number under two names in every payload we have read.
-                pointDifferential: stat("pointdifferential")?.displayValue
-                    ?? stat("differential")?.displayValue
-            )
+                conferenceRecord: nil, overallRecord: nil, streak: nil)
         }
-        return ConferenceStandings(id: id, name: name,
-                                   entries: ConferenceStandings.seedOrdered(entries),
-                                   league: league, parentId: parentId)
+        return ConferenceStanding(
+            team: Team(
+                id: mapped.id, location: mapped.location, name: mapped.name,
+                abbreviation: mapped.abbreviation, displayName: mapped.displayName,
+                shortDisplayName: mapped.shortDisplayName, logoURL: mapped.logoURL,
+                conferenceId: id, league: league
+            ),
+            // Both leagues ship `vsconf`. The NFL also ships a
+            // division record, spelled `divisionrecord` — the
+            // camel-cased fallback that used to sit here never
+            // matched a payload, so the column has always held the
+            // conference record and now says so.
+            conferenceRecord: stat("vsconf")?.summary,
+            overallRecord: overallRecord(stat, league: league),
+            streak: record(stat, "streak"),
+            playoffSeed: stat("playoffseed")?.value.map(Int.init),
+            winPercent: stat("winpercent")?.value,
+            winLossOTL: winLossOTL(stat),
+            gamesPlayed: stat("gamesplayed")?.value.map(Int.init),
+            points: stat("points")?.value.map(Int.init),
+            gamesBehind: stat("gamesbehind")?.displayValue,
+            wins: stat("wins")?.value.map(Int.init),
+            losses: stat("losses")?.value.map(Int.init),
+            ties: stat("ties")?.value.map(Int.init),
+            // `home` and `road` carry summaries; the division record
+            // is `vsdiv`'s, with `divisionrecord`'s display string as
+            // the fallback — ESPN ships both and they agree.
+            homeRecord: record(stat, "home"),
+            awayRecord: record(stat, "road"),
+            divisionRecord: record(stat, "vsdiv") ?? record(stat, "divisionrecord"),
+            pointsFor: stat("pointsfor")?.value.map(Int.init),
+            pointsAgainst: stat("pointsagainst")?.value.map(Int.init),
+            // ESPN signs it already ("+40"), and the sign is the whole
+            // column. `differential` and `pointdifferential` are the
+            // same number under two names in every payload we have read.
+            pointDifferential: stat("pointdifferential")?.displayValue
+                ?? stat("differential")?.displayValue
+        )
+    }
+
+    /// The matchup card's two tables, out of the summary the game page
+    /// already fetched (E21, 2026-09-21) — no second request.
+    ///
+    /// ESPN ships exactly the competing teams' groups, in full, so the
+    /// card finds both sides and a real place number. Three things this
+    /// deliberately does not do:
+    ///
+    /// **It doesn't read `isSameConference`.** That flag compares
+    /// `conferenceHeader`, which is "FBS" on both sides of an ACC-vs-Big
+    /// Ten game, so it answers `true` to a question nobody asked.
+    /// `MatchupStandings` keeps deriving same-conference from the two
+    /// teams' own tables.
+    ///
+    /// **It doesn't take the group's id from the payload, because there
+    /// isn't one.** The id comes from the competing team the group
+    /// contains — `Team.conferenceId`, which the summary header carries
+    /// as `groups.id`. A group is ESPN's answer to "where does this team
+    /// stand", so the team in it is the surest name for it, and the id is
+    /// what makes the row tappable through to the conference page.
+    ///
+    /// **It doesn't re-decode the two teams it already has.** The
+    /// summary's standings entry is a display string and an id, where the
+    /// card renders a crest and a location — so the two competing `Team`
+    /// values stand in wherever the ids match, and the card reads exactly
+    /// as it did off the standings endpoint. Every other entry is a thin
+    /// stand-in that exists to hold a place number; none of them render.
+    static func matchupStandings(from dto: SummaryStandingsDTO?,
+                                 league: League,
+                                 teams: [Team]) -> [ConferenceStandings] {
+        guard league.summaryCarriesMatchupStandings, let dto else { return [] }
+        return (dto.groups ?? []).compactMap { group -> ConferenceStandings? in
+            let entries = group.standings?.entries?.elements ?? []
+            guard !entries.isEmpty else { return nil }
+            let ids = Set(entries.compactMap(\.id))
+            let id = teams.first { ids.contains($0.id) }?.conferenceId
+            let name = Conference.tier(for: id, in: league) == .other
+                ? (group.shortDivisionHeader ?? group.divisionHeader
+                    ?? group.header ?? "Conference")
+                : Conference.name(for: id, in: league)
+            let standings = entries.compactMap { entry -> ConferenceStanding? in
+                guard let entryId = entry.id else { return nil }
+                // The two teams keep the identity the page was pushed
+                // with; everyone else is a name and a crest.
+                let team = teams.first { $0.id == entryId }
+                    ?? Team(id: entryId,
+                            location: entry.team ?? "—",
+                            name: nil, abbreviation: nil, displayName: entry.team,
+                            shortDisplayName: nil,
+                            logoURL: entry.logo?
+                                .first { !($0.rel ?? []).contains("dark") }?
+                                .href.flatMap(URL.init(string:)),
+                            conferenceId: id, league: league)
+                // `played` is always true here: the summary's block ships
+                // no season start date to gate on, and it doesn't need
+                // one — a preseason table arrives honestly 0-0, which is
+                // the same thing `MatchupStandings.hasContent` already
+                // reads to hide the card.
+                return standing(team: team, stats: entry.stats,
+                                conferenceId: id, league: league, played: true)
+            }
+            guard !standings.isEmpty else { return nil }
+            return ConferenceStandings(id: id, name: name,
+                                       entries: ConferenceStandings.seedOrdered(standings),
+                                       league: league)
+        }
     }
 
     /// A record column's string — the `summary` ESPN writes for the
@@ -1328,7 +1409,17 @@ nonisolated enum ESPNMapper {
             let id = groups.id?.value
             return Conference.isKnown(id, in: league) ? id : groups.parent?.id?.value
         }
-        return groups.isConference == true ? groups.id?.value : groups.parent?.id?.value
+        if groups.isConference == true { return groups.id?.value }
+        // The two payloads that ship `groups` on a *team* object rather
+        // than on the schedule's `team` — the summary header and the
+        // rankings — don't mark `isConference` at all (2026-09-21). They
+        // say it the other way instead: a conference's parent is its
+        // division root (FBS 80, FCS 81), where a division's parent is
+        // the conference. And the summary names no parent whatsoever, so
+        // the group it gives is the only group there is.
+        guard let parent = groups.parent?.id?.value else { return groups.id?.value }
+        return Conference.isDivisionRoot(parent, in: league)
+            ? groups.id?.value : parent
     }
 
     static func game(from event: ScheduleEventDTO, league: League = .collegeFootball) -> Game? {
@@ -1559,7 +1650,10 @@ nonisolated enum ESPNMapper {
             venueCapacity: dto.gameInfo?.venue?.capacity,
             grassSurface: dto.gameInfo?.venue?.grass,
             weatherCondition: dto.gameInfo?.weather?.displayValue,
-            weatherTemperature: dto.gameInfo?.weather?.temperature.map(Int.init)
+            weatherTemperature: dto.gameInfo?.weather?.temperature.map(Int.init),
+            matchupStandings: matchupStandings(
+                from: dto.standings, league: league,
+                teams: [side("away")?.team, side("home")?.team].compactMap(\.self))
         )
     }
 

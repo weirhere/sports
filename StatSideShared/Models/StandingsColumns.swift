@@ -107,6 +107,25 @@ nonisolated extension League {
     /// says "there is more here" and there wouldn't be.
     var standingsScrollsHorizontally: Bool { self == .nfl }
 
+    /// Whether this league's `/summary` carries the standings table the
+    /// matchup card wants, so the game page can skip its second request
+    /// (E21, 2026-09-21).
+    ///
+    /// True for exactly college football, and the reason is what the
+    /// payload contains rather than what it's called. CFB's summary ships
+    /// **both competing conferences in full**, each entry carrying
+    /// `total` and `vsconf` — which is the card's whole column set, OVR
+    /// and CONF. The NBA's and NHL's ship the **division** (Boston's
+    /// Atlantic, Vegas's Pacific), and short of the card's columns at
+    /// that: the NBA sends no `total` summary and the NHL no
+    /// `gamesplayed`. A division table under a caption the card would
+    /// have to invent, missing a column, is worse than the request it
+    /// saves — so the winter leagues keep the fetch. The NFL keeps it
+    /// too, for the plainer reason that no NFL summary has ever been
+    /// captured, and a guess about a payload is what the DTO rule exists
+    /// to prevent.
+    var summaryCarriesMatchupStandings: Bool { self == .collegeFootball }
+
     /// The columns the game page's matchup slice shows — two rows about
     /// two teams, not a table.
     ///

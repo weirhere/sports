@@ -27,8 +27,15 @@ struct GameDetailScreen: View {
     @State private var loadedKey: String?
     @State private var isLoading = false
     @State private var lastError: String?
-    /// The matchup-standings card's data; a miss just hides the card.
+    /// The matchup-standings card's data, when it had to be fetched; a
+    /// miss just hides the card. College football's arrives inside the
+    /// summary instead (E21, 2026-09-21) and never touches this.
     @State private var conferenceStandings: [ConferenceStandings] = []
+    /// Whether the fallback fetch has already been spent on this game.
+    /// The poll re-enters `load` every 30s, and a league that ships no
+    /// standings block would otherwise ask for the tables on every tick —
+    /// which is the polite-guest rule broken by a card, of all things.
+    @State private var triedStandingsFallback = false
     @State private var tab: Tab = .summary
     @State private var isSharing = false
     /// Rendered on the share tap, so the card can never carry a score the
@@ -66,8 +73,17 @@ struct GameDetailScreen: View {
     /// risk the summary does: a reused screen handed a game in another
     /// league would keep asking the matchup card to find its two teams in
     /// the wrong table.
+    ///
+    /// The summary's own copy wins where there is one (E21, 2026-09-21):
+    /// it is this game's two tables rather than the whole league's, and
+    /// it arrived inside a request the page had to make anyway. The
+    /// fetched tables are the fallback, and the card can't tell the
+    /// difference — both are `[ConferenceStandings]` and
+    /// `MatchupStandings` finds its two teams in either.
     private var currentStandings: [ConferenceStandings] {
-        loadedKey == game.routeKey ? conferenceStandings : []
+        guard loadedKey == game.routeKey else { return [] }
+        let fromSummary = loadedSummary?.matchupStandings ?? []
+        return fromSummary.isEmpty ? conferenceStandings : fromSummary
     }
 
     /// Raw values order the tabs — the slide direction is an ordinal
@@ -726,6 +742,7 @@ struct GameDetailScreen: View {
         if loadedKey != key {
             loadedSummary = nil
             conferenceStandings = []
+            triedStandingsFallback = false
             lastError = nil
             tab = .summary
             scoringOnly = false
@@ -744,7 +761,14 @@ struct GameDetailScreen: View {
         // The gate is decided here, on the main actor: an `async let`
         // initializer is a nonisolated autoclosure, so it can't read
         // `conferenceStandings` itself.
+        //
+        // College football skips it outright: its summary carries both
+        // conferences' tables, so the speculative fetch was asking ESPN
+        // for a whole league to render two rows it was about to be handed
+        // anyway (E21, 2026-09-21). If the block turns out to be missing,
+        // the fallback below picks it up — once.
         let needsStandings = isCurrentSeason && conferenceStandings.isEmpty
+            && !game.home.team.league.summaryCarriesMatchupStandings
         async let standingsFetch: [ConferenceStandings]? =
             needsStandings ? try? client.conferenceStandings() : nil
         do {
@@ -761,6 +785,19 @@ struct GameDetailScreen: View {
         }
         if let loaded = await standingsFetch, game.routeKey == key {
             conferenceStandings = loaded
+        }
+        // The fallback: a league that ships a standings block, and a
+        // payload that came back without one. Sequential rather than
+        // speculative — it costs a round trip, but only on the path where
+        // the free copy didn't arrive, and only once per game.
+        if isCurrentSeason, !triedStandingsFallback, conferenceStandings.isEmpty,
+           let summary = loadedSummary, summary.matchupStandings.isEmpty,
+           game.home.team.league.summaryCarriesMatchupStandings {
+            triedStandingsFallback = true
+            let fallback = try? await client.conferenceStandings()
+            if let fallback, game.routeKey == key {
+                conferenceStandings = fallback
+            }
         }
         await refreshPinnedActivity()
     }

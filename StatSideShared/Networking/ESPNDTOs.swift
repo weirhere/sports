@@ -201,6 +201,15 @@ nonisolated struct TeamDTO: Decodable {
     let logo: String?
     let logos: [LogoDTO]?
     let conferenceId: FlexibleInt?
+    /// The same number under another name, and the same shape the
+    /// schedule endpoint's team object carries. The scoreboard sends
+    /// `conferenceId`; the **summary header** and the **rankings** send
+    /// `groups` and no `conferenceId` at all (verified 2026-09-21 against
+    /// the fixtures: Indiana arrives as `groups: {id: "5"}` on a summary
+    /// and `{id: "5", parent: {id: "80"}}` in the AP poll — the Big Ten
+    /// under FBS, both times). Read as a fallback, so a team decoded from
+    /// either one knows its conference instead of guessing nil.
+    let groups: TeamGroupsDTO?
 }
 
 nonisolated struct LogoDTO: Decodable {
@@ -409,6 +418,53 @@ nonisolated struct SummaryResponseDTO: Decodable {
     let plays: LossyArray<PlayDTO>?
     let leaders: LossyArray<SummaryTeamLeadersDTO>?
     let gameInfo: GameInfoDTO?
+    /// The two competing teams' own standings tables, shipped inside the
+    /// request the game page already makes (E21, 2026-09-21).
+    let standings: SummaryStandingsDTO?
+}
+
+// MARK: - Standings, the summary's own copy
+// A thinner thing than `StandingsResponseDTO`'s: the entry's `team` is a
+// display *string* with the id beside it, and `logo` is an array rather
+// than a `logos` one. The stats are the same `StandingsStatDTO` shape, so
+// the entry mapping is shared with the standings endpoint's.
+//
+// `isSameConference` is deliberately NOT decoded. It reads `true` on
+// Miami (ACC) vs Indiana (Big Ten) — it compares `conferenceHeader`,
+// which is "FBS" on both, so in college football it answers a division
+// question, not a conference one. `MatchupStandings` keeps deriving the
+// fact by hand from the two teams' tables, which is the only reading
+// that can't be wrong.
+
+nonisolated struct SummaryStandingsDTO: Decodable {
+    let groups: [SummaryStandingsGroupDTO]?
+}
+
+nonisolated struct SummaryStandingsGroupDTO: Decodable {
+    /// "2026 Atlantic Coast Conference Standings" — a sentence, carrying
+    /// the season. The short form is what a caption wants.
+    let header: String?
+    let divisionHeader: String?
+    let shortDivisionHeader: String?
+    let standings: SummaryStandingsListDTO?
+}
+
+nonisolated struct SummaryStandingsListDTO: Decodable {
+    let entries: LossyArray<SummaryStandingsEntryDTO>?
+}
+
+nonisolated struct SummaryStandingsEntryDTO: Decodable {
+    let id: String?
+    /// ESPN's display name for the team ("Boston College"), where the
+    /// standings endpoint sends a whole team object.
+    let team: String?
+    let logo: [LogoHrefDTO]?
+    let stats: [StandingsStatDTO]?
+}
+
+nonisolated struct LogoHrefDTO: Decodable {
+    let href: String?
+    let rel: [String]?
 }
 
 nonisolated struct DrivesDTO: Decodable {
