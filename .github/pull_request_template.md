@@ -27,6 +27,25 @@ Both are automated: `scripts/check-parity-ledger.sh` fails the web job if
 the ledger didn't grow, and `scripts/parity-status.sh` prints where parity
 stands on every PR.
 
+## Backlog closure
+
+Nothing enforces this one, which is why it rots. The 2026-09-21
+reconciliation pass found four shipped features still sitting open in
+`BACKLOG.md` — one of which a later session came within a file of
+rebuilding, because it read the row and believed it.
+
+So: **if this PR ships something the backlog lists, flip its checkbox in
+the same PR**, and append the parenthetical saying what the row didn't
+know. A row that is right about the code is the only reason the list is
+worth walking.
+
+- [ ] Nothing here is on the backlog, or its row is already closed.
+- [ ] Row flipped to `[x]`, with a note on what shipped and what's still owed.
+- [ ] Row stays open on purpose — partial work, and the note says which half.
+
+A row whose *premise* has gone false counts too: correct it rather than
+leaving a true-sounding sentence about code that changed underneath it.
+
 ## Verification
 
 <!--
