@@ -26,24 +26,31 @@ struct Top25Row: View {
         .padding(.vertical, 7)
     }
 
+    /// The hub's one mark box, shared with `ConferenceListRow` and the
+    /// league accordion's header.
+    @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 26
+
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
-            // The league's own mark, not a trophy (Andy, 2026-09-06): the
-            // row is named "Top 25", which says nothing about *whose* top
-            // 25 — fine while college football is the only league that
-            // polls, and confusing the moment a second one does. Same
-            // `ConferenceLogo` footprint as every other row's mark, so the
-            // column still lines up.
-            ConferenceLogo(url: league.logoURL, league: league)
+            // A trophy, superseding the 2026-09-06 call for the league's
+            // own mark (Andy, 2026-09-21). That row argued the mark says
+            // *whose* top 25 — right while a second polling league was
+            // hypothetical, and still the reason the accordion this sits
+            // in is headed NCAAF. What changed is the company it keeps: on
+            // a hub where every other row wears a real crest, a fifth
+            // football among four was the one mark that identified nothing
+            // its neighbours didn't. The trophy says what kind of table
+            // this is, which is the question the row actually answers.
+            //
+            // The Leagues tab's own glyph, so the poll and the tab that
+            // holds it agree.
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+                .frame(width: markSize, height: markSize)
             Text("Top 25")
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)
-            if let teaser {
-                Text(teaser)
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
-            }
             Spacer(minLength: Spacing.sm)
         }
         .contentShape(Rectangle())
@@ -51,15 +58,10 @@ struct Top25Row: View {
         .accessibilityLabel(accessibilitySummary)
     }
 
-    /// "#1 Ohio State" from the first displayed poll (AP when present).
-    /// The row doesn't track the picker choice — it's a teaser, not the poll.
-    private var teaser: String? {
-        guard let top = polls.first?.ranks.first else { return nil }
-        return "#1 \(top.team.location)"
-    }
-
-    var accessibilitySummary: String {
-        guard let top = polls.first?.ranks.first else { return "Top 25" }
-        return "Top 25, number 1 \(top.team.location)"
-    }
+    /// The "#1 Ohio State" teaser came out 2026-09-21 with the leader lines
+    /// on the conference rows and the table counts on the league headers —
+    /// the hub answers "which table", and a standing answered a different
+    /// question in the same row. The spoken label follows it out: VoiceOver
+    /// should hear the row that is there, not the one that used to be.
+    var accessibilitySummary: String { "Top 25" }
 }

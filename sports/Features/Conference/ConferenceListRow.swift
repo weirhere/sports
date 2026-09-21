@@ -21,6 +21,9 @@ struct ConferenceListRow: View {
     /// it, where a followed table is the thing itself rather than an index
     /// entry for it.
     var showsLeader: Bool = true
+
+    /// Shared with the league accordion's own header and the search rows.
+    @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 26
     /// Off for a row that names a group nobody can follow — college
     /// football's FBS and FCS, whose ids no team carries, so a star there
     /// would set a follow that matched no game.
@@ -57,8 +60,13 @@ struct ConferenceListRow: View {
 
     private var rowContent: some View {
         HStack(spacing: Spacing.md) {
+            // The search page's 26pt mark box, so a conference here starts
+            // its text on the same rail as a team there — and, with the
+            // accordion header matching, on the same rail as the league
+            // above it (Andy, 2026-09-21).
             ConferenceLogo(url: Conference.logoURL(for: conference.conference),
                            league: conference.league)
+                .frame(width: markSize, height: markSize)
             if isStacked {
                 VStack(alignment: .leading, spacing: 2) {
                     nameText
