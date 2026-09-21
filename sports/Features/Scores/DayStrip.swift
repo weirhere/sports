@@ -20,21 +20,28 @@ struct DayStrip: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                // Lazy, because the strip is a season: `days()` walks
-                // `SeasonSpan` from July to June, so a plain `HStack` built
-                // all ~365 chips up front to show the eight a phone can
-                // hold (Andy, 2026-09-21, asking what the strip costs).
+                // A plain `HStack`, deliberately, after a `LazyHStack`
+                // was tried and reverted the same day (2026-09-21).
                 //
-                // It costs no *payload* — a `DaySlot` is one `Date` and the
-                // network only moves in `select(day:)`, per day landed on
-                // rather than per chip. The cost was construction, and this
-                // is the whole fix: same days, same bounds, same swipe
-                // no-op at either end, nothing built until it is scrolled to.
+                // The strip is a season — `days()` walks `SeasonSpan` from
+                // July to June — so building ~365 chips to show eight looks
+                // like the obvious thing to make lazy. It is not worth it,
+                // and the attempt broke two things at once. A `LazyHStack`
+                // does not size to its children the way an `HStack` does,
+                // so the strip stretched to whatever height the ScrollView
+                // proposed and left the chips floating in a band. And the
+                // reveal stopped landing: `scrollTo` on `onAppear` ran
+                // before the target chip existed, so the strip opened on
+                // July 1 instead of the selected day — with today's chip
+                // hundreds of positions away, which is the one thing this
+                // control cannot do.
                 //
-                // `scrollTo` still reaches an unbuilt chip: the ids are
-                // stable `DaySlot.id`s and a lazy stack resolves them by
-                // index, which is what the reveal below depends on.
-                LazyHStack(spacing: Spacing.xs) {
+                // The cost it was buying is small: a `DaySlot` is one
+                // `Date`, and the strip moves no network at all — the fetch
+                // is in `select(day:)`, per day landed on rather than per
+                // chip. Eager construction of 365 tiny text views is the
+                // cheaper mistake.
+                HStack(spacing: Spacing.xs) {
                     ForEach(days) { day in
                         chip(for: day)
                     }
