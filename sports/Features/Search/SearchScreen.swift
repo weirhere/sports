@@ -21,6 +21,9 @@ struct SearchScreen: View {
     /// warm for the next visit.
     @State private var athleteSearch = AthleteSearchStore()
 
+    /// Games beyond the loaded window, from the matched teams' schedules.
+    @State private var schedules = TeamScheduleSearchStore()
+
     @State private var searchText = ""
     @State private var scope: SearchScope = .all
 
@@ -62,6 +65,13 @@ struct SearchScreen: View {
             .filter { $0.league == .collegeFootball }
             .flatMap(\.teams)
             .compactMap(\.displayName))
+    }
+
+    /// The slate's games for this query, plus the matched teams' remaining
+    /// season, ordered so the next kickoff leads.
+    private var visibleGames: [Game] {
+        Game.orderedAroundNow(
+            Game.union(schedules.games, loaded: results.games))
     }
 
     private var results: SearchResults {
@@ -116,6 +126,10 @@ struct SearchScreen: View {
         }
         .onChange(of: searchText) { _, text in
             athleteSearch.search(text, collegeTeamsInScope: collegeTeamNames)
+            // Driven by the matched teams rather than the raw string, so a
+            // request only follows a search that already found something.
+            schedules.load(for: text.trimmingCharacters(in: .whitespaces).isEmpty
+                           ? [] : results.teams)
         }
     }
 
@@ -196,7 +210,21 @@ struct SearchScreen: View {
                         }
                     }
                     if shows(.games) {
-                        ForEach(results.games) { game in
+                        // The scope, said out loud. These games come from
+                        // the slate *and* from the schedules of the teams
+                        // this query matched — so a game between two teams
+                        // you didn't type is not here, and a silent partial
+                        // list is the one thing not to ship (the rule the
+                        // athlete search was held to, 2026-09-21).
+                        if !schedules.games.isEmpty {
+                            Text("Games for matching teams")
+                                .font(.meta)
+                                .foregroundStyle(.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Spacing.xs)
+                                .padding(.top, Spacing.xs)
+                        }
+                        ForEach(visibleGames) { game in
                             Button { select(game) } label: {
                                 GameRow(game: game)
                             }
@@ -227,7 +255,7 @@ struct SearchScreen: View {
         let teams = shows(.teams) && !results.teams.isEmpty
         let conferences = shows(.conferences) && !results.conferences.isEmpty
         let players = shows(.players) && !athleteSearch.athletes.isEmpty
-        let games = shows(.games) && !results.games.isEmpty
+        let games = shows(.games) && !visibleGames.isEmpty
         return !(teams || conferences || players || games)
     }
 
