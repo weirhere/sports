@@ -27,9 +27,15 @@ struct GameLeagueRow: View {
             tables.append(league)
         }
         for team in [game.away.team, game.home.team] {
-            guard let id = conference(of: team),
-                  !tables.contains(where: { $0.conference == id }) else { continue }
-            tables.append(named(id))
+            guard let id = conference(of: team) else { continue }
+            let label = groupName(of: team)
+            // Deduped on the *label*, not the conference: two AFC teams
+            // from different divisions are two badges now, where one
+            // conference was one badge. A divisional game still collapses
+            // to one, which is the rule this row already had.
+            guard !tables.contains(where: { $0.name == (label ?? Conference.name(for: id)) })
+            else { continue }
+            tables.append(named(id, labelled: label))
         }
         return tables
     }
@@ -63,8 +69,32 @@ struct GameLeagueRow: View {
         return Conference.isKnown(conference, in: league) ? ConferenceID(league, conference) : nil
     }
 
+    /// The finest group a team actually plays in — "AFC East", not "AFC"
+    /// (Andy, 2026-09-21). A pro scoreboard ships no group, so the mapper
+    /// stamps the team with its division from the registry; this reads that
+    /// rather than walking up to its parent the way the destination does.
+    private static func groupName(of team: Team) -> String? {
+        let league = team.league
+        guard let id = team.conference.map(\.id)
+                ?? Conference.division(forTeamId: team.id, in: league),
+              !Conference.isDivisionRoot(id, in: league),
+              Conference.isKnown(id, in: league) else { return nil }
+        let name = Conference.name(for: ConferenceID(league, id))
+        return name == "Other" ? nil : name
+    }
+
     private static func named(_ id: ConferenceID) -> ConferenceDestination {
         ConferenceDestination(conference: id, name: Conference.name(for: id))
+    }
+
+    /// The badge says the division and the link still goes to the
+    /// conference, because a division has no page of its own — `ConferencePage`
+    /// renders the NFL's eight *inside* a conference, and its own
+    /// `isDivisionRoot` means FBS/FCS rather than AFC East. The table you
+    /// land on therefore contains the one the badge named, which is why the
+    /// label and the destination are allowed to differ here.
+    private static func named(_ id: ConferenceID, labelled label: String?) -> ConferenceDestination {
+        ConferenceDestination(conference: id, name: label ?? Conference.name(for: id))
     }
 
     var body: some View {

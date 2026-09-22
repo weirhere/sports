@@ -71,7 +71,20 @@ struct LeadersList: View {
         .frame(maxWidth: .infinity, alignment: side == .away ? .leading : .trailing)
     }
 
+    @ViewBuilder
     private func sideView(_ leader: LeaderCategory.Leader, team: Team?, side: Side) -> some View {
+        if let identity = identity(leader, team: team) {
+            NavigationLink(value: identity) {
+                sideContent(leader, team: team, side: side)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View player page")
+        } else {
+            sideContent(leader, team: team, side: side)
+        }
+    }
+
+    private func sideContent(_ leader: LeaderCategory.Leader, team: Team?, side: Side) -> some View {
         HStack(spacing: Spacing.sm) {
             if side == .away { headshot(leader, team: team, side: side) }
             VStack(alignment: side == .away ? .leading : .trailing, spacing: 2) {
@@ -90,6 +103,7 @@ struct LeadersList: View {
             }
             if side == .home { headshot(leader, team: team, side: side) }
         }
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(leader, team: team))
     }
@@ -110,7 +124,20 @@ struct LeadersList: View {
             }
     }
 
+    @ViewBuilder
     private func stackedRow(_ leader: LeaderCategory.Leader, team: Team?) -> some View {
+        if let identity = identity(leader, team: team) {
+            NavigationLink(value: identity) {
+                stackedContent(leader, team: team)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View player page")
+        } else {
+            stackedContent(leader, team: team)
+        }
+    }
+
+    private func stackedContent(_ leader: LeaderCategory.Leader, team: Team?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: Spacing.sm) {
                 Text(team?.abbreviation ?? "")
@@ -128,8 +155,34 @@ struct LeadersList: View {
                 .foregroundStyle(.textSecondary)
                 .lineLimit(2)
         }
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(leader, team: team))
+    }
+
+    /// Who this row would push, or `nil` when it can push nobody.
+    ///
+    /// **The link the model was waiting on (2026-09-21).** `Leader` has
+    /// carried `athleteId` since 2026-09-20 with a comment saying the row
+    /// stayed unlinked only because a page built from a name and a stat
+    /// line would be thinner than the row that pushed it. `PlayerPage`
+    /// fetches the athlete itself now, so the page a leader opens is the
+    /// same page the roster opens — which is the condition that comment set.
+    ///
+    /// Needs the side's `Team` as well as the id: the league lives on the
+    /// team, and `PlayerIdentity.id` is namespaced by league because ESPN
+    /// reuses athlete ids across them. A leader with no id — CFBD builds
+    /// those — stays plain text rather than becoming a link to nowhere.
+    private func identity(_ leader: LeaderCategory.Leader, team: Team?) -> PlayerIdentity? {
+        guard let athleteId = leader.athleteId, !athleteId.isEmpty,
+              let team else { return nil }
+        return PlayerIdentity(athleteId: athleteId,
+                              name: leader.name,
+                              league: team.league,
+                              teamName: team.displayName ?? team.location,
+                              teamLogoURL: team.logoURL,
+                              team: team,
+                              headshotURL: leader.headshotURL)
     }
 
     /// Internal for AccessibilityLabelTests.

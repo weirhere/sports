@@ -124,10 +124,10 @@ struct PlayerPage: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("View team page")
             }
-            if !metaTail.isEmpty {
-                Text(metaTail)
+            if let name = unlinkedTeamName {
+                Text(name)
                     // Already inside the title's sentence; spoken twice it
-                    // would read as "Wide Receiver" trailing a full stop.
+                    // would read as the club trailing a full stop.
                     .accessibilityHidden(true)
                     .font(.meta)
                     .foregroundStyle(.textSecondary)
@@ -140,16 +140,34 @@ struct PlayerPage: View {
     /// A door that knows the team's *name* but not the team — a box score
     /// row, whenever that door opens — keeps the name in the line instead of
     /// drawing a badge that pushes nothing.
+    ///
+    /// Read off the resolved `Team`, not off the door's `teamName`
+    /// (2026-09-21). The two doors carry different strings for the same
+    /// club — a roster row hands over `shortDisplayName ?? location`,
+    /// ESPN's search index hands over its own subtitle — so one player read
+    /// "Los Angeles" arriving from the roster and "Los Angeles Rams"
+    /// arriving from search. `displayName ?? location` is the app's one
+    /// team name, the form every other team row already uses.
     private var teamBadgeTitle: String? {
-        guard shown.team != nil,
-              let name = shown.teamName, !name.isEmpty else { return nil }
-        return name
+        guard let team = shown.team else { return nil }
+        let name = team.displayName ?? team.location
+        return name.isEmpty ? nil : name
     }
 
-    /// What the line says beside the badge, or the whole line when there
-    /// isn't one.
-    private var metaTail: String {
-        teamBadgeTitle == nil ? player.metaLine : player.metaLineWithoutTeam
+    /// The club as plain text, for the case where there is no pushable
+    /// `Team` behind it — the moment before search's athlete fetch resolves
+    /// one, and any future door that knows a club's name and not its id.
+    ///
+    /// **The number and the position used to trail this line** (Andy,
+    /// 2026-09-21). They are Profile rows, and printing them in the hero as
+    /// well meant the same two facts appeared twice on a page with one
+    /// card on it — while reading differently by door, since the hero took
+    /// them from whatever the door happened to carry. The hero says who
+    /// someone is and who they play for; the card holds the facts.
+    private var unlinkedTeamName: String? {
+        guard teamBadgeTitle == nil,
+              let name = shown.teamName, !name.isEmpty else { return nil }
+        return name
     }
 
     /// The full-size press photo, which is the one place in the app it is the
