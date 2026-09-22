@@ -16,12 +16,12 @@ final class WidgetUITests: XCTestCase {
         // The Add teams sheet is where a follow starts now (the Teams tab
         // lists follows rather than the directory). A no-op if a previous
         // run already followed Georgia.
-        XCTAssertTrue(followTeam("Georgia Bulldogs", location: "Georgia", in: app),
+        XCTAssertTrue(followTeam("Georgia Bulldogs", in: app),
                       "The Add teams sheet should follow Georgia")
         // And one from the other league: the widget's promise is "my
         // games", so a followed NFL team has to reach the home screen the
         // same way a college one does.
-        XCTAssertTrue(followTeam("Seattle Seahawks", location: "Seattle", in: app),
+        XCTAssertTrue(followTeam("Seattle Seahawks", in: app),
                       "The Add teams sheet should follow the Seahawks")
         // The reminder offer may ride the sheet's dismissal on a fresh
         // install; it isn't this suite's subject.
