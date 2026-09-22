@@ -76,6 +76,41 @@ struct ScoresScreen: View {
 
     private enum DragAxis { case horizontal, vertical }
 
+    /// One row of the slate: a section, or the Hide all/Show all control
+    /// sitting at the boundary between the sections that are yours and
+    /// everything else — an enum rather than two `ForEach`s because the
+    /// control's position is *inside* that ordering, not before or after it.
+    private enum ScoresRow: Identifiable {
+        case section(GameSection)
+        case hideAllControl(otherCount: Int)
+
+        var id: String {
+            switch self {
+            case .section(let section): section.id
+            case .hideAllControl: "hide-all-control"
+            }
+        }
+    }
+
+    /// Splits a day's sections into what's yours — Following plus every
+    /// hoisted table — and the rest, with the control between them. Only
+    /// where both sides are non-empty: following nobody leaves nothing to
+    /// set apart, and following enough to cover the whole day leaves
+    /// nothing to hide, so the control is omitted rather than shown inert.
+    private func scoresRows(for sections: [GameSection], hideOthers: Bool) -> [ScoresRow] {
+        let mine = sections.filter(\.isFollowed)
+        let other = sections.filter { !$0.isFollowed }
+        guard !mine.isEmpty, !other.isEmpty else {
+            return sections.map(ScoresRow.section)
+        }
+        var rows = mine.map(ScoresRow.section)
+        rows.append(.hideAllControl(otherCount: other.count))
+        if !hideOthers {
+            rows += other.map(ScoresRow.section)
+        }
+        return rows
+    }
+
     /// Height of the floating Today button plus its breathing room.
     private static let jumpClearance: CGFloat = 44
 
@@ -538,13 +573,22 @@ struct ScoresScreen: View {
                             FollowPromptCard()
                                 .cardSurface()
                         }
-                        ForEach(sections) { section in
-                            SectionAccordion(
-                                section: section,
-                                isExpanded: uiState.isExpanded(section.id),
-                                onToggle: { withAnimation { uiState.toggle(section.id) } }
-                            )
-                            .cardSurface()
+                        ForEach(scoresRows(for: sections, hideOthers: uiState.hideOtherSections)) { row in
+                            switch row {
+                            case .section(let section):
+                                SectionAccordion(
+                                    section: section,
+                                    isExpanded: uiState.isExpanded(section.id),
+                                    onToggle: { withAnimation { uiState.toggle(section.id) } }
+                                )
+                                .cardSurface()
+                            case .hideAllControl(let otherCount):
+                                HideAllControl(
+                                    otherCount: otherCount,
+                                    isHidden: uiState.hideOtherSections,
+                                    onToggle: { withAnimation { uiState.hideOtherSections.toggle() } }
+                                )
+                            }
                         }
                     }
                     .padding(Spacing.sm)
@@ -640,11 +684,18 @@ struct ScoresScreen: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: Spacing.sm) {
-                        ForEach(sections) { section in
-                            SectionAccordion(section: section,
-                                             isExpanded: uiState.isExpanded(section.id),
-                                             onToggle: {})
-                                .cardSurface()
+                        ForEach(scoresRows(for: sections, hideOthers: uiState.hideOtherSections)) { row in
+                            switch row {
+                            case .section(let section):
+                                SectionAccordion(section: section,
+                                                 isExpanded: uiState.isExpanded(section.id),
+                                                 onToggle: {})
+                                    .cardSurface()
+                            case .hideAllControl(let otherCount):
+                                HideAllControl(otherCount: otherCount,
+                                               isHidden: uiState.hideOtherSections,
+                                               onToggle: {})
+                            }
                         }
                     }
                     .padding(Spacing.sm)
