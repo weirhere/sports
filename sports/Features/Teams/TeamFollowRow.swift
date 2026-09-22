@@ -11,8 +11,11 @@ import SwiftUI
 /// to the team page. only tapping the star should favorite") and the star
 /// keeps the follow to itself.
 ///
-/// At accessibility text sizes the nickname drops under the location instead
-/// of the two splitting one line into a pair of ellipses.
+/// The row names the team in one string — "Ohio State Buckeyes", "Dallas
+/// Cowboys" (Andy, 2026-09-21). It used to set the location against the
+/// nickname in two weights, which read as two facts about a team rather
+/// than its name, and needed a stacked layout at accessibility sizes to
+/// keep the pair from becoming two ellipses. One string just wraps.
 struct TeamFollowRow: View {
     let team: Team
     /// Set where the surrounding list spans leagues — a search result set.
@@ -24,10 +27,8 @@ struct TeamFollowRow: View {
     var opensTeam: Bool = false
 
     @Environment(FollowingStore.self) private var following
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 26
 
-    private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
     private var isFollowing: Bool { following.isFollowing(team) }
 
     var body: some View {
@@ -51,8 +52,8 @@ struct TeamFollowRow: View {
             .accessibilityLabel(spokenLabel)
             .accessibilityHint("Opens the team")
             star
-                .accessibilityLabel(isFollowing ? "Unfollow \(team.location)"
-                                                : "Follow \(team.location)")
+                .accessibilityLabel(isFollowing ? "Unfollow \(teamName)"
+                                                : "Follow \(teamName)")
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
@@ -64,15 +65,7 @@ struct TeamFollowRow: View {
     private var identity: some View {
         LogoImage(url: team.logoURL)
             .frame(width: logoSize, height: logoSize)
-        if isStacked {
-            VStack(alignment: .leading, spacing: 2) {
-                locationText
-                nicknameText
-            }
-        } else {
-            locationText
-            nicknameText
-        }
+        nameText
     }
 
     private var star: some View {
@@ -119,27 +112,22 @@ struct TeamFollowRow: View {
         .sensoryFeedback(.impact(weight: .light), trigger: isFollowing)
     }
 
+    private var teamName: String { team.displayName ?? team.location }
+
     private var spokenLabel: String {
-        let name = team.displayName ?? team.location
-        guard let leagueTag else { return name }
-        return "\(name), \(leagueTag.shortName)"
+        guard let leagueTag else { return teamName }
+        return "\(teamName), \(leagueTag.shortName)"
     }
 
-    private var locationText: some View {
-        Text(team.location)
+    /// `displayName ?? location`, the app's one team name — the same
+    /// expression `FollowedTeamCard`, `SearchTeamRow` and the player hero
+    /// read. Two lines, because a long name ("Southern Miss Golden Eagles")
+    /// should wrap rather than end in an ellipsis.
+    private var nameText: some View {
+        Text(team.displayName ?? team.location)
             .font(isFollowing ? .teamNameEmphasis : .teamName)
             .foregroundStyle(.textPrimary)
-            .lineLimit(isStacked ? 2 : 1)
-    }
-
-    @ViewBuilder
-    private var nicknameText: some View {
-        if let nickname = team.name {
-            Text(nickname)
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .lineLimit(isStacked ? 2 : 1)
-        }
+            .lineLimit(2)
     }
 
     @ViewBuilder

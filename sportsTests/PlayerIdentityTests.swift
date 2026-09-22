@@ -132,33 +132,13 @@ private func firstPlayer(_ roster: TeamRoster) throws -> RosterPlayer {
         #expect(cfb.id == "cfb-4430841")
     }
 
-    @Test func metaLineReadsTeamNumberPosition() {
-        #expect(identity(player()).metaLine == "Georgia · #11 · QB")
-    }
-
-    /// Each part drops out on its own, so a player ESPN knows almost nothing
-    /// about is just a name rather than a line of orphaned separators.
-    @Test func metaLineDropsWhatIsMissing() {
-        #expect(identity(player(jersey: nil)).metaLine == "Georgia · QB")
-        #expect(identity(player(jersey: nil, position: nil)).metaLine == "Georgia")
-        // A team always has a location, so the roster door can never produce
-        // a nil team name. The empty line is only reachable from a door that
-        // does not know the team — which is what a box score row will be.
-        let teamless = PlayerIdentity(athleteId: "1", name: "Nobody",
-                                      league: .collegeFootball,
-                                      teamName: nil, teamLogoURL: nil)
-        #expect(teamless.metaLine == "")
-        // An empty string is ESPN's other way of not knowing.
-        #expect(identity(player(jersey: "")).metaLine == "Georgia · QB")
-    }
-
-    /// The hero draws the team as a `HeaderLinkBadge` now, so the line
-    /// beside it is everything except the team. Same split as the web's.
-    @Test func metaLineWithoutTeamIsTheRestOfTheLine() {
-        #expect(identity(player()).metaLineWithoutTeam == "#11 · QB")
-        #expect(identity(player(jersey: nil)).metaLineWithoutTeam == "QB")
-        #expect(identity(player(jersey: "")).metaLineWithoutTeam == "QB")
-        #expect(identity(player(jersey: nil, position: nil)).metaLineWithoutTeam == "")
+    /// The number and the position are Profile rows, and the hero is a name
+    /// over a team badge (2026-09-21) — so they are asserted where they are
+    /// read now, rather than as a line the page no longer prints.
+    @Test func theNumberAndPositionAreProfileRows() {
+        let rows = identity(player()).profileRows
+        #expect(rows.first { $0.label == "Jersey" }?.value == "11")
+        #expect(rows.first { $0.label == "Position" }?.value == "Quarterback")
     }
 
     /// The badge pushes a `Team`, so the roster door has to carry one all
@@ -214,12 +194,15 @@ private func firstPlayer(_ roster: TeamRoster) throws -> RosterPlayer {
     }
 
     /// VoiceOver gets a sentence, not a name followed by unlabelled
-    /// abbreviations — `RosterRow`'s rule, and the position is spoken in full
-    /// because "QB" is read as letters.
+    /// abbreviations — `RosterRow`'s rule. It says what the hero draws and
+    /// no more (2026-09-21): the number and the position left the hero for
+    /// the Profile card, and their spoken form went with them rather than
+    /// staying behind to announce rows that are already labelled.
     @Test func spokenSummaryIsASentence() {
-        #expect(identity(player()).spokenSummary
-                == "Carson Beck, Georgia, number 11, Quarterback")
-        #expect(identity(player(jersey: nil, positionName: nil)).spokenSummary
-                == "Carson Beck, Georgia, QB")
+        #expect(identity(player()).spokenSummary == "Carson Beck, Georgia")
+        let teamless = PlayerIdentity(athleteId: "1", name: "Nobody",
+                                      league: .collegeFootball,
+                                      teamName: nil, teamLogoURL: nil)
+        #expect(teamless.spokenSummary == "Nobody")
     }
 }

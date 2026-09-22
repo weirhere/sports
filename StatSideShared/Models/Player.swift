@@ -59,7 +59,10 @@ nonisolated extension PlayerIdentity {
         self.init(athleteId: player.id,
                   name: player.name,
                   league: league,
-                  teamName: team.shortDisplayName ?? team.location,
+                  // The app's one team name (2026-09-21), so the page a
+                  // roster opens and the page search opens name the same
+                  // club the same way.
+                  teamName: team.displayName ?? team.location,
                   teamLogoURL: team.logoURL,
                   team: team,
                   jersey: player.jersey,
@@ -71,25 +74,6 @@ nonisolated extension PlayerIdentity {
                   classAbbreviation: player.classAbbreviation,
                   headshotURL: player.headshotURL,
                   injuryStatus: player.injuryStatus)
-    }
-
-    /// The hero's second line: team · #11 · QB, each part dropping out on
-    /// its own so a player with none of them is just a name.
-    var metaLine: String {
-        [teamName, jersey.flatMap { $0.isEmpty ? nil : "#\($0)" }, position]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
-    }
-
-    /// `metaLine` with the team taken out, for the hero that draws the team
-    /// as its own badge (2026-09-20). The badge is a control and the rest of
-    /// the line is not, so the two cannot be one string.
-    var metaLineWithoutTeam: String {
-        [jersey.flatMap { $0.isEmpty ? nil : "#\($0)" }, position]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
     }
 
     /// Profile's label/value pairs, in the design's order, skipping whatever
@@ -132,11 +116,16 @@ nonisolated extension PlayerIdentity {
 
     /// One sentence for the hero, so VoiceOver doesn't read a name and then
     /// an unlabelled run of abbreviations — `RosterRow`'s rule.
+    ///
+    /// Name and club, which is exactly what the hero draws (2026-09-21).
+    /// It used to speak the number and the position too, from the days when
+    /// the hero printed them; now that they are Profile rows, so is their
+    /// spoken form — a label that announces facts the screen doesn't show
+    /// makes the page longer to hear than to read, and the rows below say
+    /// both with their own names attached.
     var spokenSummary: String {
         var parts: [String] = [name]
         if let teamName, !teamName.isEmpty { parts.append(teamName) }
-        if let jersey, !jersey.isEmpty { parts.append("number \(jersey)") }
-        if let position = positionName ?? position, !position.isEmpty { parts.append(position) }
         return parts.joined(separator: ", ")
     }
 }
