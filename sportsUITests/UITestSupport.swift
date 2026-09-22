@@ -76,7 +76,18 @@ extension XCTestCase {
     @MainActor
     @discardableResult
     func openRankingsPoll(in app: XCUIApplication) -> Bool {
-        guard openTab("Leagues", in: app, until: app.top25Row) else { return false }
+        // The landmark is the league's own accordion header, not the Top 25
+        // row inside it: the hub's sections open **closed** as of
+        // 2026-09-21, so the row is not in the tree on arrival and waiting
+        // for it waits forever.
+        let cfbSection = app.descendants(matching: .any)
+            .matching(identifier: "tables-league-cfb").firstMatch
+        guard openTab("Leagues", in: app, until: cfbSection) else { return false }
+        // Asked of the tree rather than of the header's "collapsed" value,
+        // so this keeps working whichever way the section starts — the
+        // default has now flipped once and could flip back.
+        if !app.top25Row.exists { cfbSection.tap() }
+        guard app.top25Row.waitForExistence(timeout: 10) else { return false }
         app.top25Row.tap()
         return app.topRankedRow.waitForExistence(timeout: 15)
     }
@@ -109,14 +120,13 @@ extension XCTestCase {
     /// card is on the Teams tab. A no-op follow if a previous run already
     /// followed it (follows persist on the simulator).
     ///
-    /// `name` is the team's full display name, which is both what search
-    /// matches and what the row's accessibility label says. `location` is
-    /// the team's location on its own — "Georgia", not "Georgia Bulldogs"
-    /// — because the star spells its label from `team.location` while the
-    /// row beside it spells its own from `displayName`.
+    /// `name` is the team's full display name — "Georgia Bulldogs" — which
+    /// is what search matches, what the row says, and now what the star
+    /// says too. It took a separate `location` argument until 2026-09-21,
+    /// when the row stopped setting a location against a nickname.
     @MainActor
     @discardableResult
-    func followTeam(_ name: String, location: String,
+    func followTeam(_ name: String,
                     in app: XCUIApplication) -> Bool {
         guard openAddTeamsSheet(in: app) else { return false }
         let field = app.searchFields["search.addTeams"]
@@ -127,8 +137,16 @@ extension XCTestCase {
         // NavigationLink into the team page, so tapping the row navigates
         // and follows nothing — which is exactly how this helper failed,
         // silently, for a whole release.
-        let star = app.buttons["Follow \(location)"].firstMatch
-        let following = app.buttons["Unfollow \(location)"].firstMatch
+        //
+        // The star is labelled with the team's **full name**, and took a
+        // bare location until 2026-09-21: the Add teams row now names a
+        // team in one string ("Georgia Bulldogs"), so `TeamFollowRow`
+        // spends `team.displayName` where it used to spend `team.location`.
+        // Note this is the sheet's rule and not the app's — `SectionAccordion`
+        // and `RankRow` still label their stars by location, so a helper
+        // driving *those* surfaces must not copy this.
+        let star = app.buttons["Follow \(name)"].firstMatch
+        let following = app.buttons["Unfollow \(name)"].firstMatch
         guard star.waitForExistence(timeout: 10) || following.exists else {
             return false
         }

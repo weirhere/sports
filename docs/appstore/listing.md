@@ -25,6 +25,17 @@ Alternates:
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
 exactly what the app covers.
 
+Audited at 2.4.0 and unchanged, with one question asked and answered. 2.4.0
+renames college football to **NCAAF everywhere inside the app** — the league
+sits beside NFL, NBA and NHL there, and `CFB` was the odd register. The
+subtitle deliberately does not follow, for two reasons. It is a *search*
+field, and `cfb` and `ncaaf` are two different queries: `ncaaf` is already
+indexed from the keywords, so keeping `CFB` here means the listing carries
+both, where swapping would leave `cfb` in neither. And
+`NCAAF, NFL, NBA and NHL scores` is exactly 30 — the limit this section
+already refuses to sit on. The in-app label and the store field answer to
+different things, and this is the one place they're allowed to differ.
+
 Rewritten for 2.2.0. "CFB and NFL, at a glance" named half the app the moment
 basketball and hockey landed. Naming all four costs the "at a glance" promise,
 which is the trade taken on purpose: the subtitle is indexed and the promise
@@ -40,6 +51,41 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.4.0 (build 18)
+
+> • Players have pages. Tap a name on a roster, in a search result or on a
+>   Leaders card and you get the player: number, position, the vitals, and
+>   the team crest as a door through to the team.
+> • Search was rebuilt around the thumb. The field sits at the bottom, where
+>   your hand and the keyboard already are. Scope pills replace the section
+>   headings, and every result is one card at one height.
+> • Search remembers. It opens on what you last opened instead of the same
+>   empty sentence every time, and a recent you don't want can be dismissed.
+> • Players are searchable, across all four leagues at once. College results
+>   are checked against the directory, so FBS and FCS are in and Division II
+>   isn't.
+> • The Leagues tab answers one question. The accordions start closed, so all
+>   four leagues fit before you scroll. There's a field to find a league by
+>   name that opens what it matched. And the standings that used to ride
+>   along in the rows are gone — a row here is a door to a table, not a
+>   table.
+> • College football reads NCAAF, next to NFL, NBA and NHL. Teams read by
+>   their full name — "Tampa Bay Buccaneers", not "Buccaneers" — so a list
+>   drawn from four leagues says which team is which.
+> • The widget has a refresh button in its footer, and asks for new numbers
+>   every five minutes while your team is playing.
+> • Tapping Games when you're already on it brings the day back to today,
+>   as well as the slate.
+> • An NFL game page names the division — AFC North, NFC South — where it
+>   named the conference before.
+> • A roster lists each group in jersey order.
+> • Fixed: a team page with five tabs wrapped its tab labels onto two lines.
+>   The row scrolls sideways now instead of squeezing.
+> • Fixed: an inactive tab label was too faint to pass contrast.
+> • Fixed: the matchup card repeated standings the summary above it was
+>   already showing.
+> • Fixed: one trophy won under two spellings counted as two rows.
 
 ### 2.3.0 (build 17)
 
@@ -281,6 +327,15 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.4.0 and left alone, on the same trade as 2.3.0. The standing
+candidate is now a good one and worth writing down rather than rediscovering:
+*"Four leagues, one screen. Find any team, conference or player in any of
+them, follow the ones that matter, and get a reminder 30 minutes before they
+play. No ads."* (162) — it keeps the "30 minutes" the 2.3.0 candidates spent,
+which is why it survives where they didn't. It loses the league names, and
+those are what a browsing reader is scanning for. Swap it in if the four
+leagues ever stop being the thing worth saying first; no review needed.
+
 ## Description (4000 chars max) ✏️
 
 > StatSide is college football, the NFL, the NBA and the NHL, at a glance. One
@@ -313,7 +368,10 @@ field that changes without a review.
 >   periods for basketball and hockey
 > • Team pages: the record, the full season, bye weeks, the roster, the home
 >   ground, and the trophies the team has won
-> • Search any team, conference or game — across every league
+> • Player pages: the position, the number and the vitals, reached from a
+>   roster, a search or a game's leaders
+> • Search any team, conference, game or player — across every league,
+>   from a field that sits under your thumb
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
@@ -325,6 +383,12 @@ field that changes without a review.
 >
 > StatSide is an independent app and is not affiliated with or endorsed by the
 > NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
+
+Changed for 2.4.0, in two places, both because search stopped being a
+team-only field: the search bullet now names a player and says where the
+field sits, and a Player pages bullet joins Team pages. Nothing else moved —
+2.4.0 adds no league and takes nothing away, so the four-league copy 2.2.0
+wrote still describes the app.
 
 Audited at 2.3.0 and left alone. The closing line's "Free." survived the
 2026-09-19 Guideline 2.3.7 rejection on purpose — that rejection is about
@@ -359,6 +423,13 @@ four are in the subtitle, so repeating them would spend characters on nothing.
 Audited at 2.3.0 and unchanged: at 95 of 100 there are five characters
 spare, and nothing 2.3.0 added is a term this audience types into search —
 nobody looks for an app by "head to head" or "trophies".
+
+Audited at 2.4.0 and unchanged. `ncaaf` was already here and now matches what
+the app calls the league on screen, which is luck rather than planning. The
+release's new surface is players, and the candidate terms don't fit: five
+characters spare takes neither `,roster` (7) nor `,stats` (6), and `stat` is
+indexed from the app name anyway. Nothing here has stopped being true, so the
+honest move is to spend nothing.
 
 Changed for 2.2.0: `basketball`, `hockey`, `standings` and `box score` in;
 `rankings`, `schedule`, `sec` and `big ten` out. The two sport words are the
@@ -441,6 +512,30 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.4.0: carried forward a second time, and the staleness is now compounding
+
+**Andy's call at the 2.4.0 cut, on schedule rather than merit** — the same
+reasoning as 2.3.0, and the October reshoot it defers to is still booked for
+when the NBA and NHL open. Recorded here because the gap is wider than it was
+and the next cut should not have to rediscover how wide.
+
+Nothing in the set is *false*. 2.4.0 adds no league, removes nothing a frame
+shows, and carries no price reference. What has drifted is the chrome:
+
+- the selected day is still a filled black pill in `01-hero` and
+  `03-saturdays` — stale since 2026-09-12, waived at 2.3.0, waived again
+- team names now read in full ("Tampa Bay Buccaneers"), so followed cards,
+  the team-page hero and the Add teams rows in `02-follow` all render
+  differently than they're shown
+- a team page's tab row scrolls now instead of sitting fixed, and college
+  football is labelled NCAAF wherever the league is named
+
+And the release's headline appears in **no frame at all**: the rebuilt search
+and the player page are both unshot. That is the strongest argument for the
+October pass carrying more than a basketball slate — it should add a search
+frame and a player frame alongside the NBA/NHL hero, on top of 2.3.0's
+still-outstanding Trophies and H2H.
 
 ### 2.3.7 rejection (build 17) — the closer frame said "Free"
 
@@ -608,13 +703,22 @@ self-describes as displaying aggregated content.
 > seasons with full live-style data — useful if the current day is quiet. No
 > login required. The app collects no data (App Privacy: Data Not Collected).
 
-**Reviewer-timing note, still current at 2.3.0 (September 2026).** College
+**Reviewer-timing note, still current at 2.4.0 (September 2026).** College
 football and the NFL are in season; the NBA and NHL regular seasons do not open
 until late October. A reviewer opening the app today sees football on the day
 strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.4.0: no rewrite needed.** 2.4.0 adds no capability that
+needs declaring — no new entitlement, no account, no data collected, no web
+view. It rebuilds the search surface, gives players a page of their own and
+finishes the Leagues tab, all of which are screens rather than permissions.
+The opener still leads with following teams, which is still what the app is
+built around. One demo path worth naming, because it is the release and it is
+two taps: **Search → type a player's name → open the result**, which reaches
+a player page from a cold start with no team followed first.
 
 **Notes audit at 2.3.0: no rewrite needed.** Every native surface listed is
 still in the build and nothing 2.3.0 added contradicts the opener. The release
