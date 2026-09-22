@@ -125,6 +125,12 @@ struct GameSection: Identifiable, Hashable {
     /// only Following ever can. Its rows then tag their league, since the
     /// section's own scope no longer answers for them.
     var spansLeagues = false
+    /// True for Following and every hoisted table — the sections the Hide
+    /// all/Show all control always leaves alone. `table != nil` isn't this:
+    /// every conference section carries a `table` whether or not it's
+    /// followed, since that's what lets a followed one be matched and
+    /// hoisted rather than cloned.
+    var isFollowed = false
 }
 
 /// One league's slate, held a day at a time.

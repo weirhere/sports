@@ -72,9 +72,20 @@ final class UIStateStore {
         }
     }
 
+    /// The Hide all/Show all control's state: true collapses every Scores
+    /// section that isn't Following or a followed table to the one-line
+    /// control, false shows the full stack. Persisted like `liveOnly` and
+    /// `scoreFilter` (Andy, 2026-09-22) — a crowded slate you've hidden once
+    /// should stay hidden until you ask to see it again, not reopen itself
+    /// on the next launch.
+    var hideOtherSections: Bool {
+        didSet { defaults.set(hideOtherSections, forKey: Self.hideOtherSectionsKey) }
+    }
+
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
+    private static let hideOtherSectionsKey = "ui.hideOtherSections"
 
     private let defaults: UserDefaults
 
@@ -91,6 +102,7 @@ final class UIStateStore {
         liveOnly = defaults.bool(forKey: Self.liveOnlyKey)
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
             .flatMap(ScoreFilter.init(token:))
+        hideOtherSections = defaults.bool(forKey: Self.hideOtherSectionsKey)
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
 

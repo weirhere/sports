@@ -134,6 +134,20 @@ import Testing
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
     }
 
+    /// Same persisted-intent shape as `liveOnly`/`scoreFilter`: a slate
+    /// hidden once should stay hidden past a relaunch, not reopen itself.
+    @Test func hideOtherSectionsPersistsAndDefaultsToShown() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.hideOtherSections == false)
+
+        store.hideOtherSections = true
+        #expect(UIStateStore(defaults: defaults).hideOtherSections == true)
+
+        UIStateStore(defaults: defaults).hideOtherSections = false
+        #expect(UIStateStore(defaults: defaults).hideOtherSections == false)
+    }
+
     /// Live applies to today and nowhere else (Andy, 2026-09-12): a swipe
     /// to tomorrow or yesterday suspends the filter so the day's games can
     /// be seen, and a swipe home restores it.

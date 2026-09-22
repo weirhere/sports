@@ -487,8 +487,9 @@ final class LeagueScoreboards {
             // A filter that can't speak for this table's league hides it,
             // the same way it hides that league's own sections.
             if let scope = filter?.league, scope != table.league { continue }
-            if let existing = stack.first(where: { $0.table == table }) {
+            if var existing = stack.first(where: { $0.table == table }) {
                 guard hoistedIds.insert(existing.id).inserted else { continue }
+                existing.isFollowed = true
                 hoisted.append(existing)
                 continue
             }
@@ -496,7 +497,7 @@ final class LeagueScoreboards {
             guard !games.isEmpty else { continue }
             let section = GameSection(id: table.token, title: table.name, games: games,
                                       league: table.league, logoURL: table.logoURL,
-                                      table: table)
+                                      table: table, isFollowed: true)
             guard hoistedIds.insert(section.id).inserted else { continue }
             hoisted.append(section)
         }
@@ -506,7 +507,8 @@ final class LeagueScoreboards {
             let leagues = Set(following.map(\.home.team.league))
             result.append(GameSection(id: GameSection.followingId, title: "Following",
                                       games: byState(following),
-                                      spansLeagues: leagues.count > 1))
+                                      spansLeagues: leagues.count > 1,
+                                      isFollowed: true))
         }
         return result + hoisted + stack.filter { !hoistedIds.contains($0.id) }
     }

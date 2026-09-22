@@ -405,6 +405,40 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(sections.first?.games.map(\.id) == ["mine"])
     }
 
+    // MARK: - Hide all/Show all
+
+    /// `isFollowed` is what the Hide all/Show all control reads to decide
+    /// what it leaves alone: Following and every hoisted table, never a
+    /// section that merely carries a `table` identity without being
+    /// followed.
+    @Test func isFollowedMarksOnlyFollowingAndHoistedSections() async {
+        let mine = team("1", in: .collegeFootball, conference: 8)
+        let scoreboards = await makeScoreboards(
+            cfb: [game("mine", home: mine, away: team("2", in: .collegeFootball, conference: 8)),
+                  game("theirs", home: team("3", in: .collegeFootball, conference: 5),
+                       away: team("4", in: .collegeFootball, conference: 5)),
+                  game("other", home: team("5", in: .collegeFootball, conference: 1),
+                       away: team("6", in: .collegeFootball, conference: 1))])
+        let following = makeFollowing([mine], conferences: [.cfb(5)])
+
+        let sections = scoreboards.sections(followingIds: following.teamKeys,
+                                            followedTables: following.orderedTables)
+        #expect(sections.map(\.id) == [GameSection.followingId, confSection(.cfb(5)),
+                                       confSection(.cfb(1)), confSection(.cfb(8))])
+        #expect(sections[0].isFollowed) // Following
+        #expect(sections[1].isFollowed) // Big Ten, hoisted as a followed table
+        #expect(!sections[2].isFollowed) // ACC, carries a table but unfollowed
+        #expect(!sections[3].isFollowed) // SEC, mine's own conference, unfollowed
+    }
+
+    @Test func nothingIsFollowedWhenNobodyIsFollowed() async {
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c1", home: team("1", in: .collegeFootball, conference: 8),
+                       away: team("2", in: .collegeFootball, conference: 8))])
+
+        #expect(scoreboards.sections(followingIds: []).allSatisfy { !$0.isFollowed })
+    }
+
     // MARK: - Filters
 
     @Test func liveOnlyNarrowsEveryLeagueAndHidesTheEmpties() async {
