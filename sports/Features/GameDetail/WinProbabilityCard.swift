@@ -1,137 +1,78 @@
 import SwiftUI
 
-/// Who's likely to win, as ESPN models it (Coard Miller, 2026-09-24: "a
-/// chart like ESPN does with their win probability… could you see a line of
-/// 2.5 and suggest that it could potentially be a close game?").
+/// Who's likely to win, as ESPN models it: one row, FotMob's "Who will win?"
+/// card without the vote (Andy, 2026-09-24). Each side's crest with its
+/// percentage, away on the left and home on the right as in the header.
+/// The favorite's number is the one in ink and weight. There's no draw
+/// column, and no chart.
 ///
-/// The one ESPN extra that spends no color budget: before kickoff a split
-/// bar in two grays, and once the game is under way a single-ink line of the
-/// home side's chance through every play, over a hairline at 50%. No team
-/// colors, no gradient. The card hides itself where the payload has neither
-/// block, which is hockey, rather than giving hockey a meaning of its own.
+/// Which number it shows depends on the moment, and the header's trailing
+/// caption says which:
+/// - **Before kickoff:** ESPN's matchup predictor.
+/// - **Live:** the latest per-play value.
+/// - **Final:** the value at kickoff. The current value would just be
+///   100–0, while the kickoff value is what an upset was measured against.
+///
+/// It spends no color: emphasis is weight and ink only. The card hides
+/// itself where the payload has neither block (hockey).
 struct WinProbabilityCard: View {
     let probability: WinProbability
+    let isFinal: Bool
     let away: Team
     let home: Team
 
+    @ScaledMetric(relativeTo: .body) private var crestSize: CGFloat = 24
+
+    /// The home side's percentage for this moment, and the header's
+    /// caption naming where it came from.
+    static func reading(_ probability: WinProbability,
+                        isFinal: Bool) -> (homePercent: Double, caption: String) {
+        switch probability {
+        case .pregame:
+            return (probability.homePercent, "ESPN predictor")
+        case .series(let points):
+            let point = (isFinal ? points.first : points.last) ?? 0.5
+            return (point * 100, isFinal ? "At kickoff" : "Live")
+        }
+    }
+
+    private var homePercent: Double { Self.reading(probability, isFinal: isFinal).homePercent }
+
     var body: some View {
-        Group {
-            switch probability {
-            case .pregame(let homeShare, let awayShare):
-                PregameSplit(away: away, home: home,
-                             awayPercent: awayShare / (homeShare + awayShare) * 100)
-            case .series(let points):
-                ProbabilityLine(points: points, away: away, home: home)
-            }
+        let home = Int(homePercent.rounded())
+        let away = 100 - home
+        HStack {
+            side(self.away, percent: away, leads: away > home)
+            Spacer(minLength: Spacing.lg)
+            side(self.home, percent: home, leads: home > away)
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.sm)
+        .padding(.vertical, Spacing.md)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenLabel)
     }
 
-    /// "Win probability, Liberty 56 percent, Coastal Carolina 44 percent."
+    private func side(_ team: Team, percent: Int, leads: Bool) -> some View {
+        HStack(spacing: Spacing.sm) {
+            LogoImage(url: team.logoURL)
+                .frame(width: crestSize, height: crestSize)
+            Text("\(percent)%")
+                .font(leads ? .score : .scoreMuted)
+                .foregroundStyle(leads ? Color.textPrimary : Color.textSecondary)
+        }
+    }
+
+    /// "Win probability at kickoff, Liberty 56 percent, Coastal Carolina 44
+    /// percent." The caption rides in the sentence, lowercased.
     var spokenLabel: String {
-        let homePercent = probability.homePercent.rounded()
-        return "Win probability, \(away.location) \(Int(100 - homePercent)) percent, "
-            + "\(home.location) \(Int(homePercent)) percent"
-    }
-
-    static func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
-}
-
-/// Before kickoff: one bar, away's share on the left in ink, home's in gray.
-private struct PregameSplit: View {
-    let away: Team
-    let home: Team
-    let awayPercent: Double
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack {
-                side(away, WinProbabilityCard.percent(awayPercent))
-                Spacer()
-                side(home, WinProbabilityCard.percent(100 - awayPercent))
-            }
-            GeometryReader { proxy in
-                HStack(spacing: 2) {
-                    Capsule().fill(Color.textPrimary)
-                        .frame(width: max(proxy.size.width * awayPercent / 100 - 1, 0))
-                    Capsule().fill(Color.textSecondary.opacity(0.35))
-                }
-            }
-            .frame(height: 6)
-            Text("ESPN matchup predictor")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
+        let reading = Self.reading(probability, isFinal: isFinal)
+        let home = Int(reading.homePercent.rounded())
+        let moment = switch reading.caption {
+        case "At kickoff": " at kickoff"
+        case "Live": " now"
+        default: ""
         }
-    }
-
-    private func side(_ team: Team, _ percent: String) -> some View {
-        HStack(spacing: Spacing.xs) {
-            Text(team.abbreviation ?? team.location)
-                .font(.metaEmphasis)
-                .foregroundStyle(.textPrimary)
-            Text(percent)
-                .font(.meta.monospacedDigit())
-                .foregroundStyle(.textSecondary)
-        }
-    }
-}
-
-/// Under way: the home side's chance after every play. Home at the top
-/// edge, away at the bottom, so the line climbs as home pulls ahead.
-private struct ProbabilityLine: View {
-    let points: [Double]
-    let away: Team
-    let home: Team
-
-    private var leader: (team: Team, percent: Double) {
-        let current = points.last ?? 0.5
-        return current >= 0.5 ? (home, current * 100) : (away, (1 - current) * 100)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack(spacing: Spacing.xs) {
-                Text(leader.team.abbreviation ?? leader.team.location)
-                    .font(.metaEmphasis)
-                    .foregroundStyle(.textPrimary)
-                Text(WinProbabilityCard.percent(leader.percent))
-                    .font(.meta.monospacedDigit())
-                    .foregroundStyle(.textSecondary)
-            }
-            HStack(spacing: Spacing.sm) {
-                VStack {
-                    LogoImage(url: home.logoURL).frame(width: 18, height: 18)
-                    Spacer()
-                    LogoImage(url: away.logoURL).frame(width: 18, height: 18)
-                }
-                chart
-            }
-            .frame(height: 96)
-        }
-    }
-
-    private var chart: some View {
-        GeometryReader { proxy in
-            let size = proxy.size
-            ZStack {
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: size.height / 2))
-                    path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
-                }
-                .stroke(Color.divider, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                Path { path in
-                    for (index, point) in points.enumerated() {
-                        let x = points.count > 1
-                            ? size.width * CGFloat(index) / CGFloat(points.count - 1) : 0
-                        let location = CGPoint(x: x, y: size.height * (1 - point))
-                        if index == 0 { path.move(to: location) } else { path.addLine(to: location) }
-                    }
-                }
-                .stroke(Color.textPrimary, style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-            }
-        }
+        return "Win probability\(moment), \(away.location) \(100 - home) percent, "
+            + "\(self.home.location) \(home) percent"
     }
 }

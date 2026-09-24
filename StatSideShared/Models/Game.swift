@@ -85,6 +85,11 @@ nonisolated enum GameStatus: Hashable, Sendable {
     /// Postponed, canceled, or anything ESPN invents later. Renders its detail.
     case other(detail: String?)
 
+    var isFinal: Bool {
+        if case .final = self { return true }
+        return false
+    }
+
     /// The live status line every surface renders — "5:24 • 3rd", "Half",
     /// "End 1st", "0:48 • OT" — nil unless the game is live. One formatter so
     /// the row, detail header, widget, share text, and share card can't

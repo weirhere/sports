@@ -613,8 +613,10 @@ struct GameDetailScreen: View {
                     // ESPN's predictor before kickoff, the per-play line
                     // after it. Absent in hockey, whose payload has neither.
                     if let probability = summary.winProbability {
-                        card(title: "Win probability") {
-                            WinProbabilityCard(probability: probability,
+                        let isFinal = GameHeaderState.status(game, summary).isFinal
+                        card(title: "Win probability",
+                             subtitle: WinProbabilityCard.reading(probability, isFinal: isFinal).caption) {
+                            WinProbabilityCard(probability: probability, isFinal: isFinal,
                                                away: game.away.team, home: game.home.team)
                         }
                     }
