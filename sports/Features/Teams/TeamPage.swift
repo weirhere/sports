@@ -170,10 +170,14 @@ struct TeamPage: View {
         // The directory is league-scoped on purpose: ESPN team ids collide,
         // so an unfiltered lookup would hand the Cleveland Browns UAB's
         // conference (both are id 5).
-        let leagueDirectory = (directory?.allTeams ?? []).filter { $0.league == pageLeague }
+        //
+        // Filtered only when something needs it: this is read about ten
+        // times per body, and the schedule or the pushed team usually
+        // answers first — outside college football, always.
+        let leagueDirectory = { (directory?.allTeams ?? []).filter { $0.league == pageLeague } }
         let claimed = schedule?.team?.conferenceId
             ?? team.conferenceId
-            ?? leagueDirectory.first(where: { $0.id == team.id })?.conferenceId
+            ?? leagueDirectory().first(where: { $0.id == team.id })?.conferenceId
         // The claim check is a college-football rule — it defends against
         // an opponent from outside the divisions we fetch (D-II, D-III).
         // Every NFL team is inside the one league we fetch, and its
@@ -182,7 +186,7 @@ struct TeamPage: View {
             return Conference.isKnown(claimed, in: pageLeague) ? claimed : nil
         }
         return ConferenceClaim.resolve(claimed: claimed, teamId: team.id,
-                                       directory: leagueDirectory)
+                                       directory: leagueDirectory())
     }
 
     private var isLoadingSelected: Bool {
