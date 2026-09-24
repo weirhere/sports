@@ -59,7 +59,12 @@ actor LogoCache {
             guard (response as? HTTPURLResponse).map({ (200 ..< 300).contains($0.statusCode) }) ?? true,
                   let image = UIImage(data: data)
             else { return .transient }
-            return .image(image)
+            // Decoded here, off the main thread. `UIImage(data:)` is lazy:
+            // left alone, the 500×500 PNG inflated on the main thread the
+            // first time a row drew it — mid-scroll, or in the frame a
+            // 40-game section expanded (2026-09-24). Full resolution is
+            // kept: the share card draws these at 3× on a 600pt canvas.
+            return .image(image.preparingForDisplay() ?? image)
         }
         inFlight[url] = task
         let outcome = await task.value

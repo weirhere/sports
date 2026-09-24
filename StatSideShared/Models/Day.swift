@@ -14,14 +14,30 @@ import Foundation
 nonisolated struct DaySlot: Identifiable, Hashable, Sendable {
     let date: Date
 
-    init(_ date: Date, calendar: Calendar = .current) {
-        self.date = calendar.startOfDay(for: date)
-    }
-
     /// Stable across time zones and locales — it is a persisted expansion
     /// key and a `scrollTo` id, so it comes from date components rather
     /// than a formatter.
-    var id: String { DayFormat.id(for: date) }
+    ///
+    /// Stored, along with both labels, because the strip draws a season of
+    /// these and used to derive all three per chip on every body pass —
+    /// ~365 calendar decompositions and ~730 date formats each time the
+    /// Scores screen re-rendered, which during a day drag is every frame
+    /// (2026-09-24).
+    let id: String
+
+    /// "Sun, Sep 27" — the chip's text on any day without a name.
+    let shortLabel: String
+
+    /// "Sunday, September 27" — what VoiceOver reads for the same chip.
+    let spokenLabel: String
+
+    init(_ date: Date, calendar: Calendar = .current) {
+        let day = calendar.startOfDay(for: date)
+        self.date = day
+        self.id = DayFormat.id(for: day, calendar: calendar)
+        self.shortLabel = day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+        self.spokenLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+    }
 }
 
 nonisolated enum DayFormat {

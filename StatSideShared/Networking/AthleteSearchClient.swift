@@ -28,6 +28,12 @@ nonisolated struct AthleteSearchClient {
     ///
     /// Returns `[]` rather than throwing on an empty or whitespace query, so
     /// a cleared search field costs no request.
+    /// `@concurrent` so the request and the decode leave the caller's actor.
+    /// Under approachable concurrency a plain `nonisolated async` func runs
+    /// on whoever called it, which from `SearchScreen` is the main thread —
+    /// decoding a search payload per debounced keystroke, mid-typing
+    /// (2026-09-24).
+    @concurrent
     func athletes(matching query: String, limit: Int = 10) async throws -> [PlayerIdentity] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
@@ -156,6 +162,10 @@ nonisolated struct AthleteProfileClient {
     /// Returns the team id alongside the player: the payload names the club
     /// by id, and only the app's directory can turn that into a `Team` the
     /// hero badge can push to. This type has no directory and shouldn't.
+    /// `@concurrent` for the reason `athletes(matching:)` gives: off the
+    /// caller's actor, so the profile decode doesn't land on the main
+    /// thread during the player page's push.
+    @concurrent
     func filling(_ player: PlayerIdentity) async -> (player: PlayerIdentity, teamId: String?) {
         let league = player.league
         let url = URL(string: "https://site.web.api.espn.com/apis/common/v3/sports/"

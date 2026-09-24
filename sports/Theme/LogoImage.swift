@@ -28,9 +28,9 @@ struct LogoImage: View {
     /// frame: a freshly-inserted subtree (a tab pane sliding in) otherwise
     /// shows blank discs until its `.task` lands, which read as logos
     /// frozen in place while the cards moved (2026-08-31).
-    private var displayImage: UIImage? {
+    private func displayImage(for target: URL?) -> UIImage? {
         if let image { return image }
-        guard let target = resolvedURL else { return nil }
+        guard let target else { return nil }
         if let hit = LogoCache.shared.cachedImage(for: target) { return hit }
         // Dark variant not cached: the light mark is the task's fallback,
         // so it's the sync fallback too.
@@ -39,8 +39,11 @@ struct LogoImage: View {
     }
 
     var body: some View {
+        // Resolved once per pass: the dark variant is a string rewrite of
+        // the URL, and the body used to derive it three times over.
+        let target = resolvedURL
         Group {
-            if let image = displayImage {
+            if let image = displayImage(for: target) {
                 Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
             } else if let placeholder {
                 Circle().fill(placeholder)
@@ -53,8 +56,8 @@ struct LogoImage: View {
         // mid-blip retries when it scrolls back into view and a light logo
         // swaps to its dark twin without relaunching. The previous image
         // stays up while the swap loads — usually an instant cache hit.
-        .task(id: resolvedURL) {
-            guard let target = resolvedURL else {
+        .task(id: target) {
+            guard let target else {
                 image = nil
                 return
             }
