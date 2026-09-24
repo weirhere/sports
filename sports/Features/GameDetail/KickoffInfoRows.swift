@@ -6,12 +6,26 @@ import SwiftUI
 struct KickoffInfoRows: View {
     let game: Game
     let summary: GameSummary
+    /// The Settings switch (`UIStateStore.showsLines`), passed in so the
+    /// gate stays a pure static.
+    var showsLines = false
 
     /// Whether the card has anything to say — its gate, the
     /// `GameInfoRows.hasVenueContent` precedent.
-    static func hasContent(game: Game, summary: GameSummary) -> Bool {
+    static func hasContent(game: Game, summary: GameSummary, showsLines: Bool = false) -> Bool {
         game.date != nil || game.broadcast != nil || !weatherLine(of: summary).isEmpty
             || !GameLeagueRow.destinations(for: game).isEmpty
+            || line(game: game, summary: summary, showsLines: showsLines) != nil
+    }
+
+    /// The pre-game line (Coard Miller, 2026-09-24: the spread and the
+    /// total are how a fan picks which games to follow). Before kickoff
+    /// only: ESPN keeps shipping `pickcenter` on a final, but a line is a
+    /// question about a game that hasn't happened, and this card outlives
+    /// the kickoff. And only with Betting lines switched on in Settings.
+    static func line(game: Game, summary: GameSummary, showsLines: Bool) -> GameLine? {
+        guard showsLines, case .pre = GameHeaderState.status(game, summary) else { return nil }
+        return summary.line
     }
 
     static func weatherLine(of summary: GameSummary) -> String {
@@ -37,6 +51,11 @@ struct KickoffInfoRows: View {
             let weather = Self.weatherLine(of: summary)
             if !weather.isEmpty {
                 GameInfoLine(symbol: "cloud.sun", text: weather)
+            }
+            if let line = Self.line(game: game, summary: summary, showsLines: showsLines) {
+                GameInfoLine(symbol: "plusminus", text: line.text)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Line, \(line.accessibilityText)")
             }
         }
         .padding(.vertical, Spacing.xs)

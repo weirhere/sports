@@ -406,6 +406,11 @@ export interface BoxScorePlayer {
   stats: string[];
 }
 
+export interface GameLine {
+  details?: string;
+  overUnder?: number;
+}
+
 export interface GameDetail {
   game: Game;
   homeStats: TeamStats;
@@ -416,6 +421,9 @@ export interface GameDetail {
   venueSurface?: "grass" | "turf";
   weatherCondition?: string;
   weatherTemperature?: number;
+  /** The pre-game line: ESPN's headline line and the total, nothing else
+   *  (iOS `GameLine`, 2026-09-24). */
+  line?: GameLine;
   leaders?: LeaderCategory[];
   drives?: GameDrive[];
   scoringPlays?: ScoringPlayItem[];

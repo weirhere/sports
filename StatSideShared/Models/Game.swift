@@ -28,6 +28,10 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     let home: Competitor
     let away: Competitor
     let broadcast: String?
+    /// The pre-game line off the scoreboard's `odds` — shown on the row
+    /// only with Betting lines on in Settings, and read by the Tight
+    /// filter for who was favored. ESPN drops `odds` from a final.
+    var line: GameLine? = nil
 
     var isLive: Bool {
         if case .live = status { return true }

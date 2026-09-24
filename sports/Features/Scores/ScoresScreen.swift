@@ -51,6 +51,7 @@ struct ScoresScreen: View {
     /// than the filter's 0.12 because a section's height actually travels.
     private static let accordionAnimation: Animation = .easeOut(duration: 0.18)
     @State private var showsCalendar = false
+    @State private var showsSettings = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
     // day change so the slide matches the strip's spatial order.
@@ -136,7 +137,8 @@ struct ScoresScreen: View {
                 // the thumb, not with the slate sliding out behind it.
                 ScoresHeader(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
                              onToggleLive: { toggleLive() },
-                             onOpenCalendar: { showsCalendar = true })
+                             onOpenCalendar: { showsCalendar = true },
+                             onOpenSettings: { showsSettings = true })
                 DayStrip(days: scoreboards.days(),
                          selectedId: DayFormat.id(for: scoreboards.selectedDay),
                          liveOnly: uiState.liveOnly,
@@ -264,6 +266,7 @@ struct ScoresScreen: View {
         // `select(divisions:)` refetches and no-ops when nothing changed —
         // so this fires freely.
         .task(id: neededDivisions) { await scoreboards.select(divisions: neededDivisions) }
+        .sheet(isPresented: $showsSettings) { SettingsScreen() }
         .sheet(isPresented: $showsCalendar) {
             DayCalendarSheet(days: scoreboards.days(),
                              selected: scoreboards.selectedDay) { day in

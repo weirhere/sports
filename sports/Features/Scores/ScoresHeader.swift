@@ -19,6 +19,7 @@ struct ScoresHeader: View {
     let liveOnly: Bool
     let onToggleLive: () -> Void
     let onOpenCalendar: () -> Void
+    var onOpenSettings: () -> Void = {}
 
     #if DEBUG
     @State private var showsActivityDebug = false
@@ -38,6 +39,7 @@ struct ScoresHeader: View {
             }
             .padding(4)
             .glassCapsule(fallback: Color.bgElevated)
+            settingsButton
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.sm)
@@ -55,6 +57,24 @@ struct ScoresHeader: View {
         #else
         Wordmark()
         #endif
+    }
+
+    /// Settings (Andy, 2026-09-24: moved here from the Teams header). Its
+    /// own glass circle outside the capsule, because the capsule holds the
+    /// slate's controls and this one isn't about the slate. It opens a
+    /// sheet and holds no state, so it paints no fill.
+    private var settingsButton: some View {
+        Button(action: onOpenSettings) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(fallback: Color.bgElevated)
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("scores-settings-button")
     }
 
     /// The season at a glance, one tap from the day you're on. Never

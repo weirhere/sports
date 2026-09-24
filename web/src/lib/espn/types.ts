@@ -306,6 +306,15 @@ export interface EspnGameSummaryResponse {
   gameInfo?: EspnGameInfo;
   /** The flat play feed — basketball and hockey, which ship no drives. */
   plays?: EspnPlay[];
+  /** Sportsbook lines, one per provider. Only the first entry's headline
+   *  line and total are read (2026-09-24); the rest stays iced. */
+  pickcenter?: EspnPickcenter[];
+}
+
+export interface EspnPickcenter {
+  /** "IU -7.5" in football and basketball; the moneyline in hockey. */
+  details?: string;
+  overUnder?: number;
 }
 
 export interface EspnHeaderCompetition {

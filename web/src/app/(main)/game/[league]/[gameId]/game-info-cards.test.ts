@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { fillPercent, leagueDestinations } from "./game-info-cards";
-import type { ConferenceStandingsGroup, Game, Team } from "@/lib/types";
+import { fillPercent, leagueDestinations, lineText } from "./game-info-cards";
+import { transformGameLine } from "@/lib/espn/transformers";
+import type { ConferenceStandingsGroup, Game, GameDetail, Team } from "@/lib/types";
 import type { League } from "@/lib/leagues";
 
 function team(id: string, conferenceId: string, league: League = "cfb"): Team {
@@ -98,5 +99,34 @@ describe("the attendance meter", () => {
 
   it("survives a capacity ESPN never shipped", () => {
     expect(fillPercent(45000, 0)).toBe(0);
+  });
+});
+
+describe("the pre-game line (Coard Miller, 2026-09-24)", () => {
+  const detail = (line: GameDetail["line"]) => ({ line }) as GameDetail;
+  const pre = game(team("201", "8"), team("130", "5"));
+
+  it("reads the first provider's line and total, nothing else", () => {
+    expect(transformGameLine({ details: "IU -7.5", overUnder: 47.5 })).toEqual({
+      details: "IU -7.5",
+      overUnder: 47.5,
+    });
+    expect(transformGameLine(undefined)).toBeUndefined();
+    expect(transformGameLine({ details: "  " })).toBeUndefined();
+  });
+
+  it("prints either half alone, and totals the way they are quoted", () => {
+    expect(lineText(pre, detail({ details: "IU -7.5", overUnder: 47.5 }))).toBe(
+      "IU -7.5 · O/U 47.5"
+    );
+    expect(lineText(pre, detail({ details: "ANA -185" }))).toBe("ANA -185");
+    expect(lineText(pre, detail({ overUnder: 47 }))).toBe("O/U 47");
+    expect(lineText(pre, detail(undefined))).toBeUndefined();
+  });
+
+  it("is gone once the game has started", () => {
+    const line = { details: "IU -7.5", overUnder: 47.5 };
+    expect(lineText({ ...pre, status: "in_progress" }, detail(line))).toBeUndefined();
+    expect(lineText({ ...pre, status: "complete" }, detail(line))).toBeUndefined();
   });
 });

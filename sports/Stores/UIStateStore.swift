@@ -82,6 +82,16 @@ final class UIStateStore {
         didSet { defaults.set(hideOtherSections, forKey: Self.hideOtherSectionsKey) }
     }
 
+    /// Whether betting lines show at all — the spread and total on
+    /// pre-game Scores rows and in the game page's Game info. Off by
+    /// default (Coard Miller, 2026-09-24: "just a toggle… might be frowned
+    /// upon"); switched on in Settings. The Tight filter reads the line
+    /// whatever this says, because it never prints it.
+    var showsLines: Bool {
+        didSet { defaults.set(showsLines, forKey: Self.showsLinesKey) }
+    }
+
+    private static let showsLinesKey = "lines.enabled"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
@@ -103,6 +113,7 @@ final class UIStateStore {
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
             .flatMap(ScoreFilter.init(token:))
         hideOtherSections = defaults.bool(forKey: Self.hideOtherSectionsKey)
+        showsLines = defaults.bool(forKey: Self.showsLinesKey)
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
 

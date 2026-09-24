@@ -39,6 +39,9 @@ nonisolated struct GameSummary: Sendable {
     var grassSurface: Bool? = nil
     var weatherCondition: String? = nil
     var weatherTemperature: Int? = nil
+    /// The pre-game line — spread (or hockey's moneyline) and the total,
+    /// as ESPN leads with them. Nil when the summary carries no line.
+    var line: GameLine? = nil
     /// The two sides' own standings tables, read out of the summary
     /// rather than fetched (E21, 2026-09-21). Empty for every league
     /// whose summary ships a division instead of a conference, and for
@@ -46,6 +49,46 @@ nonisolated struct GameSummary: Sendable {
     /// back to `conferenceStandings()` when this is empty, so an absent
     /// block costs a request, never the card.
     var matchupStandings: [ConferenceStandings] = []
+}
+
+/// A game's betting line, narrowed to the two numbers a fan picks games
+/// by (Coard Miller, 2026-09-24): ESPN's headline line and the total. No
+/// provider, no moneyline column, no bet links — the rest of `pickcenter`
+/// stays iced (BACKLOG, "There, large, and deliberately not ours").
+nonisolated struct GameLine: Hashable, Sendable {
+    let details: String?
+    let overUnder: Double?
+    /// Who was favored, where the payload says (the scoreboard's per-team
+    /// `favorite`; the summary's `pickcenter` isn't read for it). The Tight
+    /// filter's underdog rule needs it; nothing prints it.
+    var favoriteIsHome: Bool? = nil
+
+    /// Nil when neither half survived, so an empty line has no row.
+    init?(details: String?, overUnder: Double?, favoriteIsHome: Bool? = nil) {
+        let trimmed = details?.trimmingCharacters(in: .whitespaces)
+        let details = trimmed?.isEmpty == false ? trimmed : nil
+        guard details != nil || overUnder != nil else { return nil }
+        self.details = details
+        self.overUnder = overUnder
+        self.favoriteIsHome = favoriteIsHome
+    }
+
+    /// "IU -7.5 · O/U 47.5", dropping whichever half is missing.
+    var text: String {
+        [details, overUnder.map { "O/U \(Self.number($0))" }]
+            .compactMap(\.self).joined(separator: " · ")
+    }
+
+    /// The same line spoken: "O/U" read aloud is a slash.
+    var accessibilityText: String {
+        [details, overUnder.map { "over under \(Self.number($0))" }]
+            .compactMap(\.self).joined(separator: ", ")
+    }
+
+    /// 47.5 stays 47.5; 6.0 prints as 6, the way a total is quoted.
+    static func number(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(value)
+    }
 }
 
 extension GameSummary {
