@@ -41,7 +41,7 @@ struct BoxScoreList: View {
             if entries.count > 1 { teamSwitch }
             if let selected {
                 ForEach(selected.box.categories) { category in
-                    categoryCard(category)
+                    categoryCard(category, team: selected.team)
                 }
             }
         }
@@ -84,13 +84,13 @@ struct BoxScoreList: View {
 
     // MARK: - Categories
 
-    private func categoryCard(_ category: BoxScore.Category) -> some View {
+    private func categoryCard(_ category: BoxScore.Category, team: Team) -> some View {
         VStack(spacing: 0) {
             CardHeader(title: category.label)
             if isStacked {
-                stackedPlayers(category)
+                stackedPlayers(category, team: team)
             } else {
-                table(category)
+                table(category, team: team)
             }
         }
         .cardSurface()
@@ -99,7 +99,7 @@ struct BoxScoreList: View {
     /// A `Grid` keeps every column aligned across rows on its own; the
     /// horizontal scroll is for the wide categories — `defensive` runs
     /// seven columns and can't fit a phone at any type size.
-    private func table(_ category: BoxScore.Category) -> some View {
+    private func table(_ category: BoxScore.Category, team: Team) -> some View {
         ScrollView(.horizontal) {
             Grid(alignment: .leading, horizontalSpacing: Spacing.sm, verticalSpacing: Spacing.xs) {
                 GridRow {
@@ -120,7 +120,7 @@ struct BoxScoreList: View {
 
                 ForEach(category.players) { player in
                     GridRow {
-                        nameCell(player)
+                        playerLink(player, team: team)
                         statCells(player.stats, columns: category.columns, emphasized: false)
                     }
                 }
@@ -143,6 +143,31 @@ struct BoxScoreList: View {
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.sm)
+        }
+    }
+
+    /// The name as the way into the player's page (2026-09-24) — the last
+    /// of E20's three doors. Only where ESPN sent a real athlete id: the
+    /// synthesized `teamId-name` fallback identifies a row and nothing more.
+    /// Ink carries it, as on the Leaders card, rather than a chevron that a
+    /// table row has no room for.
+    @ViewBuilder
+    private func playerLink(_ player: BoxScore.Player, team: Team) -> some View {
+        if let athleteId = player.athleteId {
+            NavigationLink(value: PlayerIdentity(athleteId: athleteId,
+                                                 name: player.name,
+                                                 league: team.league,
+                                                 teamName: team.displayName ?? team.location,
+                                                 teamLogoURL: team.logoURL,
+                                                 team: team,
+                                                 jersey: player.jersey,
+                                                 headshotURL: player.headshotURL)) {
+                nameCell(player)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View player page")
+        } else {
+            nameCell(player)
         }
     }
 
@@ -186,11 +211,11 @@ struct BoxScoreList: View {
     /// Accessibility sizes can't hold a table: each player becomes a name
     /// with its stats spelled out beneath, the way `LeadersList` already
     /// gives up its side-by-side halves.
-    private func stackedPlayers(_ category: BoxScore.Category) -> some View {
+    private func stackedPlayers(_ category: BoxScore.Category, team: Team) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             ForEach(category.players) { player in
                 VStack(alignment: .leading, spacing: 2) {
-                    nameCell(player)
+                    playerLink(player, team: team)
                     statLines(category.columns, values: player.stats)
                 }
             }

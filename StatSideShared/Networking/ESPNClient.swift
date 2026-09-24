@@ -1689,6 +1689,7 @@ nonisolated enum ESPNMapper {
                         // such rows in a category then collide in a
                         // `ForEach`. Found on the web twin, fixed in both.
                         id: nonEmpty(athlete.id) ?? "\(teamId)-\(name)",
+                        athleteId: nonEmpty(athlete.id),
                         name: name,
                         jersey: athlete.jersey,
                         headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),
