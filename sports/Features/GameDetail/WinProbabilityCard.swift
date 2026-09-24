@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Who's likely to win, as ESPN models it: one row, FotMob's "Who will win?"
 /// card without the vote (Andy, 2026-09-24). Each side's crest with its
-/// percentage, away on the left and home on the right as in the header.
+/// percentage, centred in half of the row: away on the left, home on the
+/// right, as in the header.
 /// The favorite's number is the one in ink and weight. There's no draw
 /// column, and no chart.
 ///
@@ -41,10 +42,13 @@ struct WinProbabilityCard: View {
     var body: some View {
         let home = Int(homePercent.rounded())
         let away = 100 - home
-        HStack {
+        // Two equal halves, each group centred in its own (FotMob's layout),
+        // so the numbers sit apart from the card's edges.
+        HStack(spacing: 0) {
             side(self.away, percent: away, leads: away > home)
-            Spacer(minLength: Spacing.lg)
+                .frame(maxWidth: .infinity)
             side(self.home, percent: home, leads: home > away)
+                .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.md)
