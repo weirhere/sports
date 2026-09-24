@@ -175,7 +175,15 @@ struct ScoresScreen: View {
                 // push had the same exposure and only got away with it
                 // because its travel is horizontal, where the container
                 // already reaches both edges of the screen.
-                .clipped()
+                //
+                // Only the top edge is clipped (Coard, 2026-09-24). A plain
+                // `.clipped()` also cut the bottom at the safe area, so the
+                // slate stopped on a hard line above the floating tab bar
+                // instead of scrolling under the glass, and the system's
+                // scroll-edge effect — which fades or frosts per the user's
+                // Liquid Glass and Reduce Transparency settings — had nothing
+                // to work on.
+                .clipShape(TopEdgeClip())
                 // The slate's ground, held by the container so nothing that
                 // slides can take it with it.
                 .background(Color.bgRecessed)
