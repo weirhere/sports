@@ -95,8 +95,8 @@ nonisolated enum FollowedTable: Hashable, Sendable, Identifiable {
     /// first, alphabetically inside a tier — the tables hub's own order.
     static func defaultOrder(_ lhs: FollowedTable, _ rhs: FollowedTable) -> Bool {
         guard lhs.league == rhs.league else {
-            return (League.allCases.firstIndex(of: lhs.league) ?? 0)
-                < (League.allCases.firstIndex(of: rhs.league) ?? 0)
+            return (League.displayOrder.firstIndex(of: lhs.league) ?? 0)
+                < (League.displayOrder.firstIndex(of: rhs.league) ?? 0)
         }
         switch (lhs, rhs) {
         case (.poll, .poll): return false

@@ -65,6 +65,15 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// 2026-09-21) — the app calls the league what ESPN and the broadcasts
     /// call it, at every width, so the hub header and a row's league tag
     /// agree.
+    /// The order leagues are listed in wherever they stand side by side:
+    /// the Scores accordions, the Leagues tab, and a new follow's default
+    /// place. Alphabetical by what the header prints (Andy, 2026-09-24):
+    /// NBA, NCAAF, NFL, NHL. A list of four sports has no better order to
+    /// defend, and A–Z is one a reader recognises without being told.
+    /// Deliberately not `allCases`, whose order is the declaration's and
+    /// is load-bearing elsewhere (fetch fan-out, season spans).
+    static let displayOrder: [League] = allCases.sorted { $0.displayName < $1.displayName }
+
     var displayName: String {
         switch self {
         case .collegeFootball: "NCAAF"

@@ -531,10 +531,10 @@ final class LeagueScoreboards {
             visible[league] = games
         }
 
-        // The full slate, in its resting order — `League.allCases`' own,
+        // The full slate, in its resting order — `League.displayOrder`,
         // which is also the Tables hub's.
         var stack: [GameSection] = []
-        for league in League.allCases {
+        for league in League.displayOrder {
             let games = visible[league] ?? []
             guard !games.isEmpty else { continue }
             stack += league.slateSplitsByConference
