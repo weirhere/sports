@@ -23,7 +23,8 @@ Alternates:
   spends no characters on search
 
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
-exactly what the app covers.
+exactly what the app covers. Audited again at 2.5.0 and unchanged, for the
+same reason.
 
 Audited at 2.4.0 and unchanged, with one question asked and answered. 2.4.0
 renames college football to **NCAAF everywhere inside the app** — the league
@@ -51,6 +52,34 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.5.0 (build 19)
+
+> • Stats, for players and teams. A player page has Games, Stats and Career
+>   tabs now, with a This season card up top. A team page's Overview shows its
+>   season numbers and its leaders, and there's a full Stats tab behind it.
+>   Tap a name in a box score and you land on that player.
+> • Win probability on football and basketball game pages. Before kickoff
+>   it's ESPN's matchup predictor. During the game it moves with every play.
+>   After the final it shows what the odds were at kickoff, so an upset looks
+>   like one.
+> • A Tight filter next to Live: games that are close late, or where the
+>   underdog is winning. The ones worth switching to.
+> • Betting lines, if you want them. Turn them on in Settings and the spread
+>   and over/under show before kickoff, on the Scores page and the game page.
+>   They're off unless you switch them on.
+> • Settings has a home: the gear at the top of Games. Betting lines and
+>   kickoff reminders live there.
+> • Hide all / Show all folds everything that isn't yours out of the way in
+>   one tap, and it stays that way until you open it again.
+> • Leagues are listed A to Z: NBA, NCAAF, NFL, NHL.
+> • Smoother everywhere. StatSide runs at 120Hz on ProMotion iPhones now, and
+>   switching days does a fraction of the work it used to.
+> • Games scroll under the tab bar instead of stopping short of it.
+> • Rearranging the leagues you follow takes a deliberate hold now, so
+>   scrolling past them doesn't pick one up.
+> • Fixed: a league card could get stuck mid-drag and stop the Leagues tab
+>   from scrolling.
 
 ### 2.4.0 (build 18)
 
@@ -327,6 +356,9 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.5.0 and left alone. Every clause is still true, and the
+2.4.0 candidate below still reads well if the headline should change.
+
 Audited at 2.4.0 and left alone, on the same trade as 2.3.0. The standing
 candidate is now a good one and worth writing down rather than rediscovering:
 *"Four leagues, one screen. Find any team, conference or player in any of
@@ -350,7 +382,8 @@ leagues ever stop being the thing worth saying first; no review needed.
 >   NHL each in a section of their own
 > • Live games get a pulsing dot, heavier type on the score, and possession
 >   where the sport has it
-> • One tap filters to live games only
+> • One tap filters to live games, or to the tight ones: close late, or the
+>   underdog ahead
 >
 > YOUR TEAMS, EVERYWHERE
 > • A Home Screen and Lock Screen widget with your teams' live score or next
@@ -364,12 +397,14 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • Every FBS conference, the FCS, the AFC and NFC and their divisions, and
 >   every NBA and NHL division — each table in its own league's terms
 > • Game pages: line score, box score, scoring plays, team stats, leaders,
->   the head-to-head series, and the plays themselves — drives for football,
->   periods for basketball and hockey
-> • Team pages: the record, the full season, bye weeks, the roster, the home
->   ground, and the trophies the team has won
-> • Player pages: the position, the number and the vitals, reached from a
->   roster, a search or a game's leaders
+>   win probability, the head-to-head series, and the plays themselves —
+>   drives for football, periods for basketball and hockey
+> • Team pages: the record, season stats and leaders, the full season, bye
+>   weeks, the roster, the home ground, and the trophies the team has won
+> • Player pages: this season's numbers, every game, and the career, reached
+>   from a roster, a search, a box score or a game's leaders
+> • Optional betting lines: the spread and over/under before kickoff, off
+>   unless you turn them on
 > • Search any team, conference, game or player — across every league,
 >   from a field that sits under your thumb
 > • Browse past seasons back to 2014
@@ -383,6 +418,15 @@ leagues ever stop being the thing worth saying first; no review needed.
 >
 > StatSide is an independent app and is not affiliated with or endorsed by the
 > NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
+
+Changed for 2.5.0, in four places. The live-filter bullet names Tight; game
+pages gain win probability; team and player pages gain their stats (the
+player bullet also names the box score as a way in); and a bullet for the
+optional betting lines, worded as off-by-default because that's the fact a
+reader deciding whether this is a betting app needs. "Free." in the closer
+stays, for the reason in the 2.3.0 note below. The "collects no data"
+paragraph stays true: nothing in 2.5.0 sends anything about a person
+anywhere.
 
 Changed for 2.4.0, in two places, both because search stopped being a
 team-only field: the search bullet now names a player and says where the
@@ -423,6 +467,10 @@ four are in the subtitle, so repeating them would spend characters on nothing.
 Audited at 2.3.0 and unchanged: at 95 of 100 there are five characters
 spare, and nothing 2.3.0 added is a term this audience types into search —
 nobody looks for an app by "head to head" or "trophies".
+
+Audited at 2.5.0 and unchanged. The release's new surface is stats, and
+`,stats` (6) still doesn't fit in the five spare characters. Nothing here
+stopped being true.
 
 Audited at 2.4.0 and unchanged. `ncaaf` was already here and now matches what
 the app calls the league on screen, which is luck rather than planning. The
@@ -512,6 +560,18 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.5.0: carried forward a third time
+
+Andy's call at the cut: the reshoot is still booked for late October, when the
+NBA and NHL open. Nothing in the frames became false in 2.5.0. They just miss
+more: the Settings gear on the Games header, the Tight chip, win probability,
+player and team stats, and the optional lines. The October pass should shoot
+the Games header as it now stands (Live · Tight · calendar, gear), a game page
+with the Win probability card, and a player page's Stats tab, on top of the
+2.3.0/2.4.0 debt listed below. Don't shoot a frame with betting lines turned
+on: it's an off-by-default feature and shouldn't be what the listing leads
+with.
 
 ### 2.4.0: carried forward a second time, and the staleness is now compounding
 
@@ -657,13 +717,25 @@ one of the eight uploaded frames, so it does not block a submission.
 ## App Privacy (nutrition label)
 
 Answer: **Data Not Collected** — the app has no accounts, analytics, ads, or
-backend. Followed teams and UI state are stored only on-device in UserDefaults.
+backend. *(Re-read at 2.5.0: still true. The Live Activity channel service
+now exists at statside.co, but this build never calls it: Live Activities are
+gated off, and even when on, it's asked for a game's channel with a game id
+and a league, never anything about a person. See `PRIVACY.md`.)* Followed teams and UI state are stored only on-device in UserDefaults.
 Score data is fetched anonymously over HTTPS.
 
 ## Age rating questionnaire
 
 All content questions: **None** (no violence, gambling, etc. — sports scores).
 Unrestricted web access: **No**. Gambling: **No**. Result: **4+**.
+
+**Re-read at 2.5.0 — Andy's call in ASC.** 2.5.0 adds *optional betting
+lines*: the pre-game spread and over/under, off by default, switched on in
+Settings. They're informational only. There's no wagering, no real or
+simulated gambling, no sportsbook name or logo, no odds beyond those two
+numbers, and no link to a betting service. The expectation is that the
+gambling question stays **No**, since it asks about gambling, not about
+printing a line. But the questionnaire wording has changed before, so read
+it against the feature rather than against this note.
 
 ## Export compliance
 
@@ -710,6 +782,23 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.5.0: one addition, pasted after the demo paragraph.**
+2.5.0 adds no capability that needs declaring: no new entitlement, no
+account, nothing collected. One feature is worth saying out loud before a
+reviewer finds it, and it goes in the submission as:
+
+> Settings (the gear at the top of the Games tab) includes an optional
+> "Betting lines" switch, off by default. When on, it shows the pre-game
+> point spread and over/under as plain text on the scores list and the game
+> page. It's informational only: no wagering, no sportsbook branding or
+> links, and nothing to buy or place.
+
+Demo paths for the release: any finished football game → Summary → Win
+probability; the Tight chip on the Games header during a live game; a
+player's name in a box score → Stats. Live Activity code is in the build but
+**gated off**, so there's nothing for a reviewer to find and nothing to
+declare yet.
 
 **Notes audit at 2.4.0: no rewrite needed.** 2.4.0 adds no capability that
 needs declaring — no new entitlement, no account, no data collected, no web
