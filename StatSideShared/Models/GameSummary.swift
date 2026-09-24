@@ -49,6 +49,42 @@ nonisolated struct GameSummary: Sendable {
     /// back to `conferenceStandings()` when this is empty, so an absent
     /// block costs a request, never the card.
     var matchupStandings: [ConferenceStandings] = []
+    /// The win-probability card's data (Coard Miller, 2026-09-24). Nil
+    /// wherever the payload has neither block, which is how the card hides
+    /// itself for hockey.
+    var winProbability: WinProbability? = nil
+}
+
+/// Who's likely to win, as ESPN models it. Two shapes, because the payload
+/// has two: a single projection before kickoff, and a line through every
+/// play once the game is under way.
+nonisolated enum WinProbability: Hashable, Sendable {
+    /// ESPN's matchup predictor, in percent (55.6, 44.4).
+    case pregame(home: Double, away: Double)
+    /// The home side's chance after each play, 0...1, oldest first.
+    case series([Double])
+
+    /// The series once it has a line to draw (two points or more), else
+    /// the predictor, else nothing.
+    init?(predictor: (home: Double?, away: Double?)?, series: [Double]) {
+        let clamped = series.map { min(max($0, 0), 1) }
+        if clamped.count >= 2 {
+            self = .series(clamped)
+        } else if let home = predictor?.home, let away = predictor?.away,
+                  home >= 0, away >= 0, home + away > 0 {
+            self = .pregame(home: home, away: away)
+        } else {
+            return nil
+        }
+    }
+
+    /// The home side's current chance, in percent.
+    var homePercent: Double {
+        switch self {
+        case .pregame(let home, let away): home / (home + away) * 100
+        case .series(let points): (points.last ?? 0.5) * 100
+        }
+    }
 }
 
 /// A game's betting line, narrowed to the two numbers a fan picks games

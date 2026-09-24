@@ -1666,7 +1666,11 @@ nonisolated enum ESPNMapper {
             },
             matchupStandings: matchupStandings(
                 from: dto.standings, league: league,
-                teams: [side("away")?.team, side("home")?.team].compactMap(\.self))
+                teams: [side("away")?.team, side("home")?.team].compactMap(\.self)),
+            winProbability: WinProbability(
+                predictor: dto.predictor.map { ($0.homeTeam?.gameProjection?.value,
+                                                $0.awayTeam?.gameProjection?.value) },
+                series: dto.winprobability?.elements.compactMap(\.homeWinPercentage) ?? [])
         )
     }
 
