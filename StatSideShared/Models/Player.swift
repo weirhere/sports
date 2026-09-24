@@ -3,12 +3,10 @@ import Foundation
 /// Who a player is, and everything the screen that linked to them already
 /// knew about them.
 ///
-/// **Deliberately not a fetched model.** ESPN's athlete endpoints are
-/// unprobed — see E20's P0 — so the only facts the app can state about a
-/// player today are the ones a roster row already holds. A roster row holds
-/// all of them, which is why the roster is the one door open in this first
-/// cut: a box score row knows a name, a number and a stat line, and a page
-/// built from that would be the row again.
+/// **Deliberately not a fetched model.** This is what the door knew;
+/// `AthleteProfileClient` fills in the body facts a thin door (search, a box
+/// score row) couldn't carry, and `PlayerStatsClient` fetches the numbers
+/// separately into `PlayerStats` (2026-09-24, once E20's probe answered).
 ///
 /// The athlete id is ESPN's own and is the same value a box score row
 /// carries (`BoxScore.Player.id` where ESPN sent one), so the other doors

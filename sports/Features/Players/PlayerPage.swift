@@ -1,20 +1,32 @@
 import SwiftUI
 
-/// One player's page, pushed from a roster row.
+/// One player's page: Profile, Games, Stats and Career (E20's design,
+/// 2026-09-20).
 ///
-/// **One tab, so no tab row.** The design settled on four — Profile, Games,
-/// Stats, Career — and three of them have no confirmed data source: ESPN's
-/// athlete endpoints are unprobed (E20's P0, and `scripts/probe-athlete.sh`
-/// is how that gets answered). The app's own rule decides what to do about
-/// that rather than a new one: an empty roster hides the Roster tab, and game
-/// detail hides its whole tab row when there is no box score. Three dead tabs
-/// would promise pages that don't exist, which is the same mistake the roster
-/// rows avoided by not being links in the first place. The tab row appears
-/// here the moment a second tab can be filled.
+/// **The tab row appears when there is a second tab to fill** — the rule
+/// this page shipped under (2026-09-20), when it was Profile alone because
+/// ESPN's athlete endpoints were unprobed. The probe ran 2026-09-24 and
+/// answered from `site.web.api.espn.com` in all four leagues (see
+/// `PlayerStatsClient`), so a player with a stats line gets all four tabs.
+/// A player ESPN has no numbers for — a walk-on, a practice-squad name —
+/// still gets Profile alone, with no row of dead tabs over it.
 struct PlayerPage: View {
     /// What the door that opened this page knew. A roster row knows
     /// everything; a search result knows a name, a league and a club.
     let player: PlayerIdentity
+
+    enum Tab: Int, CaseIterable, HeroTabItem {
+        case profile, games, stats, career
+
+        var title: String {
+            switch self {
+            case .profile: "Profile"
+            case .games: "Games"
+            case .stats: "Stats"
+            case .career: "Career"
+            }
+        }
+    }
 
     /// The same person, with whatever the athlete endpoint could add. Starts
     /// as `player` so the page paints immediately and fills in behind —
@@ -22,17 +34,44 @@ struct PlayerPage: View {
     @Environment(TeamDirectoryStore.self) private var directory
 
     @State private var filled: PlayerIdentity?
+    @State private var model: PlayerStatsModel
+    @State private var tab: Tab = .profile
+    /// ESPN's season year the Games tab shows; nil until one is picked,
+    /// which asks ESPN for its current one.
+    @State private var logSeason: Int?
+
+    init(player: PlayerIdentity) {
+        self.player = player
+        _model = State(initialValue: PlayerStatsModel(athleteId: player.athleteId,
+                                                      league: player.league))
+    }
 
     private var shown: PlayerIdentity { filled ?? player }
 
+    private var availableTabs: [Tab] {
+        guard let stats = model.stats, !stats.categories.isEmpty else { return [.profile] }
+        return Tab.allCases
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: Spacing.lg) {
-                hero
-                profileCard
+            VStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    hero
+                    if availableTabs.count > 1 {
+                        HeroTabBar(tabs: availableTabs, selection: tab,
+                                   onSelect: { tab = $0 })
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color.bgCard)
+
+                VStack(spacing: Spacing.sm) {
+                    tabContent
+                }
+                .padding(Spacing.sm)
+                .padding(.bottom, Spacing.lg)
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.bottom, Spacing.xl)
         }
         // The entity pages' header, applied here too (Andy, 2026-09-21,
         // from the web twin): `bgCard` through the status-bar strip and the
@@ -46,11 +85,14 @@ struct PlayerPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        // Only when the door left the page empty. Arriving from a roster,
-        // every row is already here and the request would buy nothing —
-        // the API rules say be a polite guest (Andy, 2026-09-21).
+        // Only when the door left the body facts out. Arriving from a
+        // roster, every row is already here and the request would buy
+        // nothing — the API rules say be a polite guest (Andy, 2026-09-21).
+        // Keyed on height and position rather than on an empty card since
+        // the box score door opened (2026-09-24): it brings a jersey, so
+        // its card was never empty, and the page stopped at one row.
         .task {
-            guard player.profileRows.isEmpty else { return }
+            guard player.height == nil || player.position == nil else { return }
             let (fetched, teamId) = await AthleteProfileClient().filling(player)
             var resolved = fetched
             // The badge needs a `Team`, not a name: search hands over a club
@@ -65,6 +107,74 @@ struct PlayerPage: View {
                 resolved.teamLogoURL = resolved.teamLogoURL ?? resolved.team?.logoURL
             }
             filled = resolved
+        }
+        // The numbers: one request, which fills the Current season card
+        // and decides whether the other three tabs exist at all.
+        .task { await model.loadStats() }
+        // The game log waits for the Games tab — most visits never open it.
+        .task(id: tab == .games ? logSeason ?? -1 : nil) {
+            guard tab == .games else { return }
+            await model.loadLog(season: logSeason)
+        }
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch availableTabs.contains(tab) ? tab : .profile {
+        case .profile:
+            if let card = currentSeason { card }
+            profileCard
+        case .games:
+            gamesPane
+        case .stats:
+            if let stats = model.stats { PlayerStatsPane(stats: stats) }
+        case .career:
+            if let stats = model.stats { PlayerCareerPane(stats: stats, league: player.league) }
+        }
+    }
+
+    /// Only for the season "now" belongs to — see `CurrentSeasonCard`.
+    private var currentSeason: CurrentSeasonCard? {
+        guard let stats = model.stats else { return nil }
+        let year = model.currentESPNSeason
+        let headlines = stats.headlines(forSeason: year)
+        guard !headlines.isEmpty,
+              let label = stats.categories.first?.lines(for: year).last?.label else { return nil }
+        return CurrentSeasonCard(seasonLabel: label, headlines: headlines)
+    }
+
+    @ViewBuilder
+    private var gamesPane: some View {
+        let log = model.logs[logSeason]
+        if let log {
+            if let chip = seasonChip(log) {
+                HStack { chip; Spacer() }
+            }
+            if log.isEmpty {
+                Text("No games this season")
+                    .font(.teamName)
+                    .foregroundStyle(.textSecondary)
+                    .padding(.vertical, Spacing.xl)
+            } else {
+                PlayerGamesList(log: log, league: player.league,
+                                category: model.stats?.categories.first?.id)
+            }
+        } else {
+            ProgressView().padding(.vertical, Spacing.xl)
+        }
+    }
+
+    /// The season menu, from ESPN's own list of seasons it will answer for.
+    /// `SeasonMenuChip` speaks the app's season years; ESPN's log speaks its
+    /// own (the ending year, for the NBA and NHL), so the chip converts both
+    /// ways at the edge.
+    private func seasonChip(_ log: PlayerGameLog) -> SeasonMenuChip? {
+        guard let current = log.season, log.availableSeasons.count > 1 else { return nil }
+        let league = player.league
+        return SeasonMenuChip(current: league.seasonYear(fromESPN: current),
+                              seasons: log.availableSeasons.map(league.seasonYear(fromESPN:)),
+                              league: league) { year in
+            logSeason = league.espnSeason(for: year)
         }
     }
 
@@ -93,13 +203,13 @@ struct PlayerPage: View {
             Spacer(minLength: 0)
         }
         .padding(.top, Spacing.sm)
-        .padding(.bottom, Spacing.lg)
+        // Tighter under the hero once a tab row follows it — the row brings
+        // its own 14pt of padding, as on TeamPage.
+        .padding(.bottom, availableTabs.count > 1 ? Spacing.xs : Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Full-bleed: the band has to reach the screen edges, so the card
-        // paint is pushed back out past the page's own gutter.
+        // The card band is the container's now (2026-09-24), shared with the
+        // tab row beneath, so the hero only keeps the page gutter.
         .padding(.horizontal, Spacing.lg)
-        .background(Color.bgCard)
-        .padding(.horizontal, -Spacing.lg)
     }
 
     /// The crest, the team as a tappable badge, then whatever is left of the
@@ -186,34 +296,8 @@ struct PlayerPage: View {
     private var profileCard: some View {
         let rows = shown.profileRows
         if !rows.isEmpty {
-            VStack(spacing: 0) {
-                CardHeader(title: "Profile")
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    profileRow(label: row.label, value: row.value)
-                    if index < rows.count - 1 {
-                        Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
-                    }
-                }
-            }
-            .padding(.bottom, Spacing.xs)
-            .cardSurface()
+            LabeledValueCard(title: "Profile",
+                             rows: rows.map { LabeledValueCard.Row(label: $0.label, value: $0.value) })
         }
-    }
-
-    private func profileRow(label: String, value: String) -> some View {
-        HStack(spacing: Spacing.sm) {
-            Text(label)
-                .font(.rowName)
-                .foregroundStyle(.textSecondary)
-            Spacer(minLength: Spacing.sm)
-            Text(value)
-                .font(.rowNameEmphasis)
-                .monospacedDigit()
-                .foregroundStyle(.textPrimary)
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.md)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label) \(value)")
     }
 }

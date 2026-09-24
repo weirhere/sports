@@ -179,6 +179,11 @@ nonisolated struct LeaderCategory: Identifiable, Hashable, Sendable {
 nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
     struct Player: Identifiable, Hashable, Sendable {
         let id: String
+        /// ESPN's athlete id, only when ESPN sent one. `id` falls back to a
+        /// synthesized `teamId-name` so the row can still be identified in a
+        /// `ForEach` — and that fallback must never become a navigation
+        /// target, which is why the link reads this instead (2026-09-24).
+        var athleteId: String? = nil
         let name: String
         let jersey: String?
         let headshotURL: URL?
