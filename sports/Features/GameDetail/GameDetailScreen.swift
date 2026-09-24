@@ -610,6 +610,14 @@ struct GameDetailScreen: View {
                                           allowsShootout: allowsShootout)
                         }
                     }
+                    // ESPN's predictor before kickoff, the per-play line
+                    // after it. Absent in hockey, whose payload has neither.
+                    if let probability = summary.winProbability {
+                        card(title: "Win probability") {
+                            WinProbabilityCard(probability: probability,
+                                               away: game.away.team, home: game.home.team)
+                        }
+                    }
                     // "Scoring" in football, "Goals" in hockey, and no
                     // card at all in basketball — ~98 buckets a game is
                     // the box score with worse formatting.

@@ -822,3 +822,4 @@ sibling below it.
 | 2026-09-24 | Tight filter (live, late within one score, or underdog leading) beside Live | **pending** — the web has the Live filter; `GameCloseness` and its per-league table port as straight copies. |
 | 2026-09-24 | Live Activity channels made on demand, stored in Upstash, reaped after the game | **shipped** — this *is* `web/`: the channel and broadcast routes. The iOS half is the production default URL. |
 | 2026-09-24 | Kickoff reminder's "Pin to Lock Screen" action (foreground, pins on load) | **n/a** — local notifications and Live Activities are iOS-only by category. |
+| 2026-09-24 | Win probability card: predictor split bar pre-game, per-play line after | **pending** — same summary fields on web (`predictor`, `winprobability`); a single-path SVG is the whole chart. |

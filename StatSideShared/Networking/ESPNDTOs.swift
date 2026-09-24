@@ -431,6 +431,13 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// neither has a possession long enough to be worth grouping by.
     let plays: LossyArray<PlayDTO>?
     let leaders: LossyArray<SummaryTeamLeadersDTO>?
+    /// ESPN's matchup predictor, before kickoff: each side's projected win
+    /// chance as a string ("55.6"). College football carries it; the NBA
+    /// and NHL fixtures don't.
+    let predictor: PredictorDTO?
+    /// The home side's win chance after every play, oldest first, 0...1.
+    /// Football and basketball ship it; hockey ships none.
+    let winprobability: LossyArray<WinProbabilityPointDTO>?
     let gameInfo: GameInfoDTO?
     /// The two competing teams' own standings tables, shipped inside the
     /// request the game page already makes (E21, 2026-09-21).
@@ -652,6 +659,35 @@ nonisolated struct AthleteDTO: Decodable {
     let shortName: String?
     let jersey: String?
     let headshot: LogoDTO?
+}
+
+nonisolated struct PredictorDTO: Decodable {
+    let homeTeam: PredictorTeamDTO?
+    let awayTeam: PredictorTeamDTO?
+}
+
+nonisolated struct PredictorTeamDTO: Decodable {
+    let gameProjection: FlexibleDouble?
+}
+
+/// A number ESPN sends as a string on some payloads and a number on others.
+nonisolated struct FlexibleDouble: Decodable, Hashable, Sendable {
+    let value: Double?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = Double(string)
+        } else {
+            value = nil
+        }
+    }
+}
+
+nonisolated struct WinProbabilityPointDTO: Decodable {
+    let homeWinPercentage: Double?
 }
 
 nonisolated struct GameInfoDTO: Decodable {
