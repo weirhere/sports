@@ -158,16 +158,17 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let scoreboards = await makeScoreboards(cfb: cfb, nba: nba, nhl: nhl)
 
         let sections = scoreboards.sections(followingIds: [])
-        // `League.allCases`' own order, and one section each for the three
+        // `League.displayOrder` — A–Z, so the NBA leads college football's
+        // conferences (2026-09-24) — and one section each for the three
         // leagues that don't carve up.
-        #expect(sections.map(\.id) == [confSection(.cfb(8)),
-                                       GameSection.id(for: .nba),
+        #expect(sections.map(\.id) == [GameSection.id(for: .nba),
+                                       confSection(.cfb(8)),
                                        GameSection.id(for: .nhl)])
-        #expect(sections.map(\.title) == ["SEC", "NBA", "NHL"])
-        #expect(sections[1].games.map(\.id) == ["b1", "b2"])
+        #expect(sections.map(\.title) == ["NBA", "SEC", "NHL"])
+        #expect(sections[0].games.map(\.id) == ["b1", "b2"])
         // Following the whole league on the hub hoists this very section,
         // so it has to carry the league-wide table's identity.
-        #expect(sections[1].table == .conference(.nba(7)))
+        #expect(sections[0].table == .conference(.nba(7)))
         #expect(sections[2].table == .conference(.nhl(9)))
     }
 
@@ -829,5 +830,12 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let september = calendar.date(from: DateComponents(year: 2026, month: 9, day: 12))!
         #expect(SeasonSpan.year(containing: january) == 2026)
         #expect(SeasonSpan.year(containing: september) == 2026)
+    }
+}
+
+@Suite struct LeagueDisplayOrderTests {
+    @Test func leaguesListAlphabetically() {
+        #expect(League.displayOrder == [.nba, .collegeFootball, .nfl, .nhl])
+        #expect(League.displayOrder.map(\.displayName) == ["NBA", "NCAAF", "NFL", "NHL"])
     }
 }

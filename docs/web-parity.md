@@ -824,3 +824,4 @@ sibling below it.
 | 2026-09-24 | Kickoff reminder's "Pin to Lock Screen" action (foreground, pins on load) | **n/a** — local notifications and Live Activities are iOS-only by category. |
 | 2026-09-24 | Win probability card: predictor split bar pre-game, per-play line after | **pending** — same summary fields on web (`predictor`, `winprobability`); a single-path SVG is the whole chart. |
 | 2026-09-24 | Win probability card as one FotMob-style row; caption names the moment (predictor / live / at kickoff) | **pending** — ports with the card itself (still pending from #188). |
+| 2026-09-24 | Leagues list A–Z (NBA, NCAAF, NFL, NHL) on Scores and the tables hub | **pending** — the web's league loops read `LEAGUES`' declaration order; give it a display-order copy, as iOS did. |

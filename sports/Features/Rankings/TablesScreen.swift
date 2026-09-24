@@ -146,7 +146,7 @@ struct TablesScreen: View {
     /// back empty — a group that didn't load isn't there at all, rather
     /// than being there and empty.
     private var groups: [TableGroup] {
-        League.allCases
+        League.displayOrder
             .map { TableGroup(id: Self.sectionId(for: $0),
                               title: $0.displayName,
                               logoURL: $0.logoURL,
