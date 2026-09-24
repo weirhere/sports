@@ -136,12 +136,14 @@ struct ScoresScreen: View {
                 // day rather than `shownDay` because the header moves with
                 // the thumb, not with the slate sliding out behind it.
                 ScoresHeader(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
+                             tightOnly: uiState.tightOnly(on: scoreboards.selectedDay),
                              onToggleLive: { toggleLive() },
+                             onToggleTight: { toggleTight() },
                              onOpenCalendar: { showsCalendar = true },
                              onOpenSettings: { showsSettings = true })
                 DayStrip(days: scoreboards.days(),
                          selectedId: DayFormat.id(for: scoreboards.selectedDay),
-                         liveOnly: uiState.liveOnly,
+                         liveOnly: uiState.narrowsToNow,
                          todayId: DayFormat.id(for: .now)) { day in
                     select(day: day)
                 }
@@ -313,7 +315,8 @@ struct ScoresScreen: View {
         scoreboards.sections(day: shownDay,
                              followingIds: following.teamKeys,
                              followedTables: following.orderedTables,
-                             liveOnly: uiState.liveOnly(on: shownDay))
+                             liveOnly: uiState.liveOnly(on: shownDay),
+                             tightOnly: uiState.tightOnly(on: shownDay))
     }
 
     /// Turning the Live filter on goes to where live games are — today
@@ -337,6 +340,20 @@ struct ScoresScreen: View {
             return
         }
         withAnimation(Self.filterAnimation) { uiState.liveOnly = false }
+    }
+
+    /// `toggleLive`'s twin for the Tight filter: on goes to today, where
+    /// games are live; off stays put. Turning it on turns Live off.
+    private func toggleTight() {
+        liveCollapse = scoreboards.isOnToday
+        guard uiState.tightOnly(on: scoreboards.selectedDay) else {
+            withAnimation(Self.filterAnimation) { uiState.tightOnly = true }
+            guard !scoreboards.isOnToday else { return }
+            daySlideAnimation = nil
+            Task { await scoreboards.selectToday() }
+            return
+        }
+        withAnimation(Self.filterAnimation) { uiState.tightOnly = false }
     }
 
     /// The way back to today: centred over the slate, just above the tab
@@ -364,7 +381,7 @@ struct ScoresScreen: View {
         Button {
             jumpToToday()
         } label: {
-            Text(uiState.liveOnly ? "Ongoing" : "Today")
+            Text(uiState.narrowsToNow ? "Ongoing" : "Today")
                 .font(.chip)
                 .fixedSize()
                 .foregroundStyle(Color.bgPrimary)
@@ -379,7 +396,7 @@ struct ScoresScreen: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         .padding(.bottom, Spacing.md)
         .transition(.scale(scale: 0.85).combined(with: .opacity))
-        .accessibilityLabel(uiState.liveOnly ? "Jump to ongoing games" : "Jump to today")
+        .accessibilityLabel(uiState.narrowsToNow ? "Jump to ongoing games" : "Jump to today")
         .accessibilityIdentifier("scores-today-jump")
     }
 
@@ -692,7 +709,8 @@ struct ScoresScreen: View {
         let sections = scoreboards.sections(day: target,
                                             followingIds: following.teamKeys,
                                             followedTables: following.orderedTables,
-                                            liveOnly: uiState.liveOnly(on: target))
+                                            liveOnly: uiState.liveOnly(on: target),
+                                            tightOnly: uiState.tightOnly(on: target))
         Group {
             if sections.isEmpty {
                 VStack(spacing: Spacing.md) {
@@ -800,6 +818,13 @@ struct ScoresScreen: View {
                     // slid sideways, in the direction of a trip that had
                     // already finished. One path for one action.
                     Button("Show all games") { toggleLive() }
+                    .font(.teamNameEmphasis)
+                    .foregroundStyle(.textPrimary)
+                } else if uiState.tightOnly(on: shownDay) {
+                    Text("No tight games right now")
+                        .font(.teamName)
+                        .foregroundStyle(.textSecondary)
+                    Button("Show all games") { toggleTight() }
                     .font(.teamNameEmphasis)
                     .foregroundStyle(.textPrimary)
                 } else {

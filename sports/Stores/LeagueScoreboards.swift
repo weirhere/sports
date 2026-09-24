@@ -459,6 +459,7 @@ final class LeagueScoreboards {
                   followingIds: Set<String>,
                   followedTables: [FollowedTable] = [],
                   liveOnly: Bool = false,
+                  tightOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
         let day = day ?? selectedDay
         // Reading every store's revision is what keeps a cache hit honest:
@@ -468,12 +469,13 @@ final class LeagueScoreboards {
                               followingIds: followingIds,
                               followedTables: followedTables,
                               liveOnly: liveOnly,
+                              tightOnly: tightOnly,
                               filter: filter,
                               revisions: all.map(\.revision))
         if let cached = sectionsMemo[key] { return cached }
         let built = buildSections(day: day, followingIds: followingIds,
                                   followedTables: followedTables,
-                                  liveOnly: liveOnly, filter: filter)
+                                  liveOnly: liveOnly, tightOnly: tightOnly, filter: filter)
         // Bounded, not LRU: the screen asks for the shown day and, mid-swipe,
         // one neighbour, so a handful of live keys is the whole working set
         // and dropping everything on overflow costs one rebuild each.
@@ -489,6 +491,7 @@ final class LeagueScoreboards {
         let followingIds: Set<String>
         let followedTables: [FollowedTable]
         let liveOnly: Bool
+        let tightOnly: Bool
         let filter: ScoreFilter?
         let revisions: [Int]
     }
@@ -505,6 +508,7 @@ final class LeagueScoreboards {
                                followingIds: Set<String>,
                                followedTables: [FollowedTable],
                                liveOnly: Bool,
+                               tightOnly: Bool,
                                filter: ScoreFilter?) -> [GameSection] {
         var following: [Game] = []
         // Per league, the games the stack is allowed to show. Following is
@@ -515,6 +519,7 @@ final class LeagueScoreboards {
         for league in League.allCases {
             var games = store(for: league).games(on: day)
             if liveOnly { games = games.filter(\.isLive) }
+            if tightOnly { games = games.filter(GameCloseness.isTight) }
             following += games.filter { game in
                 followingIds.contains(game.home.team.followKey)
                     || followingIds.contains(game.away.team.followKey)
