@@ -55,13 +55,42 @@ private func summary(_ name: String) throws -> GameSummary {
         #expect(WinProbability(predictor: (0, 0), series: []) == nil)
     }
 
+    private func team(_ name: String) -> Team {
+        Team(id: name, location: name, name: nil, abbreviation: nil, displayName: nil,
+             shortDisplayName: nil, logoURL: nil, conferenceId: nil)
+    }
+
     @Test func itSpeaksBothSides() {
-        func team(_ name: String) -> Team {
-            Team(id: name, location: name, name: nil, abbreviation: nil, displayName: nil,
-                 shortDisplayName: nil, logoURL: nil, conferenceId: nil)
-        }
-        let card = WinProbabilityCard(probability: .pregame(home: 44.4, away: 55.6),
+        let card = WinProbabilityCard(probability: .pregame(home: 44.4, away: 55.6), isFinal: false,
                                       away: team("Liberty"), home: team("Coastal Carolina"))
         #expect(card.spokenLabel == "Win probability, Liberty 56 percent, Coastal Carolina 44 percent")
+    }
+
+    // MARK: - Which number the row shows
+
+    @Test func beforeKickoffItReadsThePredictor() {
+        let reading = WinProbabilityCard.reading(.pregame(home: 44.4, away: 55.6), isFinal: false)
+        #expect(abs(reading.homePercent - 44.4) < 0.001)
+        #expect(reading.caption == "ESPN predictor")
+    }
+
+    @Test func liveItReadsTheLatestPlay() {
+        let reading = WinProbabilityCard.reading(.series([0.68, 0.4, 0.3]), isFinal: false)
+        #expect(abs(reading.homePercent - 30) < 0.001)
+        #expect(reading.caption == "Live")
+    }
+
+    /// A final's latest value is just 100–0. The kickoff value is what the
+    /// result, and any upset, is measured against.
+    @Test func afterTheFinalItReadsTheKickoffValue() throws {
+        let final = try summary("summary-final-live")
+        let probability = try #require(final.winProbability)
+        let reading = WinProbabilityCard.reading(probability, isFinal: true)
+        #expect(abs(reading.homePercent - 68.35) < 0.001)
+        #expect(reading.caption == "At kickoff")
+
+        let card = WinProbabilityCard(probability: probability, isFinal: true,
+                                      away: team("Miami"), home: team("Indiana"))
+        #expect(card.spokenLabel == "Win probability at kickoff, Miami 32 percent, Indiana 68 percent")
     }
 }
