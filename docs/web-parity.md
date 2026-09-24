@@ -821,3 +821,4 @@ sibling below it.
 | 2026-09-24 | Betting lines behind a Settings switch (off by default); Scores rows show them too | **differs** — the web has no per-user settings yet, so its game page keeps the line unconditionally and its Scores rows don't show one. Revisit when settings can sync. |
 | 2026-09-24 | Tight filter (live, late within one score, or underdog leading) beside Live | **pending** — the web has the Live filter; `GameCloseness` and its per-league table port as straight copies. |
 | 2026-09-24 | Live Activity channels made on demand, stored in Upstash, reaped after the game | **shipped** — this *is* `web/`: the channel and broadcast routes. The iOS half is the production default URL. |
+| 2026-09-24 | Kickoff reminder's "Pin to Lock Screen" action (foreground, pins on load) | **n/a** — local notifications and Live Activities are iOS-only by category. |

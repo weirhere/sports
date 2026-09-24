@@ -20,6 +20,7 @@ struct GameDetailScreen: View {
     /// Betting lines, per the Settings switch; off where no store is in
     /// the environment (previews).
     private var showsLines: Bool { uiState?.showsLines ?? false }
+    @Environment(Router.self) private var router: Router?
     @Environment(\.requestReview) private var requestReview
 
     @State private var loadedSummary: GameSummary?
@@ -298,7 +299,14 @@ struct GameDetailScreen: View {
         // game must fetch that game rather than sit on what it holds.
         .task(id: game.routeKey) {
             await load()
+            await pinIfRequested()
             await askForReviewIfEarned()
+        }
+        // The same pin, when this game's page was already open as the
+        // reminder's action came in and nothing above re-runs.
+        .onChange(of: router?.pendingPin) { _, pin in
+            guard pin == game.id, summary != nil else { return }
+            Task { await pinIfRequested() }
         }
         // The series is fetched when its tab is first opened, not with the
         // page — twenty requests is a lot to spend on a tab most visits
@@ -806,6 +814,22 @@ struct GameDetailScreen: View {
             }
         }
         await refreshPinnedActivity()
+    }
+
+    /// The kickoff reminder's "Pin to Lock Screen", carried out once this
+    /// game is on screen with its summary in hand. Spent whether or not the
+    /// card starts, so a pin that can't happen (the game finished, or
+    /// activities were switched off after the reminder fired) doesn't fire
+    /// later on a visit nobody meant as a pin. Starting a game that is
+    /// already pinned is a no-op inside `start`.
+    private func pinIfRequested() async {
+        guard let router, router.pendingPin == game.id else { return }
+        router.pendingPin = nil
+        #if canImport(ActivityKit)
+        guard LiveActivityController.isAvailable,
+              LiveActivityController.isStartable(game, summary: summary) else { return }
+        await LiveActivityController().start(game: game, summary: summary)
+        #endif
     }
 
     /// Keeps a pinned card in step with what this screen just fetched.
