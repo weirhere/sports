@@ -138,7 +138,21 @@ final class LeagueScoreboards {
     /// Every day of the selected season, in order — the strip's contents.
     /// Bounded by the season rather than rolling forever, so scrolling has
     /// ends and a past season is a place you can actually be.
+    ///
+    /// Memoized per season and time zone: the strip asks on every body pass
+    /// of the Scores screen, and a season is ~365 slots that never change
+    /// while the season doesn't.
     func days(calendar: Calendar = .current) -> [DaySlot] {
+        let key = "\(seasonYear)|\(calendar.identifier)|\(calendar.timeZone.identifier)"
+        if let cachedDays, cachedDays.key == key { return cachedDays.days }
+        let days = buildDays(calendar: calendar)
+        cachedDays = (key, days)
+        return days
+    }
+
+    @ObservationIgnored private var cachedDays: (key: String, days: [DaySlot])?
+
+    private func buildDays(calendar: Calendar) -> [DaySlot] {
         let span = SeasonSpan.days(year: seasonYear, calendar: calendar)
         var result: [DaySlot] = []
         var cursor = span.lowerBound
@@ -447,6 +461,51 @@ final class LeagueScoreboards {
                   liveOnly: Bool = false,
                   filter: ScoreFilter? = nil) -> [GameSection] {
         let day = day ?? selectedDay
+        // Reading every store's revision is what keeps a cache hit honest:
+        // it registers the same observation the build would have, so the
+        // next write to any league still invalidates the caller.
+        let key = SectionsKey(day: DayFormat.id(for: day),
+                              followingIds: followingIds,
+                              followedTables: followedTables,
+                              liveOnly: liveOnly,
+                              filter: filter,
+                              revisions: all.map(\.revision))
+        if let cached = sectionsMemo[key] { return cached }
+        let built = buildSections(day: day, followingIds: followingIds,
+                                  followedTables: followedTables,
+                                  liveOnly: liveOnly, filter: filter)
+        // Bounded, not LRU: the screen asks for the shown day and, mid-swipe,
+        // one neighbour, so a handful of live keys is the whole working set
+        // and dropping everything on overflow costs one rebuild each.
+        if sectionsMemo.count >= Self.sectionsMemoLimit { sectionsMemo.removeAll(keepingCapacity: true) }
+        sectionsMemo[key] = built
+        return built
+    }
+
+    /// Everything `sections` is a function of. The games themselves are
+    /// stood for by each store's `revision`, which moves on every write.
+    private struct SectionsKey: Hashable {
+        let day: String
+        let followingIds: Set<String>
+        let followedTables: [FollowedTable]
+        let liveOnly: Bool
+        let filter: ScoreFilter?
+        let revisions: [Int]
+    }
+
+    /// The sections memo (2026-09-24, reinstating the 2026-09-01 one that
+    /// the day axis dropped as unneeded). The pipeline has grown back its
+    /// conference bucketing, registry lookups and sorts since, and
+    /// `ScoresScreen` asks for it on every frame of a day drag — twice,
+    /// once for the preview pane — and on every accordion toggle.
+    @ObservationIgnored private var sectionsMemo: [SectionsKey: [GameSection]] = [:]
+    private static let sectionsMemoLimit = 8
+
+    private func buildSections(day: Date,
+                               followingIds: Set<String>,
+                               followedTables: [FollowedTable],
+                               liveOnly: Bool,
+                               filter: ScoreFilter?) -> [GameSection] {
         var following: [Game] = []
         // Per league, the games the stack is allowed to show. Following is
         // claimed before the filter narrows anything, so a followed team
@@ -559,17 +618,19 @@ final class LeagueScoreboards {
             }
         }
         // P4 → G5 → Independents → FCS → Other, alphabetical within a tier.
-        let ordered = byConference.keys.sorted { lhs, rhs in
-            let (lt, rt) = (Conference.tier(for: lhs?.id, in: league),
-                            Conference.tier(for: rhs?.id, in: league))
-            return lt == rt
-                ? Conference.name(for: lhs) < Conference.name(for: rhs)
-                : lt < rt
+        // Tier and name looked up once per conference, not per comparison.
+        struct Keyed { let id: ConferenceID?; let tier: Conference.Tier; let name: String }
+        let keyed: [Keyed] = byConference.keys.map { id in
+            Keyed(id: id, tier: Conference.tier(for: id?.id, in: league), name: Conference.name(for: id))
         }
-        return ordered.map { id in
-            GameSection(id: id.map { GameSection.conferencePrefix + $0.token }
+        let ordered = keyed.sorted { lhs, rhs in
+            lhs.tier == rhs.tier ? lhs.name < rhs.name : lhs.tier < rhs.tier
+        }
+        return ordered.map { entry in
+            let id = entry.id
+            return GameSection(id: id.map { GameSection.conferencePrefix + $0.token }
                             ?? (GameSection.otherPrefix + league.rawValue),
-                        title: Conference.name(for: id),
+                        title: entry.name,
                         games: byConference[id] ?? [],
                         league: league,
                         logoURL: Conference.logoURL(for: id),
