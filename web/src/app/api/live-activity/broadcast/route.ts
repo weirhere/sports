@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { scoreboard } from "@/lib/espn/provider";
-import { apnsConfigFromEnv, sendBroadcast } from "@/lib/apns";
-import { parseChannelMap, staticChannelDirectory } from "@/lib/live-activity-channels";
+import { apnsConfigFromEnv, deleteChannel, sendBroadcast } from "@/lib/apns";
+import { kvFromEnv } from "@/lib/kv";
+import {
+  channelKey,
+  isReapable,
+  kvChannelStore,
+  parseChannelMap,
+  staticChannelDirectory,
+  type ChannelRecord,
+} from "@/lib/live-activity-channels";
 import { activityPhase, contentState } from "@/lib/live-activity-state";
 import type { League } from "@/lib/leagues";
 
@@ -107,9 +115,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "apns-not-configured", pushed: 0 });
   }
 
-  const channels = staticChannelDirectory();
-  const channelCount = Object.keys(parseChannelMap(process.env.APNS_CHANNELS)).length;
+  // Channels made on demand live in the store (2026-09-24); without one,
+  // the hand-made `APNS_CHANNELS` map is still read, as before.
+  const kv = kvFromEnv();
+  const store = kv ? kvChannelStore(kv) : null;
+  const stored = new Map<string, ChannelRecord>(store ? await store.entries() : []);
+  const staticChannels = staticChannelDirectory();
+  const channelCount = store
+    ? stored.size
+    : Object.keys(parseChannelMap(process.env.APNS_CHANNELS)).length;
   const now = new Date();
+  const nowSeconds = Math.floor(now.getTime() / 1000);
   const results: { gameId: string; league: League; ok: boolean; reason?: string }[] = [];
   const reports: LeagueReport[] = [];
 
@@ -137,7 +153,11 @@ export async function GET(request: Request) {
       const phase = activityPhase(game.status);
       if (phase === "pre") continue; // nothing on a pre-game card moves
       report.eligible += 1;
-      const channelId = await channels.channelId(game.id, league);
+      const key = channelKey(game.id, league);
+      const record = stored.get(key);
+      const channelId = store
+        ? record?.channelId
+        : await staticChannels.channelId(game.id, league);
       if (!channelId) continue;
       report.matched += 1;
 
@@ -161,6 +181,33 @@ export async function GET(request: Request) {
         priority: 10,
       });
       results.push({ gameId: game.id, league, ok: result.ok, reason: result.reason });
+      // The first `end` starts the clock on the channel's retirement: it
+      // is kept as long as that stored `end` is worth delivering.
+      if (store && record && isFinal && result.ok && record.endedAt === undefined) {
+        const ended = { ...record, endedAt: nowSeconds };
+        await store.replace(key, ended);
+        stored.set(key, ended);
+      }
+    }
+  }
+
+  // The reaper. Every channel made has to be unmade — Apple caps an app at
+  // 10,000 per environment — and a record is only removed once Apple has
+  // confirmed the delete, so a failed one is retried on the next tick
+  // rather than orphaned.
+  const reaped: string[] = [];
+  const reapFailed: { key: string; reason?: string }[] = [];
+  if (store) {
+    for (const [key, record] of stored) {
+      if (!isReapable(record, nowSeconds)) continue;
+      const result = await deleteChannel(config, record.channelId);
+      // 404: already gone at Apple, so the record is all that's left.
+      if (result.ok || result.status === 404) {
+        await store.remove(key);
+        reaped.push(key);
+      } else {
+        reapFailed.push({ key, reason: result.reason ?? String(result.status) });
+      }
     }
   }
 
@@ -177,6 +224,9 @@ export async function GET(request: Request) {
     // pre-game rather than everything in progress, finals included, because
     // that is the set this loop will try to push to.
     channels: channelCount,
+    store: store ? "kv" : "static",
+    reaped,
+    reapFailed,
     leagues: reports,
   });
 }

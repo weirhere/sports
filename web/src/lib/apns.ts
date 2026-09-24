@@ -38,9 +38,20 @@ const HOSTS: Record<ApnsEnvironment, string> = {
   sandbox: "https://api.sandbox.push.apple.com",
 };
 
-/** Broadcast sends go to :443, so an ordinary serverless runtime can reach
- *  them. Channel *creation* lives on the management host at :2196 and is
- *  deliberately out of scope here — see the service doc. */
+/** Broadcast sends go to :443. Channel *management* — creating and deleting
+ *  the channel a game broadcasts on — is on its own host, and on a
+ *  different port per environment: **:2195 in the sandbox, :2196 in
+ *  production** (Apple, "Sending channel management requests to APNs",
+ *  checked 2026-09-24; the service doc had said :2196 for both). */
+const MANAGEMENT_HOSTS: Record<ApnsEnvironment, string> = {
+  production: "https://api-manage-broadcast.push.apple.com:2196",
+  sandbox: "https://api-manage-broadcast.sandbox.push.apple.com:2195",
+};
+
+export function channelsUrl(config: ApnsConfig): string {
+  return `${MANAGEMENT_HOSTS[config.environment]}/1/apps/${config.bundleId}/channels`;
+}
+
 export function broadcastUrl(config: ApnsConfig): string {
   return `${HOSTS[config.environment]}/4/broadcasts/apps/${config.bundleId}`;
 }
@@ -213,6 +224,8 @@ export function broadcastHeaders(config: ApnsConfig, request: BroadcastRequest,
 export interface ApnsTransportResult {
   status: number;
   apnsId?: string;
+  /** Set only by a channel create: Apple returns the new id as a header. */
+  channelId?: string;
   /** Raw body. APNs sends JSON on failure and nothing on success. */
   body: string;
 }
@@ -221,6 +234,8 @@ export type ApnsTransport = (
   url: string,
   headers: Record<string, string>,
   body: string,
+  /** POST for sends and channel creation, DELETE for removing a channel. */
+  method?: "POST" | "DELETE",
 ) => Promise<ApnsTransportResult>;
 
 /** Seconds before an unanswered session is abandoned. Well inside the
@@ -228,7 +243,7 @@ export type ApnsTransport = (
  *  game's update rather than the whole tick. */
 const REQUEST_TIMEOUT_MS = 10_000;
 
-export const http2Transport: ApnsTransport = (url, headers, body) =>
+export const http2Transport: ApnsTransport = (url, headers, body, method = "POST") =>
   new Promise((resolve, reject) => {
     const target = new URL(url);
     const session = connect(target.origin);
@@ -250,18 +265,21 @@ export const http2Transport: ApnsTransport = (url, headers, body) =>
     // already writes them that way.
     const request = session.request({
       ...headers,
-      [constants.HTTP2_HEADER_METHOD]: "POST",
+      [constants.HTTP2_HEADER_METHOD]: method,
       [constants.HTTP2_HEADER_PATH]: target.pathname,
     });
 
     let status = 0;
     let apnsId: string | undefined;
+    let channelId: string | undefined;
     let data = "";
 
     request.on("response", (responseHeaders) => {
       status = Number(responseHeaders[constants.HTTP2_HEADER_STATUS] ?? 0);
       const id = responseHeaders["apns-id"];
       apnsId = typeof id === "string" ? id : undefined;
+      const channel = responseHeaders["apns-channel-id"];
+      channelId = typeof channel === "string" ? channel : undefined;
     });
     request.setEncoding("utf8");
     request.on("data", (chunk: string) => {
@@ -272,7 +290,7 @@ export const http2Transport: ApnsTransport = (url, headers, body) =>
       if (settled) return;
       settled = true;
       session.close();
-      resolve({ status, apnsId, body: data });
+      resolve({ status, apnsId, channelId, body: data });
     });
     request.end(body);
   });
@@ -327,6 +345,85 @@ export async function sendBroadcast(
     reason = undefined;
   }
   return { ok: false, status: result.status, apnsId: result.apnsId, reason };
+}
+
+function failureReason(body: string): string | undefined {
+  try {
+    return (JSON.parse(body) as { reason?: string }).reason;
+  } catch {
+    return undefined;
+  }
+}
+
+export interface ChannelResult {
+  ok: boolean;
+  status: number;
+  /** The new channel's base64 id, on a successful create. */
+  channelId?: string;
+  reason?: string;
+}
+
+/**
+ * Creates one broadcast channel for Live Activities.
+ *
+ * `message-storage-policy: 1` keeps the most recent message, so a phone
+ * that was off when the final went out still receives the `end` when it
+ * comes back — which is what `FINAL_EXPIRY_SECONDS` on the broadcast route
+ * is sized against. Apple answers 201 with the id in `apns-channel-id`.
+ */
+export async function createChannel(
+  config: ApnsConfig,
+  transport: ApnsTransport = http2Transport,
+  now = Date.now(),
+): Promise<ChannelResult> {
+  let result: ApnsTransportResult;
+  try {
+    result = await transport(
+      channelsUrl(config),
+      {
+        authorization: `bearer ${providerToken(config, now)}`,
+        "content-type": "application/json",
+      },
+      JSON.stringify({ "message-storage-policy": 1, "push-type": "LiveActivity" }),
+      "POST",
+    );
+  } catch (error) {
+    return { ok: false, status: 0, reason: sendFailureReason(error) };
+  }
+  if (result.status === 201 && result.channelId) {
+    return { ok: true, status: result.status, channelId: result.channelId };
+  }
+  return {
+    ok: false,
+    status: result.status,
+    reason: failureReason(result.body) ?? (result.status === 201 ? "no-channel-id-header" : undefined),
+  };
+}
+
+/** Deletes a channel. Apple answers 204. Apps are capped at 10,000
+ *  channels per environment, so every channel made has to be unmade. */
+export async function deleteChannel(
+  config: ApnsConfig,
+  channelId: string,
+  transport: ApnsTransport = http2Transport,
+  now = Date.now(),
+): Promise<ChannelResult> {
+  let result: ApnsTransportResult;
+  try {
+    result = await transport(
+      channelsUrl(config),
+      {
+        authorization: `bearer ${providerToken(config, now)}`,
+        "apns-channel-id": channelId,
+      },
+      "",
+      "DELETE",
+    );
+  } catch (error) {
+    return { ok: false, status: 0, reason: sendFailureReason(error) };
+  }
+  if (result.status >= 200 && result.status < 300) return { ok: true, status: result.status };
+  return { ok: false, status: result.status, reason: failureReason(result.body) };
 }
 
 /** Reads config from the environment, or null when it isn't configured —

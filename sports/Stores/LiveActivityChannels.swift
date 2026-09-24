@@ -25,9 +25,10 @@ nonisolated struct RemoteChannelDirectory: LiveActivityChannelDirectory {
     private static let log = Logger(subsystem: "com.andyryanweir.sports",
                                     category: "liveactivity.channels")
 
-    /// Configured rather than hardcoded so a DEBUG build can point at a
-    /// preview deployment without a code change. No value means no service,
-    /// which is today's state.
+    /// The production service by default (2026-09-24, once channels are made
+    /// on demand); a DEBUG build can point at a preview deployment through
+    /// `liveactivity.serviceURL` without a code change. `www`, because the
+    /// apex answers a 308 that `URLSession` follows but costs a round trip.
     let baseURL: URL?
     let session: URLSession
 
@@ -37,10 +38,16 @@ nonisolated struct RemoteChannelDirectory: LiveActivityChannelDirectory {
         self.session = session
     }
 
+    static let productionBaseURL = URL(string: "https://www.statside.co/api/live-activity")
+
     static var configuredBaseURL: URL? {
-        guard let raw = UserDefaults.standard.string(forKey: "liveactivity.serviceURL"),
-              !raw.isEmpty else { return nil }
-        return URL(string: raw)
+        #if DEBUG
+        if let raw = UserDefaults.standard.string(forKey: "liveactivity.serviceURL"),
+           !raw.isEmpty {
+            return URL(string: raw)
+        }
+        #endif
+        return productionBaseURL
     }
 
     private struct Response: Decodable { let channelId: String }

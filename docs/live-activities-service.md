@@ -1,5 +1,39 @@
 # The Live Activity broadcast service
 
+**Update 2026-09-24: blocker 3 is built, and it has not yet run against
+Apple.** Channels are now made **on demand**. The first pin of a game calls
+`GET /api/live-activity/channel`, which checks the game against ESPN, creates
+its channel on APNs' management host, and records it in Upstash Redis. Every
+later pin reads that record back. The broadcast tick pushes to stored
+channels and **reaps** them: an hour after a game's first `end` push, or a day
+after kickoff for a game that never finished. Only games that are live or
+kick off within 12 hours get a channel, because ActivityKit ends a card after
+8 hours anyway. Without a store, both routes fall back to the hand-made
+`APNS_CHANNELS` map below.
+
+**A correction to everything below:** the management host is on **:2195 in
+the sandbox** and on :2196 only in production (Apple, "Sending channel
+management requests to APNs", checked 2026-09-24). The text below says
+:2196 throughout. That was the production figure, and it's wrong for the
+sandbox, which is where first light happens.
+
+**Still needed before it runs:**
+1. Add Upstash Redis to the `weirhere/web` project through the Vercel
+   Marketplace. It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, and the
+   code reads either those or the `UPSTASH_REDIS_REST_*` pair.
+2. The probe: one `curl "https://<preview>/api/live-activity/channel?gameId=<a
+   game kicking off today>&league=nfl"` on a deployment with the sandbox key.
+   A `channelId` in the answer proves Vercel can reach :2195. An
+   `apns-send-threw: … ECONNREFUSED/timeout` on the retry means it can't, and
+   the next step is the infrastructure conversation this doc has been
+   deferring.
+3. First light on a real device, as described below.
+
+**Not yet handled:** an orphan sweep. A channel whose record expired (48h
+TTL) without being reaped stays at Apple, counted against the 10,000 cap.
+That only happens if the tick stops running for two days. Apple's
+`GET /1/apps/<bundle>/all-channels` is how to find orphans when it matters.
+
 **Status: APNs accepted a broadcast on 2026-09-15.** `{"status":"ok",
 "pushed":1,"failed":[]}` against a live NFL game, sandbox environment, from
 production. The server half of path 3 works end to end.
