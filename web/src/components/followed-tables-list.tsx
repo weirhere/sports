@@ -33,10 +33,13 @@ import { conferencePath } from "@/lib/routes";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { cn } from "@/lib/utils";
 
-/** How long a press on the card body waits before it becomes a lift. */
-const LIFT_DELAY_MS = 350;
-/** How far a press may drift before it's a scroll, not a lift. */
-const LIFT_TOLERANCE_PX = 8;
+/** How long a press on the card body waits before it becomes a lift.
+ *  Half a second, iOS's own drag-lift delay (2026-09-24: 350ms picked cards
+ *  up out of ordinary scrolls on a phone). */
+const LIFT_DELAY_MS = 500;
+/** How far a press may drift before it's a scroll, not a lift. A finger
+ *  that means to reorder settles; one that scrolls is moving at once. */
+const LIFT_TOLERANCE_PX = 5;
 /** The `gap-3` between cards, in px — what a neighbour travels past. */
 const CARD_GAP_PX = 12;
 
