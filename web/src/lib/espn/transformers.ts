@@ -38,6 +38,7 @@ import type {
   RosterGroup,
   RosterPlayer,
   RosterCoach,
+  GameLine,
 } from "@/lib/types";
 import type { LivePhase } from "@/lib/format";
 import type { WeekSlot } from "@/lib/season";
@@ -67,6 +68,7 @@ import type {
   EspnTeamGroups,
   EspnStatus,
   EspnGameSummaryResponse,
+  EspnPickcenter,
   EspnHeaderCompetitor,
   EspnRanking,
   EspnRank,
@@ -1533,6 +1535,7 @@ export function transformGameSummary(
       summary.gameInfo?.weather?.temperature != null
         ? Math.trunc(summary.gameInfo.weather.temperature)
         : undefined,
+    line: transformGameLine(summary.pickcenter?.[0]),
     leaders: transformLeaders(
       summary.leaders ?? [],
       awayTeamEspnId,
@@ -1705,4 +1708,16 @@ export function transformRoster(data: EspnRosterResponse): TeamRoster {
   }
 
   return { coach: transformRosterCoach(data.coach ?? []), groups };
+}
+
+/** The first provider's headline line and total, or undefined when neither
+ *  survived — iOS `GameLine.init?`. */
+export function transformGameLine(
+  entry: EspnPickcenter | undefined
+): GameLine | undefined {
+  const details = entry?.details?.trim() || undefined;
+  const overUnder =
+    typeof entry?.overUnder === "number" ? entry.overUnder : undefined;
+  if (details === undefined && overUnder === undefined) return undefined;
+  return { details, overUnder };
 }

@@ -12,6 +12,17 @@ struct KickoffInfoRows: View {
     static func hasContent(game: Game, summary: GameSummary) -> Bool {
         game.date != nil || game.broadcast != nil || !weatherLine(of: summary).isEmpty
             || !GameLeagueRow.destinations(for: game).isEmpty
+            || line(game: game, summary: summary) != nil
+    }
+
+    /// The pre-game line (Coard Miller, 2026-09-24: the spread and the
+    /// total are how a fan picks which games to follow). Before kickoff
+    /// only: ESPN keeps shipping `pickcenter` on a final, but a line is a
+    /// question about a game that hasn't happened, and this card outlives
+    /// the kickoff.
+    static func line(game: Game, summary: GameSummary) -> GameLine? {
+        guard case .pre = GameHeaderState.status(game, summary) else { return nil }
+        return summary.line
     }
 
     static func weatherLine(of summary: GameSummary) -> String {
@@ -37,6 +48,11 @@ struct KickoffInfoRows: View {
             let weather = Self.weatherLine(of: summary)
             if !weather.isEmpty {
                 GameInfoLine(symbol: "cloud.sun", text: weather)
+            }
+            if let line = Self.line(game: game, summary: summary) {
+                GameInfoLine(symbol: "plusminus", text: line.text)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Line, \(line.accessibilityText)")
             }
         }
         .padding(.vertical, Spacing.xs)

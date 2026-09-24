@@ -1651,6 +1651,9 @@ nonisolated enum ESPNMapper {
             grassSurface: dto.gameInfo?.venue?.grass,
             weatherCondition: dto.gameInfo?.weather?.displayValue,
             weatherTemperature: dto.gameInfo?.weather?.temperature.map(Int.init),
+            line: dto.pickcenter?.elements.first.flatMap {
+                GameLine(details: $0.details, overUnder: $0.overUnder)
+            },
             matchupStandings: matchupStandings(
                 from: dto.standings, league: league,
                 teams: [side("away")?.team, side("home")?.team].compactMap(\.self))

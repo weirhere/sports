@@ -421,6 +421,17 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// The two competing teams' own standings tables, shipped inside the
     /// request the game page already makes (E21, 2026-09-21).
     let standings: SummaryStandingsDTO?
+    /// Sportsbook lines, one entry per provider. Only the first entry's
+    /// headline line and total are read (2026-09-24); the moneyline,
+    /// per-team odds and bet links are deliberately left undecoded.
+    let pickcenter: LossyArray<PickcenterDTO>?
+}
+
+nonisolated struct PickcenterDTO: Decodable {
+    /// ESPN's own headline line: "IU -7.5" in football and basketball,
+    /// the moneyline ("ANA -185") in hockey.
+    let details: String?
+    let overUnder: Double?
 }
 
 // MARK: - Standings, the summary's own copy

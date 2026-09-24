@@ -817,3 +817,4 @@ sibling below it.
 | 2026-09-24 | Team stats: Season stats and Leaders cards on Overview, a full Stats tab with football's Team / Opponents switch | **pending** — the web team page has no season numbers either. Same two endpoints, server-side; the headline and leader registries port as straight copies of `TeamSeasonStats.headlineNames` and `TeamLeader.categories`. |
 | 2026-09-24 | ESPN's rollover season label corrected by games played; leaders fall back a season and say so | **pending** — ports with the row above; it's the mapper's rule, not the view's. |
 | 2026-09-24 | Scores slate scrolls under the floating tab bar; top-edge-only clip | **n/a** — Liquid Glass tab bar; the web has no floating bottom bar. |
+| 2026-09-24 | Pre-game line (spread/moneyline and total) in Game info, before kickoff only | **shipped** — same PR: `transformGameLine` + `lineText` in the game page's Game info card. |

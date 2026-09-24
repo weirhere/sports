@@ -10,7 +10,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { VenueHeadline } from "@/components/venue-headline";
-import { Calendar, CloudSun, Tv } from "lucide-react";
+import { Calendar, CloudSun, Diff, Tv } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -44,6 +44,7 @@ export function gameInfoHasContent(
     Boolean(game.scheduledAt) ||
     Boolean(game.broadcast) ||
     weatherLine(detail) !== undefined ||
+    lineText(game, detail) !== undefined ||
     leagueDestinations(game, standings).length > 0
   );
 }
@@ -62,6 +63,7 @@ export function GameInfoCard({
   if (!gameInfoHasContent(game, detail, standings)) return null;
   const tables = leagueDestinations(game, standings);
   const weather = weatherLine(detail);
+  const line = lineText(game, detail);
 
   return (
     <DetailCard title="Game info">
@@ -81,6 +83,13 @@ export function GameInfoCard({
         )}
         {game.broadcast && <InfoLine icon={Tv} text={game.broadcast} />}
         {weather && <InfoLine icon={CloudSun} text={weather} />}
+        {line && (
+          <InfoLine
+            icon={Diff}
+            text={line}
+            label={`Line, ${line.replace("O/U", "over under").replace(" · ", ", ")}`}
+          />
+        )}
       </div>
     </DetailCard>
   );
@@ -98,9 +107,32 @@ function weatherLine(detail: GameDetail): string | undefined {
   return line || undefined;
 }
 
-function InfoLine({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
+/**
+ * The pre-game line — "IU -7.5 · O/U 47.5" — before kickoff only (iOS
+ * `KickoffInfoRows.line`, 2026-09-24). ESPN keeps shipping `pickcenter` on
+ * a final, and this card outlives the kickoff; a line is a question about a
+ * game that hasn't happened.
+ */
+export function lineText(game: Game, detail: GameDetail): string | undefined {
+  if (game.status !== "scheduled" || !detail.line) return undefined;
+  const { details, overUnder } = detail.line;
+  const text = [details, overUnder !== undefined ? `O/U ${overUnder}` : undefined]
+    .filter(Boolean)
+    .join(" · ");
+  return text || undefined;
+}
+
+function InfoLine({
+  icon: Icon,
+  text,
+  label,
+}: {
+  icon: LucideIcon;
+  text: string;
+  label?: string;
+}) {
   return (
-    <div className="flex items-center gap-3 px-4 py-[7px]">
+    <div className="flex items-center gap-3 px-4 py-[7px]" aria-label={label} role={label ? "group" : undefined}>
       <Icon aria-hidden="true" className="h-4 w-5 shrink-0 text-text-secondary" />
       <span className="type-team-name tnum text-text-primary">{text}</span>
     </div>
