@@ -39,8 +39,32 @@ final class UIStateStore {
     /// explanatory empty state make a saved filter legible on a quiet
     /// Tuesday.
     var liveOnly: Bool {
-        didSet { defaults.set(liveOnly, forKey: Self.liveOnlyKey) }
+        didSet {
+            defaults.set(liveOnly, forKey: Self.liveOnlyKey)
+            if liveOnly, tightOnly { tightOnly = false }
+        }
     }
+
+    /// The Scores Tight toggle (Coard Miller, 2026-09-24): live games that
+    /// are late and close, or where the underdog leads. `GameCloseness`
+    /// holds the rule. Persisted and suspended off today exactly like
+    /// `liveOnly`, and the two are exclusive, since Tight is already a
+    /// narrower Live. Turning one on turns the other off.
+    var tightOnly: Bool {
+        didSet {
+            defaults.set(tightOnly, forKey: Self.tightOnlyKey)
+            if tightOnly, liveOnly { liveOnly = false }
+        }
+    }
+
+    /// Whether the Tight filter is narrowing `day` — `liveOnly(on:)`'s rule.
+    func tightOnly(on day: Date, calendar: Calendar = .current) -> Bool {
+        self.tightOnly && calendar.isDateInToday(day)
+    }
+
+    /// Either filter that narrows the slate to what's happening now, which
+    /// is what renames today "Ongoing" on the strip and the Today button.
+    var narrowsToNow: Bool { liveOnly || tightOnly }
 
     /// Whether the Live filter is actually narrowing `day`: the toggle is
     /// on *and* the day is today (Andy, 2026-09-12).
@@ -94,6 +118,7 @@ final class UIStateStore {
     private static let showsLinesKey = "lines.enabled"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
+    private static let tightOnlyKey = "ui.tightOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
     private static let hideOtherSectionsKey = "ui.hideOtherSections"
 
@@ -109,7 +134,10 @@ final class UIStateStore {
         collapsedConferences = Set(defaults.stringArray(forKey: Self.collapsedConferencesKey) ?? [])
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
-        liveOnly = defaults.bool(forKey: Self.liveOnlyKey)
+        let savedLive = defaults.bool(forKey: Self.liveOnlyKey)
+        liveOnly = savedLive
+        // Exclusive by construction; if both were ever saved on, Live wins.
+        tightOnly = defaults.bool(forKey: Self.tightOnlyKey) && !savedLive
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
             .flatMap(ScoreFilter.init(token:))
         hideOtherSections = defaults.bool(forKey: Self.hideOtherSectionsKey)

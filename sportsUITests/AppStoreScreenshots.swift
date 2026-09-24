@@ -20,7 +20,7 @@ final class AppStoreScreenshots: XCTestCase {
     func testCaptureStoreScreenshots() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO",
+                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", "",
                                 // Seed follows so the Following section leads
                                 // with content (argument-domain array syntax).

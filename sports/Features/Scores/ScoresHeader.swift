@@ -17,7 +17,9 @@ import SwiftUI
 /// is a question the Leagues tab's poll already answers.
 struct ScoresHeader: View {
     let liveOnly: Bool
+    var tightOnly: Bool = false
     let onToggleLive: () -> Void
+    var onToggleTight: () -> Void = {}
     let onOpenCalendar: () -> Void
     var onOpenSettings: () -> Void = {}
 
@@ -35,6 +37,7 @@ struct ScoresHeader: View {
             // solid.
             HStack(spacing: 0) {
                 LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
+                TightFilterChip(tightOnly: tightOnly, onToggle: onToggleTight)
                 calendarButton
             }
             .padding(4)

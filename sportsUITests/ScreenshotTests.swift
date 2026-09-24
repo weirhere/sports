@@ -12,7 +12,7 @@ final class ScreenshotTests: XCTestCase {
         let prefix = ProcessInfo.processInfo.environment["SNAPSHOT_PREFIX"] ?? "shot"
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO",
+                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", ""]
         app.launch()
 

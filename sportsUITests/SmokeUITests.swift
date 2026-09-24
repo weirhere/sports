@@ -13,7 +13,7 @@ final class SmokeUITests: XCTestCase {
         // suite that queries game rows pins them or it inherits whatever
         // the last run left selected.
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO",
+                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", ""]
         app.launch()
 

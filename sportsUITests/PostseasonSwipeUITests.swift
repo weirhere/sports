@@ -55,7 +55,7 @@ final class PostseasonSwipeUITests: XCTestCase {
 
     func testSwipingWalksTheRounds() {
         let app = XCUIApplication()
-        app.launchArguments += ["-ui.scoreFilter", "none", "-ui.liveOnly", "NO"]
+        app.launchArguments += ["-ui.scoreFilter", "none", "-ui.liveOnly", "NO", "-ui.tightOnly", "NO"]
         app.launch()
         app.tabBars.buttons["Leagues"].firstMatch.tap()
         guard openPostseason(app) else {

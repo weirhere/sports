@@ -11,7 +11,7 @@ final class CalendarSheetUITests: XCTestCase {
     private func launch() -> XCUIApplication {
         let app = XCUIApplication()
         // The slate filter persists by design, so pin it (see CLAUDE.md).
-        app.launchArguments += ["-ui.scoreFilter", "none", "-ui.liveOnly", "NO"]
+        app.launchArguments += ["-ui.scoreFilter", "none", "-ui.liveOnly", "NO", "-ui.tightOnly", "NO"]
         app.launch()
         return app
     }

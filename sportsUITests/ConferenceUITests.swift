@@ -13,7 +13,7 @@ final class ConferenceUITests: XCTestCase {
     func testStandingsPageAndConferenceFollow() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO",
+                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", ""]
         app.launch()
 

@@ -197,6 +197,26 @@ final class ScoreboardStore {
         self.client = client ?? DataProvider.makeClient(league: league)
     }
 
+    /// A game's pre-game line, carried past the payload that drops it.
+    ///
+    /// ESPN takes `odds` off a scoreboard event once it's final, and maybe
+    /// sooner (unprobed for live events as of 2026-09-24). A line doesn't
+    /// un-happen at kickoff, and the Tight filter needs to know who was
+    /// favored while the game is being played. So a fresh game without a
+    /// line keeps the one it had. In memory only: a relaunch mid-game loses
+    /// it, and the filter's late-and-close rule doesn't need it anyway.
+    static func keepingLines(_ fresh: [Game], from previous: [Game]) -> [Game] {
+        guard previous.contains(where: { $0.line != nil }) else { return fresh }
+        let lines = Dictionary(previous.compactMap { game in game.line.map { (game.id, $0) } },
+                               uniquingKeysWith: { first, _ in first })
+        return fresh.map { game in
+            guard game.line == nil, let line = lines[game.id] else { return game }
+            var game = game
+            game.line = line
+            return game
+        }
+    }
+
     // MARK: - Reading
 
     /// This league's games on a local calendar day, chronological.
@@ -340,7 +360,8 @@ final class ScoreboardStore {
             for offset in -1...1 {
                 guard let day = calendar.date(byAdding: .day, value: offset, to: center) else { continue }
                 let id = DayFormat.id(for: day)
-                updated[id] = chronological(bucketed[id] ?? [])
+                updated[id] = Self.keepingLines(chronological(bucketed[id] ?? []),
+                                                from: gamesByDay[id] ?? [])
             }
             // Equality guard: @Observable notifies on every set, so an
             // unconditional write would re-render the whole scores tree on

@@ -16,7 +16,7 @@ final class FCSOptInUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [
             "-ui.onboardingSeen", "YES",
-            "-ui.liveOnly", "NO",
+            "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
             "-ui.followPromptDismissed", "YES",
             // Pin the slate filter: it persists across launches by design
             // (2026-08-29), so without this a suite inherits whatever the
