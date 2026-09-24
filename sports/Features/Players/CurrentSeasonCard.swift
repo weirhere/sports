@@ -13,30 +13,10 @@ struct CurrentSeasonCard: View {
     let headlines: [PlayerStats.Headline]
 
     var body: some View {
-        VStack(spacing: 0) {
-            CardHeader(title: "This season", subtitle: seasonLabel)
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(headlines) { headline in
-                    VStack(spacing: 2) {
-                        Text(headline.value)
-                            .font(.score)
-                            .foregroundStyle(.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text(headline.label)
-                            .font(.rowMeta)
-                            .foregroundStyle(.textSecondary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(headline.spokenLabel), \(headline.value)")
-                }
-            }
-            .padding(.horizontal, Spacing.sm)
-            .padding(.vertical, Spacing.md)
-        }
-        .cardSurface()
+        StatTilesCard(title: "This season", subtitle: seasonLabel,
+                      tiles: headlines.map {
+                          .init(label: $0.label, spokenLabel: $0.spokenLabel, value: $0.value)
+                      })
     }
 }
 

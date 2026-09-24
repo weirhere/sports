@@ -1,6 +1,6 @@
 import XCTest
 
-/// Does the team page's five-tab hero row actually fit a phone?
+/// Does the team page's six-tab hero row actually fit a phone?
 ///
 /// Filed off the web bug fixed 2026-09-20, where the same five tabs —
 /// Overview, Games, Standings, Roster, Trophies — overflowed a 390pt
@@ -53,14 +53,15 @@ final class HeroTabFitUITests: XCTestCase {
         app.launch()
 
         // Georgia: an FBS team with a conference, so Standings is present,
-        // and ESPN serves it a roster — the full five-tab row, which is the
+        // and ESPN serves it a roster — the full six-tab row, which is the
         // only one of the three hero pages at risk. Conference and poll
         // pages carry three tabs (Standings, Games, Postseason) and have
         // room to spare.
         XCTAssertTrue(openTeamPage("Georgia Bulldogs", in: app),
                       "Search should land on the Georgia team page")
 
-        let titles = ["Overview", "Games", "Standings", "Roster", "Trophies"]
+        // Six since the Stats tab (2026-09-24).
+        let titles = ["Overview", "Games", "Stats", "Standings", "Roster", "Trophies"]
         let tabs = titles.map { app.buttons["hero-tab-\($0.lowercased())"] }
         XCTAssertTrue(tabs[0].waitForExistence(timeout: 10),
                       "The team page should show its hero tab row")
@@ -73,7 +74,7 @@ final class HeroTabFitUITests: XCTestCase {
         let window = app.windows.firstMatch.frame
         let present = zip(titles, tabs).filter { $0.1.exists }
         XCTAssertEqual(present.count, titles.count,
-                       "Expected all five tabs; got \(present.map(\.0))")
+                       "Expected all six tabs; got \(present.map(\.0))")
 
         // The measurements are the point, so they go in the log whether or
         // not anything fails — a passing run at one text size is evidence
