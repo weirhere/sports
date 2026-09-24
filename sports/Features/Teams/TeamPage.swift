@@ -20,12 +20,13 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, standings, roster, trophies
+        case overview, games, stats, standings, roster, trophies
 
         var title: String {
             switch self {
             case .overview: "Overview"
             case .games: "Games"
+            case .stats: "Stats"
             case .standings: "Standings"
             case .roster: "Roster"
             case .trophies: "Trophies"
@@ -103,6 +104,15 @@ struct TeamPage: View {
     @State private var rosterTeamKey: String?
     @State private var rosterLoading = false
     @State private var rosterFailed = false
+    /// The season's numbers and leaders (2026-09-24): one stats request and
+    /// one leaders request per visit, made when the page opens because the
+    /// Overview leads with both. Keyed to the team like the roster, so a
+    /// reused page can't show the last team's numbers.
+    @State private var teamStats: TeamStatsModel?
+
+    private var currentTeamStats: TeamStatsModel? {
+        teamStats?.team.followKey == team.followKey ? teamStats : nil
+    }
 
     /// The roster, but only if it belongs to the team on screen.
     private var currentRoster: TeamRoster? {
@@ -240,6 +250,7 @@ struct TeamPage: View {
                         switch tab {
                         case .overview: overviewContent
                         case .games: gamesContent
+                        case .stats: statsContent
                         case .standings: standingsContent
                         case .roster: rosterContent
                         case .trophies: trophiesContent
@@ -324,6 +335,7 @@ struct TeamPage: View {
             await loadInitial()
             await loadStandings()
         }
+        .task(id: team.followKey) { await loadTeamStats() }
     }
 
     private var shareButton: some View {
@@ -518,6 +530,9 @@ struct TeamPage: View {
 
     private var visibleTabs: [Tab] {
         var tabs: [Tab] = [.overview, .games]
+        // ESPN-only, like the roster: the same backend gate, and the pane
+        // says so rather than sitting empty when a season has no numbers.
+        if showsRosterTab { tabs.append(.stats) }
         if showsStandingsTab { tabs.append(.standings) }
         if showsRosterTab { tabs.append(.roster) }
         tabs.append(.trophies)
@@ -653,9 +668,13 @@ struct TeamPage: View {
     /// Trophies is the third, and the most obvious of them: a trophy case is
     /// every season at once. Scoping it to one would turn the tab into a
     /// worse copy of that season's Games tab.
+    ///
+    /// Stats is the fourth, for Roster's reason (2026-09-24): the team
+    /// statistics endpoint answers for ESPN's current season only, and its
+    /// card already names which season that is.
     @ViewBuilder
     private var seasonChip: some View {
-        if let selectedYear, tab != .overview, tab != .roster, tab != .trophies {
+        if let selectedYear, tab != .overview, tab != .roster, tab != .trophies, tab != .stats {
             SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
                            style: .bar, onSelect: { select(year: $0) })
         }
@@ -705,6 +724,7 @@ struct TeamPage: View {
                         .cardSurface()
                 }
             }
+            seasonStatsCards
             // Last, because it is the tab's least time-sensitive card —
             // a stadium doesn't move between refreshes, where the next
             // game and the record do.
@@ -921,6 +941,59 @@ struct TeamPage: View {
         // by the team so a reused page re-fetches rather than keeping the
         // last one's squad.
         .task(id: team.followKey) { await loadRoster() }
+    }
+
+    // MARK: - Season stats
+
+    /// The Overview's two stats cards: the season in four numbers, which
+    /// opens the Stats tab, and the team's leaders, each of whom opens their
+    /// page. Only for the season "now" belongs to — the numbers are ESPN's
+    /// current ones and have no season axis to follow the chip with.
+    @ViewBuilder
+    private var seasonStatsCards: some View {
+        if selectedYear == nil || selectedYear == currentSeasonYear, let model = currentTeamStats {
+            if let stats = model.stats, !stats.isEmpty {
+                let headlines = stats.headlines(for: pageLeague)
+                if !headlines.isEmpty {
+                    Button { select(tab: .stats) } label: {
+                        StatTilesCard(title: "Season stats", subtitle: stats.seasonLabel,
+                                      tiles: headlines.map {
+                                          .init(label: $0.label, spokenLabel: $0.fullName, value: $0.value)
+                                      },
+                                      isLink: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the Stats tab")
+                }
+            }
+            if let leaders = model.leaders, !leaders.isEmpty {
+                TeamLeadersCard(leaders: leaders, seasonLabel: model.leadersSeasonLabel)
+            }
+        }
+    }
+
+    private var statsContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let stats = currentTeamStats?.stats {
+                if stats.isEmpty {
+                    StatusMessage(text: "Season stats TBA")
+                        .cardSurface()
+                } else {
+                    TeamStatsPane(stats: stats)
+                }
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+    }
+
+    private func loadTeamStats() async {
+        if currentTeamStats == nil { teamStats = TeamStatsModel(team: team) }
+        await currentTeamStats?.load()
     }
 
     // MARK: - Loads
