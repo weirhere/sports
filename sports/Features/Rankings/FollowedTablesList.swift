@@ -31,9 +31,20 @@ struct FollowedTableRow: Identifiable {
 ///
 /// ## The drag
 ///
-/// A long press anywhere on a card lifts it, or a touch on the grip lifts
-/// it straight away; the card then tracks the finger one-to-one while the
-/// rest of the stack parts around it, and settles into the gap on release.
+/// A deliberate hold lifts a card: half a second anywhere on it, or a
+/// shorter one on the grip. The card then tracks the finger one-to-one while
+/// the rest of the stack parts around it, and settles into the gap on
+/// release.
+///
+/// **Both paths wait for a still finger** (Andy, 2026-09-24: scrolling the
+/// hub kept picking cards up). The lift used to come after a 0.25s hold that
+/// tolerated 12pt of drift, and the grip lifted with no hold at all once the
+/// finger moved 3pt. The grip's hit area is the card's whole trailing strip,
+/// right where a right thumb scrolls, so a flick that happened to start
+/// there or a scroll that started a little slowly became a reorder. Now a
+/// lift needs a hold that stays within a few points. The finger that
+/// scrolls is moving from the first frame, and the finger that means to
+/// reorder settles first, which is how iOS's own lift tells them apart.
 ///
 /// This is a hand-rolled gesture rather than `.draggable`/`.dropDestination`
 /// (Andy, 2026-09-07). The system drag session is built for carrying an
@@ -74,6 +85,14 @@ struct FollowedTablesList: View {
     /// size can stretch one, and a drag that assumed a uniform row would
     /// drift a little further out of step with every card it passed.
     @State private var heights: [String: CGFloat] = [:]
+    /// Whether either lift gesture still has a finger. `onEnded` only fires
+    /// when a gesture *finishes*. One the system cancels after the lift (the
+    /// scroll view claiming the touch, an interruption) never calls it,
+    /// which left a card lifted and the hub unable to scroll (found
+    /// 2026-09-24). `@GestureState` resets on cancellation too, so its
+    /// falling edge is the drop that always happens.
+    @GestureState private var cardGestureActive = false
+    @GestureState private var gripGestureActive = false
 
     /// `destination` is an insertion index into the list with the lifted
     /// card taken out of it — the same index `FollowingStore.move(_:to:)`
@@ -110,6 +129,9 @@ struct FollowedTablesList: View {
             lift = nil
             translation = 0
             isReordering = false
+        }
+        .onChange(of: cardGestureActive || gripGestureActive) { _, active in
+            if !active { drop() }
         }
     }
 
@@ -187,10 +209,13 @@ struct FollowedTablesList: View {
     /// The whole-card path: hold to lift, then drag. The press is what
     /// keeps this off the ScrollView's toes — a finger that moves before
     /// the press completes is scrolling, and this gesture fails and lets
-    /// it.
+    /// it. Half a second, UIKit's own drag-lift delay, and only a few
+    /// points of drift, so a scroll that starts slowly still reads as a
+    /// scroll.
     private func pressAndDrag(_ table: FollowedTable) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.25, maximumDistance: 12)
+        LongPressGesture(minimumDuration: Self.cardHold, maximumDistance: Self.holdSlop)
             .sequenced(before: DragGesture(minimumDistance: 0))
+            .updating($cardGestureActive) { _, active, _ in active = true }
             .onChanged { value in
                 switch value {
                 case .first(true):
@@ -205,16 +230,35 @@ struct FollowedTablesList: View {
             .onEnded { _ in drop() }
     }
 
-    /// The grip path: no press to wait out, because grabbing a handle is
-    /// already the statement the press exists to extract.
+    /// The grip path: a shorter hold than the card's, because aiming at a
+    /// handle already says most of what the press exists to find out. It
+    /// still needs one: the grip used to lift on the first 3pt of movement,
+    /// and a thumb scrolling down the right edge of the hub is exactly that.
     private func gripDrag(_ table: FollowedTable) -> some Gesture {
-        DragGesture(minimumDistance: 3)
+        LongPressGesture(minimumDuration: Self.gripHold, maximumDistance: Self.holdSlop)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .updating($gripGestureActive) { _, active, _ in active = true }
             .onChanged { value in
-                beginLift(of: table)
-                track(value.translation.height)
+                switch value {
+                case .first(true):
+                    beginLift(of: table)
+                case .second(true, let drag):
+                    beginLift(of: table)
+                    if let drag { track(drag.translation.height) }
+                default:
+                    break
+                }
             }
             .onEnded { _ in drop() }
     }
+
+    /// How long a card must be held before it lifts.
+    static let cardHold: Double = 0.5
+    /// The grip's hold: shorter, because aiming at it is itself intent.
+    static let gripHold: Double = 0.2
+    /// How far a finger may drift during the hold and still be holding.
+    /// Anything more is a scroll starting, and the lift stands down.
+    static let holdSlop: CGFloat = 5
 
     /// Idempotent: both gesture paths call it on every change, and the
     /// first one through does the work.
