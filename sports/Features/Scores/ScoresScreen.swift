@@ -42,6 +42,14 @@ struct ScoresScreen: View {
     /// 0.12s, eased out: gone before it can be watched (Andy's number
     /// after feeling 0.18).
     private static let filterAnimation: Animation = .easeOut(duration: 0.12)
+
+    /// Opening and closing sections — a tap, Hide all, the pinch. Was a bare
+    /// `withAnimation`, the default spring, whose long settle is the same
+    /// drifting tail the Live toggle shed above; a 40-row conference
+    /// springing open reads as lag rather than motion (2026-09-24, after
+    /// Coard Miller's "feels like it's running at 30fps"). A touch longer
+    /// than the filter's 0.12 because a section's height actually travels.
+    private static let accordionAnimation: Animation = .easeOut(duration: 0.18)
     @State private var showsCalendar = false
     @State private var pinchHandled = false
     // Which edge the incoming day's content pushes from, set before every
@@ -131,9 +139,11 @@ struct ScoresScreen: View {
                              onOpenCalendar: { showsCalendar = true })
                 DayStrip(days: scoreboards.days(),
                          selectedId: DayFormat.id(for: scoreboards.selectedDay),
-                         liveOnly: uiState.liveOnly) { day in
+                         liveOnly: uiState.liveOnly,
+                         todayId: DayFormat.id(for: .now)) { day in
                     select(day: day)
                 }
+                .equatable()
                 Divider().overlay(Color.divider)
                 if scoreboards.lastError != nil, !sections.isEmpty {
                     refreshErrorBanner
@@ -579,14 +589,15 @@ struct ScoresScreen: View {
                                 SectionAccordion(
                                     section: section,
                                     isExpanded: uiState.isExpanded(section.id),
-                                    onToggle: { withAnimation { uiState.toggle(section.id) } }
+                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section.id) } }
                                 )
+                                .equatable()
                                 .cardSurface()
                             case .hideAllControl(let otherCount):
                                 HideAllControl(
                                     otherCount: otherCount,
                                     isHidden: uiState.hideOtherSections,
-                                    onToggle: { withAnimation { uiState.hideOtherSections.toggle() } }
+                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.hideOtherSections.toggle() } }
                                 )
                             }
                         }
@@ -616,10 +627,10 @@ struct ScoresScreen: View {
                             guard !pinchHandled else { return }
                             if value.magnification < 0.8 {
                                 pinchHandled = true
-                                withAnimation { uiState.collapseAll(sections.map(\.id)) }
+                                withAnimation(Self.accordionAnimation) { uiState.collapseAll(sections.map(\.id)) }
                             } else if value.magnification > 1.25 {
                                 pinchHandled = true
-                                withAnimation { uiState.expandAll(sections.map(\.id)) }
+                                withAnimation(Self.accordionAnimation) { uiState.expandAll(sections.map(\.id)) }
                             }
                         }
                         .onEnded { _ in pinchHandled = false }
@@ -690,6 +701,7 @@ struct ScoresScreen: View {
                                 SectionAccordion(section: section,
                                                  isExpanded: uiState.isExpanded(section.id),
                                                  onToggle: {})
+                                    .equatable()
                                     .cardSurface()
                             case .hideAllControl(let otherCount):
                                 HideAllControl(otherCount: otherCount,

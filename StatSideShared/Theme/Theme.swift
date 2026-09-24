@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import os
 
 // MARK: - Color tokens
 // The mono ramp plus the single live accent. Views reference these semantic
@@ -204,8 +205,34 @@ extension Font {
     /// header component ("follow specs exactly", 2026-08-25).
     static var tab: Font { scaled(14, .bold, relativeTo: .callout) }
 
+    /// Resolved once per token per text size, then served from memory.
+    ///
+    /// Still a computed token — a text-size change still re-renders every
+    /// view and still lands on a new font — but the key now carries the
+    /// content-size category, so the `UIFontMetrics` scaling and the
+    /// `Font(UIFont)` bridge run once per size instead of on every access.
+    /// A game row reads about ten of these per body pass, and the Scores
+    /// screen used to rebuild all of them each frame of a day drag
+    /// (2026-09-24).
     private static func scaled(_ size: CGFloat, _ weight: UIFont.Weight,
                                relativeTo style: UIFont.TextStyle) -> Font {
-        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: .systemFont(ofSize: size, weight: weight)))
+        let key = ScaledFontKey(size: size, weight: weight.rawValue, style: style.rawValue,
+                                category: UITraitCollection.current.preferredContentSizeCategory.rawValue)
+        if let font = scaledFontCache.withLock({ $0[key] }) { return font }
+        let font = Font(UIFontMetrics(forTextStyle: style).scaledFont(for: .systemFont(ofSize: size, weight: weight)))
+        scaledFontCache.withLock { $0[key] = font }
+        return font
     }
 }
+
+nonisolated private struct ScaledFontKey: Hashable, Sendable {
+    let size: CGFloat
+    let weight: CGFloat
+    let style: String
+    let category: String
+}
+
+/// Tokens are read from widget timelines as well as the main thread, so the
+/// cache is a lock rather than an actor hop. Bounded by construction: ~30
+/// tokens × a dozen text sizes.
+private let scaledFontCache = OSAllocatedUnfairLock<[ScaledFontKey: Font]>(initialState: [:])

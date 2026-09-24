@@ -7,12 +7,27 @@ import SwiftUI
 /// is the only unit college football and the NFL agree on: their weeks are
 /// different date ranges, and college football's single "Bowls" slot
 /// swallows four NFL playoff rounds whole.
-struct DayStrip: View {
+struct DayStrip: View, Equatable {
     let days: [DaySlot]
     let selectedId: String?
     /// Live filtering renames today (Andy, 2026-09-12) — see `namedDay`.
     var liveOnly: Bool = false
+    /// Today's `DayFormat.id`, passed in rather than read from the clock so
+    /// the strip's equality notices midnight — the named chips move then.
+    var todayId: String = DayFormat.id(for: .now)
     let onSelect: (Date) -> Void
+
+    /// Everything but `onSelect`. The strip is eager — a season of chips —
+    /// and a closure prop never compares equal, so without this every body
+    /// pass of the Scores screen re-diffed all of them, including each
+    /// frame of a day drag (2026-09-24). The closure only ever routes to
+    /// `select(day:)`, so ignoring it can't strand a stale action.
+    static func == (lhs: DayStrip, rhs: DayStrip) -> Bool {
+        lhs.selectedId == rhs.selectedId
+            && lhs.liveOnly == rhs.liveOnly
+            && lhs.todayId == rhs.todayId
+            && lhs.days == rhs.days
+    }
 
     /// The strip is only the days. The way back to today is a floating
     /// button over the slate, not a chip pinned here (Andy, 2026-09-06) —
@@ -41,9 +56,10 @@ struct DayStrip: View {
                 // is in `select(day:)`, per day landed on rather than per
                 // chip. Eager construction of 365 tiny text views is the
                 // cheaper mistake.
+                let names = namedDays
                 HStack(spacing: Spacing.xs) {
                     ForEach(days) { day in
-                        chip(for: day)
+                        chip(for: day, name: names[day.id])
                     }
                 }
                 .padding(.horizontal, Spacing.lg)
@@ -82,7 +98,7 @@ struct DayStrip: View {
     }
 
     @ViewBuilder
-    private func chip(for day: DaySlot) -> some View {
+    private func chip(for day: DaySlot, name: String?) -> some View {
         let isSelected = day.id == selectedId
         Button {
             onSelect(day.date)
@@ -95,7 +111,7 @@ struct DayStrip: View {
             // every other emphasis in the app does. Nothing in the strip
             // is a filled surface, so the day chips are plain text at two
             // strengths — textPrimary semibold against textSecondary.
-            Text(compactLabel(day.date))
+            Text(name ?? day.shortLabel)
                 .font(isSelected ? .chipEmphasis : .chip)
                 .lineLimit(1)
                 .fixedSize()
@@ -106,7 +122,7 @@ struct DayStrip: View {
         .buttonStyle(.plain)
         // The chip abbreviates its month and weekday; the spoken label is
         // the whole date, and the named days keep their names.
-        .accessibilityLabel(spokenLabel(day.date))
+        .accessibilityLabel(name ?? day.spokenLabel)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .id(day.id)
     }
@@ -117,14 +133,25 @@ struct DayStrip: View {
     ///
     /// The three named days are how anyone actually refers to them, and
     /// they are the three the strip lands on most. Every other chip carries
-    /// its month: the strip spans a whole season, so a bare "Sat 5" is
-    /// ambiguous the moment you drag past the fortnight either side of
-    /// today — and a season crosses a year boundary. Built through the
-    /// localized formatter, like every other date string in the app, so
-    /// the order follows the reader's calendar rather than ours.
-    private func compactLabel(_ date: Date) -> String {
-        if let named = Self.namedDay(date, liveOnly: liveOnly) { return named }
-        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+    /// its month (`DaySlot.shortLabel`): the strip spans a whole season, so
+    /// a bare "Sat 5" is ambiguous the moment you drag past the fortnight
+    /// either side of today — and a season crosses a year boundary. Built
+    /// through the localized formatter, like every other date string in the
+    /// app, so the order follows the reader's calendar rather than ours.
+    ///
+    /// The names are keyed by day id and worked out once per body — three
+    /// dates — rather than asking the calendar about every chip in the
+    /// season.
+    private var namedDays: [String: String] {
+        let calendar = Calendar.current
+        var names: [String: String] = [:]
+        for offset in -1...1 {
+            guard let date = calendar.date(byAdding: .day, value: offset, to: .now),
+                  let name = Self.namedDay(date, liveOnly: liveOnly, calendar: calendar)
+            else { continue }
+            names[DayFormat.id(for: date, calendar: calendar)] = name
+        }
+        return names
     }
 
     /// Today answers to two names. Under the Live filter the day on screen
@@ -146,11 +173,6 @@ struct DayStrip: View {
         if calendar.isDateInTomorrow(date) { return "Tomorrow" }
         if calendar.isDateInYesterday(date) { return "Yesterday" }
         return nil
-    }
-
-    private func spokenLabel(_ date: Date) -> String {
-        Self.namedDay(date, liveOnly: liveOnly)
-            ?? date.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 }
 

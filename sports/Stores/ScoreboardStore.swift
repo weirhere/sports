@@ -151,7 +151,16 @@ final class ScoreboardStore {
     let league: League
 
     /// Games by `DayFormat.id`, for every day fetched and still in range.
-    private(set) var gamesByDay: [String: [Game]] = [:]
+    private(set) var gamesByDay: [String: [Game]] = [:] {
+        didSet { revision &+= 1 }
+    }
+
+    /// Bumped on every write to what the Scores sections are built from —
+    /// `gamesByDay` and `divisions`. `LeagueScoreboards` keys its sections
+    /// memo on it, so a cache hit is a counter compare rather than a deep
+    /// compare of every game, and reading it still registers the
+    /// observation a later write needs to invalidate the screen.
+    private(set) var revision = 0
     private(set) var isLoading = false
     private(set) var lastError: String?
 
@@ -159,7 +168,9 @@ final class ScoreboardStore {
     /// into FCS (E8 scope (b), Andy 2026-09-01) — the second request is
     /// what the polite-guest rule is spending, so it only exists while
     /// FCS is actually surfaced.
-    private(set) var divisions: Set<Conference.Division> = [.fbs]
+    private(set) var divisions: Set<Conference.Division> = [.fbs] {
+        didSet { revision &+= 1 }
+    }
 
     /// The day the last window was centred on — what the poll refreshes.
     /// Observed, because `boardGames` is derived from it and a team page

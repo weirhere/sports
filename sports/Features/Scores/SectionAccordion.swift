@@ -2,12 +2,19 @@ import SwiftUI
 
 /// One collapsible section of the scores list: gray-filled header,
 /// hairline-divided game rows when expanded.
-struct SectionAccordion: View {
+struct SectionAccordion: View, Equatable {
     let section: GameSection
     let isExpanded: Bool
     let onToggle: () -> Void
 
-    @Environment(FollowingStore.self) private var following
+    /// The section and its state, not the toggle. `onToggle` is a fresh
+    /// closure on every pass of `ScoresScreen`'s body, and a closure never
+    /// compares equal — so every visible accordion re-ran its body on each
+    /// frame of a day drag and on every other section's toggle
+    /// (2026-09-24). It always toggles `section.id`, which is compared.
+    static func == (lhs: SectionAccordion, rhs: SectionAccordion) -> Bool {
+        lhs.isExpanded == rhs.isExpanded && lhs.section == rhs.section
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -188,67 +195,21 @@ struct SectionAccordion: View {
     }
 
     private var expandedRows: some View {
-        Group {
-            ForEach(Array(section.games.enumerated()), id: \.element.id) { index, game in
-                    NavigationLink(value: game) {
-                        // Every row carries its own full day line ("Sat,
-                        // 8/29") — the in-section day dividers came out as
-                        // noise (Andy, 2026-08-25). A day section's header
-                        // still names the whole day, so its rows stay
-                        // time-only.
-                        // Every section on the screen is one day's slate,
-                        // and the day strip above says which day — so the
-                        // rows are kickoff time and network only. VoiceOver
-                        // still speaks the full date (2026-08-09).
-                        GameRow(game: game, timeOnly: true,
-                                // Only a cross-league section tags its rows;
-                                // elsewhere the screen's scope already says
-                                // which league you're looking at.
-                                leagueTag: section.spansLeagues
-                                    ? game.home.team.league : nil)
-                    }
-                    // Not `.plain`: a full-width row is wider than any
-                    // swipe, so the day swipe used to end on this link.
-                    .buttonStyle(SwipeSafeButtonStyle())
-                    .contextMenu {
-                        followMenuButton(for: game.away.team)
-                        followMenuButton(for: game.home.team)
-                        ShareLink(
-                            item: GameShareCard(game: game, summary: nil, shareText: game.shareText),
-                            message: Text(game.shareText),
-                            preview: SharePreview(game.shortName ?? game.name ?? "Game")
-                        ) {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
-                    }
-                    // The row collapses to one VO element, which swallows
-                    // the menu — custom actions restore parity.
-                    .accessibilityAction(named: followActionTitle(for: game.away.team)) {
-                        following.toggle(game.away.team)
-                    }
-                    .accessibilityAction(named: followActionTitle(for: game.home.team)) {
-                        following.toggle(game.home.team)
-                    }
-                    if game.id != section.games.last?.id {
-                        Divider()
-                            .overlay(Color.divider)
-                            .padding(.leading, Spacing.lg)
-                    }
+        ForEach(section.games) { game in
+            // Every section on the screen is one day's slate, and the day
+            // strip above says which day — so the rows are kickoff time and
+            // network only. VoiceOver still speaks the full date
+            // (2026-08-09). Only a cross-league section tags its rows;
+            // elsewhere the screen's scope already says which league
+            // you're looking at.
+            SectionGameRow(game: game,
+                           leagueTag: section.spansLeagues ? game.home.team.league : nil)
+            if game.id != section.games.last?.id {
+                Divider()
+                    .overlay(Color.divider)
+                    .padding(.leading, Spacing.lg)
             }
         }
-    }
-
-    private func followMenuButton(for team: Team) -> some View {
-        Button {
-            following.toggle(team)
-        } label: {
-            Label(followActionTitle(for: team),
-                  systemImage: following.isFollowing(team) ? "star.slash" : "star")
-        }
-    }
-
-    private func followActionTitle(for team: Team) -> String {
-        following.isFollowing(team) ? "Unfollow \(team.location)" : "Follow \(team.location)"
     }
 
     /// Header glyph for the one section with no mark of its own. star.fill

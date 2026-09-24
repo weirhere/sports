@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ProMotion: without this, every animation the app drives itself
+	     (the day push, accordions, springs, the live dot) is capped at
+	     60Hz on a 120Hz iPhone while system scrolling runs at 120Hz beside
+	     it. Xcode's generated plist has no INFOPLIST_KEY_ for it, which is
+	     why this is the one key that lives in a file. -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+</dict>
+</plist>
