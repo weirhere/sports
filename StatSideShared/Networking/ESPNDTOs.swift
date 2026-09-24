@@ -152,6 +152,20 @@ nonisolated struct CompetitionDTO: Decodable {
     /// playoff round under one `seasontype=3` week (verified live
     /// 2026-09-06: 46 games, all week 1).
     let notes: [CompetitionNoteDTO]?
+    /// The pre-game line, one entry per provider. Present on pre-game
+    /// events and gone from finals (probed 2026-09-24, 0 of 76).
+    let odds: LossyArray<OddsDTO>?
+}
+
+nonisolated struct OddsDTO: Decodable {
+    let details: String?
+    let overUnder: Double?
+    let homeTeamOdds: TeamOddsDTO?
+    let awayTeamOdds: TeamOddsDTO?
+}
+
+nonisolated struct TeamOddsDTO: Decodable {
+    let favorite: Bool?
 }
 
 nonisolated struct CompetitionNoteDTO: Decodable {

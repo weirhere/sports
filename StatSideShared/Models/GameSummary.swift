@@ -58,14 +58,19 @@ nonisolated struct GameSummary: Sendable {
 nonisolated struct GameLine: Hashable, Sendable {
     let details: String?
     let overUnder: Double?
+    /// Who was favored, where the payload says (the scoreboard's per-team
+    /// `favorite`; the summary's `pickcenter` isn't read for it). The Tight
+    /// filter's underdog rule needs it; nothing prints it.
+    var favoriteIsHome: Bool? = nil
 
     /// Nil when neither half survived, so an empty line has no row.
-    init?(details: String?, overUnder: Double?) {
+    init?(details: String?, overUnder: Double?, favoriteIsHome: Bool? = nil) {
         let trimmed = details?.trimmingCharacters(in: .whitespaces)
         let details = trimmed?.isEmpty == false ? trimmed : nil
         guard details != nil || overUnder != nil else { return nil }
         self.details = details
         self.overUnder = overUnder
+        self.favoriteIsHome = favoriteIsHome
     }
 
     /// "IU -7.5 · O/U 47.5", dropping whichever half is missing.

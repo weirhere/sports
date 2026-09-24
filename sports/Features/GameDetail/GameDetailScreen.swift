@@ -15,6 +15,11 @@ struct GameDetailScreen: View {
     /// Optional on purpose: a preview or a host that never planted one
     /// should render the page, not trap. `RootView` always provides it.
     @Environment(ReviewPrompt.self) private var reviewPrompt: ReviewPrompt?
+    @Environment(UIStateStore.self) private var uiState: UIStateStore?
+
+    /// Betting lines, per the Settings switch; off where no store is in
+    /// the environment (previews).
+    private var showsLines: Bool { uiState?.showsLines ?? false }
     @Environment(\.requestReview) private var requestReview
 
     @State private var loadedSummary: GameSummary?
@@ -580,9 +585,10 @@ struct GameDetailScreen: View {
                     // all empty, so the pair carries the whole "what do I
                     // need to know" load — but the questions outlive the
                     // kickoff, so Game info stays put once a game starts.
-                    if KickoffInfoRows.hasContent(game: game, summary: summary) {
+                    if KickoffInfoRows.hasContent(game: game, summary: summary,
+                                                  showsLines: showsLines) {
                         card(title: "Game info") {
-                            KickoffInfoRows(game: game, summary: summary)
+                            KickoffInfoRows(game: game, summary: summary, showsLines: showsLines)
                         }
                     }
                     if !showsScores, GameInfoRows.hasVenueContent(summary) {

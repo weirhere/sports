@@ -99,18 +99,67 @@ private func game(status: GameStatus) -> Game {
 
     @Test func showsBeforeKickoff() throws {
         let summary = try summary(from: withState("pre", summaryJSON("summary-final-live")))
-        let line = KickoffInfoRows.line(game: game(status: .pre(detail: nil)), summary: summary)
+        let line = KickoffInfoRows.line(game: game(status: .pre(detail: nil)), summary: summary,
+                                        showsLines: true)
         #expect(line?.text == "IU -7.5 · O/U 47.5")
-        #expect(KickoffInfoRows.hasContent(game: game(status: .pre(detail: nil)), summary: summary))
+    }
+
+    /// Off by default, and off means nowhere.
+    @Test func hiddenUnlessSwitchedOnInSettings() throws {
+        let summary = try summary(from: withState("pre", summaryJSON("summary-final-live")))
+        #expect(KickoffInfoRows.line(game: game(status: .pre(detail: nil)), summary: summary,
+                                     showsLines: false) == nil)
     }
 
     /// ESPN keeps shipping `pickcenter` on a final; the card outlives the
     /// kickoff, the line doesn't.
     @Test func hidesOnceTheGameHasStarted() throws {
         let final = try summary(from: summaryJSON("summary-final-live"))
-        #expect(KickoffInfoRows.line(game: game(status: .final(detail: "Final")), summary: final) == nil)
+        #expect(KickoffInfoRows.line(game: game(status: .final(detail: "Final")), summary: final,
+                                     showsLines: true) == nil)
 
         let live = try summary(from: withState("in", summaryJSON("summary-final-live")))
-        #expect(KickoffInfoRows.line(game: game(status: .final(detail: "Final")), summary: live) == nil)
+        #expect(KickoffInfoRows.line(game: game(status: .final(detail: "Final")), summary: live,
+                                     showsLines: true) == nil)
+    }
+}
+
+// The Scores row's line, off the scoreboard's `odds` (2026-09-24).
+@Suite struct ScoreboardLineTests {
+    private func scoreboard(_ name: String) throws -> Scoreboard {
+        let url = try #require(
+            Bundle(for: GameLineFixtureToken.self).url(forResource: name, withExtension: "json"))
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: Data(contentsOf: url))
+        return ESPNMapper.scoreboard(from: dto)
+    }
+
+    @Test func readsTheLineAndWhoIsFavored() throws {
+        let game = try #require(try scoreboard("scoreboard-live").games.first { $0.id == "401856766" })
+        let line = try #require(game.line)
+        #expect(line.text == "TCU -6.5 · O/U 49.5")
+        #expect(line.favoriteIsHome == true)
+    }
+
+    @Test func aboutHalfTheCollegeSlateCarriesOne() throws {
+        let games = try scoreboard("scoreboard-live").games
+        #expect(games.filter { $0.line != nil }.count == 51)
+    }
+
+    @Test func theRowPrintsItPregameAndOnlyWhenSwitchedOn() throws {
+        let game = try #require(try scoreboard("scoreboard-live").games.first { $0.id == "401856766" })
+        #expect(GameRow.line(for: game, showsLines: true)?.details == "TCU -6.5")
+        #expect(GameRow.line(for: game, showsLines: false) == nil)
+
+        let final = Game(id: game.id, date: game.date, name: game.name, shortName: game.shortName,
+                     weekNumber: game.weekNumber, status: .final(detail: "Final"),
+                     home: game.home, away: game.away, broadcast: game.broadcast, line: game.line)
+        #expect(GameRow.line(for: final, showsLines: true) == nil)
+    }
+
+    @Test func aPickEmFavorsNobody() {
+        let odds = OddsDTO(details: "EVEN", overUnder: 44.5,
+                           homeTeamOdds: TeamOddsDTO(favorite: false),
+                           awayTeamOdds: TeamOddsDTO(favorite: false))
+        #expect(ESPNMapper.line(from: odds)?.favoriteIsHome == nil)
     }
 }

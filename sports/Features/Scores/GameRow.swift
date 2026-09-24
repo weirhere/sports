@@ -26,6 +26,35 @@ struct GameRow: View {
     /// than joining it: five seasons back, which day of the week it was is
     /// worth nothing and the fixed status column has no room for both.
     var showsYear: Bool = false
+    /// Betting lines, per the Settings switch. The row only ever prints a
+    /// pre-game line; see `line(for:showsLines:)`.
+    var showsLine: Bool = false
+
+    /// The line a row prints: pre-game only, and only when switched on.
+    /// ESPN drops `odds` from a final, but a live game may still carry one,
+    /// and a line under a running clock is a question already answered.
+    static func line(for game: Game, showsLines: Bool) -> GameLine? {
+        guard showsLines, case .pre = game.status else { return nil }
+        return game.line
+    }
+
+    private var rowLine: GameLine? { Self.line(for: game, showsLines: showsLine) }
+
+    /// Narrowest last: the whole line, then the total without its label,
+    /// then the spread alone. The spread is the one that never truncates.
+    @ViewBuilder
+    private func lineText(_ line: GameLine) -> some View {
+        ViewThatFits(in: .horizontal) {
+            Text(line.text)
+            if let details = line.details, let total = line.overUnder {
+                Text("\(details) · \(GameLine.number(total))")
+            }
+            if let details = line.details { Text(details) }
+        }
+        .font(.rowMeta)
+        .foregroundStyle(.textSecondary)
+        .lineLimit(1)
+    }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 28
@@ -183,6 +212,7 @@ struct GameRow: View {
                     if let network { networkText(network) }
                 }
             }
+            if let rowLine { lineText(rowLine) }
         case .live:
             // Clock and network ride one line while they fit, then stack —
             // the same treatment as the pre-game kick line above.
@@ -278,6 +308,7 @@ struct GameRow: View {
                         .foregroundStyle(.textSecondary)
                         .lineLimit(1)
                 }
+                if let rowLine { lineText(rowLine) }
             }
         case .live:
             VStack(alignment: .leading, spacing: 3) {
@@ -485,6 +516,7 @@ struct GameRow: View {
                 }
             }
             if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
+            if let rowLine { parts.append("line, \(rowLine.accessibilityText)") }
             return parts.joined(separator: ", ")
         case .live(let clock, let period, _, let phase, let possessionTeamId):
             var parts = [scoreSummary]

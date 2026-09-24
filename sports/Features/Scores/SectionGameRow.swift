@@ -13,12 +13,14 @@ struct SectionGameRow: View {
     let leagueTag: League?
 
     @Environment(FollowingStore.self) private var following
+    @Environment(UIStateStore.self) private var uiState
 
     var body: some View {
         let awayTitle = followActionTitle(for: game.away.team)
         let homeTitle = followActionTitle(for: game.home.team)
         NavigationLink(value: game) {
-            GameRow(game: game, timeOnly: true, leagueTag: leagueTag)
+            GameRow(game: game, timeOnly: true, leagueTag: leagueTag,
+                    showsLine: uiState.showsLines)
         }
         // Not `.plain`: a full-width row is wider than any swipe, so the
         // day swipe used to end on this link.

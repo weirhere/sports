@@ -818,3 +818,4 @@ sibling below it.
 | 2026-09-24 | ESPN's rollover season label corrected by games played; leaders fall back a season and say so | **pending** — ports with the row above; it's the mapper's rule, not the view's. |
 | 2026-09-24 | Scores slate scrolls under the floating tab bar; top-edge-only clip | **n/a** — Liquid Glass tab bar; the web has no floating bottom bar. |
 | 2026-09-24 | Pre-game line (spread/moneyline and total) in Game info, before kickoff only | **shipped** — same PR: `transformGameLine` + `lineText` in the game page's Game info card. |
+| 2026-09-24 | Betting lines behind a Settings switch (off by default); Scores rows show them too | **differs** — the web has no per-user settings yet, so its game page keeps the line unconditionally and its Scores rows don't show one. Revisit when settings can sync. |

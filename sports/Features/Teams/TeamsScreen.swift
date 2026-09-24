@@ -17,6 +17,7 @@ struct TeamsScreen: View {
     // ConferenceDestination — a typed path can't hold both.
     @State private var path = NavigationPath()
     @State private var isAddingTeams = false
+    @State private var showsSettings = false
 
     @ScaledMetric(relativeTo: .body) private var addIconSize: CGFloat = 40
 
@@ -27,7 +28,10 @@ struct TeamsScreen: View {
                 // centred inline title put "Teams" somewhere "StatSide"
                 // never is, and the toolbar plus sat higher than the Live
                 // and calendar chips it lines up with one tab over.
-                PageHeader(title: "Teams") { addButton }
+                PageHeader(title: "Teams") {
+                    settingsButton
+                    addButton
+                }
                 content
             }
                 .background(Color.bgRecessed)
@@ -93,6 +97,9 @@ struct TeamsScreen: View {
         }
         .sheet(isPresented: $isAddingTeams) {
             AddTeamsSheet()
+        }
+        .sheet(isPresented: $showsSettings) {
+            SettingsScreen()
         }
     }
 
@@ -170,6 +177,24 @@ struct TeamsScreen: View {
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.xl)
         .padding(.bottom, Spacing.sm)
+    }
+
+    /// Settings, beside the plus (2026-09-24). Teams is where the app's
+    /// personal state already lives — the follows, and the reminder bell
+    /// on each team — so the preferences sit with them.
+    private var settingsButton: some View {
+        Button {
+            showsSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassCircleInteractive(fallback: Color.bgElevated)
+        .accessibilityLabel("Settings")
     }
 
     /// The second door to the sheet, and the only one that reads as an

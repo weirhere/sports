@@ -878,8 +878,18 @@ nonisolated enum ESPNMapper {
             // normalized here so every `if let broadcast` surface stays
             // honest instead of rendering an empty TV line.
             broadcast: nonEmpty(competition.broadcast)
-                ?? nonEmpty(broadcastName(from: competition.broadcasts))
+                ?? nonEmpty(broadcastName(from: competition.broadcasts)),
+            line: competition.odds?.elements.first.flatMap(line(from:))
         )
+    }
+
+    /// The first provider's line, and who it favors. Favored is read off
+    /// the per-team flags; neither flag set (a pick'em) leaves it nil.
+    static func line(from odds: OddsDTO) -> GameLine? {
+        let favoriteIsHome: Bool? = odds.homeTeamOdds?.favorite == true ? true
+            : odds.awayTeamOdds?.favorite == true ? false : nil
+        return GameLine(details: odds.details, overUnder: odds.overUnder,
+                        favoriteIsHome: favoriteIsHome)
     }
 
     /// Which of ESPN's listed broadcasts a row names.
