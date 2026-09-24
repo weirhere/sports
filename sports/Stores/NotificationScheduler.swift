@@ -31,6 +31,8 @@ nonisolated struct SystemNotificationCenter: NotificationCentering {
         content.body = body
         content.sound = .default
         content.userInfo = ["gameId": gameId]
+        // The pin-to-Lock-Screen action, when it's on offer at fire time.
+        content.categoryIdentifier = KickoffReminderActions.categoryId
         // An interval from an absolute instant, not a calendar trigger:
         // kickoff doesn't move when the user changes timezone.
         let interval = fireDate.timeIntervalSinceNow

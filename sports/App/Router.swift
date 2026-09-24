@@ -56,6 +56,9 @@ nonisolated struct GameRef: Equatable, Sendable {
 @Observable
 final class Router {
     var pendingGame: GameRef?
+    /// A game the kickoff reminder's "Pin to Lock Screen" asked for. The
+    /// game page starts the card once that game has loaded, and clears it.
+    var pendingPin: String?
     var pendingTeam: TeamRef?
     /// An athlete to open, carried whole rather than by id: search is the
     /// only door that knows a player without a roster behind them, so

@@ -25,6 +25,7 @@ struct sportsApp: App {
         _reviewPrompt = State(initialValue: review)
         notificationDelegate = delegate
         UNUserNotificationCenter.current().delegate = delegate
+        KickoffReminderActions.register()
     }
 
     var body: some Scene {

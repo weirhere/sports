@@ -128,6 +128,7 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 scoreboards.startPollingIfNeeded()
+                KickoffReminderActions.register()
                 Task {
                     await notifications.refreshAuthorization()
                     await notifications.resync(followedKeys: following.teamKeys)

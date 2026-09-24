@@ -23,12 +23,21 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        if let gameId = response.notification.request.content.userInfo["gameId"] as? String {
-            router.pendingGame = GameRef(id: gameId)
+        guard let intent = KickoffReminderActions.intent(
+            actionIdentifier: response.actionIdentifier,
+            userInfo: response.notification.request.content.userInfo
+        ) else { return }
+        if intent.pin {
+            // Set before the game, so the page finds it when it loads.
+            // No rating arm on this path: the card is what the user asked
+            // for, and a rating sheet over it would eat the moment.
+            router.pendingPin = intent.gameId
+        } else {
             // The one moment worth asking for a rating at: the reminder
             // fired and the user followed it in. `GameDetailScreen` spends
             // the arm once the game is actually on screen and loaded.
-            reviewPrompt.armFromKickoffReminder(gameId: gameId)
+            reviewPrompt.armFromKickoffReminder(gameId: intent.gameId)
         }
+        router.pendingGame = GameRef(id: intent.gameId)
     }
 }
