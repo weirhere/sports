@@ -30,7 +30,7 @@ nonisolated struct NextGameEntry: TimelineEntry {
             WidgetGame(id: "4",
                        away: WidgetTeamLine(abbreviation: "AUB", rank: nil, record: "5-3", score: 13, muted: true, logo: nil, darkLogo: nil),
                        home: WidgetTeamLine(abbreviation: "BAMA", rank: 8, record: "7-1", score: 27, muted: false, logo: nil, darkLogo: nil),
-                       statusLine: "FINAL", statusDetail: nil, network: nil, isLive: false, showsScores: true),
+                       statusLine: "Final", statusDetail: nil, network: nil, isLive: false, showsScores: true),
         ], stale: false))
     }
 }
@@ -146,8 +146,8 @@ nonisolated extension WidgetGame {
         case .live:
             return (game.status.liveStatusText(in: game.home.team.league) ?? "Live", nil)
         case .final(let detail):
-            if let detail, detail.localizedCaseInsensitiveContains("OT") { return ("FINAL OT", nil) }
-            return ("FINAL", nil)
+            if let detail, detail.localizedCaseInsensitiveContains("OT") { return ("Final OT", nil) }
+            return ("Final", nil)
         case .other(let detail):
             return (detail ?? "—", nil)
         }

@@ -66,7 +66,7 @@ struct WidgetHeader: View {
 }
 
 /// One game: two team lines (scores inline, absent entirely pre-game) and
-/// a trailing status column — kickoff time, live clock, or FINAL.
+/// a trailing status column — kickoff time, live clock, or Final.
 ///
 /// The status column is a FIXED width, which is the whole point: on a
 /// `minWidth` it grew with its own content, so a row reading "ACC Network"
@@ -95,15 +95,13 @@ struct WidgetGameRow: View {
                 WidgetTeamRow(line: game.home, emphasize: game.isLive, showScore: game.showsScores)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Only where there's a score column to divide from. A pre-game
-            // row has nothing on its left but names and records, and a
-            // hairline there would separate nothing.
-            if game.showsScores {
-                Rectangle()
-                    .fill(Color.divider)
-                    .frame(width: 1)
-                    .frame(maxHeight: .infinity)
-            }
+            // Every row, pre-game included: records now take the score's
+            // trailing slot, so there is always a number column to divide
+            // from, and the hairline keeps one x down the whole list.
+            Rectangle()
+                .fill(Color.divider)
+                .frame(width: 1)
+                .frame(maxHeight: .infinity)
             statusColumn
                 .frame(width: statusWidth, alignment: .trailing)
         }

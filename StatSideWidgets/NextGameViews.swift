@@ -76,27 +76,30 @@ struct WidgetTeamRow: View {
     var body: some View {
         HStack(spacing: Spacing.sm) {
             logo
+            // Name first, rank after it (Andy's Paper remix, 2026-09-25):
+            // the abbreviation is what a glance reads, so it holds the lane
+            // beside the logo, and at one weight in every state — live
+            // emphasis lives in the score and the dot, not the name.
+            Text(line.abbreviation)
+                .font(.chip)
+                .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
+                .lineLimit(1)
             if let rank = line.rank {
                 Text("\(rank)")
                     .font(.metaEmphasis)
                     .foregroundStyle(.textSecondary)
             }
-            Text(line.abbreviation)
-                .font(emphasize ? .chipEmphasis : .chip)
-                .foregroundStyle(line.muted ? .textSecondary : .textPrimary)
-                .lineLimit(1)
-            // Every state, unlike the app's GameRow: a widget glance skips
-            // the team page, so the record stays as season context even
-            // once the score arrives.
-            if let record = line.record {
+            Spacer(minLength: Spacing.xs)
+            // The record fills the score's slot until there is a score, and
+            // leaves with it arriving — the app's GameRow split, which the
+            // widget used to break by keeping both.
+            if showScore {
+                WidgetScoreText(line: line, emphasize: emphasize)
+            } else if let record = line.record {
                 Text(record)
                     .font(.metaMedium)
                     .foregroundStyle(.textSecondary)
                     .lineLimit(1)
-            }
-            if showScore {
-                Spacer(minLength: Spacing.xs)
-                WidgetScoreText(line: line, emphasize: emphasize)
             }
         }
     }
