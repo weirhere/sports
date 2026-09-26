@@ -72,6 +72,11 @@ struct RootView: View {
             }
         }
         .tint(.primary)
+        // Settings' Appearance choice, set on the window so sheets and
+        // alerts follow it (see `Appearance.apply`).
+        .onChange(of: uiState.appearance, initial: true) { _, appearance in
+            appearance.apply()
+        }
         // Every league's slate for the day the app opened on. The
         // cold-launch league auto-pick retired with the league scope
         // itself (2026-09-05) — nothing has to be picked when both

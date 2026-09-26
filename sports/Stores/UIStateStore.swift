@@ -115,7 +115,14 @@ final class UIStateStore {
         didSet { defaults.set(showsLines, forKey: Self.showsLinesKey) }
     }
 
+    /// Light, dark, or whatever the iPhone says (the default). Read once in
+    /// `init`, so a UI test can pin it with `-ui.appearance system`.
+    var appearance: Appearance {
+        didSet { defaults.set(appearance.rawValue, forKey: Self.appearanceKey) }
+    }
+
     private static let showsLinesKey = "lines.enabled"
+    private static let appearanceKey = "ui.appearance"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let tightOnlyKey = "ui.tightOnly"
@@ -142,6 +149,8 @@ final class UIStateStore {
             .flatMap(ScoreFilter.init(token:))
         hideOtherSections = defaults.bool(forKey: Self.hideOtherSectionsKey)
         showsLines = defaults.bool(forKey: Self.showsLinesKey)
+        appearance = defaults.string(forKey: Self.appearanceKey)
+            .flatMap(Appearance.init(rawValue:)) ?? .system
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
     }
 

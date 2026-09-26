@@ -827,4 +827,11 @@ sibling below it.
 | 2026-09-24 | Leagues list A–Z (NBA, NCAAF, NFL, NHL) on Scores and the tables hub | **pending** — the web's league loops read `LEAGUES`' declaration order; give it a display-order copy, as iOS did. |
 | 2026-09-24 | Followed-card lift needs a still hold (iOS 0.5s card / 0.2s grip, 5pt slop) | **shipped** — same PR: the web card-body hold is 500ms / 5px; its grip stays instant (a `touch-none` handle can't start a scroll). |
 | 2026-09-25 | Widget rows: name-then-rank, record only pre-game in the score slot, divider on every row, "Final" | **n/a** — home-screen widget; the web has no widget extension. |
+| 2026-09-25 | Hide all capsule hugs its contents, centered, not full width | **pending** — ports with the control itself (still pending from 2026-09-22); build it as an inline pill from the start. |
+| 2026-09-25 | Settings: Appearance picker (System / Light / Dark), System default | **pending** — the web follows `prefers-color-scheme` only; a port is a `data-theme` override on `:root`, persisted in localStorage. |
+| 2026-09-25 | Day strip vertical padding 8 → 12 | **shipped** — same PR: the web strip's container goes `py-2` → `py-3`. |
+| 2026-09-25 | Section header: "SEC - NCAAF" title, count as a badge beside the chevron | **shipped** — same PR: `section-accordion.tsx` joins the league onto the title and wraps the count in a `bg-divider` capsule, shown only when collapsed and live-green ("2/3") while any game is in progress. |
+| 2026-09-25 | College football's short name reads "NCAAF" everywhere | **shipped** — same PR: the web's `shortName` for `cfb` changes from "CFB" to "NCAAF"; iOS already said NCAAF. |
+| 2026-09-25 | Scores header capsule: 8pt end inset, 4pt top/bottom | **n/a** — the web header has no grouped Live/Tight/calendar capsule. |
+| 2026-09-25 | Scoreboard polls through kickoff (30s from one tick before a kickoff to 3h after it, sleeping until the next one); Top 25 and Postseason merge the live board | **pending** — `use-league-scoreboards.ts` has the same gap: its interval runs only while `hasLiveGames`, so a slate opened before kickoff never refetches. |
 | 2026-09-25 | Show all caption names the first two hidden sections and counts the rest | **n/a** — the web has no Hide all/Show all control yet; the wording ports with it. |

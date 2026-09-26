@@ -34,13 +34,16 @@ struct ScoresHeader: View {
             // FotMob's grouped-capsule chrome (Andy, 2026-08-29): the
             // capsule carries the tap target, the pills paint their own
             // fills. Glass never stacks on glass, so the pills inside stay
-            // solid.
+            // solid. The ends get twice the top and bottom inset (Andy,
+            // 2026-09-25): the capsule's round ends curve in on the pills,
+            // so an even 4 read tight at the sides.
             HStack(spacing: 0) {
                 LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
                 TightFilterChip(tightOnly: tightOnly, onToggle: onToggleTight)
                 calendarButton
             }
-            .padding(4)
+            .padding(.vertical, Spacing.xs)
+            .padding(.horizontal, Spacing.sm)
             .glassCapsule(fallback: Color.bgElevated)
             settingsButton
         }

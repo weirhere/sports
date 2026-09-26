@@ -11,7 +11,8 @@ final class ScreenshotTests: XCTestCase {
     func testWalkAndSnapshotEveryScreen() throws {
         let prefix = ProcessInfo.processInfo.environment["SNAPSHOT_PREFIX"] ?? "shot"
         let app = XCUIApplication()
-        app.launchArguments += ["-ui.onboardingSeen", "YES",
+        app.launchArguments += ["-ui.appearance", "system",
+                                "-ui.onboardingSeen", "YES",
                                 "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", ""]
         app.launch()

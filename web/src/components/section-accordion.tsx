@@ -9,7 +9,7 @@
 import Link from "next/link";
 import { ChevronDown, Star } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { GameSection } from "@/lib/game-sections";
+import { isLiveStatus, type GameSection } from "@/lib/game-sections";
 import { displayName, shortName } from "@/lib/leagues";
 import { GameRow } from "./game-row";
 import { ConferenceLogo } from "./theme/conference-logo";
@@ -57,7 +57,8 @@ export function SectionAccordion({
    * The league tag (iOS, 2026-09-07). Breaking college football back into
    * conferences left every header on the page naming a conference and none
    * of them naming a sport — "ACC" is only obviously college football to
-   * someone who already knows.
+   * someone who already knows. Joined onto the title as "SEC - NCAAF" since
+   * 2026-09-25, rather than riding it as a smaller caption.
    *
    * Only where the section has a league and doesn't already say it: the
    * NFL's own section is titled "NFL", and Following spans leagues.
@@ -78,24 +79,33 @@ export function SectionAccordion({
     <span className="flex min-w-0 items-baseline gap-2">
       <span className="flex shrink-0 items-center self-center">{glyph}</span>
       <span className="type-section-header truncate text-text-primary">
-        {section.title}
+        {leagueTag ? `${section.title} - ${leagueTag}` : section.title}
       </span>
-      {leagueTag && (
-        <span
-          aria-hidden="true"
-          className="type-meta shrink-0 uppercase tracking-wide text-text-secondary"
-        >
-          {leagueTag}
-        </span>
-      )}
     </span>
   );
 
+  // The count is a badge beside the chevron (iOS, 2026-09-25): a tally of
+  // the section, not part of its name. Only while collapsed — open, the rows
+  // are the count — and live ("2/3", in the Live chip's green) while any of
+  // the section's games is being played.
+  const liveCount = section.games.filter((g) => isLiveStatus(g.status)).length;
   const countAndChevron = (
     <>
-      <span className="type-meta text-text-secondary">
-        {section.games.length}
-      </span>
+      {!isExpanded && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "type-meta inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 font-semibold tabular-nums",
+            liveCount > 0
+              ? "border border-live-edge bg-live-tint text-live"
+              : "bg-divider text-text-secondary"
+          )}
+        >
+          {liveCount > 0
+            ? `${liveCount}/${section.games.length}`
+            : section.games.length}
+        </span>
+      )}
       <ChevronDown
         aria-hidden="true"
         className={cn(
@@ -108,7 +118,7 @@ export function SectionAccordion({
 
   const toggleLabel = `${section.title}${spokenLeague}, ${section.games.length} ${
     section.games.length === 1 ? "game" : "games"
-  }`;
+  }${liveCount > 0 ? `, ${liveCount} live` : ""}`;
 
   // The mark + name push the table's page; the count + chevron (a generous
   // target) toggles. Every other header toggles whole-width.

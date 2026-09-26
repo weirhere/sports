@@ -46,6 +46,18 @@ struct SettingsScreen: View {
                     Text("A heads-up 30 minutes before each of your teams' games.")
                 }
 
+                Section {
+                    Picker("Appearance", selection: $uiState.appearance) {
+                        ForEach(Appearance.allCases) { Text($0.label) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("settings.appearance")
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("System follows your iPhone's Light or Dark setting.")
+                }
+
                 Section("About") {
                     LabeledContent("Version", value: Self.version)
                 }
