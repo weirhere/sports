@@ -41,6 +41,7 @@ import {
 import { displayName, shortName } from "@/lib/leagues";
 import { conferencePath } from "@/lib/routes";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
+import { TrophyMark } from "@/components/theme/trophy-mark";
 import { cn } from "@/lib/utils";
 
 /** The `gap-3` between cards, in px — what a neighbour travels past. */
@@ -267,7 +268,12 @@ function FollowedTableCard({
 
   const identity = (
     <>
-      <ConferenceLogo src={tableLogoUrl(table)} name="" />
+      {/* Top 25 wears the trophy here too, as its league-list row does. */}
+      {table.kind === "poll" ? (
+        <TrophyMark />
+      ) : (
+        <ConferenceLogo src={tableLogoUrl(table)} name="" />
+      )}
       <span className="sr-only">{spoken}</span>
       {/* No first-place teaser (iOS, 2026-09-21; Andy, 2026-09-25): the
           card answers "which table", and a leader and a record answered a
