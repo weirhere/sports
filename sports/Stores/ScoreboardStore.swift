@@ -458,7 +458,7 @@ final class ScoreboardStore {
     }
 
     // MARK: - Polling
-    // 30s auto-poll, only while the scene is active and a game is live or
+    // Live auto-poll (`DataProvider.pollInterval`), only while the scene is active and a game is live or
     // kicking off. Until the first kickoff the loop sleeps, and a sleep
     // makes no request.
 

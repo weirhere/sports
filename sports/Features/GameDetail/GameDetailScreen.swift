@@ -319,7 +319,7 @@ struct GameDetailScreen: View {
             guard tab == .headToHead else { return }
             await loadSeries()
         }
-        // 30s auto-refresh mirrors the scoreboard's polling rules: only while
+        // The live auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
         // either condition changes, cancelling or restarting the loop — a
         // summary that comes back final stops it on its own. The game rides
