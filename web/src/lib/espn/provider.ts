@@ -142,6 +142,43 @@ function scoreboardSeason(
 }
 
 /**
+ * One league's games on ESPN's own days, named by their `dates=` tokens —
+ * the Scores screen's live poll (2026-09-26).
+ *
+ * The browser works out which Eastern days hold a game in play and sends
+ * their tokens, so nothing here reads the host's clock and nothing is
+ * clipped: a token *is* the day ESPN answers for.
+ */
+export async function scoreboardForDateTokens(
+  league: League,
+  tokens: readonly string[],
+  options?: { groups?: number }
+): Promise<Game[]> {
+  const responses = await Promise.all(
+    tokens.map((dates) =>
+      fetchJson<EspnScoreboardResponse>(
+        dayWindowUrl(league, dates, { groups: options?.groups }),
+        REVALIDATE.scoreboard
+      )
+    )
+  );
+  const [first] = responses;
+  const seasonYear = first ? scoreboardSeason(first, league) : undefined;
+  const seen = new Set<string>();
+  const games: Game[] = [];
+  for (const data of responses) {
+    for (const game of transformScoreboard(data.events ?? [], league, {
+      seasonYear,
+    })) {
+      if (seen.has(game.id)) continue;
+      seen.add(game.id);
+      games.push(game);
+    }
+  }
+  return games;
+}
+
+/**
  * One league's scoreboard for a span of days — the Scores screen's only
  * scoreboard request.
  *

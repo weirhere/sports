@@ -402,7 +402,9 @@ final class ScoreboardStore {
     }
 
     /// One date per Eastern day that holds a game in play, or one past its
-    /// kickoff that ESPN hasn't flipped to live yet.
+    /// kickoff that ESPN hasn't flipped to live yet, up to `kickoffGrace`
+    /// past it: a cached game ESPN never flipped out of pre-game would
+    /// otherwise name its day on every tick, forever.
     ///
     /// Eastern, because that's the day ESPN's `dates=` token names and the
     /// day its answers are clipped to. One *date* per day, because a span
@@ -415,7 +417,7 @@ final class ScoreboardStore {
             let started: Bool
             switch game.status {
             case .live: started = true
-            case .pre: started = date <= now
+            case .pre: started = date <= now && now.timeIntervalSince(date) < kickoffGrace
             case .final, .other: started = false
             }
             guard started else { continue }

@@ -1,6 +1,7 @@
 export {
   scoreboard,
   scoreboardForDays,
+  scoreboardForDateTokens,
   rankings,
   seasonGames,
   conferenceTeams,

@@ -11,7 +11,7 @@
 // a whole one.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, getScoreboardDays } from "@/lib/api";
+import { ApiError, getScoreboardDates, getScoreboardDays } from "@/lib/api";
 import { POLL_INTERVAL_LIVE } from "@/lib/constants";
 import {
   addDays,
@@ -24,6 +24,12 @@ import {
 } from "@/lib/day";
 import { keepingFavorites } from "@/lib/game-closeness";
 import { isLiveStatus } from "@/lib/game-sections";
+import {
+  MAX_LIVE_DAY_TOKENS,
+  WINDOW_REFRESH_MS,
+  liveDayTokens,
+  patchGames,
+} from "@/lib/live-days";
 import { nextPollDelay } from "@/lib/poll-schedule";
 import {
   LEAGUES,
@@ -167,6 +173,9 @@ export function useLeagueScoreboards(
   // result rather than writing a day nobody is looking at.
   const sequence = useRef(0);
   const snapAttempted = useRef(new Set<string>());
+  // When a whole window last came back clean, so a live tick knows whether
+  // it's time to ask for all of it again (`WINDOW_REFRESH_MS`).
+  const lastWindowFetch = useRef<number | null>(null);
 
   const span = useMemo(() => unionSeasonSpan(seasonYear), [seasonYear]);
   const days = useMemo(
@@ -290,10 +299,54 @@ export function useLeagueScoreboards(
       // — so a partial failure used to hold the skeleton up forever while
       // the screen believed nothing was wrong.
       const failures = results.filter((result) => result.failed);
+      if (failures.length === 0) lastWindowFetch.current = Date.now();
       setError(
         failures.length === 0 ? null : describeFailure(failures[0]!.reason)
       );
       setIsLoading(false);
+    },
+    []
+  );
+
+  // The live poll's narrow ask (iOS `ScoreboardStore.fetchLive`): only the
+  // Eastern days with games in play, patched into the buckets by id. Adds
+  // and removes nothing, and never moves the loading state: a partial
+  // answer isn't a load.
+  const fetchLive = useCallback(
+    async (tokensByLeague: ReadonlyMap<League, string[]>) => {
+      const results = await Promise.all(
+        [...tokensByLeague].map(async ([league, tokens]) => {
+          try {
+            const board = await getScoreboardDates(league, tokens);
+            return {
+              league,
+              games: board.games,
+              failed: false,
+              reason: undefined as unknown,
+            };
+          } catch (reason) {
+            return { league, games: [] as Game[], failed: true, reason };
+          }
+        })
+      );
+      setBuckets((previous) => {
+        const next = { ...previous };
+        for (const result of results) {
+          if (result.failed) continue;
+          const fresh = new Map(result.games.map((game) => [game.id, game]));
+          next[result.league] = Object.fromEntries(
+            Object.entries(previous[result.league]).map(([id, games]) => [
+              id,
+              games === undefined ? undefined : patchGames(games, fresh),
+            ])
+          );
+        }
+        return next;
+      });
+      const failures = results.filter((result) => result.failed);
+      setError(
+        failures.length === 0 ? null : describeFailure(failures[0]!.reason)
+      );
     },
     []
   );
@@ -413,7 +466,25 @@ export function useLeagueScoreboards(
       if (document.visibilityState !== "visible") {
         return schedule(POLL_INTERVAL_LIVE);
       }
-      await fetchWindow(selectedDay, { force: true });
+      // Between window refreshes, only the days with games in play
+      // (2026-09-26): one request a league on almost any night, where the
+      // window is five.
+      const windowIsFresh =
+        lastWindowFetch.current !== null &&
+        Date.now() - lastWindowFetch.current < WINDOW_REFRESH_MS;
+      const tokensByLeague = new Map<League, string[]>();
+      let tooWide = false;
+      for (const league of LEAGUES) {
+        const held = Object.values(buckets[league]).flatMap((day) => day ?? []);
+        const tokens = liveDayTokens(held, Date.now());
+        if (tokens.length > MAX_LIVE_DAY_TOKENS) tooWide = true;
+        if (tokens.length > 0) tokensByLeague.set(league, tokens);
+      }
+      if (windowIsFresh && !tooWide && tokensByLeague.size > 0) {
+        await fetchLive(tokensByLeague);
+      } else {
+        await fetchWindow(selectedDay, { force: true });
+      }
       // A write reruns this effect with the new slate; this covers a tick
       // that wrote nothing (the day moved under it, which reruns anyway).
       if (!cancelled) schedule(POLL_INTERVAL_LIVE);
@@ -428,7 +499,7 @@ export function useLeagueScoreboards(
     // `selectedDay` rides `selectedId`; `pollGames` changes with every write,
     // which is what reschedules the loop against the slate it just fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollGames, selectedId, fetchWindow]);
+  }, [pollGames, selectedId, fetchWindow, fetchLive, buckets]);
 
   // --- Navigation ------------------------------------------------------
 

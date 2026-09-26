@@ -394,6 +394,11 @@ private func game(_ id: String, on date: Date?, live: Bool = false,
         #expect(ScoreboardStore.liveDays(in: [b, c], now: Self.now).count == 2)
     }
 
+    @Test func aGameStuckAtPreGamePastTheGraceIsDropped() {
+        let stuck = game("stuck", on: Self.now.addingTimeInterval(-ScoreboardStore.kickoffGrace - 60))
+        #expect(ScoreboardStore.liveDays(in: [stuck], now: Self.now).isEmpty)
+    }
+
     @Test func nothingInPlayAsksForNothing() {
         let games = [game("later", on: Self.now.addingTimeInterval(3600)),
                      final("done", on: Self.now.addingTimeInterval(-3600))]
