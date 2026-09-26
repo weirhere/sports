@@ -3,13 +3,15 @@
 // One player's page — iOS `PlayerPage` (Features/Players/): Profile, Games,
 // Stats and Career.
 //
-// **The tab row appears when there is a second tab to fill** — the rule this
-// page shipped under (2026-09-20), when it was Profile alone because ESPN's
-// athlete endpoints were unprobed. They answer from `site.web.api` now, so a
-// player with a stats line gets all four tabs; a player ESPN has no numbers
-// for — a walk-on, a practice-squad name — still gets Profile alone, with no
-// row of dead tabs over it. `HeroHeader` handed no `tabs` renders exactly
-// that.
+// **One layout: the four tabs, always** (2026-09-25, Andy). Until then the
+// tab row appeared only when ESPN returned a stats line, and a player it had
+// no numbers for — a freshman, a walk-on, a practice-squad name — got
+// Profile alone, the rule iOS `PlayerPage` still keeps (`availableTabs`).
+// On the web that made two pages out of one: the same roster opened a
+// tabbed page for one row and a tabless one for the next. Now every player
+// gets Profile · Games · Stats · Career, and a tab with nothing to show says
+// so — "No games this season", "No stats this season", "No career stats
+// yet" — rather than disappearing. A deliberate divergence from iOS.
 //
 // The hero is a name and a club (2026-09-21). The number and the position
 // are Profile rows, and printing them in the hero as well put the same two
@@ -68,9 +70,7 @@ export function PlayerView({
   stats,
   currentEspnSeason,
 }: PlayerViewProps) {
-  const [tab, setTab] = useState("profile");
-  const hasTabs = stats.categories.length > 0;
-  const activeTab = hasTabs ? tab : "profile";
+  const [activeTab, setTab] = useState("profile");
 
   // The game log waits for the Games tab — most visits never open it — and
   // is then keyed by season, ESPN's numbering; undefined asks for ESPN's
@@ -118,22 +118,14 @@ export function PlayerView({
         title={player.name}
         subtitle={team?.name ? <TeamBadge league={league} team={team} /> : undefined}
         trailing={seasonChip}
-        tabs={
-          hasTabs ? (
-            <HeroTabBar tabs={TABS} selected={activeTab} onSelect={selectTab} />
-          ) : undefined
-        }
+        tabs={<HeroTabBar tabs={TABS} selected={activeTab} onSelect={selectTab} />}
       />
 
       <div
-        {...(hasTabs
-          ? {
-              role: "tabpanel",
-              id: `panel-${activeTab}`,
-              "aria-labelledby": `tab-${activeTab}`,
-            }
-          : {})}
-        className={hasTabs ? "flex flex-col gap-2 py-2" : "mt-4 flex flex-col gap-2"}
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        className="flex flex-col gap-2 py-2"
       >
         {activeTab === "profile" && (
           <>

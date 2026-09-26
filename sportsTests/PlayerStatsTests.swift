@@ -105,6 +105,23 @@ private func gameLog(_ name: String) throws -> PlayerGameLog {
         #expect(headlines.map(\.label) == ["GP", "FGM", "FGA", "FG%"])
     }
 
+    @Test func categoriesWithNoSeasonLinesAreLeftOut() {
+        // A player ESPN names a category for but has no rows under: the
+        // Stats and Career tabs say so instead of drawing a bare header.
+        let bare = PlayerStats.Category(id: "receiving", title: "Receiving",
+                                        labels: ["REC"], names: ["receptions"],
+                                        displayNames: [], seasons: [], career: [])
+        let lined = PlayerStats.Category(
+            id: "rushing", title: "Rushing", labels: ["CAR"], names: ["rushingAttempts"],
+            displayNames: [],
+            seasons: [.init(year: 2026, label: "2026", teamId: nil, teamName: nil,
+                            position: "RB", values: ["12"])],
+            career: [])
+        #expect(PlayerStats(categories: [bare, lined]).categoriesWithLines.map(\.id) == ["rushing"])
+        #expect(PlayerStats(categories: [bare]).categoriesWithLines.isEmpty)
+        #expect(PlayerStats.empty.categoriesWithLines.isEmpty)
+    }
+
     @Test func aRowThatDoesNotMatchItsHeaderIsDropped() throws {
         let json = #"{"categories":[{"name":"passing","labels":["GP","YDS"],"statistics":[{"season":{"year":2026},"stats":["1"]},{"season":{"year":2025},"stats":["1","200"]}]}]}"#
         let dto = try JSONDecoder().decode(PlayerStatsDTO.self, from: Data(json.utf8))

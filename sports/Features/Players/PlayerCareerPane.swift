@@ -16,7 +16,7 @@ struct PlayerCareerPane: View {
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
-            ForEach(stats.categories) { category in
+            ForEach(stats.categoriesWithLines) { category in
                 StatTableCard(
                     title: category.title,
                     columns: category.labels,

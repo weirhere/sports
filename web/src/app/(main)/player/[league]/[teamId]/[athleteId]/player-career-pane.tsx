@@ -12,15 +12,27 @@
 // The club caption is the stats payload's own abbreviation. iOS resolves it
 // through the team directory, which a college player's old FCS school can
 // fall outside of; the payload names every club it lists.
+//
+// A player with no season lines gets an empty state rather than a table
+// header over nothing, since the tab row is always drawn (2026-09-25).
 
 import type { PlayerStats, PlayerSeasonLine } from "@/lib/player-stats";
-import { seasonLineId } from "@/lib/player-stats";
+import { categoriesWithLines, seasonLineId } from "@/lib/player-stats";
 import { CardHeader } from "@/components/card-header";
 
 export function PlayerCareerPane({ stats }: { stats: PlayerStats }) {
+  const categories = categoriesWithLines(stats);
+  if (categories.length === 0) {
+    return (
+      <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+        No career stats yet
+      </section>
+    );
+  }
+
   return (
     <>
-      {stats.categories.map((category) => (
+      {categories.map((category) => (
         <section key={category.id} className="card-surface">
           <CardHeader title={category.title} />
           <div className="overflow-x-auto">

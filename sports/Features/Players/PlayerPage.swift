@@ -3,13 +3,13 @@ import SwiftUI
 /// One player's page: Profile, Games, Stats and Career (E20's design,
 /// 2026-09-20).
 ///
-/// **The tab row appears when there is a second tab to fill** — the rule
-/// this page shipped under (2026-09-20), when it was Profile alone because
-/// ESPN's athlete endpoints were unprobed. The probe ran 2026-09-24 and
-/// answered from `site.web.api.espn.com` in all four leagues (see
-/// `PlayerStatsClient`), so a player with a stats line gets all four tabs.
-/// A player ESPN has no numbers for — a walk-on, a practice-squad name —
-/// still gets Profile alone, with no row of dead tabs over it.
+/// **Four tabs, always** (Andy, 2026-09-25, web first in #217). The page
+/// used to show the tab row only when ESPN had a stats line, so a player
+/// with no numbers — a freshman who hasn't played, a practice-squad name —
+/// got Profile alone, and the same page came in two shapes depending on who
+/// you tapped. Now every player gets Profile · Games · Stats · Career, and a
+/// tab with nothing to show says so ("No stats this season"), the way Games
+/// already said "No games this season".
 struct PlayerPage: View {
     /// What the door that opened this page knew. A roster row knows
     /// everything; a search result knows a name, a league and a club.
@@ -48,20 +48,13 @@ struct PlayerPage: View {
 
     private var shown: PlayerIdentity { filled ?? player }
 
-    private var availableTabs: [Tab] {
-        guard let stats = model.stats, !stats.categories.isEmpty else { return [.profile] }
-        return Tab.allCases
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
                     hero
-                    if availableTabs.count > 1 {
-                        HeroTabBar(tabs: availableTabs, selection: tab,
-                                   onSelect: { tab = $0 })
-                    }
+                    HeroTabBar(tabs: Tab.allCases, selection: tab,
+                               onSelect: { tab = $0 })
                 }
                 .frame(maxWidth: .infinity)
                 .background(Color.bgCard)
@@ -109,7 +102,7 @@ struct PlayerPage: View {
             filled = resolved
         }
         // The numbers: one request, which fills the Current season card
-        // and decides whether the other three tabs exist at all.
+        // and the Stats and Career tabs.
         .task { await model.loadStats() }
         // The game log waits for the Games tab — most visits never open it.
         .task(id: tab == .games ? logSeason ?? -1 : nil) {
@@ -120,16 +113,39 @@ struct PlayerPage: View {
 
     @ViewBuilder
     private var tabContent: some View {
-        switch availableTabs.contains(tab) ? tab : .profile {
+        switch tab {
         case .profile:
             if let card = currentSeason { card }
             profileCard
         case .games:
             gamesPane
         case .stats:
-            if let stats = model.stats { PlayerStatsPane(stats: stats) }
+            statsTab(empty: "No stats this season") { PlayerStatsPane(stats: $0) }
         case .career:
-            if let stats = model.stats { PlayerCareerPane(stats: stats, league: player.league) }
+            statsTab(empty: "No career stats yet") {
+                PlayerCareerPane(stats: $0, league: player.league)
+            }
+        }
+    }
+
+    /// A tab drawn from the stats request: a spinner until it answers, the
+    /// pane when ESPN has a line, and a plain sentence when it has none (a
+    /// failed request answers `.empty`, so it lands here too, not on a
+    /// spinner forever).
+    @ViewBuilder
+    private func statsTab(empty: String,
+                          @ViewBuilder pane: (PlayerStats) -> some View) -> some View {
+        if let stats = model.stats {
+            if stats.categoriesWithLines.isEmpty {
+                Text(empty)
+                    .font(.teamName)
+                    .foregroundStyle(.textSecondary)
+                    .padding(.vertical, Spacing.xl)
+            } else {
+                pane(stats)
+            }
+        } else {
+            ProgressView().padding(.vertical, Spacing.xl)
         }
     }
 
@@ -203,9 +219,9 @@ struct PlayerPage: View {
             Spacer(minLength: 0)
         }
         .padding(.top, Spacing.sm)
-        // Tighter under the hero once a tab row follows it — the row brings
+        // Tight under the hero: the tab row that always follows it brings
         // its own 14pt of padding, as on TeamPage.
-        .padding(.bottom, availableTabs.count > 1 ? Spacing.xs : Spacing.lg)
+        .padding(.bottom, Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         // The card band is the container's now (2026-09-24), shared with the
         // tab row beneath, so the hero only keeps the page gutter.

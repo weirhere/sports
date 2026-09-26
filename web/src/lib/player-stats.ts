@@ -64,6 +64,16 @@ export interface PlayerHeadline {
   value: string;
 }
 
+/**
+ * The categories the Stats and Career tabs have something to show for — at
+ * least one season line. A category ESPN names with no season under it is a
+ * header over nothing, and a player with none of these gets the tabs' empty
+ * states instead (2026-09-25: the web page always shows its four tabs).
+ */
+export function categoriesWithLines(stats: PlayerStats): PlayerStatsCategory[] {
+  return stats.categories.filter((category) => category.seasons.length > 0);
+}
+
 /** A player traded mid-season has two lines for one year. */
 export function seasonLineId(line: PlayerSeasonLine): string {
   return `${line.year}-${line.teamId ?? ""}`;

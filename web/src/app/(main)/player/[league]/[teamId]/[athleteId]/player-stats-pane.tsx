@@ -7,14 +7,26 @@
 // NBA's summer the current season has no games yet, and an empty tab would
 // hide numbers that are only four months old. Each card's subtitle says
 // which season it is, so nothing passes for this year that isn't.
+//
+// A player ESPN has no line for — a freshman, a walk-on — gets an honest
+// empty state here, since the tab row is always drawn (2026-09-25).
 
-import type { PlayerStats } from "@/lib/player-stats";
+import { categoriesWithLines, type PlayerStats } from "@/lib/player-stats";
 import { LabeledValueCard, type LabeledValueRow } from "./labeled-value-card";
 
 export function PlayerStatsPane({ stats }: { stats: PlayerStats }) {
+  const categories = categoriesWithLines(stats);
+  if (categories.length === 0) {
+    return (
+      <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+        No stats this season
+      </section>
+    );
+  }
+
   return (
     <>
-      {stats.categories.map((category) => {
+      {categories.map((category) => {
         const line = category.seasons.at(-1);
         if (!line) return null;
         const rows: LabeledValueRow[] = [];
