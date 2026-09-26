@@ -155,21 +155,24 @@ struct SectionAccordion: View, Equatable {
 
     /// The count rides the trailing edge as a badge beside the chevron
     /// (Andy, 2026-09-25): a tally of the section, not part of its name.
+    /// Only while collapsed — open, the rows are the count — and live
+    /// ("2/3", green) while any of the section's games is being played.
     private var countAndChevron: some View {
         HStack(spacing: Spacing.sm) {
             Spacer()
-            Text("\(section.games.count)")
-                .font(.metaEmphasis)
-                .monospacedDigit()
-                .foregroundStyle(.textSecondary)
-                .padding(.horizontal, 6)
-                .frame(minWidth: 18, minHeight: 18)
-                .background(Capsule().fill(Color.divider))
+            if !isExpanded {
+                SectionCountBadge(live: liveCount, total: section.games.count)
+                    .transition(.opacity)
+            }
             Image(systemName: "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.textSecondary)
                 .rotationEffect(.degrees(isExpanded ? 180 : 0))
         }
+    }
+
+    private var liveCount: Int {
+        section.games.count(where: \.isLive)
     }
 
     /// The header's spoken sentence, carrying the same league anchor the
@@ -178,7 +181,8 @@ struct SectionAccordion: View, Equatable {
     /// Spelled out rather than abbreviated — see `League.spokenName`, which
     /// is where that rule now lives so every spoken surface inherits it.
     private var headerLabel: String {
-        let games = "\(section.games.count) \(section.games.count == 1 ? "game" : "games")"
+        var games = "\(section.games.count) \(section.games.count == 1 ? "game" : "games")"
+        if liveCount > 0 { games += ", \(liveCount) live" }
         guard let league = tagLeague else { return "\(section.title), \(games)" }
         return "\(section.title), \(league.displayName), \(games)"
     }
