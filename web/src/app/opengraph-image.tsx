@@ -353,7 +353,7 @@ export default async function Image() {
           {/* The league line in the app's own caption language: a quiet
               uppercase tag is how a section header names its league
               (2026-09-07), and spelled out rather than abbreviated because
-              a link preview reaches people who don't know "CFB". */}
+              a link preview reaches people who don't know "NCAAF". */}
           <div
             style={{
               display: "flex",

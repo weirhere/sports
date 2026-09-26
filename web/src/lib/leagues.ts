@@ -62,7 +62,7 @@ const SPECS: Record<League, LeagueSpec> = {
   cfb: {
     sportSegment: "football",
     pathSegment: "college-football",
-    shortName: "CFB",
+    shortName: "NCAAF",
     displayName: "College Football",
     // Week 0's last weekend.
     seasonOpensIn: 8,
