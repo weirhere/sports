@@ -16,7 +16,7 @@
 // third league. Its conferences sort below the eleven FBS ones on the tier
 // rule that already orders the list.
 
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown, Star } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -76,7 +76,15 @@ export function LeaguesHub({
   fcsStandings,
 }: LeaguesHubProps) {
   const uiState = useUIState();
-  const { favoriteConferences, favoritePolls } = useFavoritesContext();
+  const {
+    favoriteConferences,
+    favoritePolls,
+    toggleFavoriteConference,
+    toggleFavoritePoll,
+  } = useFavoritesContext();
+  // Following's Edit/Done mode, the only state in which its cards show
+  // their dismiss buttons and grips (iOS, 2026-09-25).
+  const [isEditingFollowing, setIsEditingFollowing] = useState(false);
 
   /**
    * Divisions folded into their conference: the Sun Belt, not
@@ -212,6 +220,11 @@ export function LeaguesHub({
     [followed, loadedTables, polls]
   );
 
+  // Edit mode ends with the list it edits: the last card dismissed.
+  if (isEditingFollowing && followedRows.length === 0) {
+    setIsEditingFollowing(false);
+  }
+
   const leagues = LEAGUES.filter((league) => rowsIn[league].length > 0);
 
   if (leagues.length === 0) {
@@ -228,17 +241,36 @@ export function LeaguesHub({
       <h1 className="sr-only">Leagues</h1>
       {followedRows.length > 0 && (
         <>
-          <SectionHeading title="Following" />
+          <SectionHeading
+            title="Following"
+            trailing={
+              // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
+              // the heading, "Edit" until pressed and "Done" while editing.
+              <button
+                type="button"
+                onClick={() => setIsEditingFollowing((editing) => !editing)}
+                aria-pressed={isEditingFollowing}
+                className={cn(
+                  "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
+                  isEditingFollowing
+                    ? "font-semibold text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {isEditingFollowing ? "Done" : "Edit"}
+              </button>
+            }
+          />
           <FollowedTablesList
             tables={followedRows}
-            order={uiState.tableOrder}
+            allTables={followed}
+            isEditing={isEditingFollowing}
             onReorder={uiState.setTableOrder}
-            resolve={(table) =>
+            onUnfollow={(table) =>
               table.kind === "poll"
-                ? undefined
-                : findTable(loadedTables, table.ref)
+                ? toggleFavoritePoll(table.league)
+                : toggleFavoriteConference(conferenceToken(table.ref))
             }
-            polls={polls}
           />
         </>
       )}
@@ -259,9 +291,19 @@ export function LeaguesHub({
   );
 }
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+  title,
+  trailing,
+}: {
+  title: string;
+  /** A right-aligned accessory on the heading's own line. */
+  trailing?: ReactNode;
+}) {
   return (
-    <h2 className="px-1 pt-1 type-team-name-em text-text-primary">{title}</h2>
+    <div className="flex items-baseline justify-between gap-2 px-1 pt-1">
+      <h2 className="type-team-name-em text-text-primary">{title}</h2>
+      {trailing}
+    </div>
   );
 }
 

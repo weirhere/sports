@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Game, GameTeam, Team } from "./types";
 import type { League } from "./leagues";
 import {
+  moveAmongVisible,
   orderedTables,
   parseTableToken,
   tableLogoUrl,
@@ -154,3 +155,38 @@ describe("ordering", () => {
     expect(tables.map(tableToken)).toEqual(["conf-cfb:8"]);
   });
 });
+
+describe("moving among the visible cards", () => {
+  // The Following cards skip a followed table with no data, so a drop index
+  // there is a slot among the cards on screen, not in the stored order.
+  const poll: FollowedTable = { kind: "poll", league: "cfb" };
+  const sec = parseTableToken("conf-cfb:8")!;
+  const mac = parseTableToken("conf-cfb:15")!;
+  const afc = parseTableToken("conf-nfl:8")!;
+
+  it("keeps a hidden table in the order and doesn't shift the drop", () => {
+    // Poll is followed but has no card.
+    const next = moveAmongVisible([poll, sec, mac, afc], afc, 1, [sec, mac, afc]);
+    expect(next).toEqual(["poll-cfb", "conf-cfb:8", "conf-nfl:8", "conf-cfb:15"]);
+  });
+
+  it("lands the past-the-end slot after the last card, ahead of a hidden one", () => {
+    const next = moveAmongVisible([sec, mac, poll], sec, 1, [sec, mac]);
+    expect(next).toEqual(["conf-cfb:15", "conf-cfb:8", "poll-cfb"]);
+  });
+
+  it("matches a plain move when nothing is hidden", () => {
+    const all = [sec, mac, afc];
+    expect(moveAmongVisible(all, sec, 2, all)).toEqual([
+      "conf-cfb:15",
+      "conf-nfl:8",
+      "conf-cfb:8",
+    ]);
+    expect(moveAmongVisible(all, afc, 0, all)).toEqual([
+      "conf-nfl:8",
+      "conf-cfb:8",
+      "conf-cfb:15",
+    ]);
+  });
+});
+
