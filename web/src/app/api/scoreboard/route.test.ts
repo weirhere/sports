@@ -11,6 +11,7 @@ import { EspnApiError } from "@/lib/espn";
  */
 
 const scoreboardForDays = vi.fn();
+const scoreboardForDateTokens = vi.fn();
 const scoreboard = vi.fn();
 
 vi.mock("@/lib/espn", async () => {
@@ -18,6 +19,8 @@ vi.mock("@/lib/espn", async () => {
   return {
     ...actual,
     scoreboardForDays: (...args: unknown[]) => scoreboardForDays(...args),
+    scoreboardForDateTokens: (...args: unknown[]) =>
+      scoreboardForDateTokens(...args),
     scoreboard: (...args: unknown[]) => scoreboard(...args),
   };
 });
@@ -77,5 +80,30 @@ describe("GET /api/scoreboard", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ league: "cfb" });
+  });
+
+  it("asks for ESPN's own days when the live poll names them", async () => {
+    scoreboardForDateTokens.mockResolvedValue([]);
+
+    const response = await GET(
+      request("league=cfb&dates=20260925,20260926")
+    );
+
+    expect(response.status).toBe(200);
+    expect(scoreboardForDateTokens).toHaveBeenCalledWith(
+      "cfb",
+      ["20260925", "20260926"],
+      { groups: undefined }
+    );
+    expect(scoreboardForDays).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({ league: "cfb", games: [] });
+  });
+
+  it("rejects malformed or too many date tokens before asking ESPN", async () => {
+    for (const dates of ["2026-09-25", "20260925,x", "1,2,3,4", ""]) {
+      const response = await GET(request(`league=cfb&dates=${dates}`));
+      expect(response.status).toBe(400);
+    }
+    expect(scoreboardForDateTokens).not.toHaveBeenCalled();
   });
 });

@@ -89,7 +89,7 @@ export function espnMonthTokens(start: Date, end: Date): string[] {
  *
  * A month is always the cheaper *request* and never the cheaper *answer* —
  * college football's September is 323 events against a Saturday's 70 — so
- * the Scores window, which is five days and revalidates every 30s, stays
+ * the Scores window, which is five days and revalidates every second, stays
  * daily. A season sweep does not and goes monthly. Either way the caller
  * clips the answer back to the span, so this is a cost decision only.
  */

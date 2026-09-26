@@ -30,8 +30,12 @@ nonisolated enum DataProvider {
         return ESPNClient(league: league)
     }
 
-    /// The scoreboard and game-detail poll cadence: 30 seconds, the
-    /// polite-guest floor. DEBUG builds may compress it via the
+    /// The scoreboard and game-detail poll cadence while a game is live:
+    /// 1 second. ESPN's CDN serves `/summary` at `max-age=1` and
+    /// `/scoreboard` at `max-age=3`, and each tick is one ~50–90KB gzipped
+    /// request, so a live row is never more than a tick or two behind ESPN.
+    /// It was 30s, a polite-guest floor that left the list visibly behind
+    /// the broadcast, then briefly 5s (both 2026-09-26). DEBUG builds may compress it via the
     /// `poll.interval` default (seconds) so the fixture-backed regression
     /// tests can pack many refresh cycles into one run; release builds
     /// ignore the override entirely.
@@ -40,7 +44,7 @@ nonisolated enum DataProvider {
         let seconds = UserDefaults.standard.double(forKey: "poll.interval")
         if seconds > 0 { return .milliseconds(Int(seconds * 1000)) }
         #endif
-        return .seconds(30)
+        return .seconds(1)
     }
 
     static func cfbdKey(defaults: UserDefaults = .standard) -> String? {

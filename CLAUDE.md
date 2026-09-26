@@ -65,7 +65,7 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 **Rules for working with this API:**
 - It is undocumented and can change without notice. Every response field is optional in our decoders. No force-unwraps, no `try!` on decode paths. A missing field degrades the row, never crashes the app.
 - Isolate ESPN's shapes in DTO structs; map them to our own domain models at the client boundary. If we ever swap to CollegeFootballData.com, the blast radius is one file.
-- Poll the scoreboard no faster than every 30s, and only while the app is foregrounded and games are live. Be a polite guest.
+- Live data is the product: while a game is live, the scoreboard and game page poll every 1s (`DataProvider.pollInterval`), as fast as ESPN's CDN refreshes the game summary (`max-age=1`; the scoreboard is `max-age=3`). Poll only while the app is foregrounded and games are live or kicking off; a quiet slate makes no requests. *(Amended 2026-09-26: was a 30s polite-guest floor, which left scores visibly behind the broadcast.)*
 - Not for commercial use long-term. Fine for a personal v1; needs a licensing answer before any public/App Store ambition beyond personal use.
 
 ## Conventions

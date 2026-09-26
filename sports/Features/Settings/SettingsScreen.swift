@@ -67,10 +67,11 @@ struct SettingsScreen: View {
             .scrollContentBackground(.hidden)
             .background(Color.bgRecessed)
             .listRowBackground(Color.bgCard)
-            // Monochrome switches (no green: the color budget). Ink on light,
-            // but on dark an ink track is white under a white thumb and the
-            // "on" state disappears, so dark takes the secondary gray.
-            .tint(colorScheme == .dark ? Color.textSecondary : Color.textPrimary)
+            // Ink on light. On dark an ink track is white under a white thumb,
+            // and the secondary gray that replaced it read as disabled, so dark
+            // spends the app's one green (2026-09-26): a switch's "on" is the
+            // one state it exists to show.
+            .tint(colorScheme == .dark ? Color.rankUp : Color.textPrimary)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
