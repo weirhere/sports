@@ -407,6 +407,12 @@ final class LeagueScoreboards {
         for store in all { store.stopPolling() }
     }
 
+    /// The game page's summary, handed to the store for that game's league
+    /// (`ScoreboardStore.absorb`).
+    func absorb(_ summary: GameSummary, for game: Game) {
+        store(for: game.home.team.league).absorb(summary, gameId: game.id)
+    }
+
     /// Widen or narrow every league's divisions together.
     func select(divisions: Set<Conference.Division>) async {
         // Each store drops its cache before refetching, so the selected day

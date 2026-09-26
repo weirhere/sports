@@ -2,13 +2,21 @@
 //
 // `league` is required and validated: it selects the ESPN base URL, and a
 // league we don't know would otherwise build a URL for a sport that doesn't
-// exist. Either a week (`week` + `seasontype`) or a day window (`start` +
-// `end`, as `YYYY-MM-DD`) — the day window is what the Scores screen asks
-// for, the week is what a football league's own pages still use.
+// exist. Either a week (`week` + `seasontype`), a day window (`start` +
+// `end`, as `YYYY-MM-DD`), or ESPN's own day tokens (`dates`, comma
+// separated `YYYYMMDD`). The day window is what the Scores screen asks for,
+// `dates` is its live poll, and the week is what a football league's own
+// pages still use.
 
 import { NextRequest, NextResponse } from "next/server";
-import { EspnApiError, scoreboard, scoreboardForDays } from "@/lib/espn";
+import {
+  EspnApiError,
+  scoreboard,
+  scoreboardForDateTokens,
+  scoreboardForDays,
+} from "@/lib/espn";
 import { parseLeague } from "@/lib/leagues";
+import { MAX_LIVE_DAY_TOKENS } from "@/lib/live-days";
 
 function numberParam(value: string | null): number | undefined {
   if (value === null) return undefined;
@@ -29,6 +37,19 @@ function dayParam(value: string | null): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+
+/**
+ * `20260925,20260926` as tokens; undefined if absent or malformed. Capped
+ * at `MAX_LIVE_DAY_TOKENS`, so a hostile query can't fan out into a
+ * request per token.
+ */
+function dateTokensParam(value: string | null): string[] | undefined {
+  if (value === null) return undefined;
+  const tokens = value.split(",");
+  if (tokens.length === 0 || tokens.length > MAX_LIVE_DAY_TOKENS) return undefined;
+  return tokens.every((token) => /^\d{8}$/.test(token)) ? tokens : undefined;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const league = parseLeague(searchParams.get("league"));
@@ -40,7 +61,17 @@ export async function GET(request: NextRequest) {
   const end = dayParam(searchParams.get("end"));
   const groups = numberParam(searchParams.get("groups"));
 
+  const datesValue = searchParams.get("dates");
+  const dates = dateTokensParam(datesValue);
+  if (datesValue !== null && !dates) {
+    return NextResponse.json({ error: "Bad dates" }, { status: 400 });
+  }
+
   try {
+    if (dates) {
+      const games = await scoreboardForDateTokens(league, dates, { groups });
+      return NextResponse.json({ league, games });
+    }
     const board =
       start && end
         ? await scoreboardForDays(league, start, end, { groups })

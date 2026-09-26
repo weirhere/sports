@@ -102,11 +102,14 @@ export class EspnDataError extends Error {
   }
 }
 
-// Cache lifetimes (seconds) per endpoint class — scoreboard and live game
-// detail at the app's 30s polling floor, slow-moving data much longer.
+// Cache lifetimes (seconds) per endpoint class. Scoreboard and game summary
+// are 1s, the client's live poll and the shortest lifetime Next's data
+// cache takes: it still coalesces every visitor's tick into one ESPN request
+// a second. Next serves one stale copy while it revalidates, so a live row
+// can trail ESPN by one tick. Slow-moving data keeps much longer lifetimes.
 const REVALIDATE = {
-  scoreboard: 30,
-  gameSummary: 30,
+  scoreboard: 1,
+  gameSummary: 1,
   rankings: 300,
   standings: 300,
   schedule: 3600,
@@ -136,6 +139,43 @@ function scoreboardSeason(
 ): number | undefined {
   const raw = data.season?.year;
   return raw !== undefined ? seasonYearFromEspn(league, raw) : undefined;
+}
+
+/**
+ * One league's games on ESPN's own days, named by their `dates=` tokens —
+ * the Scores screen's live poll (2026-09-26).
+ *
+ * The browser works out which Eastern days hold a game in play and sends
+ * their tokens, so nothing here reads the host's clock and nothing is
+ * clipped: a token *is* the day ESPN answers for.
+ */
+export async function scoreboardForDateTokens(
+  league: League,
+  tokens: readonly string[],
+  options?: { groups?: number }
+): Promise<Game[]> {
+  const responses = await Promise.all(
+    tokens.map((dates) =>
+      fetchJson<EspnScoreboardResponse>(
+        dayWindowUrl(league, dates, { groups: options?.groups }),
+        REVALIDATE.scoreboard
+      )
+    )
+  );
+  const [first] = responses;
+  const seasonYear = first ? scoreboardSeason(first, league) : undefined;
+  const seen = new Set<string>();
+  const games: Game[] = [];
+  for (const data of responses) {
+    for (const game of transformScoreboard(data.events ?? [], league, {
+      seasonYear,
+    })) {
+      if (seen.has(game.id)) continue;
+      seen.add(game.id);
+      games.push(game);
+    }
+  }
+  return games;
 }
 
 /**

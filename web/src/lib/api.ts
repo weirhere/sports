@@ -1,4 +1,4 @@
-import type { GameDetail, Scoreboard } from "./types";
+import type { Game, GameDetail, Scoreboard } from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
@@ -88,6 +88,18 @@ export async function getScoreboardDays(
     start: dayId(start),
     end: dayId(end),
   });
+  return fetchJson(`${BASE}/scoreboard?${params}`);
+}
+
+/**
+ * One league's games on ESPN's own days, by `dates=` token — the Scores
+ * screen's live poll, between whole-window refreshes (`@/lib/live-days`).
+ */
+export async function getScoreboardDates(
+  league: League,
+  tokens: readonly string[]
+): Promise<{ league: League; games: Game[] }> {
+  const params = new URLSearchParams({ league, dates: tokens.join(",") });
   return fetchJson(`${BASE}/scoreboard?${params}`);
 }
 

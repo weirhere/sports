@@ -21,6 +21,9 @@ struct GameDetailScreen: View {
     /// the environment (previews).
     private var showsLines: Bool { uiState?.showsLines ?? false }
     @Environment(Router.self) private var router: Router?
+    /// Optional like the router: previews and tests build this screen
+    /// without the app's environment.
+    @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
     @Environment(\.requestReview) private var requestReview
 
     @State private var loadedSummary: GameSummary?
@@ -316,7 +319,7 @@ struct GameDetailScreen: View {
             guard tab == .headToHead else { return }
             await loadSeries()
         }
-        // 30s auto-refresh mirrors the scoreboard's polling rules: only while
+        // The live auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
         // either condition changes, cancelling or restarting the loop — a
         // summary that comes back final stops it on its own. The game rides
@@ -803,6 +806,9 @@ struct GameDetailScreen: View {
             guard game.routeKey == key else { return }
             loadedSummary = loaded
             lastError = nil
+            // The Scores list's copy of this game catches up to this one,
+            // which is usually the fresher of the two (2026-09-26).
+            scoreboards?.absorb(loaded, for: game)
         } catch {
             guard game.routeKey == key else { return }
             lastError = "Couldn't load this game."

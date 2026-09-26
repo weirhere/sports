@@ -54,7 +54,7 @@ export function mergeLiveSnapshot(
 }
 
 /**
- * 30s polling, only while the game is live AND the tab is visible —
+ * 1s polling, only while the game is live AND the tab is visible —
  * mirroring the iOS detail screen's scene-active poll loop. A summary that
  * comes back final stops the loop on its own; returning to a visible tab
  * polls immediately instead of waiting out the interval.
