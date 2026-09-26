@@ -19,9 +19,11 @@ import SwiftUI
 /// than an empty one. The tab is named for the accordions ("Leagues"),
 /// not for what they hold.
 ///
-/// Following is one card per followed table, draggable (Andy, 2026-09-06):
+/// Following is one card per followed table, reorderable (Andy, 2026-09-06):
 /// the Teams tab's shape, and the order is the order those same tables lead
-/// the Scores page in, one tab over. See `FollowedTablesList`.
+/// the Scores page in, one tab over. Arranging and unfollowing happen in an
+/// Edit mode behind a link on the section's heading (Andy, 2026-09-25) —
+/// see `FollowedTablesList`.
 ///
 /// FCS is inside College Football's card, not beside it (Andy,
 /// 2026-09-06): the hub's accordions are leagues, and FCS is a division of
@@ -47,6 +49,9 @@ struct TablesScreen: View {
     /// Set while a Following card is lifted, so the hub's ScrollView stops
     /// competing for the same vertical pan. See `FollowedTablesList`.
     @State private var isReordering = false
+    /// Following's Edit/Done mode, the only state in which its cards show
+    /// their dismiss buttons and grips (Andy, 2026-09-25).
+    @State private var isEditingFollowing = false
     @State private var query = ""
 
     /// One mark box across the hub and the search rows.
@@ -317,14 +322,18 @@ struct TablesScreen: View {
                 LazyVStack(spacing: Spacing.sm) {
                     let followed = visibleFollowedRows
                     if !followed.isEmpty {
-                        ListSectionHeading(title: "Following")
+                        ListSectionHeading(title: "Following") {
+                            followingEditLink
+                        }
                         // The list owns its own cards' identities, which
                         // are the follow tokens — distinct from the ids
                         // the same conferences use inside their league's
                         // accordion below, since duplicate identities in
                         // one LazyVStack corrupt its layout (blank
                         // card-sized gaps).
-                        FollowedTablesList(rows: followed, isReordering: $isReordering)
+                        FollowedTablesList(rows: followed,
+                                           isEditing: isEditingFollowing,
+                                           isReordering: $isReordering)
                         // Only ever the boundary under Following: with no
                         // Following section the heading sits one line under
                         // a page title already saying "Leagues".
@@ -345,6 +354,14 @@ struct TablesScreen: View {
             .background(Color.bgRecessed)
             .scrollDisabled(isReordering)
             .refreshable { await load() }
+            // Edit mode is a thing you do to the list in front of you, so
+            // it ends when the list does: the last card dismissed, a
+            // search narrowing it (its drop indices would be a filtered
+            // list's), or the screen going away.
+            .onChange(of: visibleFollowedRows.isEmpty || !trimmedQuery.isEmpty) { _, ends in
+                if ends { isEditingFollowing = false }
+            }
+            .onDisappear { isEditingFollowing = false }
         } else if isLoading {
             Spacer()
             ProgressView()
@@ -360,6 +377,32 @@ struct TablesScreen: View {
             .font(.teamNameEmphasis)
             .foregroundStyle(.textPrimary)
             Spacer()
+        }
+    }
+
+    /// FotMob's Leagues link (Andy, 2026-09-25): right-aligned on the
+    /// Following heading, "Edit" until tapped and "Done" while editing.
+    /// Hidden while a search narrows the list, since a reorder there would
+    /// be arranging a filtered subset.
+    @ViewBuilder
+    private var followingEditLink: some View {
+        if trimmedQuery.isEmpty {
+            Button {
+                withAnimation(.snappy(duration: 0.25)) {
+                    isEditingFollowing.toggle()
+                }
+            } label: {
+                Text(isEditingFollowing ? "Done" : "Edit")
+                    .font(isEditingFollowing ? .subheadline.weight(.semibold) : .subheadline)
+                    .foregroundStyle(isEditingFollowing ? Color.textPrimary : Color.textSecondary)
+                    // The ink is a word; the target is a thumb.
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("following-edit")
+            // The 44pt target shouldn't push the heading's line taller.
+            .padding(.vertical, -12)
         }
     }
 

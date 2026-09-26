@@ -28,6 +28,12 @@ struct ConferenceListRow: View {
     /// football's FBS and FCS, whose ids no team carries, so a star there
     /// would set a follow that matched no game.
     var showsFollow: Bool = true
+    /// Whether the name carries its league, as the Scores headers do:
+    /// "ACC - NCAAF". On for the Leagues tab's Following cards (Andy,
+    /// 2026-09-25), where tables from every league share one list and
+    /// "Eastern" is two different tables; off inside a league's own
+    /// accordion, which already says it. See `LeagueTitle`.
+    var showsLeagueTag: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -86,7 +92,9 @@ struct ConferenceListRow: View {
     private var displayName: String { title ?? conference.name }
 
     private var nameText: some View {
-        Text(displayName)
+        Text(showsLeagueTag
+             ? LeagueTitle.joined(displayName, league: conference.league)
+             : displayName)
             .font(.teamName)
             .foregroundStyle(.textPrimary)
             .lineLimit(isStacked ? 2 : 1)
@@ -95,6 +103,13 @@ struct ConferenceListRow: View {
             // "Northwest (West)" clipped while the leader beside it sat
             // whole.
             .layoutPriority(1)
+    }
+
+    /// The name as VoiceOver says it: the league spelled out, not "NCAAF".
+    private var spokenName: String {
+        showsLeagueTag
+            ? LeagueTitle.spoken(displayName, league: conference.league)
+            : displayName
     }
 
     @ViewBuilder
@@ -139,8 +154,8 @@ struct ConferenceListRow: View {
     var accessibilitySummary: String {
         guard showsLeader, !isLeagueWide,
               let leader = conference.leader,
-              let record = leaderRecord(leader) else { return displayName }
+              let record = leaderRecord(leader) else { return spokenName }
         let spoken = record.replacingOccurrences(of: "-", with: " and ")
-        return "\(displayName), led by \(leader.team.location) at \(spoken)"
+        return "\(spokenName), led by \(leader.team.location) at \(spoken)"
     }
 }

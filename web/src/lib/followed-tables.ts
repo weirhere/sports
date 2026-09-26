@@ -168,3 +168,37 @@ export function orderedTables(options: {
     return compareTablesByDefault(lhs, rhs);
   });
 }
+
+/**
+ * Reorder by a drop into a list that shows only *some* of the order — the
+ * Following cards, which skip a followed table whose data didn't load.
+ * `index` is the insertion index among `visible` with `table` taken out,
+ * resolved against the neighbours on screen rather than read as a position
+ * in the full order. Returns the whole new order as tokens.
+ *
+ * Mirrors iOS `FollowingStore.move(_:to:among:)` (2026-09-25). The drag used
+ * to save only the visible cards' tokens, which dropped a hidden table out of
+ * the stored order entirely: it fell back to the default sort, at the end.
+ */
+export function moveAmongVisible(
+  ordered: readonly FollowedTable[],
+  table: FollowedTable,
+  index: number,
+  visible: readonly FollowedTable[]
+): string[] {
+  const token = tableToken(table);
+  const tokens = ordered.map(tableToken);
+  const others = visible.map(tableToken).filter((t) => t !== token);
+  const rest = tokens.filter((t) => t !== token);
+  if (others.length === 0 || !tokens.includes(token)) return tokens;
+
+  let at: number;
+  if (index < others.length) {
+    at = rest.indexOf(others[Math.max(index, 0)]);
+  } else {
+    at = rest.indexOf(others[others.length - 1]) + 1;
+  }
+  if (at < 0) return tokens;
+  rest.splice(at, 0, token);
+  return rest;
+}

@@ -16,7 +16,7 @@
 // third league. Its conferences sort below the eleven FBS ones on the tier
 // rule that already orders the list.
 
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown, Star } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -24,7 +24,6 @@ import {
   conferenceLogoUrl,
   conferenceName,
   divisionGroupId,
-  isDivisionRoot,
   collegeDivision,
 } from "@/lib/conferences";
 import {
@@ -33,9 +32,6 @@ import {
   foldingDivisions,
   followableTables,
   isFollowable,
-  isLeagueWide,
-  leaderOf,
-  leaderRecord,
   leagueTable,
   tableRef,
 } from "@/lib/standings-tables";
@@ -53,6 +49,7 @@ import { conferenceToken } from "@/lib/refs";
 import { conferencePath } from "@/lib/routes";
 import { orderedTables } from "@/lib/followed-tables";
 import { FollowedTablesList } from "@/components/followed-tables-list";
+import { TrophyMark } from "@/components/theme/trophy-mark";
 import { cn } from "@/lib/utils";
 
 interface LeaguesHubProps {
@@ -76,7 +73,15 @@ export function LeaguesHub({
   fcsStandings,
 }: LeaguesHubProps) {
   const uiState = useUIState();
-  const { favoriteConferences, favoritePolls } = useFavoritesContext();
+  const {
+    favoriteConferences,
+    favoritePolls,
+    toggleFavoriteConference,
+    toggleFavoritePoll,
+  } = useFavoritesContext();
+  // Following's Edit/Done mode, the only state in which its cards show
+  // their dismiss buttons and grips (iOS, 2026-09-25).
+  const [isEditingFollowing, setIsEditingFollowing] = useState(false);
 
   /**
    * Divisions folded into their conference: the Sun Belt, not
@@ -212,6 +217,11 @@ export function LeaguesHub({
     [followed, loadedTables, polls]
   );
 
+  // Edit mode ends with the list it edits: the last card dismissed.
+  if (isEditingFollowing && followedRows.length === 0) {
+    setIsEditingFollowing(false);
+  }
+
   const leagues = LEAGUES.filter((league) => rowsIn[league].length > 0);
 
   if (leagues.length === 0) {
@@ -228,24 +238,48 @@ export function LeaguesHub({
       <h1 className="sr-only">Leagues</h1>
       {followedRows.length > 0 && (
         <>
-          <SectionHeading title="Following" />
+          <SectionHeading
+            title="Following"
+            trailing={
+              // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
+              // the heading, "Edit" until pressed and "Done" while editing.
+              <button
+                type="button"
+                onClick={() => setIsEditingFollowing((editing) => !editing)}
+                aria-pressed={isEditingFollowing}
+                className={cn(
+                  "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
+                  isEditingFollowing
+                    ? "font-semibold text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {isEditingFollowing ? "Done" : "Edit"}
+              </button>
+            }
+          />
           <FollowedTablesList
             tables={followedRows}
-            order={uiState.tableOrder}
+            allTables={followed}
+            isEditing={isEditingFollowing}
             onReorder={uiState.setTableOrder}
-            resolve={(table) =>
+            onUnfollow={(table) =>
               table.kind === "poll"
-                ? undefined
-                : findTable(loadedTables, table.ref)
+                ? toggleFavoritePoll(table.league)
+                : toggleFavoriteConference(conferenceToken(table.ref))
             }
-            polls={polls}
           />
         </>
       )}
 
       {/* The complete list. Followed rows repeat inside their league —
           sections stay complete, never deduplicated. */}
-      {followedRows.length > 0 && <SectionHeading title="Leagues" />}
+      {/* Names what's below rather than repeating the tab (iOS,
+          2026-09-21): every table the app has — the four leagues, their
+          conferences, and the divisions inside those. */}
+      {followedRows.length > 0 && (
+        <SectionHeading title="All leagues, conferences, divisions" />
+      )}
       {leagues.map((league) => (
         <LeagueAccordion
           key={league}
@@ -259,9 +293,19 @@ export function LeaguesHub({
   );
 }
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+  title,
+  trailing,
+}: {
+  title: string;
+  /** A right-aligned accessory on the heading's own line. */
+  trailing?: ReactNode;
+}) {
   return (
-    <h2 className="px-1 pt-1 type-team-name-em text-text-primary">{title}</h2>
+    <div className="flex items-baseline justify-between gap-2 px-1 pt-1">
+      <h2 className="type-team-name-em text-text-primary">{title}</h2>
+      {trailing}
+    </div>
   );
 }
 
@@ -284,22 +328,21 @@ function LeagueAccordion({
         type="button"
         onClick={onToggle}
         aria-expanded={isExpanded}
-        aria-label={`${displayName(league)}, ${rows.length} ${
-          rows.length === 1 ? "table" : "tables"
-        }`}
+        aria-label={displayName(league)}
         className="flex min-h-12 w-full items-center gap-3 bg-bg-header px-4 py-2.5 text-left transition-colors hover:bg-bg-elevated/60"
       >
         <ConferenceLogo src={leagueLogoUrl(league)} name="" />
-        <span className="type-section-header text-text-primary">
+        {/* The row type's own weight (iOS, 2026-09-21): a league header
+            is a row in the same stack as its tables, one step bolder, not
+            a smaller section caption. No table count: the hub answers
+            "which table", and a tally answered a different question. */}
+        <span className="type-team-name-em text-text-primary">
           {displayName(league)}
-        </span>
-        <span className="ml-auto type-meta text-text-secondary">
-          {rows.length}
         </span>
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "h-4 w-4 text-text-secondary transition-transform",
+            "ml-auto h-4 w-4 text-text-secondary transition-transform",
             isExpanded && "rotate-180"
           )}
         />
@@ -322,7 +365,7 @@ function LeagueAccordion({
               <div key={rowKey(row)}>
                 {index > 0 && <div className="ml-4 border-t border-divider" />}
                 {row.kind === "poll" ? (
-                  <Top25Row polls={row.polls} league={row.league} />
+                  <Top25Row league={row.league} />
                 ) : (
                   <TableRow table={row.table} />
                 )}
@@ -342,21 +385,13 @@ function rowKey(row: HubRow): string {
 /**
  * The poll's row — the same shape as a table row, leading its league.
  *
- * It wears **college football's mark, not a trophy** (iOS, 2026-09-06):
- * "Top 25" never said whose, which is fine while one league polls and
- * confusing the moment a second one does.
+ * It wears a **trophy** (iOS, 2026-09-21, superseding 2026-09-06's
+ * league mark): on a hub where every other row wears a real crest, a
+ * football among four leagues identified nothing its neighbours didn't.
+ * The trophy says what kind of table this is. See `TrophyMark`.
  */
-export function Top25Row({
-  polls,
-  league,
-}: {
-  polls: Poll[];
-  league: League;
-}) {
+export function Top25Row({ league }: { league: League }) {
   const { isFavoritePoll, toggleFavoritePoll } = useFavoritesContext();
-  // "#1 Ohio State" from the first displayed poll. The row doesn't track
-  // the picker choice — it's a teaser, not the poll.
-  const top = polls[0]?.ranks[0];
   const followed = isFavoritePoll(league);
 
   return (
@@ -364,17 +399,15 @@ export function Top25Row({
       <Link
         href="/rankings/poll"
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
-        aria-label={top ? `Top 25, number 1 ${top.team.school}` : "Top 25"}
+        aria-label="Top 25"
       >
-        <ConferenceLogo src={leagueLogoUrl(league)} name="" />
-        <span className="shrink-0 type-team-name text-text-primary">
+        <TrophyMark />
+        {/* No "#1 Ohio State" teaser (iOS, 2026-09-21): the hub answers
+            "which table", and a standing answers a different question in
+            the same row. The poll page is one tap away. */}
+        <span className="min-w-0 truncate type-team-name text-text-primary">
           Top 25
         </span>
-        {top && (
-          <span className="truncate type-meta text-text-secondary">
-            #1 {top.team.school}
-          </span>
-        )}
       </Link>
       <FollowStar
         followed={followed}
@@ -386,8 +419,12 @@ export function Top25Row({
 }
 
 /**
- * One table: mark, name, leader teaser, follow star. The row navigates to
- * that table's page; the star doesn't.
+ * One table: mark, name, follow star. The row navigates to that table's
+ * page; the star doesn't.
+ *
+ * No leader teaser (iOS, 2026-09-21). The accordion is a way *into* a
+ * league's tables, and a leader beside every row is a column of numbers
+ * nobody is comparing — they belong on the table the row opens.
  */
 function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const { isFavoriteConference, toggleFavoriteConference } =
@@ -396,49 +433,20 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const token = ref ? conferenceToken(ref) : undefined;
   const followed = token !== undefined && isFavoriteConference(token);
 
-  const leader = leaderOf(table);
-  const record = leader ? leaderRecord(leader) : undefined;
-
-  /**
-   * A **whole-league row shows no teaser at all** (iOS, 2026-09-09). Its
-   * "leader" is only the best record in the sport, which is not what a
-   * league row is asked — and the number would be an *in-group* record on
-   * a row spanning every group.
-   *
-   * A college-football division root shows none either: FBS's "leader" is
-   * whichever conference table happened to sort first.
-   */
-  const teasable =
-    !isLeagueWide(table) && !isDivisionRoot(Number(table.id), table.league);
-  const teaser =
-    teasable && leader && record
-      ? `${leader.team.school} · ${record}`
-      : undefined;
-
-  const spokenRecord = record?.replaceAll("-", " and ");
-  const rowLabel = teaser
-    ? `${table.name}, led by ${leader!.team.school} at ${spokenRecord}`
-    : table.name;
-
   return (
     <div className="flex min-h-12 items-center gap-3 pr-2">
       <Link
         href={ref ? conferencePath(ref) : "#"}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
-        aria-label={rowLabel}
+        aria-label={table.name}
       >
         <ConferenceLogo
           src={ref ? conferenceLogoUrl(ref.id, ref.league) : undefined}
           name=""
         />
-        <span className="shrink-0 type-team-name text-text-primary">
+        <span className="min-w-0 truncate type-team-name text-text-primary">
           {table.name}
         </span>
-        {teaser && (
-          <span className="truncate type-meta text-text-secondary">
-            {teaser}
-          </span>
-        )}
       </Link>
       {token !== undefined && isFollowable(table) && (
         <FollowStar

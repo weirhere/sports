@@ -94,6 +94,23 @@ final class FollowingStore {
         move(table, to: to)
     }
 
+    /// Reorder by a drop into a list that shows only *some* of the order —
+    /// the Leagues tab's Following cards, which skip a followed table whose
+    /// data didn't load. `index` is the insertion index into `visible` with
+    /// `table` taken out, and it is resolved against the neighbours on
+    /// screen rather than read as a position in the full order: a hidden
+    /// table ahead of the card would otherwise land it one slot off.
+    func move(_ table: FollowedTable, to index: Int, among visible: [FollowedTable]) {
+        let others = visible.filter { $0 != table }
+        guard let last = others.last else { return }
+        let tables = orderedTables.filter { $0 != table }
+        if index < others.count, let next = tables.firstIndex(of: others[max(index, 0)]) {
+            move(table, to: next)
+        } else if let previous = tables.firstIndex(of: last) {
+            move(table, to: previous + 1)
+        }
+    }
+
     private func setOrder(_ tables: [FollowedTable]) {
         tableOrder = tables.map(\.token)
         defaults.set(tableOrder, forKey: AppGroup.followingTableOrderKey)
