@@ -11,7 +11,8 @@ import SwiftUI
 /// `ScoresScreen.scoresRows(for:hideOthers:)`, which omits it entirely when
 /// you follow nobody or when what you follow already covers the whole day.
 struct HideAllControl: View {
-    let otherCount: Int
+    /// The sections this control hides, in slate order.
+    let others: [GameSection]
     let isHidden: Bool
     let onToggle: () -> Void
 
@@ -32,28 +33,56 @@ struct HideAllControl: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isHidden ? "Show all sections" : "Hide all sections")
-            .accessibilityValue(isHidden ? "\(otherCount) hidden" : "")
+            .accessibilityValue(isHidden ? Self.summary(of: others) : "")
             .accessibilityIdentifier("scores-hide-all-control")
-            // Named so a hidden stack never reads as gone for good — the
-            // count is the whole reason this isn't just an empty tap
+            // Named so a hidden stack never reads as gone for good — what's
+            // behind it is the whole reason this isn't just an empty tap
             // target (FotMob's "22 other competitions play today"). The
-            // button's own accessibilityValue already says the count, so
-            // this stays out of VoiceOver rather than repeating it.
+            // button's own accessibilityValue already says it, so this
+            // stays out of VoiceOver rather than repeating it.
             if isHidden {
-                Text("\(otherCount) other section\(otherCount == 1 ? "" : "s")")
+                Text(Self.summary(of: others))
                     .font(.meta)
                     .foregroundStyle(Color.textSecondary)
+                    .multilineTextAlignment(.center)
                     .accessibilityHidden(true)
             }
         }
         .padding(.vertical, Spacing.xs)
     }
+
+    /// "Big Ten, SEC and 2 other leagues, conferences or divisions play
+    /// today" (Andy, 2026-09-25). The first two sections are named, the
+    /// rest counted. A catch-all "Other" section is never one of the two
+    /// named — "Other" says nothing — but it still counts.
+    static func summary(of sections: [GameSection]) -> String {
+        let named = sections
+            .filter { !$0.id.hasPrefix(GameSection.otherPrefix) }
+            .prefix(2)
+            .map(\.title)
+        let rest = sections.count - named.count
+        var parts = named
+        if rest > 0 {
+            parts.append(rest == 1
+                ? "1 other league, conference or division"
+                : "\(rest) other leagues, conferences or divisions")
+        }
+        let list = switch parts.count {
+        case 0: ""
+        case 1: parts[0]
+        default: parts.dropLast().joined(separator: ", ") + " and " + parts[parts.count - 1]
+        }
+        return list + (sections.count == 1 ? " plays today" : " play today")
+    }
 }
 
 #Preview {
     VStack(spacing: Spacing.md) {
-        HideAllControl(otherCount: 6, isHidden: false, onToggle: {})
-        HideAllControl(otherCount: 6, isHidden: true, onToggle: {})
+        let others = ["Big Ten", "SEC", "ACC", "Big 12"].map {
+            GameSection(id: "conf-\($0)", title: $0, games: [])
+        }
+        HideAllControl(others: others, isHidden: false, onToggle: {})
+        HideAllControl(others: others, isHidden: true, onToggle: {})
     }
     .padding()
     .background(Color.bgRecessed)
