@@ -7,8 +7,11 @@
 //
 // The game page's Leaders card answers "who did it tonight"; this answers
 // "who has done it all season", in the same row language: headshot disc,
-// name, the number that earned the row. A row links to the player's page
-// where the page can open them — see `ResolvedTeamLeader.onRoster`.
+// name, the number that earned the row. Every row links to the player's
+// page, a leader traded away since included: the player page builds itself
+// from ESPN's athlete record (2026-09-25), not the team's roster, so a
+// stale team in the path opens on the player's current club rather than
+// a 404.
 
 import { Fragment, use, useState } from "react";
 import Image from "next/image";
@@ -78,23 +81,14 @@ function LeaderRow({
           {leader.value}
         </span>
       )}
-      {leader.onRoster && (
-        <ChevronRight
-          aria-hidden="true"
-          className="h-3 w-3 shrink-0 text-text-secondary"
-        />
-      )}
+      <ChevronRight
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 text-text-secondary"
+      />
     </>
   );
   const className = "flex items-center gap-3 px-4 py-2";
 
-  if (!leader.onRoster) {
-    return (
-      <div role="group" aria-label={label} className={className}>
-        {body}
-      </div>
-    );
-  }
   return (
     <Link
       href={playerHref(league, teamId, leader.athleteId)}
