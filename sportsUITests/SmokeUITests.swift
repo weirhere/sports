@@ -30,12 +30,13 @@ final class SmokeUITests: XCTestCase {
         // The accordion collapses and reopens, and the state is the user's
         // to keep — every section but Following starts open and remembers
         // being closed.
-        let wasExpanded = anyLeague.value as? String == "expanded"
-        anyLeague.tap()
-        XCTAssertNotEqual(anyLeague.value as? String,
+        let section = app.reachableScoresSection
+        let wasExpanded = section.value as? String == "expanded"
+        section.tap()
+        XCTAssertNotEqual(section.value as? String,
                           wasExpanded ? "expanded" : "collapsed",
                           "Tapping a section header should toggle it")
-        anyLeague.tap()
+        section.tap()
 
         // The day strip walks the season. Yesterday always exists inside
         // it, and the floating Today button is the way back — it only

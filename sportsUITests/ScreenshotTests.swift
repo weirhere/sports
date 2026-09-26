@@ -32,8 +32,9 @@ final class ScreenshotTests: XCTestCase {
         // expansion persists in UserDefaults, so that collapse outlived the
         // run and every later run on the same simulator started shut: a
         // test that broke itself, then stayed broken.
-        if (anyLeague.value as? String) == "collapsed" {
-            anyLeague.tap()
+        let section = app.reachableScoresSection
+        if (section.value as? String) == "collapsed" {
+            section.tap()
         }
         // By identifier, not by prose. "X at Y" is what a row says *before
         // kickoff*; once a game starts it says "Denver 7, Kansas City 14,

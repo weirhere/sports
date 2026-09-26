@@ -54,6 +54,29 @@ extension XCUIApplication {
                                      "scores-section-")).firstMatch
     }
 
+    /// The topmost Scores section header that sits wholly on screen above
+    /// the tab bar, pinned by its identifier. `anyScoresSection` is the
+    /// first in the accessibility tree, which isn't the first on screen:
+    /// since every league and conference lists below Hide all
+    /// (2026-09-26), a lazy stack of ~30 sections handed back one parked
+    /// under the tab bar, and `isHittable` still vouches for headers far
+    /// below the fold. Frames don't lie, so this reads them. Pinned by
+    /// identifier rather than index so the query can't slide onto a
+    /// neighbour when the toggle re-renders. Call once the list has loaded
+    /// (wait on `anyScoresSection` first).
+    var reachableScoresSection: XCUIElement {
+        let sections = buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@",
+                                                    "scores-section-"))
+        let window = windows.firstMatch.frame
+        let floor = tabBars.firstMatch.exists ? tabBars.firstMatch.frame.minY : window.maxY
+        let onScreen = sections.allElementsBoundByIndex
+            .map { (id: $0.identifier, frame: $0.frame) }
+            .filter { $0.frame.minY >= window.minY && $0.frame.maxY <= floor && !$0.frame.isEmpty }
+            .min { $0.frame.minY < $1.frame.minY }
+        guard let id = onScreen?.id, !id.isEmpty else { return sections.firstMatch }
+        return buttons[id]
+    }
+
     /// One named Scores section, by the title its header speaks —
     /// "SEC, 6 games".
     func scoresSection(_ title: String) -> XCUIElement {
