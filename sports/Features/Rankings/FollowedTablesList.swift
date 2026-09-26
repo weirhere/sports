@@ -200,13 +200,17 @@ struct FollowedTablesList: View {
         // dismiss button, and the same table keeps its star in its league's
         // accordion below.
         case .poll(let polls, let league):
-            Top25Row(polls: polls, league: league, showsFollow: false)
+            Top25Row(polls: polls, league: league, showsFollow: false,
+                     showsLeagueTag: true)
         case .conference(let conference):
             // No leader, no record (Andy, 2026-09-21). The hub answers
             // "which league", and a name plus a standing was two answers
             // to two questions in one row.
+            // The league joins the name, "SEC - NCAAF", as on the Scores
+            // headers (Andy, 2026-09-25): this list mixes every league, and
+            // "Eastern" is two different tables.
             ConferenceListRow(conference: conference, showsLeader: false,
-                              showsFollow: false)
+                              showsFollow: false, showsLeagueTag: true)
         }
     }
 
