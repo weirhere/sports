@@ -355,34 +355,6 @@ export function hasPoll(league: League): boolean {
 }
 
 /**
- * Whether a conference or league page can afford to table its whole season
- * on a Games tab.
- *
- * College football's season is ~950 events, which one `dates=` window
- * carried. The NBA's is ~1,300 and it did not: probed live 2026-09-08,
- * `dates=20251001-20260630&limit=900` returned exactly 900 events and 12 MB,
- * silently truncating at February 20.
- *
- * **Both halves of that reasoning have since expired, and this gate has
- * not caught up.** The `groups=` clause was wrong outright — iOS re-probed
- * it live 2026-09-10 and the filter narrows the slate in *every* league we
- * cover, `groups=1` on a season-long NBA window returning the Atlantic's
- * own 376 games rather than the league's. And the 900-event window it is
- * sized against no longer exists in either direction: the range form was
- * withdrawn (2026-09-17), so a season is fetched month by month now, and
- * the densest month in any league we cover is ~240 events against a limit
- * of 500. There is no longer a league whose season cannot be tabled.
- *
- * Retiring this and `rollingConferenceGames` with it is a product change —
- * an NBA conference page would table a whole season where today it shows a
- * rolling four-week window — so it is left standing here as a parity item
- * rather than folded into the fix that outdated it.
- */
-export function canTableAWholeSeason(league: League): boolean {
-  return !SPECS[league].seasonYearIsEndYear;
-}
-
-/**
  * How many seasons back a head-to-head series is assembled from.
  *
  * The window is really sized in *meetings* — ten is the list length that
@@ -409,13 +381,6 @@ export function headToHeadSeasons(league: League): number {
       return 3; // two to four times a year
   }
 }
-
-/**
- * How many days either side of today a Games tab reaches for a league whose
- * whole season it cannot fetch: a week back and three weeks forward, in one
- * request of about a megabyte.
- */
-export const GAMES_WINDOW = { back: 7, forward: 21 } as const;
 
 /**
  * Whether the surface underfoot is a fact about the game.
@@ -471,6 +436,59 @@ export function seasonSpan(
   // February's length is never spelled out and leap years are free.
   const end = new Date(year + 1, spec.seasonRollsOverAfter, 0);
   return { start, end: end < start ? start : end };
+}
+
+/**
+ * The seasons that did not end when the rule says they do — the month each
+ * one's last game was actually played in, of the calendar year after the
+ * season's own.
+ *
+ * Swept live 2026-09-25 across every season the picker reaches (2014 on):
+ * July and August are empty in both leagues every year except these, and
+ * September belongs to the *new* season every year except 2020. Both are
+ * the pandemic — the 2019-20 bubbles finished in the autumn (the NBA Finals
+ * on October 11, the Stanley Cup on September 28), and the 2020-21 seasons
+ * that started late ran into July (the 20th and the 7th).
+ */
+const SEASON_OVERRUNS: Partial<Record<League, Record<number, number>>> = {
+  nba: { 2019: 10, 2020: 7 },
+  nhl: { 2019: 9, 2020: 7 },
+};
+
+/**
+ * The calendar a season's **games** occupy — `seasonSpan` widened where a
+ * season ran past its league's rollover month, for a Games tab that tables
+ * the season whole.
+ *
+ * Deliberately a second span rather than a change to the first: the day
+ * strip's bounds and `seasonYearContaining` are rules about which season a
+ * *day* belongs to, and a day in August 2020 has two answers. The spans
+ * overlap for exactly those seasons, so a fetch over this one must also keep
+ * only the events ESPN stamps with its season — see `belongsToSeason`.
+ */
+export function seasonGamesSpan(
+  league: League,
+  year: number
+): { start: Date; end: Date } {
+  const span = seasonSpan(league, year);
+  const closesIn = SEASON_OVERRUNS[league]?.[year];
+  if (closesIn === undefined) return span;
+  // Day 0 of the month after is the last day of the month the season closed.
+  const end = new Date(year + 1, closesIn, 0);
+  return { start: span.start, end: end > span.end ? end : span.end };
+}
+
+/**
+ * Whether an event ESPN stamped with `espnYear` belongs to our season
+ * `year`. An event with no stamp is kept: a missing field degrades the
+ * slate's edges, never empties it.
+ */
+export function belongsToSeason(
+  league: League,
+  year: number,
+  espnYear: number | undefined
+): boolean {
+  return espnYear === undefined || seasonYearFromEspn(league, espnYear) === year;
 }
 
 /**

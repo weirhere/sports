@@ -9,6 +9,7 @@ import {
   dayWindowUrl,
   teamRosterUrl,
 } from "./endpoints";
+import { seasonGamesSpan, type League } from "@/lib/leagues";
 
 describe("the groups parameter", () => {
   it("sends a named group for every league", () => {
@@ -133,5 +134,32 @@ describe("teamRosterUrl", () => {
   it("uses each league's own base path", () => {
     expect(teamRosterUrl("nba", "13")).toContain("/basketball/nba/teams/13/roster");
     expect(teamRosterUrl("nhl", "1")).toContain("/hockey/nhl/teams/1/roster");
+  });
+});
+
+describe("a season's request bill", () => {
+  const months = (league: League, year: number) => {
+    const span = seasonGamesSpan(league, year);
+    return espnMonthTokens(span.start, span.end);
+  };
+
+  it("is one request per month of the season, per league", () => {
+    // A conference page's Games tab, before any at-limit day fan-out.
+    expect(months("cfb", 2025)).toHaveLength(6); // August–January
+    expect(months("nfl", 2025)).toHaveLength(8); // July–February
+    expect(months("nba", 2025)).toHaveLength(10); // September–June
+    expect(months("nhl", 2025)).toHaveLength(10);
+  });
+
+  it("asks basketball's months across the year boundary", () => {
+    expect(months("nba", 2025)[0]).toBe("202509");
+    expect(months("nba", 2025).at(-1)).toBe("202606");
+  });
+
+  it("pays for the pandemic seasons' overruns", () => {
+    expect(months("nba", 2019).at(-1)).toBe("202010");
+    expect(months("nba", 2019)).toHaveLength(14);
+    expect(months("nhl", 2019)).toHaveLength(13);
+    expect(months("nba", 2020)).toHaveLength(11);
   });
 });
