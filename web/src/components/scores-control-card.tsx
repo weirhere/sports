@@ -1,8 +1,8 @@
 "use client";
 
 // Everything that scopes the day, in one card at the top of the slate
-// column: the day strip and its calendar, then the Live toggle, the view
-// funnel, and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
+// column: the day strip and its calendar, then the Live and Tight toggles
+// and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
 // its date nav and its filter row in exactly this container).
 //
 // These three controls used to live in three places — the strip as fixed
@@ -26,10 +26,16 @@ interface ScoresControlCardProps {
   selectedDay: Date;
   onSelectDay: (day: Date) => void;
   onOpenCalendar: () => void;
+  /**
+   * Whether a "now" filter is remembered — what renames today "Ongoing" on
+   * the strip, on every day, since the strip is how you get back to it.
+   */
+  narrowsToNow: boolean;
+  /** The selected day's effective Live and Tight filters, for the pills. */
   liveOnly: boolean;
   onToggleLive: () => void;
-  filterLabel: string | null;
-  onOpenFilter: () => void;
+  tightOnly: boolean;
+  onToggleTight: () => void;
   /**
    * The iOS pinch analog. Null when the day has no sections to act on —
    * an empty slate offers no "collapse all", the way the pinch has nothing
@@ -44,10 +50,11 @@ export function ScoresControlCard({
   selectedDay,
   onSelectDay,
   onOpenCalendar,
+  narrowsToNow,
   liveOnly,
   onToggleLive,
-  filterLabel,
-  onOpenFilter,
+  tightOnly,
+  onToggleTight,
   allCollapsed,
   onToggleCollapseAll,
 }: ScoresControlCardProps) {
@@ -61,14 +68,14 @@ export function ScoresControlCard({
         selectedDay={selectedDay}
         onSelect={onSelectDay}
         onOpenCalendar={onOpenCalendar}
-        liveOnly={liveOnly}
+        liveOnly={narrowsToNow}
       />
       <div className="flex items-center gap-2 border-t border-divider px-2 py-2">
         <ScoresHeaderControls
           liveOnly={liveOnly}
           onToggleLive={onToggleLive}
-          filterLabel={filterLabel}
-          onOpenFilter={onOpenFilter}
+          tightOnly={tightOnly}
+          onToggleTight={onToggleTight}
         />
         {onToggleCollapseAll !== null && (
           <button

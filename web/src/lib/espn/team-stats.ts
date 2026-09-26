@@ -71,10 +71,10 @@ export interface ResolvedTeamLeader extends TeamLeader {
   name: string;
   headshotUrl?: string;
   /**
-   * Whether the player page can open this athlete. The web page rebuilds
-   * itself from the team's current roster, so a leader traded away since
-   * the season the leaders describe has no page to open — named, but not
-   * linked, rather than linked to a 404.
+   * Whether the team's current roster named this leader, or the core
+   * athlete record had to. It used to decide whether the row linked — the
+   * player page was built from the roster, so a leader traded away had no
+   * page — and no longer does: the page reads ESPN's athlete record now.
    */
   onRoster: boolean;
 }

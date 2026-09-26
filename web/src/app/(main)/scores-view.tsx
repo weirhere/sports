@@ -10,16 +10,18 @@
 // follow, then college football's conferences and each other league's whole
 // slate.
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   buildSections,
-  scoreFilterChipLabel,
-  scoreFilterLabel,
+  splitAtHideAll,
+  type GameSection,
 } from "@/lib/game-sections";
 import { orderedTables } from "@/lib/followed-tables";
 import { daySectionTitle, isSameDay, startOfDay } from "@/lib/day";
-import { seasonLabel } from "@/lib/leagues";
-import { useUIState } from "@/lib/hooks/use-ui-state";
+import { ACCORDION_TRANSITION, INSTANT_TRANSITION } from "@/lib/motion";
+import { SCORES_HOME_EVENT } from "@/lib/scores-home";
+import { narrowsOn, useUIState } from "@/lib/hooks/use-ui-state";
 import {
   useLeagueScoreboards,
   type LeagueScoreboardsSeed,
@@ -28,8 +30,8 @@ import { ChromePortal } from "@/components/chrome-portal";
 import { DayCalendarSheet } from "@/components/day-calendar-sheet";
 import { TodayButton } from "@/components/today-button";
 import { SectionAccordion } from "@/components/section-accordion";
+import { HideAllControl } from "@/components/hide-all-control";
 import { ScoresControlCard } from "@/components/scores-control-card";
-import { ScoreFilterSheet } from "@/components/score-filter-sheet";
 import { FollowPromptCard } from "@/components/follow-prompt-card";
 import { FollowingSidebar } from "@/components/following-sidebar";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
@@ -49,14 +51,13 @@ export function ScoresView({ seed }: ScoresViewProps) {
     selectedDay,
     seasonYear,
     currentSeasonYear,
-    availableSeasons,
     games,
     isLoaded,
     isStalled,
     error,
+    canJumpToToday,
     showsTodayJump,
     selectDay,
-    selectSeason,
     selectToday,
     adjacentDay,
     refresh,
@@ -70,8 +71,18 @@ export function ScoresView({ seed }: ScoresViewProps) {
     isLoaded: favoritesLoaded,
   } = useFavoritesContext();
 
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
+
+  // --- The "now" filters -----------------------------------------------
+  //
+  // Live and Tight are stored as intent and apply to today alone (iOS,
+  // 2026-09-12): off today they are suspended — the pills turn off with the
+  // day and the slate shows the whole of it — and coming back turns them on
+  // again. Everything that narrows or labels *this day* reads these two;
+  // only the "Ongoing" rename reads the intent.
+  const liveOnly = narrowsOn(uiState.liveOnly, selectedDay);
+  const tightOnly = narrowsOn(uiState.tightOnly, selectedDay);
 
   // --- Sections --------------------------------------------------------
 
@@ -92,10 +103,13 @@ export function ScoresView({ seed }: ScoresViewProps) {
       buildSections(games, {
         followedTeamKeys: favorites,
         followedTables,
-        liveOnly: uiState.liveOnly,
-        scoreFilter: uiState.scoreFilter,
+        liveOnly,
+        tightOnly,
+        // No slate filter: Scores has no control for one (iOS 2026-09-05),
+        // so a filter stored by an earlier build must not narrow the day
+        // where nobody can see or clear it.
       }),
-    [games, favorites, followedTables, uiState.liveOnly, uiState.scoreFilter]
+    [games, favorites, followedTables, liveOnly, tightOnly]
   );
 
   // --- Header controls -------------------------------------------------
@@ -108,30 +122,74 @@ export function ScoresView({ seed }: ScoresViewProps) {
    * Turning the Live filter on navigates to where live games are — today
    * (iOS 2026-08-29, re-pointed at the day axis). Filtering a future day to
    * an empty screen answers the wrong question. Turning it off stays put.
+   *
+   * The pill reads the effective filter, so a click while it is off is
+   * always a request to turn it on — including off today, where the filter
+   * is suspended rather than forgotten (2026-09-12). That click may change
+   * no stored state at all: the trip home is the whole action.
    */
   const handleToggleLive = () => {
-    const turningOn = !uiState.liveOnly;
-    uiState.setLiveOnly(turningOn);
-    if (turningOn && !isOnToday) selectToday();
+    if (liveOnly) {
+      uiState.setLiveOnly(false);
+      return;
+    }
+    uiState.setLiveOnly(true);
+    if (!isOnToday) selectToday();
+  };
+
+  /** `handleToggleLive`'s twin: on goes to today, off stays put. Turning
+   *  one on turns the other off — Tight is already a narrower Live. */
+  const handleToggleTight = () => {
+    if (tightOnly) {
+      uiState.setTightOnly(false);
+      return;
+    }
+    uiState.setTightOnly(true);
+    if (!isOnToday) selectToday();
   };
 
   const clearFilters = () => {
     uiState.setLiveOnly(false);
-    uiState.setScoreFilter(null);
+    uiState.setTightOnly(false);
   };
 
-  // The funnel chip's label: filter + past season ("SEC · 2019").
-  const filterLabel =
-    [
-      uiState.scoreFilter !== null
-        ? scoreFilterChipLabel(uiState.scoreFilter)
-        : undefined,
-      seasonYear !== currentSeasonYear
-        ? seasonLabel("cfb", seasonYear)
-        : undefined,
-    ]
-      .filter(Boolean)
-      .join(" · ") || null;
+  // --- Going home ------------------------------------------------------
+
+  /**
+   * The Today button's own move (iOS `jumpToToday`, 2026-09-12). It goes
+   * through `selectToday`, so a strip bounded to a past season re-bounds to
+   * this one rather than selecting a date the strip has no chip for — and
+   * it takes the slate back to its top with it. A day you left scrolled to
+   * the bottom shouldn't hand today back the same way, and a client-side
+   * day change never resets the window's scroll on its own.
+   *
+   * Instant, not smooth: the day under the scroll is being replaced in the
+   * same frame, so there is nothing worth watching travel.
+   */
+  const jumpToToday = useCallback(() => {
+    selectToday();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [selectToday]);
+
+  /**
+   * The Games tab clicked while Games is already on screen: the top of this
+   * page, and today (iOS `goHome`, 2026-09-20 and 2026-09-21). The filters
+   * and the accordions are left exactly as they were — the day is the one
+   * piece of page state home resets. `canJumpToToday` is the whole gate:
+   * false on today, and false in the offseason, where today sits outside
+   * every league's span — so a June re-tap still only scrolls to the top.
+   */
+  useEffect(() => {
+    const goHome = () => {
+      if (canJumpToToday) {
+        jumpToToday();
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: reducedMotion ? "instant" : "smooth" });
+    };
+    window.addEventListener(SCORES_HOME_EVENT, goHome);
+    return () => window.removeEventListener(SCORES_HOME_EVENT, goHome);
+  }, [canJumpToToday, jumpToToday, reducedMotion]);
 
   // --- The day swipe ---------------------------------------------------
   //
@@ -151,17 +209,10 @@ export function ScoresView({ seed }: ScoresViewProps) {
 
   // --- Empty states ----------------------------------------------------
 
-  const filtersActive = uiState.liveOnly || uiState.scoreFilter !== null;
-  const narrowedEmptyMessage = (() => {
-    const label =
-      uiState.scoreFilter !== null
-        ? scoreFilterLabel(uiState.scoreFilter)
-        : undefined;
-    if (uiState.liveOnly && label) return `No live ${label} games right now`;
-    if (uiState.liveOnly) return "No live games right now";
-    if (label) return `No ${label} games on this day`;
-    return "";
-  })();
+  const filtersActive = liveOnly || tightOnly;
+  const narrowedEmptyMessage = liveOnly
+    ? "No live games right now"
+    : "No tight games right now";
 
   const showFollowPrompt =
     uiState.isLoaded &&
@@ -174,19 +225,23 @@ export function ScoresView({ seed }: ScoresViewProps) {
   const allCollapsed =
     sectionIds.length > 0 && sectionIds.every(uiState.isCollapsed);
 
+  // What's yours above the Hide all/Show all line, everything else below.
+  const { mine, others, hasBoundary } = splitAtHideAll(sections);
+  const othersHidden = hasBoundary && uiState.hideOtherSections;
+
+  const accordion = (section: GameSection) => (
+    <SectionAccordion
+      key={section.id}
+      section={section}
+      isExpanded={!uiState.isCollapsed(section.id)}
+      onToggle={() => uiState.toggleSection(section.id)}
+    />
+  );
+
   return (
     <div>
       {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
       <PageHeader title="Games" />
-      <ScoreFilterSheet
-        open={filterSheetOpen}
-        onOpenChange={setFilterSheetOpen}
-        current={uiState.scoreFilter}
-        onSelect={uiState.setScoreFilter}
-        selectedYear={seasonYear}
-        availableSeasons={availableSeasons}
-        onYearChange={selectSeason}
-      />
 
       <DayCalendarSheet
         open={calendarOpen}
@@ -218,10 +273,11 @@ export function ScoresView({ seed }: ScoresViewProps) {
             selectedDay={selectedDay}
             onSelectDay={selectDay}
             onOpenCalendar={() => setCalendarOpen(true)}
-            liveOnly={uiState.liveOnly}
+            narrowsToNow={uiState.narrowsToNow}
+            liveOnly={liveOnly}
             onToggleLive={handleToggleLive}
-            filterLabel={filterLabel}
-            onOpenFilter={() => setFilterSheetOpen(true)}
+            tightOnly={tightOnly}
+            onToggleTight={handleToggleTight}
             allCollapsed={allCollapsed}
             onToggleCollapseAll={
               sectionIds.length > 0
@@ -297,14 +353,39 @@ export function ScoresView({ seed }: ScoresViewProps) {
                     <FollowPromptCard onDismiss={uiState.dismissFollowPrompt} />
                   </div>
                 )}
-                {sections.map((section) => (
-                  <SectionAccordion
-                    key={section.id}
-                    section={section}
-                    isExpanded={!uiState.isCollapsed(section.id)}
-                    onToggle={() => uiState.toggleSection(section.id)}
-                  />
-                ))}
+                {mine.map(accordion)}
+                {hasBoundary && (
+                  <>
+                    <HideAllControl
+                      others={others}
+                      isHidden={othersHidden}
+                      onToggle={uiState.toggleHideOtherSections}
+                      controls="scores-other-sections"
+                    />
+                    {/* The stack below the line closes the way a section
+                        does — the same 0.18s ease-out (2026-09-24). */}
+                    <AnimatePresence initial={false}>
+                      {!othersHidden && (
+                        <motion.div
+                          id="scores-other-sections"
+                          initial={{ height: 0 }}
+                          animate={{ height: "auto" }}
+                          exit={{ height: 0 }}
+                          transition={
+                            reducedMotion
+                              ? INSTANT_TRANSITION
+                              : ACCORDION_TRANSITION
+                          }
+                          className="overflow-clip"
+                        >
+                          <div className="space-y-3">
+                            {others.map(accordion)}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                )}
               </div>
             )}
 
@@ -322,7 +403,7 @@ export function ScoresView({ seed }: ScoresViewProps) {
           moved into the control card and stopped being fixed at all. */}
       {showsTodayJump && (
         <ChromePortal>
-          <TodayButton onClick={selectToday} liveOnly={uiState.liveOnly} />
+          <TodayButton onClick={jumpToToday} liveOnly={uiState.narrowsToNow} />
         </ChromePortal>
       )}
     </div>

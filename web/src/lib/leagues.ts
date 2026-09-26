@@ -241,6 +241,22 @@ export function shortName(league: League): string {
   return SPECS[league].shortName;
 }
 
+/**
+ * The order leagues are *shown* in: A–Z by the name on screen — NBA, NCAAF,
+ * NFL, NHL (iOS `League.displayOrder`, 2026-09-24). With four leagues on one
+ * page and the season running July to June, alphabetical is the order a
+ * reader recognises without being told; football-first only ever held
+ * because it came first. The Scores stack, the Leagues hub and a new
+ * follow's default position all read this.
+ *
+ * Declared below `SPECS`, which `shortName` reads. Deliberately a copy, not
+ * a re-sort of `LEAGUES`: that array's order is the declaration's, and fetch
+ * fan-outs and season spans iterate it.
+ */
+export const LEAGUE_DISPLAY_ORDER: readonly League[] = [...LEAGUES].sort(
+  (lhs, rhs) => (shortName(lhs) < shortName(rhs) ? -1 : 1)
+);
+
 export function displayName(league: League): string {
   return SPECS[league].displayName;
 }
