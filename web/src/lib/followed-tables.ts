@@ -18,7 +18,12 @@ import {
   tier,
   tierRank,
 } from "./conferences";
-import { LEAGUES, leagueLogoUrl, type League } from "./leagues";
+import {
+  LEAGUES,
+  LEAGUE_DISPLAY_ORDER,
+  leagueLogoUrl,
+  type League,
+} from "./leagues";
 import {
   conferenceToken,
   parseConferenceToken,
@@ -110,16 +115,19 @@ export function tableMatches(table: FollowedTable, game: Game): boolean {
 }
 
 /**
- * The order a followed set falls into before anyone drags anything: polls
- * first (a league's headline answer), then its groups widest first,
- * alphabetically inside a tier — the Leagues hub's own order.
+ * The order a followed set falls into before anyone drags anything: leagues
+ * A–Z (`LEAGUE_DISPLAY_ORDER`, 2026-09-24), then within one its poll first
+ * (a league's headline answer), then its groups widest first, alphabetically
+ * inside a tier — the Leagues hub's own order.
  */
 export function compareTablesByDefault(
   lhs: FollowedTable,
   rhs: FollowedTable
 ): number {
   const [ll, rl] = [tableLeague(lhs), tableLeague(rhs)];
-  if (ll !== rl) return LEAGUES.indexOf(ll) - LEAGUES.indexOf(rl);
+  if (ll !== rl) {
+    return LEAGUE_DISPLAY_ORDER.indexOf(ll) - LEAGUE_DISPLAY_ORDER.indexOf(rl);
+  }
   if (lhs.kind !== rhs.kind) return lhs.kind === "poll" ? -1 : 1;
   if (lhs.kind === "poll") return 0;
   const rhsRef = (rhs as { ref: ConferenceRef }).ref;

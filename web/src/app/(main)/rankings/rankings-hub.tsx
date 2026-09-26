@@ -37,6 +37,7 @@ import {
 } from "@/lib/standings-tables";
 import {
   LEAGUES,
+  LEAGUE_DISPLAY_ORDER,
   displayName,
   leagueLogoUrl,
   type League,
@@ -228,7 +229,10 @@ export function LeaguesHub({
     [followed, loadedTables, polls]
   );
 
-  const leagues = LEAGUES.filter((league) => rowsIn[league].length > 0);
+  // A–Z, not declaration order (iOS `League.displayOrder`, 2026-09-24).
+  const leagues = LEAGUE_DISPLAY_ORDER.filter(
+    (league) => rowsIn[league].length > 0
+  );
 
   /**
    * The accordions the query leaves standing, each with the rows it

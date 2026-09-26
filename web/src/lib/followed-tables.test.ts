@@ -118,13 +118,14 @@ describe("claiming a game", () => {
 
 describe("ordering", () => {
   it("falls back to the hub's own order before anyone drags anything", () => {
-    // Polls first within a league, then groups widest first; leagues in
-    // their own order.
+    // Polls first within a league, then groups widest first; leagues A–Z
+    // by the name on screen (2026-09-24), so the NBA leads NCAAF.
     const tables = orderedTables({
-      followedConferenceTokens: ["nfl:8", "cfb:15", "cfb:8"],
+      followedConferenceTokens: ["nfl:8", "cfb:15", "cfb:8", "nba:5"],
       followedPollLeagues: ["cfb"],
     });
     expect(tables.map(tableToken)).toEqual([
+      "conf-nba:5",
       "poll-cfb",
       "conf-cfb:8", // SEC, power4
       "conf-cfb:15", // MAC, group5

@@ -1,9 +1,14 @@
 "use client";
 
 // Persisted Scores UI state — the web `UIStateStore` (iOS
-// sports/Stores/UIStateStore.swift). One localStorage key carries the Live
-// and slate filters (persisted per the 2026-08-29 decision), collapsed
-// section ids, the followed-table order, and the follow-prompt dismissal.
+// sports/Stores/UIStateStore.swift). One localStorage key carries the Live,
+// Tight and slate filters (persisted per the 2026-08-29 decision), the Hide
+// all/Show all state, collapsed section ids, the followed-table order, and
+// the follow-prompt dismissal.
+//
+// Live and Tight are stored as *intent*. What narrows a given day is
+// `liveOnlyOn`/`tightOnlyOn` below: both apply to today and nowhere else
+// (iOS, 2026-09-12).
 //
 // COLLAPSED ids are stored, not expanded ones, so a section never seen
 // before defaults open — the iOS "Following + Top 25 open by default"
@@ -14,6 +19,7 @@
 // already are. A stored `grouping` from an older build is simply ignored.
 
 import { useCallback, useEffect, useState } from "react";
+import { isSameDay } from "@/lib/day";
 import { isValidScoreFilterToken } from "@/lib/game-sections";
 
 const STORAGE_KEY = "statside.ui.v1";
@@ -21,6 +27,18 @@ const STORAGE_KEY = "statside.ui.v1";
 interface StoredUIState {
   collapsedSections: string[];
   liveOnly: boolean;
+  /**
+   * The Tight filter (iOS, 2026-09-24). Exclusive with `liveOnly` — Tight is
+   * already a narrower Live — so turning one on turns the other off.
+   */
+  tightOnly: boolean;
+  /**
+   * Hide all/Show all (iOS, 2026-09-22): true collapses every Scores section
+   * that isn't Following or a followed table to the one control. Persisted
+   * like the filters — a crowded slate hidden once stays hidden until you
+   * ask to see it again.
+   */
+  hideOtherSections: boolean;
   /** `"top25"` | `"conference-cfb:8"` | null. */
   scoreFilter: string | null;
   /**
@@ -35,6 +53,8 @@ interface StoredUIState {
 const DEFAULTS: StoredUIState = {
   collapsedSections: [],
   liveOnly: false,
+  tightOnly: false,
+  hideOtherSections: false,
   scoreFilter: null,
   tableOrder: [],
   followPromptDismissed: false,
@@ -56,9 +76,13 @@ function sanitize(raw: unknown): StoredUIState {
   const tableOrder = Array.isArray(record.tableOrder)
     ? record.tableOrder.filter((id): id is string => typeof id === "string")
     : [];
+  const liveOnly = record.liveOnly === true;
   return {
     collapsedSections: collapsed,
-    liveOnly: record.liveOnly === true,
+    liveOnly,
+    // Exclusive by construction; if both were ever saved on, Live wins.
+    tightOnly: record.tightOnly === true && !liveOnly,
+    hideOtherSections: record.hideOtherSections === true,
     scoreFilter: filter,
     tableOrder,
     followPromptDismissed: record.followPromptDismissed === true,
@@ -105,7 +129,29 @@ export function useUIState() {
     [update]
   );
   const setLiveOnly = useCallback(
-    (liveOnly: boolean) => update({ liveOnly }),
+    (liveOnly: boolean) =>
+      update((prev) => ({
+        ...prev,
+        liveOnly,
+        tightOnly: liveOnly ? false : prev.tightOnly,
+      })),
+    [update]
+  );
+  const setTightOnly = useCallback(
+    (tightOnly: boolean) =>
+      update((prev) => ({
+        ...prev,
+        tightOnly,
+        liveOnly: tightOnly ? false : prev.liveOnly,
+      })),
+    [update]
+  );
+  const toggleHideOtherSections = useCallback(
+    () =>
+      update((prev) => ({
+        ...prev,
+        hideOtherSections: !prev.hideOtherSections,
+      })),
     [update]
   );
   const setScoreFilter = useCallback(
@@ -164,6 +210,16 @@ export function useUIState() {
     setTableOrder,
     liveOnly: state.liveOnly,
     setLiveOnly,
+    tightOnly: state.tightOnly,
+    setTightOnly,
+    /**
+     * Either filter that narrows the slate to what's happening now — the
+     * intent, not the day's effective filter. It's what renames today
+     * "Ongoing" on the strip and the Today button.
+     */
+    narrowsToNow: state.liveOnly || state.tightOnly,
+    hideOtherSections: state.hideOtherSections,
+    toggleHideOtherSections,
     scoreFilter: state.scoreFilter,
     setScoreFilter,
     followPromptDismissed: state.followPromptDismissed,
@@ -174,4 +230,24 @@ export function useUIState() {
     collapseAll,
     expandAll,
   };
+}
+
+/**
+ * Whether a remembered "now" filter is actually narrowing `day`: the toggle
+ * is on *and* the day is today (iOS `UIStateStore.liveOnly(on:)`,
+ * 2026-09-12).
+ *
+ * "Live" is a question about right now, and today is the only day that can
+ * answer it — on tomorrow the filter guarantees an empty screen, and on
+ * yesterday it hides every result the day exists to show. So stepping off
+ * today suspends the filter and coming back restores it, with the pill
+ * following. Suspended, never forgotten: the intent stays stored, which is
+ * what makes coming home turn it back on. Tight follows the same rule.
+ */
+export function narrowsOn(
+  intent: boolean,
+  day: Date,
+  now: Date = new Date()
+): boolean {
+  return intent && isSameDay(day, now);
 }

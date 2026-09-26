@@ -26,8 +26,16 @@ interface ScoresControlCardProps {
   selectedDay: Date;
   onSelectDay: (day: Date) => void;
   onOpenCalendar: () => void;
+  /**
+   * Whether a "now" filter is remembered — what renames today "Ongoing" on
+   * the strip, on every day, since the strip is how you get back to it.
+   */
+  narrowsToNow: boolean;
+  /** The selected day's effective Live and Tight filters, for the pills. */
   liveOnly: boolean;
   onToggleLive: () => void;
+  tightOnly: boolean;
+  onToggleTight: () => void;
   filterLabel: string | null;
   onOpenFilter: () => void;
   /**
@@ -44,8 +52,11 @@ export function ScoresControlCard({
   selectedDay,
   onSelectDay,
   onOpenCalendar,
+  narrowsToNow,
   liveOnly,
   onToggleLive,
+  tightOnly,
+  onToggleTight,
   filterLabel,
   onOpenFilter,
   allCollapsed,
@@ -61,12 +72,14 @@ export function ScoresControlCard({
         selectedDay={selectedDay}
         onSelect={onSelectDay}
         onOpenCalendar={onOpenCalendar}
-        liveOnly={liveOnly}
+        liveOnly={narrowsToNow}
       />
       <div className="flex items-center gap-2 border-t border-divider px-2 py-2">
         <ScoresHeaderControls
           liveOnly={liveOnly}
           onToggleLive={onToggleLive}
+          tightOnly={tightOnly}
+          onToggleTight={onToggleTight}
           filterLabel={filterLabel}
           onOpenFilter={onOpenFilter}
         />

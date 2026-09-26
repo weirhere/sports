@@ -2,7 +2,7 @@
 
 // The Scores slate controls — the iOS `ScoresHeader` grouped capsule
 // (FotMob's tap-target language): one bg-elevated capsule holding the Live
-// pill and the view-options funnel.
+// pill, its Tight sibling (2026-09-24), and the view-options funnel.
 //
 // It rendered into the nav bar's right slot until 2026-09-10, on the
 // reasoning that "/" already had a header and shouldn't grow a second one.
@@ -15,8 +15,14 @@ import { ListFilter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ScoresHeaderProps {
+  /** Whether Live is narrowing the selected day — the effective filter,
+   *  not the remembered one: off today it is suspended, and the pill says
+   *  so (2026-09-12). */
   liveOnly: boolean;
   onToggleLive: () => void;
+  /** Tight's effective state, by the same rule. */
+  tightOnly: boolean;
+  onToggleTight: () => void;
   /**
    * The funnel's non-default-state label — "SEC", "2019", "SEC · 2019",
    * "Top 25" — or null when the slate and season are the defaults.
@@ -28,6 +34,8 @@ interface ScoresHeaderProps {
 export function ScoresHeaderControls({
   liveOnly,
   onToggleLive,
+  tightOnly,
+  onToggleTight,
   filterLabel,
   onOpenFilter,
 }: ScoresHeaderProps) {
@@ -59,6 +67,30 @@ export function ScoresHeaderControls({
         />
         Live
       </button>
+      {/* Tight: live games that are late and close, or where the underdog
+          leads (iOS `TightFilterChip`, Coard Miller 2026-09-24). Named
+          Tight, not "Close" — in a header, "Close" reads as a dismiss
+          button. Active, it wears ink rather than the live accent: Live
+          already spends the green in this capsule, and one header doesn't
+          get it twice. */}
+      <button
+        type="button"
+        onClick={onToggleTight}
+        aria-pressed={tightOnly}
+        aria-label="Tight games only"
+        aria-describedby="scores-tight-hint"
+        className={cn(
+          "type-chip-em flex items-center rounded-full border px-3 py-1.5 whitespace-nowrap transition-colors duration-200",
+          tightOnly
+            ? "border-text-primary/35 bg-text-primary/10 text-text-primary"
+            : "border-transparent text-text-primary hover:bg-bg-header"
+        )}
+      >
+        Tight
+      </button>
+      <span id="scores-tight-hint" className="sr-only">
+        Live games that are close late, or where the underdog leads
+      </span>
       <button
         type="button"
         onClick={onOpenFilter}

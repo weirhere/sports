@@ -104,6 +104,23 @@ describe("transformEvent", () => {
     expect(byId("401858423")?.timeTBD).toBe(false);
   });
 
+  it("reads who the first provider's line favors, and nothing for a pick'em", () => {
+    const home = makeEvent();
+    home.competitions![0].odds = [
+      { homeTeamOdds: { favorite: true }, awayTeamOdds: { favorite: false } },
+    ];
+    expect(transformEvent(home, "cfb")?.favoriteIsHome).toBe(true);
+
+    const away = makeEvent();
+    away.competitions![0].odds = [{ awayTeamOdds: { favorite: true } }];
+    expect(transformEvent(away, "cfb")?.favoriteIsHome).toBe(false);
+
+    const pickem = makeEvent();
+    pickem.competitions![0].odds = [{ homeTeamOdds: {}, awayTeamOdds: {} }];
+    expect(transformEvent(pickem, "cfb")?.favoriteIsHome).toBeUndefined();
+    expect(transformEvent(makeEvent(), "cfb")?.favoriteIsHome).toBeUndefined();
+  });
+
   it("carries the event's season type so a title game stays out of Week 1", () => {
     const event = makeEvent({ season: { year: 2026, type: 3 } });
     expect(transformEvent(event, "cfb")?.seasonType).toBe(3);

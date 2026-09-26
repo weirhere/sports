@@ -5,8 +5,10 @@ import type { FollowedTable } from "./followed-tables";
 import {
   buildSections,
   FOLLOWING_SECTION_ID,
+  hiddenSectionsSummary,
   scoreFilterChipLabel,
   scoreFilterLabel,
+  splitAtHideAll,
 } from "./game-sections";
 
 function team(
@@ -73,7 +75,7 @@ const knicks = team("18", "New York", "1", "nba");
 const noFollows = { followedTeamKeys: [] as string[] };
 
 describe("the stack", () => {
-  it("splits college football by conference and stands every other league whole", () => {
+  it("splits college football by conference and stands every other league whole, leagues A–Z", () => {
     // 60 college rows on a Saturday need carving; a 16-game NFL Sunday is
     // the whole slate at a glance.
     const sections = buildSections(
@@ -85,11 +87,13 @@ describe("the stack", () => {
       ],
       noFollows
     );
+    // NBA, NCAAF, NFL, NHL — the name on screen, not declaration order
+    // (2026-09-24).
     expect(sections.map((s) => s.id)).toEqual([
+      "league-nba",
       "conf-cfb:5",
       "conf-cfb:8",
       "league-nfl",
-      "league-nba",
     ]);
   });
 
@@ -410,5 +414,121 @@ describe("filter labels", () => {
     expect(scoreFilterChipLabel("conference-cfb:12")).toBe("C-USA");
     expect(scoreFilterChipLabel("conference-cfb:17")).toBe("MWC");
     expect(scoreFilterChipLabel("conference-cfb:8")).toBe("SEC");
+  });
+});
+
+describe("Tight", () => {
+  const fourthQuarter = (home: GameTeam, away: GameTeam, id: string): Game => ({
+    ...game({ home, away, id, status: "in_progress" }),
+    quarter: 4,
+  });
+
+  it("narrows every section to tight games, Following included", () => {
+    const close: Game = {
+      ...fourthQuarter(side(michigan), side(ohioState), "close"),
+      homeTeam: { ...side(michigan), score: 21 },
+      awayTeam: { ...side(ohioState), score: 17 },
+    };
+    const rout: Game = {
+      ...fourthQuarter(side(georgia), side(alabama), "rout"),
+      homeTeam: { ...side(georgia), score: 42 },
+      awayTeam: { ...side(alabama), score: 3 },
+    };
+    const sections = buildSections([close, rout], {
+      followedTeamKeys: ["cfb:61"],
+      tightOnly: true,
+    });
+    expect(sections.flatMap((s) => s.games).map((g) => g.id)).toEqual([
+      "close",
+    ]);
+  });
+});
+
+describe("Hide all / Show all", () => {
+  const bigTen: FollowedTable = {
+    kind: "conference",
+    ref: { league: "cfb", id: 5 },
+  };
+  const slate = [
+    game({ home: side(georgia), away: side(alabama) }),
+    game({ home: side(michigan), away: side(ohioState) }),
+    game({ home: side(bills), away: side(chiefs) }),
+  ];
+
+  it("marks Following and hoisted tables as yours, and nothing else", () => {
+    const sections = buildSections(slate, {
+      followedTeamKeys: ["nfl:2"],
+      followedTables: [bigTen],
+    });
+    expect(
+      sections.map((s) => [s.id, s.isFollowed === true])
+    ).toEqual([
+      [FOLLOWING_SECTION_ID, true],
+      ["conf-cfb:5", true],
+      ["conf-cfb:8", false],
+      ["league-nfl", false],
+    ]);
+  });
+
+  it("splits at the boundary between yours and the rest", () => {
+    const sections = buildSections(slate, {
+      followedTeamKeys: [],
+      followedTables: [bigTen],
+    });
+    const split = splitAtHideAll(sections);
+    expect(split.hasBoundary).toBe(true);
+    expect(split.mine.map((s) => s.id)).toEqual(["conf-cfb:5"]);
+    expect(split.others.map((s) => s.id)).toEqual(["conf-cfb:8", "league-nfl"]);
+  });
+
+  it("draws no boundary when you follow nothing on the day", () => {
+    const split = splitAtHideAll(buildSections(slate, noFollows));
+    expect(split.hasBoundary).toBe(false);
+    expect(split.mine).toHaveLength(3);
+    expect(split.others).toEqual([]);
+  });
+
+  it("draws no boundary when what you follow is the whole day", () => {
+    const sections = buildSections(slate.slice(1, 2), {
+      followedTeamKeys: [],
+      followedTables: [bigTen],
+    });
+    expect(splitAtHideAll(sections).hasBoundary).toBe(false);
+  });
+});
+
+describe("the Show all caption", () => {
+  const sections = (...titles: string[]) =>
+    titles.map((title) => ({
+      id: title === "Other" ? "other-cfb" : `conf-${title}`,
+      title,
+    }));
+
+  it("names two and counts the rest", () => {
+    expect(
+      hiddenSectionsSummary(sections("Big Ten", "SEC", "ACC", "Big 12"))
+    ).toBe("Big Ten, SEC and 2 other leagues, conferences or divisions play today");
+  });
+
+  it("says one other in the singular", () => {
+    expect(hiddenSectionsSummary(sections("Big Ten", "SEC", "ACC"))).toBe(
+      "Big Ten, SEC and 1 other league, conference or division play today"
+    );
+  });
+
+  it("names both when there are only two, and one alone plays", () => {
+    expect(hiddenSectionsSummary(sections("Big Ten", "SEC"))).toBe(
+      "Big Ten and SEC play today"
+    );
+    expect(hiddenSectionsSummary(sections("NBA"))).toBe("NBA plays today");
+  });
+
+  it("never names Other, but counts it", () => {
+    expect(hiddenSectionsSummary(sections("Other", "SEC", "NFL"))).toBe(
+      "SEC, NFL and 1 other league, conference or division play today"
+    );
+    expect(hiddenSectionsSummary(sections("Other"))).toBe(
+      "1 other league, conference or division plays today"
+    );
   });
 });

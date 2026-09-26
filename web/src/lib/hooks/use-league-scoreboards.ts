@@ -22,7 +22,9 @@ import {
   isSameDay,
   startOfDay,
 } from "@/lib/day";
+import { keepingFavorites } from "@/lib/game-closeness";
 import { isLiveStatus } from "@/lib/game-sections";
+import { nextPollDelay } from "@/lib/poll-schedule";
 import {
   LEAGUES,
   SEASON_FLOOR,
@@ -55,6 +57,14 @@ const SETTLE_BEFORE_FETCH_MS = 250;
 /** How far the strip can drift with today's chip still on screen. */
 const TODAY_CHIP_REACH = 2;
 
+/**
+ * The longest single sleep the poll takes while waiting for a kickoff. The
+ * wake-up makes no request — it only re-asks `nextPollDelay` — so this is
+ * cheap, and it keeps a far-off kickoff inside `setTimeout`'s range and
+ * honest across a laptop lid closing mid-sleep.
+ */
+const MAX_POLL_SLEEP_MS = 60 * 60 * 1000;
+
 type DayBuckets = Record<string, Game[] | undefined>;
 
 export interface LeagueScoreboards {
@@ -74,6 +84,12 @@ export interface LeagueScoreboards {
   /** The refresh banner's copy — never a request we abandoned on purpose. */
   error: string | null;
   hasLiveGames: boolean;
+  /**
+   * Whether the way back to today has anywhere to go — false when already
+   * there, and false in the offseason, where today is outside every
+   * league's span (iOS `canJumpToToday`). The Games tab's re-tap reads it.
+   */
+  canJumpToToday: boolean;
   /** Whether the floating Today button has anywhere to go, and is needed. */
   showsTodayJump: boolean;
   selectDay: (day: Date) => void;
@@ -244,6 +260,15 @@ export function useLeagueScoreboards(
             if (bucketed[id] === undefined) continue;
             bucketed[id]!.push(game);
           }
+          // A favorite ESPN dropped from a later payload is kept from the
+          // one before — the Tight filter's underdog rule needs it while the
+          // game is being played (iOS `keepingLines`).
+          const previousGames = Object.values(next[result.league]).flatMap(
+            (games) => games ?? []
+          );
+          for (const id of recorded) {
+            bucketed[id] = keepingFavorites(bucketed[id] ?? [], previousGames);
+          }
           const merged: DayBuckets = { ...next[result.league], ...bucketed };
           // Evict days far from the centre, so browsing a season day by day
           // doesn't accumulate every day it touched.
@@ -343,18 +368,67 @@ export function useLeagueScoreboards(
 
   // --- Polling ---------------------------------------------------------
   //
-  // Polite-guest: a 30s cadence only while the document is visible AND at
-  // least one loaded game is live. Nothing live means no interval at all.
+  // Polite-guest, and through kickoff (iOS `ScoreboardStore.nextPollDelay`,
+  // 2026-09-25). A 30s cadence while a game is live — anywhere in the cache,
+  // so a followed game on a neighbouring day keeps ticking — or while one on
+  // the window's own days is within a tick of kickoff or up to three hours
+  // past it. A later kickoff is a sleep until then, which makes no request;
+  // nothing live and nothing kicking off is no timer at all.
+  //
+  // It used to run only while `hasLiveGames`, so a slate opened before
+  // kickoff never refetched and every row sat at its kickoff time.
+  const pollGames = useMemo(() => {
+    const windowIds = new Set(
+      daysInRange(
+        addDays(selectedDay, -RECORDED_RADIUS),
+        addDays(selectedDay, RECORDED_RADIUS)
+      ).map(dayId)
+    );
+    const games: Game[] = [];
+    for (const league of LEAGUES) {
+      for (const [id, day] of Object.entries(buckets[league])) {
+        for (const game of day ?? []) {
+          if (windowIds.has(id) || isLiveStatus(game.status)) games.push(game);
+        }
+      }
+    }
+    return games;
+  }, [buckets, selectedDay]);
+
   useEffect(() => {
-    if (!hasLiveGames) return;
-    const tick = () => {
-      if (document.visibilityState !== "visible") return;
-      void fetchWindow(selectedDay, { force: true });
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+
+    const schedule = (delay: number) => {
+      handle = setTimeout(tick, Math.min(delay, MAX_POLL_SLEEP_MS));
     };
-    const handle = setInterval(tick, POLL_INTERVAL_LIVE);
-    return () => clearInterval(handle);
+
+    async function tick() {
+      if (cancelled) return;
+      const delay = nextPollDelay(pollGames, Date.now(), POLL_INTERVAL_LIVE);
+      if (delay === null) return;
+      // Woke early — a capped sleep, or the slate got quieter. Sleep on.
+      if (delay > POLL_INTERVAL_LIVE) return schedule(delay);
+      // A hidden tab keeps its place in the schedule but asks for nothing.
+      if (document.visibilityState !== "visible") {
+        return schedule(POLL_INTERVAL_LIVE);
+      }
+      await fetchWindow(selectedDay, { force: true });
+      // A write reruns this effect with the new slate; this covers a tick
+      // that wrote nothing (the day moved under it, which reruns anyway).
+      if (!cancelled) schedule(POLL_INTERVAL_LIVE);
+    }
+
+    const first = nextPollDelay(pollGames, Date.now(), POLL_INTERVAL_LIVE);
+    if (first !== null) schedule(first);
+    return () => {
+      cancelled = true;
+      if (handle !== undefined) clearTimeout(handle);
+    };
+    // `selectedDay` rides `selectedId`; `pollGames` changes with every write,
+    // which is what reschedules the loop against the slate it just fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLiveGames, selectedId, fetchWindow]);
+  }, [pollGames, selectedId, fetchWindow]);
 
   // --- Navigation ------------------------------------------------------
 
@@ -415,18 +489,25 @@ export function useLeagueScoreboards(
    * A past season has no Today chip at all, however close the dates look —
    * the strip is bounded to the season it shows.
    */
-  const showsTodayJump = useMemo(() => {
-    const onToday = seasonYear === currentSeasonYear && isSameDay(selectedDay, today);
+  const canJumpToToday = useMemo(() => {
+    const onToday =
+      seasonYear === currentSeasonYear && isSameDay(selectedDay, today);
     if (onToday) return false;
+    // The *current* season's span, not the selected one's: jumping home
+    // switches season first.
     const current = unionSeasonSpan(currentSeasonYear);
-    const todayIsInSeason =
-      today >= startOfDay(current.start) && today <= startOfDay(current.end);
-    if (!todayIsInSeason) return false;
+    return (
+      today >= startOfDay(current.start) && today <= startOfDay(current.end)
+    );
+  }, [seasonYear, currentSeasonYear, selectedDay, today]);
+
+  const showsTodayJump = useMemo(() => {
+    if (!canJumpToToday) return false;
     const chipOnStrip =
       seasonYear === currentSeasonYear &&
       Math.abs(daysBetween(today, selectedDay)) <= TODAY_CHIP_REACH;
     return !chipOnStrip;
-  }, [seasonYear, currentSeasonYear, selectedDay, today]);
+  }, [canJumpToToday, seasonYear, currentSeasonYear, selectedDay, today]);
 
   return {
     days,
@@ -440,6 +521,7 @@ export function useLeagueScoreboards(
     isLoading,
     error,
     hasLiveGames,
+    canJumpToToday,
     showsTodayJump,
     selectDay,
     selectSeason,

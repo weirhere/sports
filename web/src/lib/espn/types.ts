@@ -78,6 +78,16 @@ export interface EspnCompetition {
    * under `seasontype=3` week 1, bowls and playoff alike.
    */
   notes?: { type?: string; headline?: string }[];
+  /**
+   * The scoreboard's betting lines, one per provider. Only the first
+   * provider's per-team `favorite` flags are read — the Tight filter needs
+   * to know who was favored, and nothing on the web prints a line off the
+   * scoreboard.
+   */
+  odds?: {
+    homeTeamOdds?: { favorite?: boolean };
+    awayTeamOdds?: { favorite?: boolean };
+  }[];
 }
 
 export interface EspnVenue {
