@@ -839,3 +839,4 @@ sibling below it.
 | 2026-09-25 | Show all caption names the first two hidden sections and counts the rest | **shipped** — `hiddenSectionsSummary` ports the wording as-is, including the skipped "Other"; it's the button's `aria-label` tail where iOS used the accessibility value |
 | 2026-09-25 | Widget cards stretch only when the list is full; a short list keeps natural height with the footer anchored | **n/a** — home-screen widget; the web has no widget extension. |
 | 2026-09-25 | Hide all/Show all capsule: one step darker than the page in light mode (`bgInset`, 0.88 on 0.93) | **shipped** — a new `--bg-inset` token (`#e0e0e0` light, `#2b2b2b` dark) fills the pill |
+| 2026-09-25 | Season-long fetches cover the pandemic seasons whole (`SeasonSpan.gameDays`, season-stamp filter) | **shipped** — the web did it first, in #209: `seasonGamesSpan` + `belongsToSeason` in `web/src/lib/leagues.ts`, with the same overrun table. This is iOS catching up. |

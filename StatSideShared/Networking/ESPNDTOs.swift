@@ -114,6 +114,8 @@ nonisolated struct EventDTO: Decodable {
 }
 
 nonisolated struct EventSeasonDTO: Decodable {
+    /// ESPN's season year — the *end* year for the NBA and NHL.
+    let year: Int?
     /// 2 = regular season, 3 = postseason.
     let type: Int?
 }

@@ -383,9 +383,10 @@ actor ESPNClient: ScoresProviding {
         // hockey a Games tab for a fortnight. Re-probed live 2026-09-10:
         // `groups=1` on a season-long NBA window returns the Atlantic's own
         // 376 games, not the league's.
-        try await seasonGames(days: SeasonSpan.days(of: league,
-                                                    year: year ?? SeasonYear.year(for: league)),
-                              groups: conferenceId)
+        let season = year ?? SeasonYear.year(for: league)
+        return try await seasonGames(days: SeasonSpan.gameDays(of: league, year: season),
+                                     groups: conferenceId,
+                                     season: season)
     }
 
     /// A whole division's season, for the Top 25's Games tab — which is a
@@ -393,8 +394,9 @@ actor ESPNClient: ScoresProviding {
     func seasonGames(year: Int?) async throws -> [Game] {
         let season = year ?? SeasonYear.year(for: league)
         return try await seasonGames(
-            days: SeasonSpan.days(of: league, year: season),
-            groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil)
+            days: SeasonSpan.gameDays(of: league, year: season),
+            groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil,
+            season: season)
     }
 
     /// A span of a season, one request per calendar month it touches,
@@ -419,7 +421,13 @@ actor ESPNClient: ScoresProviding {
     ///
     /// Any month failing fails the whole request: half a season passing
     /// for a whole one is the one outcome worse than an error.
-    func seasonGames(days: ClosedRange<Date>, groups: Int?) async throws -> [Game] {
+    ///
+    /// `season`, when given, keeps only the games ESPN stamps with that
+    /// season (an unstamped game is kept). It matters only where
+    /// `SeasonSpan.gameDays` overlaps the next season's span — the 2019-20
+    /// bubbles ran into the autumn 2020-21 opened in.
+    func seasonGames(days: ClosedRange<Date>, groups: Int?,
+                     season: Int? = nil) async throws -> [Game] {
         let months = Self.monthTokens(for: days)
         let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
             for month in months {
@@ -432,7 +440,8 @@ actor ESPNClient: ScoresProviding {
         // year's worth of January bowls is exactly what this keeps out.
         var byId: [String: Game] = [:]
         var order: [String] = []
-        for game in ESPNMapper.clipped(fetched, to: days) where byId[game.id] == nil {
+        for game in ESPNMapper.clipped(fetched, to: days)
+        where byId[game.id] == nil && (season == nil || game.seasonYear == nil || game.seasonYear == season) {
             byId[game.id] = game
             order.append(game.id)
         }
@@ -870,6 +879,7 @@ nonisolated enum ESPNMapper {
             shortName: event.shortName,
             weekNumber: event.week?.number,
             seasonType: event.season?.type,
+            seasonYear: event.season?.year.map(league.seasonYear(fromESPN:)),
             headline: competition.notes?.first?.headline,
             status: status(from: event.status, situation: competition.situation),
             home: home,
