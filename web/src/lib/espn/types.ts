@@ -309,6 +309,51 @@ export interface EspnGameSummaryResponse {
   /** Sportsbook lines, one per provider. Only the first entry's headline
    *  line and total are read (2026-09-24); the rest stays iced. */
   pickcenter?: EspnPickcenter[];
+  /** ESPN's matchup predictor, before kickoff: each side's projected win
+   *  chance in percent, sent as a string ("55.6"). */
+  predictor?: EspnPredictor;
+  /** The home side's chance after every play, 0…1, oldest first. Empty
+   *  before kickoff; absent in hockey. */
+  winprobability?: EspnWinProbabilityPoint[];
+  /** The two competing teams' own standings tables, shipped inside the
+   *  request the game page already makes (iOS E21, 2026-09-21). */
+  standings?: EspnSummaryStandings;
+}
+
+export interface EspnPredictor {
+  homeTeam?: { gameProjection?: FlexibleNumber | null };
+  awayTeam?: { gameProjection?: FlexibleNumber | null };
+}
+
+export interface EspnWinProbabilityPoint {
+  homeWinPercentage?: number | null;
+}
+
+/**
+ * The summary's own copy of the standings — thinner than the standings
+ * endpoint's: an entry's `team` is a display *string* with the id beside
+ * it, and `logo` is an array. The stats are the same shape.
+ *
+ * `isSameConference` is deliberately not declared. It compares
+ * `conferenceHeader`, which is "FBS" on both sides of every college game,
+ * so it reads `true` for Miami (ACC) vs Indiana (Big Ten). The card derives
+ * the fact from the two teams' own tables instead.
+ */
+export interface EspnSummaryStandings {
+  groups?: {
+    /** "2026 Southeastern Conference Standings" — a sentence. */
+    header?: string;
+    divisionHeader?: string;
+    shortDivisionHeader?: string;
+    standings?: {
+      entries?: {
+        id?: string;
+        team?: string;
+        logo?: { href?: string; rel?: string[] }[];
+        stats?: EspnStandingsStat[];
+      }[];
+    };
+  }[];
 }
 
 export interface EspnPickcenter {

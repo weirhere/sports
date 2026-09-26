@@ -109,6 +109,19 @@ export function standingsScrollsHorizontally(league: League): boolean {
 }
 
 /**
+ * Whether a game's `/summary` carries the matchup card's tables, so the page
+ * can skip fetching the league's (iOS, 2026-09-21). Decided by what the
+ * payload contains rather than what it's called: college football's ships
+ * **both competing conferences in full**, with `total` and `vsconf` — the
+ * card's whole column set. The NBA's and NHL's ship the **division**, short
+ * a column at that, and no NFL summary has ever been captured, so those
+ * three keep the fetch rather than decode a guessed shape.
+ */
+export function summaryCarriesMatchupStandings(league: League): boolean {
+  return league === "cfb";
+}
+
+/**
  * What one column shows for this row, already formatted — undefined where
  * the payload didn't carry the stat, which drops the *number* rather than
  * the row.

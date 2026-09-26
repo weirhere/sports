@@ -46,6 +46,7 @@ import {
 import { GetTheAppCard } from "@/components/get-the-app";
 import { LiveSituationCard } from "./live-situation-card";
 import { LineScoreCard } from "./line-score-card";
+import { WinProbabilityCard } from "./win-probability-card";
 import { ScoringPlaysCard } from "./scoring-plays-card";
 import { TeamStatsCard, hasTeamStats } from "./team-stats-card";
 import { LeadersCard } from "./leaders-card";
@@ -59,16 +60,22 @@ import { HeadToHeadPane } from "./head-to-head-pane";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
-  /** Current-season conference standings; null when the fetch missed —
-   * a miss just hides the matchup card. */
+  /** Current-season conference standings; null when the fetch missed or
+   * was skipped — a miss just hides the matchup card. */
   standings: ConferenceStandingsGroup[] | null;
 }
 
 export function GameDetailView({
   initialData,
-  standings,
+  standings: fetchedStandings,
 }: GameDetailViewProps) {
   const data = useLiveGame(initialData.game.id, initialData);
+  // The summary's own copy of the two conferences wins where it came (iOS
+  // `currentStandings`, 2026-09-21); the fetched tables are the fallback.
+  const standings: ConferenceStandingsGroup[] | null =
+    data.matchupStandings && data.matchupStandings.length > 0
+      ? data.matchupStandings
+      : fetchedStandings;
   const { game } = data;
   const scores = showsScores(game);
   const [tab, setTab] = useState("summary");
@@ -175,6 +182,16 @@ export function GameDetailView({
               <LiveSituationCard game={game} situation={data.situation} />
             )}
             {hasLinescores && <LineScoreCard game={game} />}
+            {/* ESPN's predictor before kickoff, the per-play value after
+                it. Absent in hockey, whose payload has neither. */}
+            {data.winProbability && (
+              <WinProbabilityCard
+                probability={data.winProbability}
+                isFinal={game.status === "complete"}
+                awayTeam={game.awayTeam}
+                homeTeam={game.homeTeam}
+              />
+            )}
             {scoringPlays.length > 0 && scoringTitle && (
               <ScoringPlaysCard
                 plays={scoringPlays}

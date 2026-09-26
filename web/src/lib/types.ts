@@ -439,7 +439,28 @@ export interface GameDetail {
    * retires the Gamecast strip without a second condition.
    */
   situation?: GameSituation;
+  /** The Win probability card's data (iOS, 2026-09-24). Absent wherever the
+   *  payload has neither block, which is how the card hides for hockey. */
+  winProbability?: WinProbability;
+  /**
+   * Both competing conferences' tables, read out of the summary rather than
+   * fetched (iOS E21, 2026-09-21). College football only — the other
+   * leagues' blocks ship a division, short of the card's columns. Empty
+   * where the block is missing, and the page falls back to the fetch.
+   */
+  matchupStandings?: ConferenceStandingsGroup[];
 }
+
+/**
+ * Who's likely to win, as ESPN models it. Two shapes because the payload
+ * has two: one projection before kickoff, and the home side's chance
+ * through every play once the game is under way.
+ */
+export type WinProbability =
+  /** ESPN's matchup predictor, in percent (55.6, 44.4). */
+  | { kind: "pregame"; home: number; away: number }
+  /** The home side's chance after each play, 0…1, oldest first. */
+  | { kind: "series"; points: number[] };
 
 /** The scoreboard response: the week strip's slots plus the slate. */
 export interface Scoreboard {
