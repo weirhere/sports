@@ -24,7 +24,7 @@ Alternates:
 
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
 exactly what the app covers. Audited again at 2.5.0 and unchanged, for the
-same reason.
+same reason, and at 2.6.0.
 
 Audited at 2.4.0 and unchanged, with one question asked and answered. 2.4.0
 renames college football to **NCAAF everywhere inside the app** — the league
@@ -52,6 +52,34 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.6.0 (build 20)
+
+> • Pick your look. Settings has an Appearance switch now: System, Light or
+>   Dark.
+> • Scores go live on their own. A slate you opened before kickoff starts
+>   updating when the games do, with no pull to refresh.
+> • Collapsed sections say what's in them. A header reads "SEC - NCAAF" with
+>   a count beside it, and "2/3" in green while games are on. Show all names
+>   what it's hiding: "Big Ten, SEC and 2 others play today."
+> • Rearranging the leagues you follow is an Edit button now. Tap Edit to
+>   unfollow or drag, tap Done, and scrolling never picks a card up by
+>   accident.
+> • Every player page has all four tabs (Profile, Games, Stats and Career),
+>   even for a freshman with no numbers yet.
+> • The widget reads cleaner: team, then rank, the record until there's a
+>   score, and "Final" when it's over. With only two games it keeps them at
+>   their own size instead of stretching them to fill the space.
+> • Past NBA and NHL seasons are whole. The 2020 bubble playoffs and the
+>   July 2021 Finals were missing from those seasons' division pages, and they're
+>   back.
+> • A little more room around the day strip and the Hide all button, which
+>   sits in the middle now and is easier to see in light mode.
+> • Fixed: dropping a followed league could land it one spot off.
+
+If 2.5.0 (19) never went up to App Store Connect, 2.4.0 users see this
+version next, and none of 2.5.0's notes. In that case paste the 2.5.0 bullets
+above these (both lists together are well under 4000).
 
 ### 2.5.0 (build 19)
 
@@ -356,6 +384,9 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.6.0 and left alone: 2.6.0 is polish, and nothing in the line
+stopped being true.
+
 Audited at 2.5.0 and left alone. Every clause is still true, and the
 2.4.0 candidate below still reads well if the headline should change.
 
@@ -410,7 +441,8 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
-> Black, white, and team logos in full color. No banner ads, no autoplay video,
+> Black, white, and team logos in full color, light or dark or matching your
+> phone. No banner ads, no autoplay video,
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
@@ -418,6 +450,12 @@ leagues ever stop being the thing worth saying first; no review needed.
 >
 > StatSide is an independent app and is not affiliated with or endorsed by the
 > NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
+
+Changed for 2.6.0, in one place: DESIGNED QUIET names the Appearance
+switch (light, dark or matching the phone), since the paragraph said "black,
+white" and the app now lets you choose which leads. Nothing else in 2.6.0 is
+a bullet-level fact; the Edit/Done change, header badges and widget rows are
+refinements of surfaces already listed.
 
 Changed for 2.5.0, in four places. The live-filter bullet names Tight; game
 pages gain win probability; team and player pages gain their stats (the
@@ -467,6 +505,8 @@ four are in the subtitle, so repeating them would spend characters on nothing.
 Audited at 2.3.0 and unchanged: at 95 of 100 there are five characters
 spare, and nothing 2.3.0 added is a term this audience types into search —
 nobody looks for an app by "head to head" or "trophies".
+
+Audited at 2.6.0 and unchanged. Nothing 2.6.0 adds is a search term.
 
 Audited at 2.5.0 and unchanged. The release's new surface is stats, and
 `,stats` (6) still doesn't fit in the five spare characters. Nothing here
@@ -560,6 +600,13 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.6.0: carried forward a fourth time
+
+Nothing in the frames became false in 2.6.0 either. The October list gains
+the section headers as they now read ("SEC - NCAAF", the count badge) and
+the widget frame, whose rows changed (team then rank, record before kickoff,
+"Final"). Shoot the Scores hero in the System appearance.
 
 ### 2.5.0: carried forward a third time
 
@@ -717,7 +764,8 @@ one of the eight uploaded frames, so it does not block a submission.
 ## App Privacy (nutrition label)
 
 Answer: **Data Not Collected** — the app has no accounts, analytics, ads, or
-backend. *(Re-read at 2.5.0: still true. The Live Activity channel service
+backend. *(Re-read at 2.6.0: still true; the Appearance choice is one more
+UserDefaults key.)* *(Re-read at 2.5.0: still true. The Live Activity channel service
 now exists at statside.co, but this build never calls it: Live Activities are
 gated off, and even when on, it's asked for a game's channel with a game id
 and a league, never anything about a person. See `PRIVACY.md`.)* Followed teams and UI state are stored only on-device in UserDefaults.
@@ -782,6 +830,13 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.6.0: no rewrite; keep the 2.5.0 paragraph below.** 2.6.0
+adds no entitlement, account or data collection. The Appearance switch is
+one more Settings row, and the notes already say light/dark mode. **If 2.5.0
+(19) never went through review, the betting-lines paragraph below still has
+to go in with 2.6.0**: this would be the first build a reviewer sees with
+lines in it. Live Activities are still gated off.
 
 **Notes audit at 2.5.0: one addition, pasted after the demo paragraph.**
 2.5.0 adds no capability that needs declaring: no new entitlement, no
