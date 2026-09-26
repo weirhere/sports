@@ -57,7 +57,8 @@ export function SectionAccordion({
    * The league tag (iOS, 2026-09-07). Breaking college football back into
    * conferences left every header on the page naming a conference and none
    * of them naming a sport — "ACC" is only obviously college football to
-   * someone who already knows.
+   * someone who already knows. Joined onto the title as "SEC - NCAAF" since
+   * 2026-09-25, rather than riding it as a smaller caption.
    *
    * Only where the section has a league and doesn't already say it: the
    * NFL's own section is titled "NFL", and Following spans leagues.
@@ -78,22 +79,16 @@ export function SectionAccordion({
     <span className="flex min-w-0 items-baseline gap-2">
       <span className="flex shrink-0 items-center self-center">{glyph}</span>
       <span className="type-section-header truncate text-text-primary">
-        {section.title}
+        {leagueTag ? `${section.title} - ${leagueTag}` : section.title}
       </span>
-      {leagueTag && (
-        <span
-          aria-hidden="true"
-          className="type-meta shrink-0 uppercase tracking-wide text-text-secondary"
-        >
-          {leagueTag}
-        </span>
-      )}
     </span>
   );
 
+  // The count is a badge beside the chevron (iOS, 2026-09-25): a tally of
+  // the section, not part of its name.
   const countAndChevron = (
     <>
-      <span className="type-meta text-text-secondary">
+      <span className="type-meta inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-bg-elevated px-1.5 font-semibold tabular-nums text-text-secondary">
         {section.games.length}
       </span>
       <ChevronDown

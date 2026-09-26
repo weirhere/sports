@@ -36,8 +36,12 @@ struct SectionAccordion: View, Equatable {
     /// there is nowhere for their name to go.
     private var headerRow: some View {
         HStack(spacing: 0) {
+            // The name is sized first and the toggle takes what's left.
+            // Otherwise the toggle's Spacer bids for half the row and a long
+            // title like "Mountain West - NCAAF" wraps beside empty space.
             if nameOpensATable {
                 nameLink
+                    .layoutPriority(1)
                 toggleButton {
                     countAndChevron
                         .padding(.leading, Spacing.sm)
@@ -49,6 +53,7 @@ struct SectionAccordion: View, Equatable {
                 toggleButton {
                     HStack(spacing: Spacing.sm) {
                         identity
+                            .layoutPriority(1)
                         countAndChevron
                     }
                     .padding(.horizontal, Spacing.lg)
@@ -120,31 +125,22 @@ struct SectionAccordion: View, Equatable {
                 ConferenceLogo(url: section.logoURL,
                                league: section.league ?? .collegeFootball)
             }
-            // Tighter than the row's own spacing: the caption belongs to
-            // the name, not to the count that follows it.
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
-                Text(section.title)
-                    .font(.sectionHeader)
-                    .foregroundStyle(.textPrimary)
-                leagueTagText
-            }
+            Text(titleText)
+                .font(.sectionHeader)
+                .foregroundStyle(.textPrimary)
         }
     }
 
-    /// The league caption riding the name. A conference names itself, not
-    /// its sport — "ACC" and "Top 25" say nothing about which football this
-    /// is now that both leagues share the page (Andy, 2026-09-06). Same
-    /// quiet uppercase `shortName` the game rows and search results tag
-    /// with, so the app has one word for a league everywhere.
-    @ViewBuilder
-    private var leagueTagText: some View {
-        if let league = tagLeague {
-            Text(league.shortName)
-                .font(.rowMeta)
-                .tracking(0.4)
-                .foregroundStyle(.textSecondary)
-                .lineLimit(1)
-        }
+    /// The name, with its league joined on where it needs one: "SEC - NCAAF".
+    /// A conference names itself, not its sport — "ACC" and "Top 25" say
+    /// nothing about which football this is now that the leagues share the
+    /// page (Andy, 2026-09-06). It rode the name as a smaller caption until
+    /// 2026-09-25; one line of one type reads cleaner than two sizes. Same
+    /// `shortName` the game rows and search results tag with, so the app has
+    /// one word for a league everywhere.
+    private var titleText: String {
+        guard let league = tagLeague else { return section.title }
+        return "\(section.title) - \(league.shortName)"
     }
 
     /// The league a section needs spelled out: every one that has a league
@@ -157,12 +153,18 @@ struct SectionAccordion: View, Equatable {
         return league
     }
 
+    /// The count rides the trailing edge as a badge beside the chevron
+    /// (Andy, 2026-09-25): a tally of the section, not part of its name.
     private var countAndChevron: some View {
         HStack(spacing: Spacing.sm) {
-            Text("\(section.games.count)")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
             Spacer()
+            Text("\(section.games.count)")
+                .font(.metaEmphasis)
+                .monospacedDigit()
+                .foregroundStyle(.textSecondary)
+                .padding(.horizontal, 6)
+                .frame(minWidth: 18, minHeight: 18)
+                .background(Capsule().fill(Color.bgElevated))
             Image(systemName: "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.textSecondary)
