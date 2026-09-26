@@ -838,3 +838,4 @@ sibling below it.
 | 2026-09-25 | Leagues Following cards join the league onto the name ("SEC - NCAAF"); bare when the title is the league's own name | **shipped** — same web port PR, the section header's join and skip rule. |
 | 2026-09-25 | Show all caption names the first two hidden sections and counts the rest | **n/a** — the web has no Hide all/Show all control yet; the wording ports with it. |
 | 2026-09-25 | Widget cards stretch only when the list is full; a short list keeps natural height with the footer anchored | **n/a** — home-screen widget; the web has no widget extension. |
+| 2026-09-25 | Hide all/Show all capsule: one step darker than the page in light mode (`bgInset`, 0.88 on 0.93) | **n/a** — the web has no Hide all/Show all control yet; the fill ports with it. |

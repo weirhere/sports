@@ -28,7 +28,7 @@ struct HideAllControl: View {
                 .foregroundStyle(Color.textPrimary)
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm + 2)
-                .background(Capsule().fill(Color.bgElevated))
+                .background(Capsule().fill(Color.bgInset))
                 .contentShape(Capsule())
             }
             .buttonStyle(.plain)
