@@ -19,7 +19,8 @@ final class AppStoreScreenshots: XCTestCase {
     @MainActor
     func testCaptureStoreScreenshots() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["-ui.onboardingSeen", "YES",
+        app.launchArguments += ["-ui.appearance", "system",
+                                "-ui.onboardingSeen", "YES",
                                 "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", "",
                                 // Seed follows so the Following section leads

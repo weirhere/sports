@@ -187,4 +187,21 @@ import Testing
 
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
     }
+
+    @Test func appearanceDefaultsToSystemAndPersists() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.appearance == .system)
+
+        store.appearance = .dark
+        #expect(UIStateStore(defaults: defaults).appearance == .dark)
+        store.appearance = .light
+        #expect(UIStateStore(defaults: defaults).appearance == .light)
+    }
+
+    @Test func anUnknownStoredAppearanceFallsBackToSystem() {
+        let defaults = makeDefaults()
+        defaults.set("sepia", forKey: "ui.appearance")
+        #expect(UIStateStore(defaults: defaults).appearance == .system)
+    }
 }
