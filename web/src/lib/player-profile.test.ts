@@ -5,10 +5,11 @@
 import { describe, it, expect } from "vitest";
 import {
   findRosterPlayer,
+  mergePlayer,
   playerHref,
-  playerMetaLine,
   playerProfileRows,
   playerSpokenSummary,
+  type AthleteProfile,
 } from "./player-profile";
 import type { RosterPlayer, TeamRoster } from "./types";
 
@@ -89,47 +90,64 @@ describe("profile rows", () => {
   });
 });
 
-describe("the hero's meta line", () => {
-  it("reads team, number, position", () => {
-    expect(playerMetaLine(player(), "Georgia")).toBe("Georgia · #11 · QB");
-  });
-
-  it("drops each missing part on its own", () => {
-    expect(playerMetaLine(player({ jersey: undefined }), "Georgia")).toBe(
-      "Georgia · QB"
+describe("the spoken summary", () => {
+  // Name and club, which is exactly what the hero draws (2026-09-21). The
+  // number and the position are Profile rows, and speak there.
+  it("is the name and the club, and nothing the hero doesn't show", () => {
+    expect(playerSpokenSummary(player(), "Georgia Bulldogs")).toBe(
+      "Carson Beck, Georgia Bulldogs"
     );
-    expect(
-      playerMetaLine(player({ jersey: undefined, position: undefined }), "Georgia")
-    ).toBe("Georgia");
-    // A team name the schedule fetch never returned.
-    expect(
-      playerMetaLine(player({ jersey: undefined, position: undefined }))
-    ).toBe("");
-    // An empty string is ESPN's other way of not knowing.
-    expect(playerMetaLine(player({ jersey: "" }), "Georgia")).toBe("Georgia · QB");
   });
 
-  // The hero draws the team as its own badge, linking to the team page, so
-  // the line beside it is everything except the team.
-  it("is the rest of the line when the team is drawn as a badge", () => {
-    expect(playerMetaLine(player())).toBe("#11 · QB");
+  it("is the name alone when there is no club", () => {
+    expect(playerSpokenSummary(player())).toBe("Carson Beck");
   });
 });
 
-describe("the spoken summary", () => {
-  it("is a sentence, with the position spoken in full", () => {
-    expect(playerSpokenSummary(player(), "Georgia")).toBe(
-      "Carson Beck, Georgia, number 11, Quarterback"
-    );
+describe("merging the roster row with the athlete payload", () => {
+  const athlete: AthleteProfile = {
+    name: "Carson Beck",
+    age: 23,
+    jersey: "99",
+    position: "QB",
+    positionName: "Quarterback",
+    height: "6' 5\"",
+    weight: "230 lbs",
+    headshotUrl: "https://example.com/full.png",
+    injuryStatus: "Out",
+    teamId: "2390",
+  };
+
+  it("keeps the roster's facts wherever both sources answer", () => {
+    const merged = mergePlayer("4430841", player(), athlete);
+    expect(merged?.jersey).toBe("11");
+    expect(merged?.height).toBe("6' 4\"");
+    expect(merged?.classAbbreviation).toBe("JR");
   });
 
-  it("falls back to the abbreviation when that is all there is", () => {
-    expect(
-      playerSpokenSummary(
-        player({ jersey: undefined, positionName: undefined }),
-        "Georgia"
-      )
-    ).toBe("Carson Beck, Georgia, QB");
+  it("fills the roster's gaps from the athlete payload", () => {
+    const merged = mergePlayer(
+      "4430841",
+      player({ height: undefined, headshotUrl: undefined }),
+      athlete
+    );
+    expect(merged?.height).toBe("6' 5\"");
+    expect(merged?.headshotUrl).toBe("https://example.com/full.png");
+    expect(merged?.injuryStatus).toBe("Out");
+  });
+
+  it("builds the page from the athlete alone when the roster doesn't list him", () => {
+    const merged = mergePlayer("4430841", undefined, athlete);
+    expect(merged).toMatchObject({ id: "4430841", name: "Carson Beck", jersey: "99" });
+  });
+
+  it("builds the page from the roster alone when the athlete fetch failed", () => {
+    expect(mergePlayer("4430841", player(), undefined)).toEqual(player());
+  });
+
+  it("is nothing when neither source can name him", () => {
+    expect(mergePlayer("4430841", undefined, undefined)).toBeUndefined();
+    expect(mergePlayer("4430841", undefined, { teamId: "1" })).toBeUndefined();
   });
 });
 

@@ -1,134 +1,200 @@
 "use client";
 
-// One player's page — iOS `PlayerPage` (Features/Players/).
+// One player's page — iOS `PlayerPage` (Features/Players/): Profile, Games,
+// Stats and Career.
 //
-// **One tab, so no tab row.** The design settled on four — Profile, Games,
-// Stats, Career — and three of them have no confirmed data source (E20's P0).
-// The app's own rule decides what to do about that rather than a new one: an
-// empty roster shows "Roster TBA" instead of a tab, and game detail hides its
-// whole tab row when there is no box score. Three dead tabs would promise
-// pages that don't exist, which is the mistake the unlinked roster rows were
-// avoiding in the first place. `HeroHeader` renders exactly this when it is
-// handed no `tabs`.
+// **The tab row appears when there is a second tab to fill** — the rule this
+// page shipped under (2026-09-20), when it was Profile alone because ESPN's
+// athlete endpoints were unprobed. They answer from `site.web.api` now, so a
+// player with a stats line gets all four tabs; a player ESPN has no numbers
+// for — a walk-on, a practice-squad name — still gets Profile alone, with no
+// row of dead tabs over it. `HeroHeader` handed no `tabs` renders exactly
+// that.
+//
+// The hero is a name and a club (2026-09-21). The number and the position
+// are Profile rows, and printing them in the hero as well put the same two
+// facts on screen twice within a hundred pixels.
 
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CardHeader } from "@/components/card-header";
 import { HeroHeader } from "@/components/hero-header";
-import type { League } from "@/lib/leagues";
-import { teamPath } from "@/lib/routes";
+import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
+import { SeasonMenuChip } from "@/components/season-menu-chip";
+import { getPlayerGameLog } from "@/lib/api";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
 import {
-  playerMetaLine,
-  playerProfileRows,
-  playerSpokenSummary,
-} from "@/lib/player-profile";
+  espnSeason,
+  seasonYearFromEspn,
+  type League,
+} from "@/lib/leagues";
+import { teamPath } from "@/lib/routes";
+import { playerProfileRows, playerSpokenSummary } from "@/lib/player-profile";
+import {
+  seasonHeadlines,
+  seasonLabelFor,
+  type PlayerStats,
+} from "@/lib/player-stats";
 import type { RosterPlayer } from "@/lib/types";
+import { LabeledValueCard } from "./labeled-value-card";
+import { PlayerCareerPane } from "./player-career-pane";
+import { PlayerGamesPane } from "./player-games-pane";
+import { PlayerStatsPane } from "./player-stats-pane";
+import { ThisSeasonCard } from "./this-season-card";
+
+const TABS: HeroTab[] = [
+  { id: "profile", label: "Profile" },
+  { id: "games", label: "Games" },
+  { id: "stats", label: "Stats" },
+  { id: "career", label: "Career" },
+];
 
 interface PlayerViewProps {
   league: League;
+  athleteId: string;
   player: RosterPlayer;
-  teamId: string;
-  teamName?: string;
-  teamLogoUrl?: string;
+  /** The club he plays for now, off the athlete payload. */
+  team?: { id: string; name?: string; logoUrl?: string };
+  stats: PlayerStats;
+  /** ESPN's season year "now" belongs to, for the This season card. */
+  currentEspnSeason: number;
 }
 
 export function PlayerView({
   league,
+  athleteId,
   player,
-  teamId,
-  teamName,
-  teamLogoUrl,
+  team,
+  stats,
+  currentEspnSeason,
 }: PlayerViewProps) {
-  const rows = playerProfileRows(player, league);
-  // The team is a badge of its own now, so the line beside it is the rest:
-  // `playerMetaLine` handed no team name returns exactly "#2 · WR".
-  const meta = playerMetaLine(player);
-  // No team name means the schedule fetch failed, and a badge with no team
-  // in it is a link to nowhere. The line keeps every part it has instead.
-  const hasBadge = Boolean(teamName);
+  const [tab, setTab] = useState("profile");
+  const hasTabs = stats.categories.length > 0;
+  const activeTab = hasTabs ? tab : "profile";
+
+  // The game log waits for the Games tab — most visits never open it — and
+  // is then keyed by season, ESPN's numbering; undefined asks for ESPN's
+  // current one. Latched on the tap that opens the tab.
+  const [gamesRequested, setGamesRequested] = useState(false);
+  const [logSeason, setLogSeason] = useState<number | undefined>();
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "games") setGamesRequested(true);
+  };
+  const log = useOnDemand(
+    gamesRequested ? `${league}:${athleteId}:${logSeason ?? "current"}` : undefined,
+    () => getPlayerGameLog(league, athleteId, logSeason)
+  );
+
+  const headlines = seasonHeadlines(stats, currentEspnSeason);
+  const seasonLabel = seasonLabelFor(stats, currentEspnSeason);
+  const profileRows = playerProfileRows(player, league);
+
+  // The season menu, from ESPN's own list of seasons it will answer for.
+  // `SeasonMenuChip` speaks the app's season years and ESPN's log speaks
+  // its own (the ending year, for the NBA and NHL), so it converts both
+  // ways at this edge. One season is no choice, so no chip.
+  const loadedLog = log.state.status === "loaded" ? log.state.value : undefined;
+  const seasonChip =
+    activeTab === "games" &&
+    loadedLog?.season !== undefined &&
+    loadedLog.availableSeasons.length > 1 ? (
+      <SeasonMenuChip
+        value={seasonYearFromEspn(league, loadedLog.season)}
+        years={loadedLog.availableSeasons.map((year) =>
+          seasonYearFromEspn(league, year)
+        )}
+        onSelect={(year) => setLogSeason(espnSeason(league, year))}
+      />
+    ) : undefined;
 
   return (
-    <>
-      {/* The hero speaks one sentence; the parts below it are decoration,
-          the way a roster row's captions are. */}
-      <span className="sr-only">{playerSpokenSummary(player, teamName)}</span>
+    <div>
+      {/* The hero speaks one sentence — name and club, exactly what it
+          draws. The badge below is a link and speaks for itself. */}
+      <span className="sr-only">{playerSpokenSummary(player, team?.name)}</span>
       <HeroHeader
         logo={<Headshot player={player} />}
         title={player.name}
-        subtitle={
-          hasBadge || meta ? (
-            <div className="flex min-w-0 items-center gap-1.5">
-              {/* The team is the one part of this line that goes somewhere,
-                  so it is the one part that looks like it does: a badge on
-                  the elevated ground, crest and name together. The rest of
-                  the line stays quiet text beside it.
-
-                  It is deliberately **not** inside the `aria-hidden` the
-                  rest of the line carries. A focusable element hidden from
-                  the accessibility tree is reachable by keyboard and
-                  invisible to a screen reader, which is worse than the
-                  duplication it would have saved. */}
-              {hasBadge && (
-                <Link
-                  href={teamPath({ league, id: teamId })}
-                  className="flex min-w-0 shrink items-center gap-1.5 rounded-full bg-bg-elevated py-1 pl-1 pr-2.5 type-chip-em text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
-                >
-                  {teamLogoUrl && (
-                    <Image
-                      src={teamLogoUrl}
-                      alt=""
-                      width={16}
-                      height={16}
-                      unoptimized
-                      className="h-4 w-4 shrink-0 object-contain"
-                    />
-                  )}
-                  <span className="truncate">{teamName}</span>
-                  <span className="sr-only">, view team page</span>
-                </Link>
-              )}
-              {meta && (
-                <span
-                  aria-hidden="true"
-                  className="truncate type-meta text-text-secondary"
-                >
-                  {meta}
-                </span>
-              )}
-            </div>
+        subtitle={team?.name ? <TeamBadge league={league} team={team} /> : undefined}
+        trailing={seasonChip}
+        tabs={
+          hasTabs ? (
+            <HeroTabBar tabs={TABS} selected={activeTab} onSelect={selectTab} />
           ) : undefined
         }
       />
 
-      {rows.length > 0 && (
-        <section className="card-surface mt-4 pb-1">
-          <CardHeader title="Profile" />
-          {rows.map((row, index) => (
-            <div key={row.label}>
-              {index > 0 && <div className="ml-4 border-t border-divider" />}
-              <div
-                className="flex items-center justify-between gap-2 px-4 py-3"
-                aria-label={`${row.label} ${row.value}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="type-row-name text-text-secondary"
-                >
-                  {row.label}
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="tnum type-row-name-em text-text-primary"
-                >
-                  {row.value}
-                </span>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-    </>
+      <div
+        {...(hasTabs
+          ? {
+              role: "tabpanel",
+              id: `panel-${activeTab}`,
+              "aria-labelledby": `tab-${activeTab}`,
+            }
+          : {})}
+        className={hasTabs ? "flex flex-col gap-2 py-2" : "mt-4 flex flex-col gap-2"}
+      >
+        {activeTab === "profile" && (
+          <>
+            {headlines.length > 0 && seasonLabel && (
+              <ThisSeasonCard seasonLabel={seasonLabel} headlines={headlines} />
+            )}
+            {profileRows.length > 0 && (
+              <LabeledValueCard title="Profile" rows={profileRows} />
+            )}
+          </>
+        )}
+        {activeTab === "games" && (
+          <PlayerGamesPane
+            league={league}
+            log={log.state}
+            category={stats.categories[0]?.id}
+            onRetry={log.reload}
+          />
+        )}
+        {activeTab === "stats" && <PlayerStatsPane stats={stats} />}
+        {activeTab === "career" && <PlayerCareerPane stats={stats} />}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The team as a badge on the elevated ground, crest and name together — the
+ * one part of the hero that goes somewhere, so the one part that looks like
+ * it does.
+ *
+ * Named off the fetched team (2026-09-21), never off the link that opened
+ * the page, so every door shows the same club spelled the same way.
+ */
+function TeamBadge({
+  league,
+  team,
+}: {
+  league: League;
+  team: { id: string; name?: string; logoUrl?: string };
+}) {
+  return (
+    <div className="flex min-w-0">
+      <Link
+        href={teamPath({ league, id: team.id })}
+        className="flex min-w-0 shrink items-center gap-1.5 rounded-full bg-bg-elevated py-1 pl-1 pr-2.5 type-chip-em text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
+      >
+        {team.logoUrl && (
+          <Image
+            src={team.logoUrl}
+            alt=""
+            width={16}
+            height={16}
+            unoptimized
+            className="h-4 w-4 shrink-0 object-contain"
+          />
+        )}
+        <span className="truncate">{team.name}</span>
+        <span className="sr-only">, view team page</span>
+      </Link>
+    </div>
   );
 }
 

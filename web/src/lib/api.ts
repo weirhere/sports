@@ -1,6 +1,7 @@
 import type { GameDetail, Scoreboard } from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
+import type { PlayerGameLog } from "./player-stats";
 import type { League } from "./leagues";
 import { dayId } from "./day";
 
@@ -125,4 +126,19 @@ export async function getTeamTrophies(
   teamId: string
 ): Promise<TrophyCase> {
   return fetchJson(`${BASE}/team/${teamId}/trophies?league=${league}`);
+}
+
+/**
+ * One season of a player's games. `season` is ESPN's own year (the ending
+ * year for basketball and hockey); undefined asks for ESPN's current one.
+ * Requested when the Games tab first opens — most visits never do.
+ */
+export async function getPlayerGameLog(
+  league: League,
+  athleteId: string,
+  season?: number
+): Promise<PlayerGameLog> {
+  const params = new URLSearchParams({ league });
+  if (season !== undefined) params.set("season", String(season));
+  return fetchJson(`${BASE}/player/${athleteId}/gamelog?${params}`);
 }

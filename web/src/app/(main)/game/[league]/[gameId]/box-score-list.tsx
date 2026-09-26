@@ -15,13 +15,12 @@
 // team and the name in that case, and routing on a synthesized key pushes a
 // page for somebody who doesn't exist. `athleteId` is the genuine one.
 //
-// One known dead end, accepted rather than hidden: the link carries the team
-// this player suited up for **in this game**, and the player page finds the
-// athlete inside that team's *current* roster, since ESPN's roster endpoint
-// has no season axis (2026-09-10). A box score from a season the player has
-// since left therefore 404s. Every other door into the page has the same
-// floor, and the fix for all of them is the same athlete endpoint E20's P0
-// is waiting on.
+// The link carries the team this player suited up for **in this game**,
+// which may not be his team any more. That used to be a dead end — the page
+// could only find him in that team's current roster — and isn't since the
+// page fetches ESPN's athlete profile too (2026-09-21): a player the roster
+// no longer lists opens from that payload, badged with the club he plays
+// for now.
 
 import Image from "next/image";
 import Link from "next/link";
