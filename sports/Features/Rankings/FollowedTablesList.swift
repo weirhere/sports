@@ -29,22 +29,28 @@ struct FollowedTableRow: Identifiable {
 /// is arranging the top of the scores page, which is the only place the
 /// order has to earn its keep.
 ///
+/// ## Edit mode
+///
+/// Arranging and unfollowing live behind an Edit link on the section's
+/// heading, which reads Done while it's on (Andy, 2026-09-25, from FotMob's
+/// Leagues tab). Outside it a card is only its row: no star, no grip, no
+/// gesture of any kind, so the hub scrolls over these cards exactly as it
+/// scrolls over the list below them. In it, each card gains a leading
+/// dismiss button and a trailing grip, and stops navigating.
+///
+/// That replaces a hold-to-lift on every card (2026-09-07), which two rounds
+/// of tuning never made polite. Scrolling a long Following list kept
+/// picking cards up, and a lift the scroll view then claimed could leave the
+/// hub unable to scroll at all. A timing threshold can only guess which
+/// touches mean to reorder; a mode is the user saying so.
+///
 /// ## The drag
 ///
-/// A deliberate hold lifts a card: half a second anywhere on it, or a
-/// shorter one on the grip. The card then tracks the finger one-to-one while
-/// the rest of the stack parts around it, and settles into the gap on
-/// release.
-///
-/// **Both paths wait for a still finger** (Andy, 2026-09-24: scrolling the
-/// hub kept picking cards up). The lift used to come after a 0.25s hold that
-/// tolerated 12pt of drift, and the grip lifted with no hold at all once the
-/// finger moved 3pt. The grip's hit area is the card's whole trailing strip,
-/// right where a right thumb scrolls, so a flick that happened to start
-/// there or a scroll that started a little slowly became a reorder. Now a
-/// lift needs a hold that stays within a few points. The finger that
-/// scrolls is moving from the first frame, and the finger that means to
-/// reorder settles first, which is how iOS's own lift tells them apart.
+/// The grip lifts its card the moment it's touched, like a `List`'s reorder
+/// control — being in edit mode is the intent a hold used to have to infer.
+/// The card then tracks the finger one-to-one while the rest of the stack
+/// parts around it, and settles into the gap on release. The card body
+/// takes no gesture even in edit mode, so the hub still scrolls from it.
 ///
 /// This is a hand-rolled gesture rather than `.draggable`/`.dropDestination`
 /// (Andy, 2026-09-07). The system drag session is built for carrying an
@@ -58,13 +64,14 @@ struct FollowedTableRow: Identifiable {
 /// ScrollView, and a nested `List` fights it for every gesture. The
 /// ScrollView is what the drag has to be polite about instead — the hub
 /// stops scrolling for as long as a card is lifted, which is why there is
-/// no auto-scroll at the edges. The followed set is a handful of tables,
-/// so the list fits on screen.
+/// no auto-scroll at the edges.
 ///
-/// VoiceOver gets Move up / Move down actions, because a drag is not an
-/// accessible affordance and this is the only way to set the order.
+/// VoiceOver gets Move up, Move down and Unfollow actions in either mode,
+/// because a drag is not an accessible affordance and the star is gone.
 struct FollowedTablesList: View {
     let rows: [FollowedTableRow]
+    /// Edit mode, owned by the hub's heading link.
+    let isEditing: Bool
 
     /// True for as long as a card is lifted. The hub reads it to stand its
     /// ScrollView down: the drag and the scroll both want vertical pans,
@@ -85,13 +92,12 @@ struct FollowedTablesList: View {
     /// size can stretch one, and a drag that assumed a uniform row would
     /// drift a little further out of step with every card it passed.
     @State private var heights: [String: CGFloat] = [:]
-    /// Whether either lift gesture still has a finger. `onEnded` only fires
-    /// when a gesture *finishes*. One the system cancels after the lift (the
+    /// Whether the grip still has a finger. `onEnded` only fires when a
+    /// gesture *finishes*. One the system cancels after the lift (the
     /// scroll view claiming the touch, an interruption) never calls it,
     /// which left a card lifted and the hub unable to scroll (found
     /// 2026-09-24). `@GestureState` resets on cancellation too, so its
     /// falling edge is the drop that always happens.
-    @GestureState private var cardGestureActive = false
     @GestureState private var gripGestureActive = false
 
     /// `destination` is an insertion index into the list with the lifted
@@ -103,8 +109,8 @@ struct FollowedTablesList: View {
         var destination: Int
     }
 
-    /// One card can't be reordered, so it shows no grip and takes no drags.
-    private var isReorderable: Bool { rows.count > 1 }
+    /// One card can't be reordered, so it shows no grip even in edit mode.
+    private var isReorderable: Bool { isEditing && rows.count > 1 }
 
     /// An explicit VStack, not a bare ForEach: the cards are their own
     /// stack now, and this is what puts the hub's own card rhythm between
@@ -130,8 +136,12 @@ struct FollowedTablesList: View {
             translation = 0
             isReordering = false
         }
-        .onChange(of: cardGestureActive || gripGestureActive) { _, active in
+        .onChange(of: gripGestureActive) { _, active in
             if !active { drop() }
+        }
+        // Done, or the hub ending edit mode, mid-drag still lands the card.
+        .onChange(of: isEditing) { _, editing in
+            if !editing { drop() }
         }
     }
 
@@ -141,15 +151,19 @@ struct FollowedTablesList: View {
         let isLifted = lift?.table == table
         let travel: CGFloat = isLifted ? translation : shift(for: table)
         HStack(spacing: 0) {
+            if isEditing {
+                dismiss(table)
+                    .transition(controlTransition(edge: .leading))
+            }
             content(row)
-                // A lifted card must not also be a tapped one. The row's
-                // links are `SwipeSafeButtonStyle`, so a real drag already
-                // misses them, but a press-and-release that never moves
-                // would still land — and holding a card is not asking to
-                // open it.
-                .allowsHitTesting(lift == nil)
+                // In edit mode a card is something being arranged, not a
+                // link (FotMob's behaviour): a tap aimed at the dismiss
+                // button or the grip that lands a few points off shouldn't
+                // push a page.
+                .allowsHitTesting(!isEditing)
             if isReorderable {
                 grip(for: table)
+                    .transition(controlTransition(edge: .trailing))
             }
         }
         // The rows carry a list row's 7pt; a card wants a card's height.
@@ -169,28 +183,72 @@ struct FollowedTablesList: View {
         .scaleEffect(isLifted && !reduceMotion ? 1.03 : 1)
         .offset(y: travel)
         .zIndex(isLifted ? 1 : 0)
-        .gesture(pressAndDrag(table), including: isReorderable ? .all : .subviews)
         .accessibilityAction(named: "Move up") { move(table, by: -1) }
         .accessibilityAction(named: "Move down") { move(table, by: 1) }
+        .accessibilityAction(named: "Unfollow") { unfollow(table) }
+    }
+
+    /// Slides in from the card's own edge; Reduce Motion gets the fade alone.
+    private func controlTransition(edge: Edge) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: edge).combined(with: .opacity)
     }
 
     @ViewBuilder
     private func content(_ row: FollowedTableRow) -> some View {
         switch row.content {
+        // No star (Andy, 2026-09-25): unfollowing a card is edit mode's
+        // dismiss button, and the same table keeps its star in its league's
+        // accordion below.
         case .poll(let polls, let league):
-            Top25Row(polls: polls, league: league)
+            Top25Row(polls: polls, league: league, showsFollow: false,
+                     showsLeagueTag: true)
         case .conference(let conference):
             // No leader, no record (Andy, 2026-09-21). The hub answers
             // "which league", and a name plus a standing was two answers
             // to two questions in one row.
-            ConferenceListRow(conference: conference, showsLeader: false)
+            // The league joins the name, "SEC - NCAAF", as on the Scores
+            // headers (Andy, 2026-09-25): this list mixes every league, and
+            // "Eastern" is two different tables.
+            ConferenceListRow(conference: conference, showsLeader: false,
+                              showsFollow: false, showsLeagueTag: true)
         }
     }
 
-    /// Trailing, where iOS puts a reorder handle — after the follow star,
-    /// so the star keeps the position it has in every other list. It is a
-    /// real handle, not decoration: a drag from here lifts the card with
-    /// no press to wait out.
+    /// Leading, where iOS puts a list's delete control in edit mode. Gray,
+    /// not red: the app's one red is the live accent, and a removal that
+    /// one star below undoes doesn't need an alarm.
+    private func dismiss(_ table: FollowedTable) -> some View {
+        Button {
+            unfollow(table)
+        } label: {
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.textSecondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, Spacing.xs)
+        // The glyph is 18pt in a 44pt target, so 13pt of target sits past
+        // its trailing edge, and the row after it opens with its own 16pt
+        // inset. Pull both back so the glyph sits the row's own mark-to-name
+        // gap from the logo (Andy, 2026-09-25: the first cut left ~21pt).
+        // The overlap is safe: the row stops hit-testing in edit mode.
+        .padding(.trailing, Spacing.md - Self.dismissTargetOverhang - Spacing.lg)
+        // The same overhang, vertically: the 44pt target is taller than the
+        // row, and counting it in layout grew every card ~5pt on Edit
+        // (Andy, 2026-09-25). Only the controls should appear; the cards
+        // keep their height. The target still hit-tests at full size.
+        .padding(.vertical, -Self.dismissTargetOverhang)
+        .accessibilityLabel("Unfollow \(table.name)")
+        .accessibilityIdentifier("following-dismiss")
+    }
+
+    /// Half of the dismiss target's width the 18pt glyph doesn't fill.
+    private static let dismissTargetOverhang: CGFloat = (44 - 18) / 2
+
+    /// Trailing, where iOS puts a reorder handle. The only thing on a card
+    /// that drags, and only in edit mode.
     private func grip(for table: FollowedTable) -> some View {
         Image(systemName: "line.3.horizontal")
             .font(.system(size: 12, weight: .medium))
@@ -206,62 +264,21 @@ struct FollowedTablesList: View {
 
     // MARK: - Gestures
 
-    /// The whole-card path: hold to lift, then drag. The press is what
-    /// keeps this off the ScrollView's toes — a finger that moves before
-    /// the press completes is scrolling, and this gesture fails and lets
-    /// it. Half a second, UIKit's own drag-lift delay, and only a few
-    /// points of drift, so a scroll that starts slowly still reads as a
-    /// scroll.
-    private func pressAndDrag(_ table: FollowedTable) -> some Gesture {
-        LongPressGesture(minimumDuration: Self.cardHold, maximumDistance: Self.holdSlop)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .updating($cardGestureActive) { _, active, _ in active = true }
-            .onChanged { value in
-                switch value {
-                case .first(true):
-                    beginLift(of: table)
-                case .second(true, let drag):
-                    beginLift(of: table)
-                    if let drag { track(drag.translation.height) }
-                default:
-                    break
-                }
-            }
-            .onEnded { _ in drop() }
-    }
-
-    /// The grip path: a shorter hold than the card's, because aiming at a
-    /// handle already says most of what the press exists to find out. It
-    /// still needs one: the grip used to lift on the first 3pt of movement,
-    /// and a thumb scrolling down the right edge of the hub is exactly that.
+    /// Lifts on touch-down: edit mode already said this is a reorder, so
+    /// there is no hold to wait out. The card body keeps no gesture, so a
+    /// scroll that starts anywhere but here is a scroll.
     private func gripDrag(_ table: FollowedTable) -> some Gesture {
-        LongPressGesture(minimumDuration: Self.gripHold, maximumDistance: Self.holdSlop)
-            .sequenced(before: DragGesture(minimumDistance: 0))
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .updating($gripGestureActive) { _, active, _ in active = true }
-            .onChanged { value in
-                switch value {
-                case .first(true):
-                    beginLift(of: table)
-                case .second(true, let drag):
-                    beginLift(of: table)
-                    if let drag { track(drag.translation.height) }
-                default:
-                    break
-                }
+            .onChanged { drag in
+                beginLift(of: table)
+                track(drag.translation.height)
             }
             .onEnded { _ in drop() }
     }
 
-    /// How long a card must be held before it lifts.
-    static let cardHold: Double = 0.5
-    /// The grip's hold: shorter, because aiming at it is itself intent.
-    static let gripHold: Double = 0.2
-    /// How far a finger may drift during the hold and still be holding.
-    /// Anything more is a scroll starting, and the lift stands down.
-    static let holdSlop: CGFloat = 5
-
-    /// Idempotent: both gesture paths call it on every change, and the
-    /// first one through does the work.
+    /// Idempotent: the grip calls it on every change, and the first one
+    /// through does the work.
     private func beginLift(of table: FollowedTable) {
         guard lift == nil, isReorderable,
               let index = rows.firstIndex(where: { $0.table == table }) else { return }
@@ -292,7 +309,11 @@ struct FollowedTablesList: View {
     private func drop() {
         guard let current = lift else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            following.move(current.table, to: current.destination)
+            // Resolved against the cards on screen, which skip a followed
+            // table with nothing loaded — as a raw index into the full
+            // order it lands a slot off.
+            following.move(current.table, to: current.destination,
+                           among: rows.map(\.table))
             lift = nil
             translation = 0
         }
@@ -356,6 +377,17 @@ struct FollowedTablesList: View {
     /// measured itself, which is well before anyone can press one.
     private func height(of table: FollowedTable) -> CGFloat {
         heights[table.token] ?? 52
+    }
+
+    // MARK: - Unfollow
+
+    private func unfollow(_ table: FollowedTable) {
+        withAnimation(.snappy(duration: 0.25)) {
+            switch table {
+            case .poll(let league): following.togglePoll(in: league)
+            case .conference(let id): following.toggleConference(id)
+            }
+        }
     }
 
     // MARK: - VoiceOver
