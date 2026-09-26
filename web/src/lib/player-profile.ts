@@ -1,16 +1,18 @@
-// The player page's facts, taken from the roster row that links to it — the
-// web twin of iOS `PlayerIdentity` (StatSideShared/Models/Player.swift).
+// The player page's facts — the web twin of iOS `PlayerIdentity`
+// (StatSideShared/Models/Player.swift).
 //
-// **Nothing here is fetched from an athlete endpoint**, because there isn't
-// one we've proved out (E20's P0, `scripts/probe-athlete.sh`). A roster row
-// already holds every fact the Profile tab prints, which is why the roster is
-// the one door open in this first cut.
+// **Two sources, roster first.** The team's roster row and ESPN's own athlete
+// endpoint (`common/v3/.../athletes/{id}` on `site.web.api.espn.com`, see
+// `src/lib/espn/athlete.ts`). This header used to say no athlete endpoint had
+// been proved out; one was on 2026-09-21, and it is what names the team and
+// fills a page the roster can't. The roster still wins wherever both answer
+// — it carries college football's class year, which the athlete payload
+// doesn't — and it is the fallback when the athlete fetch fails.
 //
 // The one real difference from iOS: a URL has to rebuild the page from
-// nothing on a cold load — someone shares the link, or hits refresh — and the
-// roster endpoint is the only thing that knows this player. It is addressed
-// by team, so the team id rides in the path. iOS carries the facts in memory
-// through the navigation destination and needs no such thing.
+// nothing on a cold load — someone shares the link, or hits refresh. iOS
+// carries the door's facts in memory; the web re-fetches both sources from
+// the path, which is why the team id still rides in it.
 
 import type { League } from "./leagues";
 import { rosterMetric, spokenMetric } from "./roster-metric";
@@ -28,24 +30,6 @@ export function playerHref(
   athleteId: string
 ): string {
   return `/player/${league}/${teamId}/${athleteId}`;
-}
-
-/**
- * The hero's second line — team · #11 · QB. Each part drops out on its own,
- * so a player ESPN knows little about is a name rather than a line of
- * orphaned separators.
- */
-export function playerMetaLine(
-  player: RosterPlayer,
-  teamName?: string
-): string {
-  return [
-    teamName,
-    player.jersey ? `#${player.jersey}` : undefined,
-    player.position,
-  ]
-    .filter((part): part is string => Boolean(part))
-    .join(" · ");
 }
 
 /**
@@ -97,9 +81,14 @@ export function playerProfileRows(
 }
 
 /**
- * One sentence for the hero, so a screen reader doesn't read a name and then
- * an unlabelled run of abbreviations — `rosterSentence`'s rule, and the
- * position is spoken in full because "QB" is read as letters.
+ * One sentence for the hero: name and club, which is exactly what the hero
+ * draws (2026-09-21).
+ *
+ * It used to speak the number and the position too, from the days when the
+ * hero printed them. They are Profile rows now, and so is their spoken form
+ * — a label that announces facts the screen doesn't show makes the page
+ * longer to hear than to read, and the rows below say both with their own
+ * names attached.
  */
 export function playerSpokenSummary(
   player: RosterPlayer,
@@ -107,10 +96,61 @@ export function playerSpokenSummary(
 ): string {
   const parts: string[] = [player.name];
   if (teamName) parts.push(teamName);
-  if (player.jersey) parts.push(`number ${player.jersey}`);
-  const position = player.positionName ?? player.position;
-  if (position) parts.push(position);
   return parts.join(", ");
+}
+
+/**
+ * What ESPN's athlete endpoint says about a player — `transformAthleteProfile`
+ * in `src/lib/espn/athlete.ts`. Every field optional: a walk-on can come back
+ * with a name and nothing else.
+ */
+export interface AthleteProfile {
+  name?: string;
+  age?: number;
+  jersey?: string;
+  position?: string;
+  positionName?: string;
+  height?: string;
+  weight?: string;
+  headshotUrl?: string;
+  injuryStatus?: string;
+  /** The club ESPN has him on today — the hero badge's destination. */
+  teamId?: string;
+  /** `displayName ?? location`, the app's one team name. */
+  teamName?: string;
+  teamLogoUrl?: string;
+}
+
+/**
+ * The player the page renders: the roster row where there is one, with
+ * whatever the athlete endpoint adds filling its gaps — iOS
+ * `AthleteProfileClient.filling(_:)`'s `x ?? athlete.x`, field by field.
+ *
+ * Either source alone is enough. A roster that no longer lists him (a
+ * trade, a box score from a past season) still has the athlete payload; an
+ * athlete fetch that failed still has the roster. Neither — or a payload
+ * with no name to put on the page — is undefined, which is a 404.
+ */
+export function mergePlayer(
+  athleteId: string,
+  rosterPlayer: RosterPlayer | undefined,
+  athlete: AthleteProfile | undefined
+): RosterPlayer | undefined {
+  const name = rosterPlayer?.name ?? athlete?.name;
+  if (!name) return undefined;
+  const base: RosterPlayer = rosterPlayer ?? { id: athleteId, name };
+  if (!athlete) return base;
+  return {
+    ...base,
+    jersey: base.jersey ?? athlete.jersey,
+    position: base.position ?? athlete.position,
+    positionName: base.positionName ?? athlete.positionName,
+    height: base.height ?? athlete.height,
+    weight: base.weight ?? athlete.weight,
+    age: base.age ?? athlete.age,
+    headshotUrl: base.headshotUrl ?? athlete.headshotUrl,
+    injuryStatus: base.injuryStatus ?? athlete.injuryStatus,
+  };
 }
 
 /**
