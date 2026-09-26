@@ -347,3 +347,74 @@ private func game(_ id: String, on date: Date?, live: Bool = false,
                                           followedConferenceIds: []) == [.fbs])
     }
 }
+
+/// The 1s live poll asks only for the Eastern days with games in play
+/// (2026-09-26), and patches those games into the slate by id.
+@MainActor
+@Suite struct LivePollTests {
+    private static let now = Date(timeIntervalSince1970: 1_790_000_000)
+
+    private func final(_ id: String, on date: Date) -> Game {
+        let base = game(id, on: date)
+        return Game(id: id, date: date, name: nil, shortName: nil, weekNumber: 1,
+                    status: .final(detail: "Final"), home: base.home, away: base.away,
+                    broadcast: nil)
+    }
+
+    private func live(_ id: String, clock: String, homeScore: Int?) -> Game {
+        let base = game(id, on: Self.now)
+        let home = Competitor(team: base.home.team, score: homeScore, record: nil, rank: nil,
+                              isHome: true, winner: nil)
+        return Game(id: id, date: Self.now, name: nil, shortName: nil, weekNumber: 1,
+                    status: .live(displayClock: clock, period: 4, detail: nil, phase: .playing,
+                                  possessionTeamId: nil),
+                    home: home, away: base.away, broadcast: nil)
+    }
+
+    @Test func onlyGamesInPlayOrPastKickoffNameADay() {
+        let games = [game("live", on: Self.now.addingTimeInterval(-3600), live: true),
+                     game("late", on: Self.now.addingTimeInterval(-60)),
+                     game("later", on: Self.now.addingTimeInterval(3600)),
+                     final("done", on: Self.now.addingTimeInterval(-86_400 * 2))]
+        let days = ScoreboardStore.liveDays(in: games, now: Self.now)
+        let tokens = Set(days.map(DayFormat.espnToken(for:)))
+        #expect(tokens == Set([DayFormat.espnToken(for: Self.now.addingTimeInterval(-3600)),
+                               DayFormat.espnToken(for: Self.now.addingTimeInterval(-60))]))
+        #expect(!tokens.contains(DayFormat.espnToken(for: Self.now.addingTimeInterval(-86_400 * 2))))
+    }
+
+    @Test func oneDateForEachEasternDay() {
+        // Two live games an hour apart on one Eastern day ask once.
+        let a = game("a", on: Self.now.addingTimeInterval(-7200), live: true)
+        let b = game("b", on: Self.now.addingTimeInterval(-3600), live: true)
+        let sameDay = DayFormat.espnToken(for: a.date!) == DayFormat.espnToken(for: b.date!)
+        #expect(ScoreboardStore.liveDays(in: [a, b], now: Self.now).count == (sameDay ? 1 : 2))
+        // Two live games on different Eastern days ask twice.
+        let c = game("c", on: Self.now.addingTimeInterval(-86_400), live: true)
+        #expect(ScoreboardStore.liveDays(in: [b, c], now: Self.now).count == 2)
+    }
+
+    @Test func nothingInPlayAsksForNothing() {
+        let games = [game("later", on: Self.now.addingTimeInterval(3600)),
+                     final("done", on: Self.now.addingTimeInterval(-3600))]
+        #expect(ScoreboardStore.liveDays(in: games, now: Self.now).isEmpty)
+    }
+
+    @Test func patchingReplacesByIdAndKeepsTheRest() {
+        let held = [live("g1", clock: "5:00", homeScore: 7),
+                    game("g2", on: Self.now.addingTimeInterval(3600))]
+        let fresh = ["g1": live("g1", clock: "4:10", homeScore: 14)]
+        let patched = ScoreboardStore.patching(held, with: fresh)
+        #expect(patched.count == 2)
+        #expect(patched[0].home.score == 14)
+        #expect(patched[1] == held[1])
+    }
+
+    @Test func patchingNeverStepsBackwards() {
+        let held = [live("g1", clock: "0:58", homeScore: 29)]
+        let stale = ["g1": live("g1", clock: "1:56", homeScore: 22)]
+        let patched = ScoreboardStore.patching(held, with: stale)
+        #expect(patched[0].status == held[0].status)
+        #expect(patched[0].home.score == 29)
+    }
+}

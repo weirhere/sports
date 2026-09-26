@@ -180,6 +180,16 @@ final class ScoreboardStore {
     /// duplicate requests on the same days.
     @ObservationIgnored private var inFlight: Set<String> = []
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    /// When the whole window last came back, so a live tick knows whether
+    /// it's time to ask for all of it again.
+    @ObservationIgnored private var lastWindowFetch: Date?
+
+    /// How often a live poll re-asks for the whole five-day window rather
+    /// than just the days with games in play. Kickoff times, a game added
+    /// or dropped, a neighbouring day's slate: none of it moves on a
+    /// one-second clock, and the window is five requests to the live
+    /// days' one (2026-09-26, when the poll went to 1s).
+    static let windowRefreshInterval: TimeInterval = 30
 
     /// How far either side of the shown day each request reaches. Two days
     /// rather than one: ESPN reads `dates=` on the Eastern clock, so a
@@ -370,6 +380,88 @@ final class ScoreboardStore {
         }
     }
 
+    /// One live poll: the days with games in play, and the whole window
+    /// only every `windowRefreshInterval`.
+    ///
+    /// A 1s poll that re-asks for five days is five requests a second per
+    /// league, four of them for days where nothing is happening, and each
+    /// a full slate (Andy, 2026-09-26: "do the today-only change"). So a
+    /// tick between window refreshes asks ESPN only for the Eastern days
+    /// that hold a game in play or past its kickoff, which is one request
+    /// on almost every night, and patches those games in place.
+    private func pollTick(around center: Date, now: Date = Date()) async {
+        let windowIsFresh = lastWindowFetch.map {
+            now.timeIntervalSince($0) < Self.windowRefreshInterval
+        } ?? false
+        let days = Self.liveDays(in: gamesByDay.values.flatMap { $0 }, now: now)
+        guard windowIsFresh, !days.isEmpty else {
+            await fetchWindow(around: center)
+            return
+        }
+        await fetchLive(days: days)
+    }
+
+    /// One date per Eastern day that holds a game in play, or one past its
+    /// kickoff that ESPN hasn't flipped to live yet.
+    ///
+    /// Eastern, because that's the day ESPN's `dates=` token names and the
+    /// day its answers are clipped to. One *date* per day, because a span
+    /// handed to `scoreboard(days:)` walks forward a local day at a time
+    /// and would skip the second Eastern day of a span shorter than 24h.
+    static func liveDays(in games: [Game], now: Date) -> [Date] {
+        var byToken: [String: Date] = [:]
+        for game in games {
+            guard let date = game.date else { continue }
+            let started: Bool
+            switch game.status {
+            case .live: started = true
+            case .pre: started = date <= now
+            case .final, .other: started = false
+            }
+            guard started else { continue }
+            byToken[DayFormat.espnToken(for: date)] = date
+        }
+        return byToken.keys.sorted().compactMap { byToken[$0] }
+    }
+
+    /// The live days' games, patched into the slate by id. Adds and
+    /// removes nothing: a partial answer can't say what isn't on a day,
+    /// which is the window refresh's job.
+    private func fetchLive(days: [Date]) async {
+        do {
+            var fresh: [String: Game] = [:]
+            for day in days {
+                let board = try await client.scoreboard(days: day...day, divisions: divisions)
+                for game in board.games where fresh[game.id] == nil { fresh[game.id] = game }
+            }
+            var updated = gamesByDay
+            for (id, games) in gamesByDay {
+                updated[id] = Self.patching(games, with: fresh)
+            }
+            if updated != gamesByDay { gamesByDay = updated }
+            if lastError != nil { lastError = nil }
+        } catch is CancellationError {
+            // Abandoned on purpose, as in `fetchWindow`.
+        } catch let error as URLError where error.code == .cancelled {
+            // The same thing, as URLSession spells it.
+        } catch {
+            // Keep last-good games on failure.
+            lastError = describe(error)
+            Self.logger.error("\(self.league.rawValue) live fetch failed: \(error)")
+        }
+    }
+
+    /// Held games replaced by their fresh copies, under the same two rules
+    /// a window refresh keeps: never backwards, and a line outlives the
+    /// payload that drops it.
+    static func patching(_ held: [Game], with fresh: [String: Game]) -> [Game] {
+        held.map { old in
+            guard let latest = fresh[old.id] else { return old }
+            let kept = Game.keepingProgress([latest], from: [old])
+            return keepingLines(kept, from: [old])[0]
+        }
+    }
+
     private func fetchWindow(around center: Date) async {
         let calendar = Calendar.current
         guard let from = calendar.date(byAdding: .day, value: -Self.windowRadius, to: center),
@@ -398,6 +490,7 @@ final class ScoreboardStore {
             // unconditional write would re-render the whole scores tree on
             // each 30s poll tick even when nothing moved.
             if updated != gamesByDay { gamesByDay = updated }
+            lastWindowFetch = Date()
             if lastError != nil { lastError = nil }
         } catch is CancellationError {
             // Abandoned on purpose — the day moved out from under this
@@ -523,7 +616,7 @@ final class ScoreboardStore {
                 }
                 guard let center = self.windowCenter else { return }
                 Self.logger.info("polling: tick (\(self.league.rawValue), groups \(self.groupsLabel))")
-                await self.fetchWindow(around: center)
+                await self.pollTick(around: center)
                 guard let after = self.pollDelay() else {
                     Self.logger.info("polling: stopped (nothing live or kicking off)")
                     self.pollTask = nil
