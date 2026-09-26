@@ -344,7 +344,8 @@ actor ESPNClient: ScoresProviding {
                 items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
             }
             items += query
-            let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
+            let dto: ScoreboardDTO = try await fetch(base: self.base, path: "/scoreboard",
+                                                     query: items, live: true)
             return ESPNMapper.scoreboard(from: dto, league: league)
         }
 
@@ -724,7 +725,8 @@ actor ESPNClient: ScoresProviding {
 
     func gameSummary(eventId: String) async throws -> GameSummary {
         let dto: SummaryResponseDTO = try await fetch(
-            path: "/summary", query: [URLQueryItem(name: "event", value: eventId)]
+            base: self.base, path: "/summary",
+            query: [URLQueryItem(name: "event", value: eventId)], live: true
         )
         // `venueCapacity` is still decoded off the site payload's venue —
         // it is simply always absent today. The core API's venue resource
@@ -745,7 +747,16 @@ actor ESPNClient: ScoresProviding {
         try await fetch(base: base, path: path, query: query)
     }
 
-    private func fetch<T: Decodable>(base: String, path: String, query: [URLQueryItem]) async throws -> T {
+    /// `live` is for the two requests a 30s poll rides, the scoreboard and
+    /// the game summary: they skip the local HTTP cache. `URLSession.shared`
+    /// otherwise answers from disk for as long as ESPN's headers (or, with
+    /// none, its own freshness heuristic) say a response is good, so a poll
+    /// could "succeed" on a copy it already had. That froze a live row at
+    /// 1:56 for over a minute while the game page, on its own request,
+    /// counted down under 1:00 (Andy, 2026-09-26). Everything else keeps
+    /// the cache: standings and schedules are fine a little stale.
+    private func fetch<T: Decodable>(base: String, path: String, query: [URLQueryItem],
+                                     live: Bool = false) async throws -> T {
         guard var components = URLComponents(string: base + path) else {
             throw ESPNError.invalidURL
         }
@@ -753,7 +764,9 @@ actor ESPNClient: ScoresProviding {
             components.queryItems = query
         }
         guard let url = components.url else { throw ESPNError.invalidURL }
-        let (data, response) = try await session.data(from: url)
+        let request = URLRequest(url: url, cachePolicy: live
+                                 ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy)
+        let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
             throw ESPNError.badStatus(http.statusCode)
         }

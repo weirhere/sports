@@ -2,7 +2,7 @@
 
 // The game page (iOS GameDetailScreen): header on the card surface, then a
 // tab row and the cards in the iOS order — line score, scoring, team stats,
-// leaders. Live games poll every 30s through useLiveGame; a pre-game summary
+// leaders. Live games poll every 1s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
 // **Summary / Plays / Box score / H2H**, and a tab only exists where its data

@@ -1,5 +1,5 @@
 // The landing page: today's slate, every league, read live on every request
-// — never frozen at build time. The provider's 30s revalidate window is the
+// — never frozen at build time. The provider's 1s revalidate window is the
 // request throttle.
 //
 // The server renders one day so the first paint carries real games; the
