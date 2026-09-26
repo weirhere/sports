@@ -102,11 +102,14 @@ export class EspnDataError extends Error {
   }
 }
 
-// Cache lifetimes (seconds) per endpoint class — scoreboard and live game
-// detail at the app's 30s polling floor, slow-moving data much longer.
+// Cache lifetimes (seconds) per endpoint class. Scoreboard and game summary
+// are 1s, the client's live poll and the shortest lifetime Next's data
+// cache takes: it still coalesces every visitor's tick into one ESPN request
+// a second. Next serves one stale copy while it revalidates, so a live row
+// can trail ESPN by one tick. Slow-moving data keeps much longer lifetimes.
 const REVALIDATE = {
-  scoreboard: 30,
-  gameSummary: 30,
+  scoreboard: 1,
+  gameSummary: 1,
   rankings: 300,
   standings: 300,
   schedule: 3600,

@@ -369,7 +369,7 @@ export function useLeagueScoreboards(
   // --- Polling ---------------------------------------------------------
   //
   // Polite-guest, and through kickoff (iOS `ScoreboardStore.nextPollDelay`,
-  // 2026-09-25). A 30s cadence while a game is live — anywhere in the cache,
+  // 2026-09-25). A 1s cadence while a game is live — anywhere in the cache,
   // so a followed game on a neighbouring day keeps ticking — or while one on
   // the window's own days is within a tick of kickoff or up to three hours
   // past it. A later kickoff is a sleep until then, which makes no request;
