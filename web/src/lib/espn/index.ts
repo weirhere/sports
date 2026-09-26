@@ -17,3 +17,4 @@ export {
   EspnDataError,
 } from "./provider";
 export { teamSeasonStats, teamLeaders } from "./team-stats-provider";
+export { searchAthletes } from "./athlete-search";
