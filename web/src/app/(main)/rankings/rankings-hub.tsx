@@ -24,7 +24,6 @@ import {
   conferenceLogoUrl,
   conferenceName,
   divisionGroupId,
-  isDivisionRoot,
   collegeDivision,
 } from "@/lib/conferences";
 import {
@@ -33,9 +32,6 @@ import {
   foldingDivisions,
   followableTables,
   isFollowable,
-  isLeagueWide,
-  leaderOf,
-  leaderRecord,
   leagueTable,
   tableRef,
 } from "@/lib/standings-tables";
@@ -364,7 +360,7 @@ function LeagueAccordion({
               <div key={rowKey(row)}>
                 {index > 0 && <div className="ml-4 border-t border-divider" />}
                 {row.kind === "poll" ? (
-                  <Top25Row polls={row.polls} league={row.league} />
+                  <Top25Row league={row.league} />
                 ) : (
                   <TableRow table={row.table} />
                 )}
@@ -388,17 +384,8 @@ function rowKey(row: HubRow): string {
  * "Top 25" never said whose, which is fine while one league polls and
  * confusing the moment a second one does.
  */
-export function Top25Row({
-  polls,
-  league,
-}: {
-  polls: Poll[];
-  league: League;
-}) {
+export function Top25Row({ league }: { league: League }) {
   const { isFavoritePoll, toggleFavoritePoll } = useFavoritesContext();
-  // "#1 Ohio State" from the first displayed poll. The row doesn't track
-  // the picker choice — it's a teaser, not the poll.
-  const top = polls[0]?.ranks[0];
   const followed = isFavoritePoll(league);
 
   return (
@@ -406,17 +393,15 @@ export function Top25Row({
       <Link
         href="/rankings/poll"
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
-        aria-label={top ? `Top 25, number 1 ${top.team.school}` : "Top 25"}
+        aria-label="Top 25"
       >
         <ConferenceLogo src={leagueLogoUrl(league)} name="" />
-        <span className="shrink-0 type-team-name text-text-primary">
+        {/* No "#1 Ohio State" teaser (iOS, 2026-09-21): the hub answers
+            "which table", and a standing answers a different question in
+            the same row. The poll page is one tap away. */}
+        <span className="min-w-0 truncate type-team-name text-text-primary">
           Top 25
         </span>
-        {top && (
-          <span className="truncate type-meta text-text-secondary">
-            #1 {top.team.school}
-          </span>
-        )}
       </Link>
       <FollowStar
         followed={followed}
@@ -428,8 +413,12 @@ export function Top25Row({
 }
 
 /**
- * One table: mark, name, leader teaser, follow star. The row navigates to
- * that table's page; the star doesn't.
+ * One table: mark, name, follow star. The row navigates to that table's
+ * page; the star doesn't.
+ *
+ * No leader teaser (iOS, 2026-09-21). The accordion is a way *into* a
+ * league's tables, and a leader beside every row is a column of numbers
+ * nobody is comparing — they belong on the table the row opens.
  */
 function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const { isFavoriteConference, toggleFavoriteConference } =
@@ -438,49 +427,20 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const token = ref ? conferenceToken(ref) : undefined;
   const followed = token !== undefined && isFavoriteConference(token);
 
-  const leader = leaderOf(table);
-  const record = leader ? leaderRecord(leader) : undefined;
-
-  /**
-   * A **whole-league row shows no teaser at all** (iOS, 2026-09-09). Its
-   * "leader" is only the best record in the sport, which is not what a
-   * league row is asked — and the number would be an *in-group* record on
-   * a row spanning every group.
-   *
-   * A college-football division root shows none either: FBS's "leader" is
-   * whichever conference table happened to sort first.
-   */
-  const teasable =
-    !isLeagueWide(table) && !isDivisionRoot(Number(table.id), table.league);
-  const teaser =
-    teasable && leader && record
-      ? `${leader.team.school} · ${record}`
-      : undefined;
-
-  const spokenRecord = record?.replaceAll("-", " and ");
-  const rowLabel = teaser
-    ? `${table.name}, led by ${leader!.team.school} at ${spokenRecord}`
-    : table.name;
-
   return (
     <div className="flex min-h-12 items-center gap-3 pr-2">
       <Link
         href={ref ? conferencePath(ref) : "#"}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
-        aria-label={rowLabel}
+        aria-label={table.name}
       >
         <ConferenceLogo
           src={ref ? conferenceLogoUrl(ref.id, ref.league) : undefined}
           name=""
         />
-        <span className="shrink-0 type-team-name text-text-primary">
+        <span className="min-w-0 truncate type-team-name text-text-primary">
           {table.name}
         </span>
-        {teaser && (
-          <span className="truncate type-meta text-text-secondary">
-            {teaser}
-          </span>
-        )}
       </Link>
       {token !== undefined && isFollowable(table) && (
         <FollowStar
