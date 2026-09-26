@@ -55,10 +55,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        {/* The Appearance choice (iOS Settings, 2026-09-25) is stored under
+            the app's own namespace rather than next-themes' bare "theme".
+            System stays the default, so nobody's page changes until they
+            ask. See `AppearancePicker`. */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
+          storageKey="statside.appearance"
           disableTransitionOnChange
         >
           <FavoritesProvider>

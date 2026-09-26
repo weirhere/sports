@@ -23,8 +23,10 @@ const NAV_LINKS = [
  * (the active nav link on desktop, the filled tab on a phone), and left the
  * mark itself visible on exactly one route. The mark is the constant now,
  * and each page names itself where a page should: `/rankings/poll` and
- * every entity page in their own hero, Leagues and Teams in a screen-reader
- * heading, since sighted users have the tab bar.
+ * every entity page in their own hero, and the four root tabs in the one
+ * masthead they share, `PageHeader` (iOS, 2026-09-21) — which superseded
+ * the screen-reader-only headings they carried before, on iOS's finding
+ * that a tab names itself, left-aligned, in the same place on every tab.
  *
  * Privacy and Support are in the set without being tabs, because what it
  * actually gates is the back chevron — and a chevron is `router.back()`,

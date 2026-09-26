@@ -198,6 +198,14 @@
   font-weight: 800;
   letter-spacing: -0.02em;
 }
+/* A root tab's masthead — the wordmark on Games, the page's name on the
+   other tabs, one metric for both so a tab change doesn't jog it (iOS
+   `PageHeader` / `Wordmark`, 21pt heavy, 2026-09-21). */
+@utility type-page-title {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.2;
+}
 @utility type-chip {
   font-size: 14px;
   font-weight: 500;
