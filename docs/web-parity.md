@@ -827,3 +827,4 @@ sibling below it.
 | 2026-09-24 | Leagues list A–Z (NBA, NCAAF, NFL, NHL) on Scores and the tables hub | **pending** — the web's league loops read `LEAGUES`' declaration order; give it a display-order copy, as iOS did. |
 | 2026-09-24 | Followed-card lift needs a still hold (iOS 0.5s card / 0.2s grip, 5pt slop) | **shipped** — same PR: the web card-body hold is 500ms / 5px; its grip stays instant (a `touch-none` handle can't start a scroll). |
 | 2026-09-25 | Widget rows: name-then-rank, record only pre-game in the score slot, divider on every row, "Final" | **n/a** — home-screen widget; the web has no widget extension. |
+| 2026-09-25 | Hide all capsule hugs its contents, centered, not full width | **pending** — ports with the control itself (still pending from 2026-09-22); build it as an inline pill from the start. |
