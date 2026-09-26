@@ -86,7 +86,11 @@ export function HeroHeader({
                   #{rank}
                 </span>
               )}
-              <span className="truncate">{title}</span>
+              {/* Two lines rather than an ellipsis (iOS, 2026-09-21): a
+                  team reads by its full name now, and "Southern Miss
+                  Golden Eagles" beside a follow pill is a long name, not a
+                  mistake. */}
+              <span className="line-clamp-2 min-w-0 break-words">{title}</span>
             </h1>
             {subtitle && <div className="mt-0.5">{subtitle}</div>}
           </div>

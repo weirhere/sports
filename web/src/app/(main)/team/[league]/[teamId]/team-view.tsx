@@ -3,12 +3,14 @@
 // The TeamPage client shell — tab choice is the only client state; season
 // flips navigate `?year=` so the server refetch is the per-year cache.
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { conferenceName, divisionForTeamId } from "@/lib/conferences";
+import type { TeamLeaders, TeamSeasonStats } from "@/lib/espn/team-stats";
+import { teamFullName } from "@/lib/team-name";
 import {
   SEASON_FLOOR,
   seasonYear,
@@ -51,10 +53,14 @@ import {
   scopesForTeamIn,
   type StandingsScope,
 } from "@/lib/standings-scope";
+import { SeasonStatsCard } from "./season-stats-card";
+import { TeamLeadersCard } from "./team-leaders-card";
+import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 
-// Ordered — the ordinal is the tab walk (Overview → Games → Standings →
-// Roster → Trophies). Standings is conference-gated, so the row is assembled
-// rather than sliced.
+// Ordered — the ordinal is the tab walk (Overview → Games → Stats →
+// Standings → Roster → Trophies). Standings is conference-gated, so the row
+// is assembled rather than sliced. Stats sits after Games (iOS, 2026-09-24):
+// the row scrolls, so a sixth tab costs no cramming.
 //
 // Trophies is **unconditional**, which is the one place this lands away from
 // "a tab only when they've won things". The condition can't be answered for
@@ -68,6 +74,7 @@ import {
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
   { id: "games", label: "Games" },
+  { id: "stats", label: "Stats" },
   { id: "standings", label: "Standings" },
   { id: "roster", label: "Roster" },
   { id: "trophies", label: "Trophies" },
@@ -87,6 +94,10 @@ interface TeamViewProps {
   displayYear: number;
   /** Whether the requested season is the current one. */
   isCurrentSeason: boolean;
+  /** ESPN's current season numbers — streamed, never rejects. */
+  seasonStats: Promise<TeamSeasonStats>;
+  /** The season's leaders, current season only — streamed, never rejects. */
+  leaders?: Promise<TeamLeaders>;
 }
 
 export function TeamView({
@@ -98,6 +109,8 @@ export function TeamView({
   apRank,
   displayYear,
   isCurrentSeason,
+  seasonStats,
+  leaders,
 }: TeamViewProps) {
   const router = useRouter();
   const [tab, setTab] = useState("overview");
@@ -144,13 +157,15 @@ export function TeamView({
     () => getTeamTrophies(league, teamId)
   );
 
-  const school =
-    schedule.team?.school ??
-    // Derive an identity from the slate when the payload ships no team block.
+  // The full name — "Philadelphia Flyers", not "Philadelphia" (iOS,
+  // 2026-09-21), matching the Teams tab and the Add teams sheet. Derived
+  // from the slate when the payload ships no team block.
+  const identity =
+    schedule.team ??
     schedule.games
       .flatMap((game) => [game.homeTeam, game.awayTeam])
-      .find((side) => side.team.id === teamId)?.team.school ??
-    "Team";
+      .find((side) => side.team.id === teamId)?.team;
+  const school = identity ? teamFullName(identity) : "Team";
   const logoUrl = schedule.team?.logoUrl;
 
   // The lead card is pinned to the current season — a past season is
@@ -272,10 +287,13 @@ export function TeamView({
                 roster under last decade's label. Trophies is the third and
                 the most obvious: a trophy case is every season at once, and
                 scoping it to one would turn the tab into a worse copy of
-                that season's Games tab. */}
+                that season's Games tab. Stats is the fourth, for Roster's
+                reason: the statistics endpoint answers for ESPN's current
+                season only, and its first card already names which. */}
             {activeTab !== "overview" &&
               activeTab !== "roster" &&
-              activeTab !== "trophies" && (
+              activeTab !== "trophies" &&
+              activeTab !== "stats" && (
               <SeasonMenuChip
                 value={displayYear}
                 years={seasonYears(league)}
@@ -333,6 +351,26 @@ export function TeamView({
                 </section>
               )
             )}
+            {/* The season's numbers and who leads them — only for the
+                season "now" belongs to, since ESPN's numbers have no season
+                axis to follow the chip with. Each waits under its own
+                boundary and draws nothing while it does: a card that isn't
+                there yet is better than a placeholder that might never
+                fill. */}
+            {isCurrentSeason && (
+              <Suspense fallback={null}>
+                <SeasonStatsCard
+                  league={league}
+                  stats={seasonStats}
+                  onOpen={() => selectTab("stats")}
+                />
+              </Suspense>
+            )}
+            {leaders && (
+              <Suspense fallback={null}>
+                <TeamLeadersCard league={league} teamId={teamId} leaders={leaders} />
+              </Suspense>
+            )}
             {/* Last, because it is the tab's least time-sensitive card — a
                 stadium doesn't move between refreshes, where the next game
                 and the record do. */}
@@ -366,6 +404,12 @@ export function TeamView({
               </p>
             </section>
           ))}
+
+        {activeTab === "stats" && (
+          <Suspense fallback={<TeamStatsPaneSkeleton />}>
+            <TeamStatsPane stats={seasonStats} />
+          </Suspense>
+        )}
 
         {activeTab === "roster" &&
           // Who plays here — FotMob's squad screen, in the app's table

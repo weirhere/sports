@@ -4,7 +4,14 @@
 // per-year cache); the client shell owns tab choice only.
 
 import { notFound } from "next/navigation";
-import { teamSchedule, teamRoster, hubStandings, rankings } from "@/lib/espn";
+import {
+  teamSchedule,
+  teamRoster,
+  hubStandings,
+  rankings,
+  teamSeasonStats,
+  teamLeaders,
+} from "@/lib/espn";
 import {
   SEASON_FLOOR,
   displayName,
@@ -76,6 +83,17 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   // scoped exactly — a user who picked 2019 must never silently get 2018.
   const fetchYear = year === currentYear ? undefined : year;
 
+  // The season's numbers and leaders are started here and **not awaited**:
+  // the client unwraps them under their own Suspense boundaries, so the
+  // page's first byte never waits on them — the leaders especially, which
+  // can take a fallback season and an athlete lookup to name. Neither
+  // rejects; a failure answers empty and the cards hide.
+  const isCurrentSeason = (year ?? currentYear) === currentYear;
+  const seasonStats = teamSeasonStats(league, teamId);
+  // Overview is the only reader, and it only shows them for the current
+  // season — ESPN's numbers have no season axis to follow the chip with.
+  const leaders = isCurrentSeason ? teamLeaders(league, teamId) : undefined;
+
   const [scheduleResult, standingsResult, rankingsResult, rosterResult] =
     await Promise.allSettled([
       teamSchedule(league, teamId, fetchYear),
@@ -118,7 +136,9 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
       // The payload's own year pins the chip label — the current-season
       // fetch may fall back a season while the next one is unpublished.
       displayYear={schedule.year ?? year ?? currentYear}
-      isCurrentSeason={(year ?? currentYear) === currentYear}
+      isCurrentSeason={isCurrentSeason}
+      seasonStats={seasonStats}
+      leaders={leaders}
     />
   );
 }

@@ -17,10 +17,10 @@ import { TeamLogo } from "@/components/team-logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
-import { conferenceName, divisionForTeamId } from "@/lib/conferences";
-import { LEAGUES, shortName } from "@/lib/leagues";
+import { LEAGUES } from "@/lib/leagues";
 import { followedLeagues, followKey, type FollowKey } from "@/lib/refs";
 import { teamPath } from "@/lib/routes";
+import { teamFullName, teamSpokenLabel, teamSubtitle } from "@/lib/team-name";
 import type { Team } from "@/lib/types";
 
 export function TeamsList() {
@@ -144,17 +144,20 @@ function EmptyState() {
 /**
  * One followed team, as its own card. The card navigates; the star unfollows
  * — the same split every browse row in the app uses.
+ *
+ * The full name, with "NCAAF • SEC" under it (iOS, 2026-09-21). Both lines
+ * wrap rather than truncate: "Southern Miss Golden Eagles" is a long name,
+ * not a mistake.
  */
 function FollowedTeamCard({ team }: { team: Team }) {
   const key = followKey({ league: team.league, teamId: team.id });
-  const group = groupName(team);
-  const subtitle = [team.name, group].filter(Boolean).join(" · ");
+  const name = teamFullName(team);
 
   return (
     <div className="card-surface flex items-center pr-2">
       <Link
         href={teamPath(team)}
-        aria-label={[team.school, group].filter(Boolean).join(", ")}
+        aria-label={teamSpokenLabel(team)}
         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-header"
       >
         <TeamLogo
@@ -163,18 +166,16 @@ function FollowedTeamCard({ team }: { team: Team }) {
           size="md"
           className="h-10 w-10 shrink-0 object-contain"
         />
-        <span aria-hidden="true" className="min-w-0">
-          <span className="block truncate type-team-name-em text-text-primary">
-            {team.school}
+        <span aria-hidden="true" className="flex min-w-0 flex-col gap-0.5">
+          <span className="line-clamp-2 break-words type-team-name-em text-text-primary">
+            {name}
           </span>
-          {subtitle && (
-            <span className="block truncate type-meta text-text-secondary">
-              {subtitle}
-            </span>
-          )}
+          <span className="line-clamp-2 break-words type-meta text-text-secondary">
+            {teamSubtitle(team)}
+          </span>
         </span>
       </Link>
-      <UnfollowStar teamKey={key} label={team.school} />
+      <UnfollowStar teamKey={key} label={name} />
     </div>
   );
 }
@@ -199,38 +200,4 @@ function UnfollowStar({
       <Star aria-hidden="true" className="h-4 w-4 fill-current" />
     </button>
   );
-}
-
-/**
- * The group the team plays in, with the league in front of it (iOS,
- * 2026-09-09: "Cleveland Cavaliers are NBA Eastern. Tampa Bay Lightning are
- * NHL Eastern").
- *
- * The league is what makes the group a name rather than a word: the directory
- * files basketball and hockey teams under their *conference*, and both
- * leagues call theirs Eastern and Western — so a card of followed teams was
- * two identical subtitles for teams in different sports.
- *
- * For the NFL the group is the **division**: the directory files those teams
- * under their conference too, so the team's own id would only ever say AFC or
- * NFC.
- */
-function groupName(team: Team): string | undefined {
-  const raw = rawGroupName(team);
-  if (!raw) return undefined;
-  const league = shortName(team.league);
-  return raw.toLowerCase().includes(league.toLowerCase())
-    ? raw
-    : `${league} ${raw}`;
-}
-
-function rawGroupName(team: Team): string | undefined {
-  if (team.league === "nfl") {
-    const division = divisionForTeamId(team.id, "nfl");
-    if (division !== undefined) return conferenceName(division, "nfl");
-  }
-  const id = Number(team.conferenceId);
-  if (!Number.isInteger(id)) return undefined;
-  const name = conferenceName(id, team.league);
-  return name === "Other" ? undefined : name;
 }
