@@ -88,7 +88,7 @@ export function SectionAccordion({
   // the section, not part of its name.
   const countAndChevron = (
     <>
-      <span className="type-meta inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-bg-elevated px-1.5 font-semibold tabular-nums text-text-secondary">
+      <span className="type-meta inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-divider px-1.5 font-semibold tabular-nums text-text-secondary">
         {section.games.length}
       </span>
       <ChevronDown

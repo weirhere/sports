@@ -164,7 +164,7 @@ struct SectionAccordion: View, Equatable {
                 .foregroundStyle(.textSecondary)
                 .padding(.horizontal, 6)
                 .frame(minWidth: 18, minHeight: 18)
-                .background(Capsule().fill(Color.bgElevated))
+                .background(Capsule().fill(Color.divider))
             Image(systemName: "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.textSecondary)

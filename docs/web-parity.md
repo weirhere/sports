@@ -829,4 +829,5 @@ sibling below it.
 | 2026-09-25 | Widget rows: name-then-rank, record only pre-game in the score slot, divider on every row, "Final" | **n/a** — home-screen widget; the web has no widget extension. |
 | 2026-09-25 | Hide all capsule hugs its contents, centered, not full width | **pending** — ports with the control itself (still pending from 2026-09-22); build it as an inline pill from the start. |
 | 2026-09-25 | Day strip vertical padding 8 → 12 | **shipped** — same PR: the web strip's container goes `py-2` → `py-3`. |
-| 2026-09-25 | Section header: "SEC - NCAAF" title, count as a badge beside the chevron | **shipped** — same PR: `section-accordion.tsx` joins the league onto the title and wraps the count in a `bg-bg-elevated` capsule. |
+| 2026-09-25 | Section header: "SEC - NCAAF" title, count as a badge beside the chevron | **shipped** — same PR: `section-accordion.tsx` joins the league onto the title and wraps the count in a `bg-divider` capsule. |
+| 2026-09-25 | College football's short name reads "NCAAF" everywhere | **shipped** — same PR: the web's `shortName` for `cfb` changes from "CFB" to "NCAAF"; iOS already said NCAAF. |
