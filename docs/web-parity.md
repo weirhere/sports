@@ -829,3 +829,4 @@ sibling below it.
 | 2026-09-25 | Widget rows: name-then-rank, record only pre-game in the score slot, divider on every row, "Final" | **n/a** — home-screen widget; the web has no widget extension. |
 | 2026-09-25 | Hide all capsule hugs its contents, centered, not full width | **pending** — ports with the control itself (still pending from 2026-09-22); build it as an inline pill from the start. |
 | 2026-09-25 | Settings: Appearance picker (System / Light / Dark), System default | **pending** — the web follows `prefers-color-scheme` only; a port is a `data-theme` override on `:root`, persisted in localStorage. |
+| 2026-09-25 | Day strip vertical padding 8 → 12 | **shipped** — same PR: the web strip's container goes `py-2` → `py-3`. |

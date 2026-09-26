@@ -80,7 +80,7 @@ export function DayStrip({
   };
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-2">
+    <div className="flex items-center gap-0.5 px-2 py-3">
       {/* Desktop chevrons — the pointer accelerator for the content swipe. */}
       <StepButton
         direction="previous"
