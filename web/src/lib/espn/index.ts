@@ -16,3 +16,4 @@ export {
   EspnApiError,
   EspnDataError,
 } from "./provider";
+export { teamSeasonStats, teamLeaders } from "./team-stats-provider";
