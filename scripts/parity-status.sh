@@ -46,11 +46,15 @@ for line in open(path, encoding="utf-8"):
     match = row.match(stripped)
     if not match:
         continue
-    if in_na_section:
-        counts["n/a"] += 1
-        continue
     cells = [cell.strip() for cell in match.group(2).split("|")]
     status = cells[-1].lower() if cells else ""
+    # Rows appended since the waves ended land under the n/a heading too
+    # (it is the ledger's last table), and they carry a bold status of
+    # their own. Counting them all as n/a hid 31 pending rows behind a
+    # reported 3 — so a bold status wins over the heading.
+    if in_na_section and not status.startswith("**"):
+        counts["n/a"] += 1
+        continue
     for key in ("shipped", "pending", "differs", "n/a"):
         if key in status:
             counts[key] += 1
