@@ -337,6 +337,30 @@ final class ScoreboardStore {
         await load(around: windowCenter, force: true)
     }
 
+    /// The game page's copy of a game, written into the slate when it is
+    /// further along than the one held here.
+    ///
+    /// The page polls `/summary` and the slate polls `/scoreboard`, and the
+    /// summary tends to be the fresher of the two (2026-09-26: 1:56 on the
+    /// list against under 1:00 on the page). So the page hands each summary
+    /// it loads to the slate, and the next scoreboard tick can't undo it:
+    /// `fetchWindow` keeps whichever copy is further along. Only moves a
+    /// game forward, and only a game this store already holds.
+    func absorb(_ summary: GameSummary, gameId: String) {
+        for (day, games) in gamesByDay {
+            guard let index = games.firstIndex(where: { $0.id == gameId }) else { continue }
+            let held = games[index]
+            guard summary.status.isAhead(of: held.status) else { return }
+            var updated = games
+            updated[index] = held.withLiveState(
+                status: summary.status,
+                homeScore: summary.home?.score, homeWinner: summary.home?.winner,
+                awayScore: summary.away?.score, awayWinner: summary.away?.winner)
+            gamesByDay[day] = updated
+            return
+        }
+    }
+
     /// Whether every day the shown window promises is already in hand.
     private func covers(_ center: Date) -> Bool {
         let calendar = Calendar.current
@@ -366,8 +390,9 @@ final class ScoreboardStore {
             for offset in -1...1 {
                 guard let day = calendar.date(byAdding: .day, value: offset, to: center) else { continue }
                 let id = DayFormat.id(for: day)
-                updated[id] = Self.keepingLines(chronological(bucketed[id] ?? []),
-                                                from: gamesByDay[id] ?? [])
+                let held = gamesByDay[id] ?? []
+                let fresh = Game.keepingProgress(chronological(bucketed[id] ?? []), from: held)
+                updated[id] = Self.keepingLines(fresh, from: held)
             }
             // Equality guard: @Observable notifies on every set, so an
             // unconditional write would re-render the whole scores tree on
