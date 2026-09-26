@@ -22,9 +22,15 @@ struct WidgetGameList: View {
             VStack(spacing: 2) {
                 ForEach(shown) { game in
                     Link(destination: game.deepLink ?? DeepLinkURL.teams) {
-                        WidgetGameRow(game: game)
+                        WidgetGameRow(game: game, stretches: shown.count == capacity)
                     }
                 }
+            }
+            // A short list keeps its cards at their own height and leaves
+            // the gap here, so the footer still sits at the bottom. Not on
+            // a full one, where it would compete with the cards for height.
+            if shown.count < capacity {
+                Spacer(minLength: 0)
             }
             // Medium shows the line only when it has bad news to break:
             // its content box can't fit the masthead and two cards with
@@ -81,6 +87,11 @@ struct WidgetHeader: View {
 /// block, which spends it on two- and three-letter abbreviations.
 struct WidgetGameRow: View {
     let game: WidgetGame
+    /// Whether the card grows to take its share of the leftover height.
+    /// Only a full list does: two games in the large widget's four slots
+    /// each stretched to double height, the teams floating in a tall grey
+    /// box (Andy, 2026-09-25).
+    var stretches = true
 
     @ScaledMetric(relativeTo: .caption2) private var statusWidth: CGFloat = 84
 
@@ -109,9 +120,10 @@ struct WidgetGameRow: View {
         // than to the card's stretched-to-fill height.
         .fixedSize(horizontal: false, vertical: true)
         .padding(Spacing.sm)
-        // Cards split the leftover height evenly (the mock's stretch-to-fill
-        // rows) instead of leaving a dead gap above the footer.
-        .frame(maxHeight: .infinity)
+        // A full list's cards split the leftover height evenly (the mock's
+        // stretch-to-fill rows) instead of leaving a dead gap above the
+        // footer. A short one has too much leftover to split.
+        .frame(maxHeight: stretches ? .infinity : nil)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.bgHeader)

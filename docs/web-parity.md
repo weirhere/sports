@@ -834,3 +834,4 @@ sibling below it.
 | 2026-09-25 | College football's short name reads "NCAAF" everywhere | **shipped** — same PR: the web's `shortName` for `cfb` changes from "CFB" to "NCAAF"; iOS already said NCAAF. |
 | 2026-09-25 | Scores header capsule: 8pt end inset, 4pt top/bottom | **n/a** — the web header has no grouped Live/Tight/calendar capsule. |
 | 2026-09-25 | Scoreboard polls through kickoff (30s from one tick before a kickoff to 3h after it, sleeping until the next one); Top 25 and Postseason merge the live board | **pending** — `use-league-scoreboards.ts` has the same gap: its interval runs only while `hasLiveGames`, so a slate opened before kickoff never refetches. |
+| 2026-09-25 | Widget cards stretch only when the list is full; a short list keeps natural height with the footer anchored | **n/a** — home-screen widget; the web has no widget extension. |
