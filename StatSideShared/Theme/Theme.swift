@@ -184,6 +184,10 @@ extension Font {
     static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
     static var metaEmphasis: Font { scaled(12, .semibold, relativeTo: .caption1) }
     static var sectionHeader: Font { scaled(13, .semibold, relativeTo: .footnote) }
+    /// "Following" over "No games today" on an off day — one step up from
+    /// `sectionHeader`, since it sits bare on the page with no header bar
+    /// to carry it (Andy, 2026-09-26).
+    static var followingEmptyTitle: Font { scaled(14, .semibold, relativeTo: .footnote) }
     /// The widget's ★ Following masthead: heavy enough to anchor the whole
     /// surface, since the widget has no navigation chrome above it.
     static var sectionHeaderProminent: Font { scaled(16, .heavy, relativeTo: .callout) }

@@ -14,10 +14,23 @@ struct HideAllControl: View {
     /// The sections this control hides, in slate order.
     let others: [GameSection]
     let isHidden: Bool
+    /// Whether the caption naming what's hidden is shown. Separate from
+    /// `isHidden` because the label flips the instant Hide all is tapped,
+    /// but the caption waits for the sections to be covered: shown any
+    /// earlier, it pushes them 30pt down just before they sweep away.
+    var showsCaption: Bool? = nil
+    /// Draws the caption early, in the spot it will take but with no
+    /// height, while the hidden sections are still fading beneath it. With
+    /// no height it can't push them, so the caption's fade overlaps theirs
+    /// instead of adding a beat after it; once they're gone it claims its
+    /// height in place.
+    var showsEarlyCaption = false
     let onToggle: () -> Void
 
     var body: some View {
-        VStack(spacing: Spacing.xs) {
+        // The caption sits 12pt under the capsule (Andy, 2026-09-26): at 4
+        // it read as part of the button rather than a line about the slate.
+        VStack(spacing: 0) {
             Button(action: onToggle) {
                 HStack(spacing: Spacing.sm) {
                     Text(isHidden ? "Show all" : "Hide all")
@@ -26,6 +39,10 @@ struct HideAllControl: View {
                         .font(.system(size: 11, weight: .semibold))
                 }
                 .foregroundStyle(Color.textPrimary)
+                // The label flips; it never crossfades. Caught up in the
+                // sections' motion, "Hide all" and "Show all" overlapped
+                // for a few frames.
+                .transaction { $0.animation = nil }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm + 2)
                 .background(Capsule().fill(Color.bgInset))
@@ -40,16 +57,29 @@ struct HideAllControl: View {
             // target (FotMob's "22 other competitions play today"). The
             // button's own accessibilityValue already says it, so this
             // stays out of VoiceOver rather than repeating it.
-            if isHidden {
-                Text(Self.summary(of: others))
-                    .font(.meta)
-                    .foregroundStyle(Color.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityHidden(true)
+            let laidOut = showsCaption ?? isHidden
+            if laidOut || showsEarlyCaption {
+                caption
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, Spacing.md)
+                    // Drawn early, it takes no height: it overflows into
+                    // the spot it will occupy without pushing the fading
+                    // sections, then claims that height in place once
+                    // they're gone — one view throughout, so no jump.
+                    .frame(height: laidOut ? nil : 0, alignment: .top)
             }
         }
         .padding(.vertical, Spacing.xs)
         .frame(maxWidth: .infinity)
+    }
+
+    private var caption: some View {
+        Text(Self.summary(of: others))
+            .font(.meta)
+            .foregroundStyle(Color.textSecondary)
+            .multilineTextAlignment(.center)
+            .accessibilityHidden(true)
+            .transition(.opacity)
     }
 
     /// "Big Ten, SEC and 2 other leagues, conferences or divisions play

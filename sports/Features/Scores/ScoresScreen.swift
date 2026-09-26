@@ -50,6 +50,46 @@ struct ScoresScreen: View {
     /// Coard Miller's "feels like it's running at 30fps"). A touch longer
     /// than the filter's 0.12 because a section's height actually travels.
     private static let accordionAnimation: Animation = .easeOut(duration: 0.18)
+    /// Hide all/Show all's three legs: the deck sections closing, their
+    /// headers gathering into a deck, the deck fading up behind the
+    /// control. Each starts while the one before is still settling, so it
+    /// reads as one motion rather than three stop-starts, and the whole is
+    /// about a quarter second — "the snap of a finger" (Andy, 2026-09-26).
+    /// No-bounce, so a card never overshoots the deck. The timed legs share
+    /// one strong ease-out: at 100ms the built-in `.easeOut` reads as
+    /// linear, and an ease-in fade left the deck hanging at the one moment
+    /// it was being watched leave (animation review, 2026-09-26).
+    private static func snap(_ duration: Double) -> Animation {
+        .timingCurve(0.23, 1, 0.32, 1, duration: duration)
+    }
+    private static let stackClose = snap(0.12)
+    private static let stackGather: Animation = .smooth(duration: 0.18)
+    private static let stackFade = snap(0.1)
+    private static let stackUnfade = snap(0.1)
+    private static let captionFade = snap(0.12)
+    /// Under Reduce Motion the whole thing is this one crossfade.
+    private static let reducedFade = snap(0.15)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Where the hidden sections are in that motion; all false at rest.
+    /// `stackFolded` is a render-only override of each one's expanded
+    /// state — Hide all never touches what's remembered, so they reopen
+    /// exactly as they were.
+    @State private var stackFolded = false
+    @State private var stackGathered = false
+    @State private var stackFaded = false
+    /// Bumped on every tap. A tap mid-motion retargets the flags from
+    /// wherever they are, and the superseded motion's completion checks
+    /// this before acting — so it can't unmount the rows it no longer owns.
+    @State private var stackGeneration = 0
+    /// The Show all caption, drawn early over the fading deck
+    /// (`HideAllControl.showsEarlyCaption`).
+    @State private var captionEarly = false
+    /// True from a Hide all tap until the deck is gone, so the control
+    /// already reads "Show all" while the sections are still folding.
+    @State private var stackClosing = false
+    /// Each hidden section's laid-out frame in the slate — where it folds
+    /// from — keyed by section id.
+    @State private var sectionFrames: [String: CGRect] = [:]
     @State private var showsCalendar = false
     @State private var showsSettings = false
     @State private var pinchHandled = false
@@ -91,11 +131,17 @@ struct ScoresScreen: View {
     /// control's position is *inside* that ordering, not before or after it.
     private enum ScoresRow: Identifiable {
         case section(GameSection)
+        /// A section below the control: the ones Hide all hides, with its
+        /// place among them for the fold.
+        case otherSection(GameSection, index: Int)
+        case followingEmpty
         case hideAllControl(others: [GameSection])
 
         var id: String {
             switch self {
             case .section(let section): section.id
+            case .otherSection(let section, _): section.id
+            case .followingEmpty: "following-empty"
             case .hideAllControl: "hide-all-control"
             }
         }
@@ -103,21 +149,144 @@ struct ScoresScreen: View {
 
     /// Splits a day's sections into what's yours — Following plus every
     /// hoisted table — and the rest, with the control between them. Only
-    /// where both sides are non-empty: following nobody leaves nothing to
-    /// set apart, and following enough to cover the whole day leaves
-    /// nothing to hide, so the control is omitted rather than shown inert.
+    /// where there is something to hide and someone followed: following
+    /// nobody leaves nothing to set apart, and following enough to cover
+    /// the whole day leaves nothing to hide, so the control is omitted
+    /// rather than shown inert. Following someone with no game that day
+    /// still gets the control, under a "No games today" stand-in for the
+    /// Following section (Andy, 2026-09-26) — an off day is exactly when
+    /// the rest of the slate is noise.
     private func scoresRows(for sections: [GameSection], hideOthers: Bool) -> [ScoresRow] {
         let mine = sections.filter(\.isFollowed)
         let other = sections.filter { !$0.isFollowed }
-        guard !mine.isEmpty, !other.isEmpty else {
+        guard following.followsAnyone, !other.isEmpty else {
             return sections.map(ScoresRow.section)
         }
-        var rows = mine.map(ScoresRow.section)
+        var rows = mine.isEmpty ? [.followingEmpty] : mine.map(ScoresRow.section)
         rows.append(.hideAllControl(others: other))
         if !hideOthers {
-            rows += other.map(ScoresRow.section)
+            rows += other.enumerated().map { ScoresRow.otherSection($1, index: $0) }
         }
         return rows
+    }
+
+    private static let slateSpace = "scores-slate"
+
+    /// Hide all/Show all as motion rather than a blink (Andy, 2026-09-26):
+    /// hiding closes the sections below the control on the accordion's own
+    /// animation, gathers their headers into a deck under the first one,
+    /// then fades the deck up behind the control; showing plays all three
+    /// back. Only the hidden sections move — the gathering and the fade are
+    /// visual effects (`StackCollapse`) — and they stay mounted until the
+    /// deck is gone, when `hideOtherSections` finally drops them.
+    private func toggleHideOthers() {
+        stackGeneration += 1
+        if uiState.hideOtherSections {
+            showHiddenSections(stackGeneration)
+        } else if stackClosing {
+            reverseHide()
+        } else {
+            hideShownSections(stackGeneration)
+        }
+    }
+
+    private var instant: Transaction {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        return transaction
+    }
+
+    /// Hide all. Also what a tap mid-Show all lands in: the flags retarget
+    /// from wherever that motion had got them to.
+    private func hideShownSections(_ generation: Int) {
+        // The label flips on the tap; the caption waits (`showsCaption`),
+        // or it would push the cards 30pt down as they start to close.
+        stackClosing = true
+        // The close gets a head start only when a deck card has rows to
+        // close. Anything further down folds out of sight or under the
+        // deck, and waiting on it reads as a dead beat after the tap.
+        let anyOpen = others(in: sections).prefix(StackCollapse.depth + 1)
+            .contains { uiState.isExpanded($0.id) }
+        let lead = reduceMotion ? 0 : (anyOpen ? 0.06 : 0)
+        let fadeStart = reduceMotion ? 0 : lead + 0.1
+        if !reduceMotion {
+            withAnimation(Self.stackClose) { stackFolded = true }
+            withAnimation(Self.stackGather.delay(lead)) { stackGathered = true }
+        }
+        // The caption goes in first, underneath the still-opaque deck
+        // (which draws above the control), so the deck lifting away is
+        // what uncovers it — Andy: it should "appear from underneath the
+        // stack". It takes no height while the rows are mounted.
+        withAnimation(Self.captionFade.delay(max(0, fadeStart - 0.04))) {
+            captionEarly = true
+        }
+        // The fade waits until the deck has all but formed: started any
+        // earlier, the headers ghost out as a squashed list. The rows
+        // unmount once it has landed.
+        withAnimation((reduceMotion ? Self.reducedFade : Self.stackFade).delay(fadeStart)) {
+            stackFaded = true
+        } completion: {
+            guard generation == stackGeneration else { return }
+            // The motion flags stay where they landed. Reset in this same
+            // update, the rows outlived it by a frame and flashed back in,
+            // opaque and spread out; hidden, nothing reads them, and Show
+            // all sets them afresh.
+            withTransaction(instant) {
+                uiState.hideOtherSections = true
+                stackClosing = false
+                captionEarly = false
+            }
+        }
+    }
+
+    /// A tap while Hide all is still playing: the rows are still mounted,
+    /// so it just runs the flags back from where they are.
+    private func reverseHide() {
+        stackClosing = false
+        withAnimation(Self.stackUnfade) {
+            stackFaded = false
+            captionEarly = false
+        }
+        withAnimation(Self.stackGather) { stackGathered = false }
+        withAnimation(Self.stackClose.delay(0.08)) { stackFolded = false }
+    }
+
+    /// Show all, from fully hidden.
+    private func showHiddenSections(_ generation: Int) {
+        // Mounted invisible — closed, gathered and faded — so the headers
+        // lay out and report their frames before the deck needs them.
+        withTransaction(instant) {
+            stackFolded = !reduceMotion
+            stackGathered = !reduceMotion
+            stackFaded = true
+            // The caption stays, with no height, for the deck to fade in
+            // over — the reverse of Hide all uncovering it.
+            captionEarly = true
+            uiState.hideOtherSections = false
+        }
+        // One main-actor hop for that layout pass, not a timed sleep.
+        Task { @MainActor in
+            guard generation == stackGeneration else { return }
+            withAnimation(reduceMotion ? Self.reducedFade : Self.stackUnfade) {
+                stackFaded = false
+            } completion: {
+                guard generation == stackGeneration else { return }
+                withTransaction(instant) { captionEarly = false }
+            }
+            if reduceMotion { return }
+            withAnimation(Self.stackGather.delay(0.03)) { stackGathered = false }
+            withAnimation(Self.stackClose.delay(0.14)) { stackFolded = false }
+        }
+    }
+
+    /// The sections Hide all hides, in slate order.
+    private func others(in sections: [GameSection]) -> [GameSection] {
+        sections.filter { !$0.isFollowed }
+    }
+
+    /// Where the deck gathers: the first hidden section's top edge.
+    private func deckTop(for others: [GameSection]) -> CGFloat? {
+        others.first.flatMap { sectionFrames[$0.id]?.minY }
     }
 
     /// Height of the floating Today button plus its breathing room.
@@ -621,15 +790,45 @@ struct ScoresScreen: View {
                                 )
                                 .equatable()
                                 .cardSurface()
+                            case .followingEmpty:
+                                FollowingEmptyHeader()
                             case .hideAllControl(let others):
                                 HideAllControl(
                                     others: others,
-                                    isHidden: uiState.hideOtherSections,
-                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.hideOtherSections.toggle() } }
+                                    isHidden: uiState.hideOtherSections || stackClosing,
+                                    showsCaption: uiState.hideOtherSections,
+                                    showsEarlyCaption: captionEarly,
+                                    onToggle: toggleHideOthers
                                 )
+                            case .otherSection(let section, let index):
+                                SectionAccordion(
+                                    section: section,
+                                    // Only the deck cards close for the motion; the
+                                    // rest fade as they are. Closing a section far
+                                    // down relays out the whole stack and stalls the
+                                    // first frames of the motion.
+                                    isExpanded: uiState.isExpanded(section.id)
+                                        && !(stackFolded && index <= StackCollapse.depth),
+                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section.id) } }
+                                )
+                                .equatable()
+                                .cardSurface()
+                                // Measured only for the deck cards: each write
+                                // re-renders this screen, and the rest never fly.
+                                .onGeometryChange(for: CGRect?.self) {
+                                    index <= StackCollapse.depth ? $0.frame(in: .named(Self.slateSpace)) : nil
+                                } action: { frame in
+                                    if let frame { sectionFrames[section.id] = frame }
+                                }
+                                .stackCollapse(gathered: stackGathered,
+                                               faded: stackFaded,
+                                               index: index,
+                                               frame: sectionFrames[section.id],
+                                               deckTop: deckTop(for: others(in: sections)))
                             }
                         }
                     }
+                    .coordinateSpace(.named(Self.slateSpace))
                     .padding(Spacing.sm)
                     // The jump floats over this scroll view, so the last card
                     // needs room to clear it rather than sitting underneath.
@@ -739,6 +938,14 @@ struct ScoresScreen: View {
                                                  onToggle: {})
                                     .equatable()
                                     .cardSurface()
+                            case .otherSection(let section, _):
+                                SectionAccordion(section: section,
+                                                 isExpanded: uiState.isExpanded(section.id),
+                                                 onToggle: {})
+                                    .equatable()
+                                    .cardSurface()
+                            case .followingEmpty:
+                                FollowingEmptyHeader()
                             case .hideAllControl(let others):
                                 HideAllControl(others: others,
                                                isHidden: uiState.hideOtherSections,
