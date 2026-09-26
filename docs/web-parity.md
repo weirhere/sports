@@ -116,7 +116,7 @@ the snap-forward probe rather than on the season's nominal July start.
 | 2026-09-05 | The app never opens on a dead screen (`firstDayWithGames` probes forward) | shipped |
 | 2026-09-05 | The slate filter narrows league sections and leaves Following alone | shipped |
 | 2026-09-05 | The Scores league scope retires; search tiebreak becomes `preferredLeague` | shipped |
-| 2026-09-05 | The Scores header keeps Live and the funnel, nothing else | shipped |
+| 2026-09-05 | The Scores header keeps Live and nothing else: the slate filter (the funnel), the Top 25 chip and the season chip all leave, and Scores passes no stored filter | **shipped** 2026-09-25 — this row used to read "keeps Live and the funnel", which misquoted the iOS decision and is why the web kept its funnel for three weeks. `ScoreFilterSheet` is deleted with the funnel button (and the season picker it held), and `buildSections` is no longer handed `uiState.scoreFilter`, so a filter stored by an earlier build can't narrow the day unseen. Live stays, with Tight beside it |
 | 2026-09-06 | College football breaks down by conference; the NFL stays one accordion | shipped |
 | 2026-09-08 | `League.slateSplitsByConference` — CFB is the only one that splits | shipped |
 | 2026-09-09 | The NFL's slate stays one accordion (division sections built and reverted) | shipped — never built the division shape |

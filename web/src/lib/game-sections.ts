@@ -34,7 +34,6 @@
 import {
   collegeDivision,
   conferenceLogoUrl,
-  conferenceName,
   conferenceNameFor,
   tier,
   tierRank,
@@ -166,31 +165,6 @@ export function filterLeague(
 
 export function isValidScoreFilterToken(token: string): boolean {
   return token === "top25" || parseConferenceFilter(token) !== undefined;
-}
-
-/** The sheet/empty-state name for a filter token ("SEC", "Top 25"). */
-export function scoreFilterLabel(token: ScoreFilterToken): string {
-  if (token === "top25") return "Top 25";
-  const ref = parseConferenceFilter(token);
-  return ref !== undefined ? conferenceName(ref.id, ref.league) : token;
-}
-
-/**
- * The header chip's label — long conference names get their common short
- * forms so the chip row still fits (the iOS `chipLabel` table).
- */
-export function scoreFilterChipLabel(token: ScoreFilterToken): string {
-  const ref = parseConferenceFilter(token);
-  switch (ref?.league === "cfb" ? ref.id : undefined) {
-    case 12:
-      return "C-USA";
-    case 17:
-      return "MWC";
-    case 18:
-      return "Indep.";
-    default:
-      return scoreFilterLabel(token);
-  }
 }
 
 function matchesFilter(game: Game, token: ScoreFilterToken): boolean {

@@ -14,14 +14,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   buildSections,
-  scoreFilterChipLabel,
-  scoreFilterLabel,
   splitAtHideAll,
   type GameSection,
 } from "@/lib/game-sections";
 import { orderedTables } from "@/lib/followed-tables";
 import { daySectionTitle, isSameDay, startOfDay } from "@/lib/day";
-import { seasonLabel } from "@/lib/leagues";
 import { ACCORDION_TRANSITION, INSTANT_TRANSITION } from "@/lib/motion";
 import { SCORES_HOME_EVENT } from "@/lib/scores-home";
 import { narrowsOn, useUIState } from "@/lib/hooks/use-ui-state";
@@ -35,7 +32,6 @@ import { TodayButton } from "@/components/today-button";
 import { SectionAccordion } from "@/components/section-accordion";
 import { HideAllControl } from "@/components/hide-all-control";
 import { ScoresControlCard } from "@/components/scores-control-card";
-import { ScoreFilterSheet } from "@/components/score-filter-sheet";
 import { FollowPromptCard } from "@/components/follow-prompt-card";
 import { FollowingSidebar } from "@/components/following-sidebar";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
@@ -55,7 +51,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
     selectedDay,
     seasonYear,
     currentSeasonYear,
-    availableSeasons,
     games,
     isLoaded,
     isStalled,
@@ -63,7 +58,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
     canJumpToToday,
     showsTodayJump,
     selectDay,
-    selectSeason,
     selectToday,
     adjacentDay,
     refresh,
@@ -77,7 +71,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
     isLoaded: favoritesLoaded,
   } = useFavoritesContext();
 
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const reducedMotion = useReducedMotion();
 
@@ -112,9 +105,11 @@ export function ScoresView({ seed }: ScoresViewProps) {
         followedTables,
         liveOnly,
         tightOnly,
-        scoreFilter: uiState.scoreFilter,
+        // No slate filter: Scores has no control for one (iOS 2026-09-05),
+        // so a filter stored by an earlier build must not narrow the day
+        // where nobody can see or clear it.
       }),
-    [games, favorites, followedTables, liveOnly, tightOnly, uiState.scoreFilter]
+    [games, favorites, followedTables, liveOnly, tightOnly]
   );
 
   // --- Header controls -------------------------------------------------
@@ -156,7 +151,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
   const clearFilters = () => {
     uiState.setLiveOnly(false);
     uiState.setTightOnly(false);
-    uiState.setScoreFilter(null);
   };
 
   // --- Going home ------------------------------------------------------
@@ -197,19 +191,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
     return () => window.removeEventListener(SCORES_HOME_EVENT, goHome);
   }, [canJumpToToday, jumpToToday, reducedMotion]);
 
-  // The funnel chip's label: filter + past season ("SEC · 2019").
-  const filterLabel =
-    [
-      uiState.scoreFilter !== null
-        ? scoreFilterChipLabel(uiState.scoreFilter)
-        : undefined,
-      seasonYear !== currentSeasonYear
-        ? seasonLabel("cfb", seasonYear)
-        : undefined,
-    ]
-      .filter(Boolean)
-      .join(" · ") || null;
-
   // --- The day swipe ---------------------------------------------------
   //
   // Left walks forward, right walks back; season ends are a quiet no-op.
@@ -228,18 +209,10 @@ export function ScoresView({ seed }: ScoresViewProps) {
 
   // --- Empty states ----------------------------------------------------
 
-  const filtersActive = liveOnly || tightOnly || uiState.scoreFilter !== null;
-  const narrowedEmptyMessage = (() => {
-    const label =
-      uiState.scoreFilter !== null
-        ? scoreFilterLabel(uiState.scoreFilter)
-        : undefined;
-    const now = liveOnly ? "live" : tightOnly ? "tight" : undefined;
-    if (now && label) return `No ${now} ${label} games right now`;
-    if (now) return `No ${now} games right now`;
-    if (label) return `No ${label} games on this day`;
-    return "";
-  })();
+  const filtersActive = liveOnly || tightOnly;
+  const narrowedEmptyMessage = liveOnly
+    ? "No live games right now"
+    : "No tight games right now";
 
   const showFollowPrompt =
     uiState.isLoaded &&
@@ -269,15 +242,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
     <div>
       {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
       <PageHeader title="Games" />
-      <ScoreFilterSheet
-        open={filterSheetOpen}
-        onOpenChange={setFilterSheetOpen}
-        current={uiState.scoreFilter}
-        onSelect={uiState.setScoreFilter}
-        selectedYear={seasonYear}
-        availableSeasons={availableSeasons}
-        onYearChange={selectSeason}
-      />
 
       <DayCalendarSheet
         open={calendarOpen}
@@ -314,8 +278,6 @@ export function ScoresView({ seed }: ScoresViewProps) {
             onToggleLive={handleToggleLive}
             tightOnly={tightOnly}
             onToggleTight={handleToggleTight}
-            filterLabel={filterLabel}
-            onOpenFilter={() => setFilterSheetOpen(true)}
             allCollapsed={allCollapsed}
             onToggleCollapseAll={
               sectionIds.length > 0

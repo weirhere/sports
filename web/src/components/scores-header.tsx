@@ -2,7 +2,12 @@
 
 // The Scores slate controls — the iOS `ScoresHeader` grouped capsule
 // (FotMob's tap-target language): one bg-elevated capsule holding the Live
-// pill, its Tight sibling (2026-09-24), and the view-options funnel.
+// pill and its Tight sibling (2026-09-24).
+//
+// No funnel. iOS took the slate filter off Scores on 2026-09-05 ("The Scores
+// header keeps Live and nothing else"), with its season picker; ranked and
+// past-season browsing live on the Leagues tab, where a poll and a season
+// chip scope a page about them. The web kept the funnel until 2026-09-25.
 //
 // It rendered into the nav bar's right slot until 2026-09-10, on the
 // reasoning that "/" already had a header and shouldn't grow a second one.
@@ -11,7 +16,6 @@
 // `ScoresControlCard`, one row apart, and the nav bar is the wordmark and
 // the site nav again.
 
-import { ListFilter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ScoresHeaderProps {
@@ -23,12 +27,6 @@ interface ScoresHeaderProps {
   /** Tight's effective state, by the same rule. */
   tightOnly: boolean;
   onToggleTight: () => void;
-  /**
-   * The funnel's non-default-state label — "SEC", "2019", "SEC · 2019",
-   * "Top 25" — or null when the slate and season are the defaults.
-   */
-  filterLabel: string | null;
-  onOpenFilter: () => void;
 }
 
 export function ScoresHeaderControls({
@@ -36,8 +34,6 @@ export function ScoresHeaderControls({
   onToggleLive,
   tightOnly,
   onToggleTight,
-  filterLabel,
-  onOpenFilter,
 }: ScoresHeaderProps) {
   return (
     <div className="flex items-center gap-0.5 rounded-full bg-bg-elevated p-1">
@@ -91,27 +87,6 @@ export function ScoresHeaderControls({
       <span id="scores-tight-hint" className="sr-only">
         Live games that are close late, or where the underdog leads
       </span>
-      <button
-        type="button"
-        onClick={onOpenFilter}
-        aria-label={
-          filterLabel !== null ? `Filtered to ${filterLabel}` : "Filter games"
-        }
-        aria-haspopup="dialog"
-        className={cn(
-          // The transparent border matches the Live pill's, so the two sit
-          // at the same height whichever of them is active.
-          "type-chip-em flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 transition-colors",
-          filterLabel !== null
-            ? "bg-text-primary text-bg-primary"
-            : "text-text-primary hover:bg-bg-header"
-        )}
-      >
-        <ListFilter aria-hidden="true" className="h-4 w-4" />
-        {filterLabel !== null && (
-          <span className="whitespace-nowrap">{filterLabel}</span>
-        )}
-      </button>
     </div>
   );
 }

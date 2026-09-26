@@ -1,8 +1,8 @@
 "use client";
 
 // Everything that scopes the day, in one card at the top of the slate
-// column: the day strip and its calendar, then the Live toggle, the view
-// funnel, and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
+// column: the day strip and its calendar, then the Live and Tight toggles
+// and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
 // its date nav and its filter row in exactly this container).
 //
 // These three controls used to live in three places — the strip as fixed
@@ -36,8 +36,6 @@ interface ScoresControlCardProps {
   onToggleLive: () => void;
   tightOnly: boolean;
   onToggleTight: () => void;
-  filterLabel: string | null;
-  onOpenFilter: () => void;
   /**
    * The iOS pinch analog. Null when the day has no sections to act on —
    * an empty slate offers no "collapse all", the way the pinch has nothing
@@ -57,8 +55,6 @@ export function ScoresControlCard({
   onToggleLive,
   tightOnly,
   onToggleTight,
-  filterLabel,
-  onOpenFilter,
   allCollapsed,
   onToggleCollapseAll,
 }: ScoresControlCardProps) {
@@ -80,8 +76,6 @@ export function ScoresControlCard({
           onToggleLive={onToggleLive}
           tightOnly={tightOnly}
           onToggleTight={onToggleTight}
-          filterLabel={filterLabel}
-          onOpenFilter={onOpenFilter}
         />
         {onToggleCollapseAll !== null && (
           <button

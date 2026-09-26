@@ -6,8 +6,6 @@ import {
   buildSections,
   FOLLOWING_SECTION_ID,
   hiddenSectionsSummary,
-  scoreFilterChipLabel,
-  scoreFilterLabel,
   splitAtHideAll,
 } from "./game-sections";
 
@@ -400,20 +398,6 @@ describe("filters", () => {
     expect(sections.flatMap((s) => s.games).map((g) => g.id)).toEqual([
       "ranked",
     ]);
-  });
-});
-
-describe("filter labels", () => {
-  it("names a conference and the poll", () => {
-    expect(scoreFilterLabel("top25")).toBe("Top 25");
-    expect(scoreFilterLabel("conference-cfb:8")).toBe("SEC");
-    expect(scoreFilterLabel("conference-nfl:8")).toBe("AFC");
-  });
-
-  it("shortens the names that would wrap a chip", () => {
-    expect(scoreFilterChipLabel("conference-cfb:12")).toBe("C-USA");
-    expect(scoreFilterChipLabel("conference-cfb:17")).toBe("MWC");
-    expect(scoreFilterChipLabel("conference-cfb:8")).toBe("SEC");
   });
 });
 
