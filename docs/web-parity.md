@@ -833,3 +833,4 @@ sibling below it.
 | 2026-09-25 | Section header: "SEC - NCAAF" title, count as a badge beside the chevron | **shipped** — same PR: `section-accordion.tsx` joins the league onto the title and wraps the count in a `bg-divider` capsule, shown only when collapsed and live-green ("2/3") while any game is in progress. |
 | 2026-09-25 | College football's short name reads "NCAAF" everywhere | **shipped** — same PR: the web's `shortName` for `cfb` changes from "CFB" to "NCAAF"; iOS already said NCAAF. |
 | 2026-09-25 | Scores header capsule: 8pt end inset, 4pt top/bottom | **n/a** — the web header has no grouped Live/Tight/calendar capsule. |
+| 2026-09-25 | Scoreboard polls through kickoff (30s from one tick before a kickoff to 3h after it, sleeping until the next one); Top 25 and Postseason merge the live board | **pending** — `use-league-scoreboards.ts` has the same gap: its interval runs only while `hasLiveGames`, so a slate opened before kickoff never refetches. |

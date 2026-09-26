@@ -550,7 +550,7 @@ struct ConferencePage: View {
     /// The postseason is already in hand: the Games tab fetches the whole
     /// season, so splitting it out costs no request.
     private var postseasonRounds: [PostseasonRound] {
-        Postseason.rounds(from: gamesByYear[selectedYear] ?? [],
+        Postseason.rounds(from: games ?? [],
                           league: destination.conference.league)
     }
 
@@ -567,7 +567,7 @@ struct ConferencePage: View {
 
     private var postseasonSection: some View {
         PostseasonSection(rounds: postseasonRounds,
-                          exhibition: Postseason.exhibition(from: gamesByYear[selectedYear] ?? [],
+                          exhibition: Postseason.exhibition(from: games ?? [],
                                                             league: destination.conference.league),
                           selection: activePostseasonRound,
                           onSelectRound: { postseasonRound = $0 })
