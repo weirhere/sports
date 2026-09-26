@@ -658,3 +658,35 @@ export interface EspnRosterCoach {
   firstName?: string;
   lastName?: string;
 }
+
+// --- Search ---
+// `site.web.api.espn.com/apis/search/v2`, verified live 2026-09-21 (iOS
+// `AthleteSearchClient`) and re-probed 2026-09-25. The response carries
+// articles and clips beside the people; only the `player` group is ours,
+// and an unknown group type is skipped rather than guessed at.
+
+export interface EspnSearchResponse {
+  results?: EspnSearchGroup[];
+}
+
+export interface EspnSearchGroup {
+  type?: string;
+  contents?: EspnSearchContent[];
+}
+
+export interface EspnSearchContent {
+  /**
+   * `s:70~l:90~a:3895074`. **The athlete id lives here and nowhere
+   * convenient.** The sibling `id` is a GUID no other ESPN endpoint
+   * accepts, so a page built from it would fetch nothing.
+   */
+  uid?: string;
+  displayName?: string;
+  /** The team as a display string — "Edmonton Oilers". Search carries no
+   *  team id, so this is all there is to resolve a team from. */
+  subtitle?: string | null;
+  /** `college-football`, `nfl`, `nba`, `nhl` — and `wnba`, `mlb` and the
+   *  rest, which is why this is filtered rather than trusted. */
+  defaultLeagueSlug?: string;
+  image?: { default?: string | null } | null;
+}

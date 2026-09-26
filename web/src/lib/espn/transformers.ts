@@ -908,7 +908,19 @@ export function transformConferenceTeams(
         registryName !== "Other"
           ? registryName
           : (group.shortName ?? group.name ?? "Conference");
-      const teams = (group.standings?.entries ?? [])
+      // A conference split into divisions ships its teams one level down:
+      // the Sun Belt arrives as East and West `children` with no entries of
+      // its own (live, 2026-09-25), so reading only `standings` listed it
+      // empty — and search's athlete filter, which asks this directory
+      // which clubs exist, dropped every Sun Belt player with it.
+      const ownEntries = group.standings?.entries ?? [];
+      const entries =
+        ownEntries.length > 0
+          ? ownEntries
+          : (group.children ?? []).flatMap(
+              (division) => division.standings?.entries ?? []
+            );
+      const teams = entries
         .map((entry) => (entry.team ? transformTeam(entry.team, league) : null))
         .filter((team): team is Team => team !== null)
         .map((team) => ({

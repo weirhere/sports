@@ -34,6 +34,8 @@ interface GameRowProps {
    * status column has no room for both.
    */
   showsYear?: boolean;
+  /** Runs before the navigation — search records the game as a recent. */
+  onSelect?: () => void;
 }
 
 type RowPhase = "pre" | "live" | "final" | "other";
@@ -76,12 +78,14 @@ export function GameRow({
   game,
   timeOnly = false,
   showsYear = false,
+  onSelect,
 }: GameRowProps) {
   const phase = phaseOf(game.status);
 
   return (
     <Link
       href={gamePath(game)}
+      onClick={onSelect}
       aria-label={accessibilitySummary(game, { showsYear })}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-header"
     >

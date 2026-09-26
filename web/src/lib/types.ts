@@ -520,6 +520,19 @@ export interface TeamScheduleData {
   homeVenue?: TeamVenue;
 }
 
+/**
+ * An athlete as ESPN's search index knows one — iOS `PlayerIdentity` built
+ * `init(searchResult:)`. A name, a league, a club *as text* and a headshot;
+ * search serves no body and no team id.
+ */
+export interface SearchAthlete {
+  athleteId: string;
+  league: League;
+  name: string;
+  teamName?: string;
+  headshotUrl?: string;
+}
+
 // Grouped game structures for the scores page
 export interface DayGames {
   date: string; // ISO date string (YYYY-MM-DD)

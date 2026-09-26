@@ -262,6 +262,34 @@ describe("transformConferenceTeams", () => {
     expect(sunBelt?.teams).toEqual([]);
   });
 
+  it("reads a conference's teams from its divisions when it has none of its own", () => {
+    const team = (id: string, location: string) => ({
+      team: { id, location, name: "X", abbreviation: id },
+    });
+    const [sunBelt] = transformConferenceTeams(
+      {
+        children: [
+          {
+            id: "37",
+            name: "Sun Belt Conference",
+            children: [
+              { id: "1", name: "Sun Belt - East", standings: { entries: [team("290", "Georgia Southern")] } },
+              { id: "2", name: "Sun Belt - West", standings: { entries: [team("2433", "UL Monroe"), team("2572", "Southern Miss")] } },
+            ],
+          },
+        ],
+      },
+      "cfb"
+    );
+    expect(sunBelt.teams.map((t) => t.school)).toEqual([
+      "Georgia Southern",
+      "Southern Miss",
+      "UL Monroe",
+    ]);
+    // Filed under the conference, not the division the entry came from.
+    expect(sunBelt.teams.every((t) => t.conferenceId === "37")).toBe(true);
+  });
+
   it("sorts rosters alphabetically by school", () => {
     const american = groups.find((g) => g.id === "151");
     const schools = american?.teams.map((t) => t.school) ?? [];

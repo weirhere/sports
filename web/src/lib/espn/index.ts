@@ -16,3 +16,4 @@ export {
   EspnApiError,
   EspnDataError,
 } from "./provider";
+export { searchAthletes } from "./athlete-search";
