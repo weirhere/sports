@@ -200,4 +200,52 @@ import Testing
         store.move(.conference(.cfb(8)), to: -3)
         #expect(store.orderedTables == [.conference(.cfb(8)), .conference(.cfb(5))])
     }
+
+    // MARK: - Moves among the visible cards
+    //
+    // The Following cards skip a followed table with no data, so a drop
+    // index there is a slot among the cards on screen, not in the order.
+
+    @Test func aHiddenTableDoesNotShiftTheDrop() {
+        let (store, _) = makeStore()
+        store.togglePoll(in: .collegeFootball)   // followed, but no card
+        store.toggleConference(.cfb(8))
+        store.toggleConference(.cfb(5))
+        store.toggleConference(.cfb(1))
+        let visible: [FollowedTable] = [.conference(.cfb(8)), .conference(.cfb(5)),
+                                        .conference(.cfb(1))]
+
+        // Dragged between the first two cards, it lands between them. Read
+        // as a raw index into the full order, 1 is the slot after the
+        // hidden poll — ahead of the first card, one slot off.
+        store.move(.conference(.cfb(1)), to: 1, among: visible)
+        #expect(store.orderedTables == [.poll(.collegeFootball), .conference(.cfb(8)),
+                                        .conference(.cfb(1)), .conference(.cfb(5))])
+    }
+
+    @Test func thePastTheEndSlotLandsAfterTheLastCard() {
+        let (store, _) = makeStore()
+        store.toggleConference(.cfb(8))
+        store.toggleConference(.cfb(5))
+        store.togglePoll(in: .collegeFootball)   // hidden, last in the order
+        let visible: [FollowedTable] = [.conference(.cfb(8)), .conference(.cfb(5))]
+
+        store.move(.conference(.cfb(8)), to: 1, among: visible)
+        #expect(store.orderedTables == [.conference(.cfb(5)), .conference(.cfb(8)),
+                                        .poll(.collegeFootball)])
+    }
+
+    @Test func aVisibleMoveMatchesAnIndexMoveWhenNothingIsHidden() {
+        let (store, _) = makeStore()
+        store.toggleConference(.cfb(8))
+        store.toggleConference(.cfb(5))
+        store.toggleConference(.cfb(1))
+
+        store.move(.conference(.cfb(8)), to: 2, among: store.orderedTables)
+        #expect(store.orderedTables == [.conference(.cfb(5)), .conference(.cfb(1)),
+                                        .conference(.cfb(8))])
+        store.move(.conference(.cfb(8)), to: 0, among: store.orderedTables)
+        #expect(store.orderedTables == [.conference(.cfb(8)), .conference(.cfb(5)),
+                                        .conference(.cfb(1))])
+    }
 }

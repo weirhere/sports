@@ -7,6 +7,13 @@ struct Top25Row: View {
     let polls: [Poll]
     /// Whose poll this is — the follow star's id, and the page's.
     var league: League = .collegeFootball
+    /// Off on the Following card (Andy, 2026-09-25), which unfollows from
+    /// its Edit mode instead — `ConferenceListRow`'s flag, for the same
+    /// card.
+    var showsFollow: Bool = true
+    /// "Top 25 - NCAAF" on the Following cards (Andy, 2026-09-25) —
+    /// `ConferenceListRow.showsLeagueTag`, for the same list.
+    var showsLeagueTag: Bool = false
 
     var body: some View {
         HStack(spacing: Spacing.md) {
@@ -20,7 +27,9 @@ struct Top25Row: View {
             // inside the row — which a whole-card drag never leaves.
             .buttonStyle(SwipeSafeButtonStyle())
             .accessibilityIdentifier("rankings-top25-row")
-            PollFollowStar(league: league)
+            if showsFollow {
+                PollFollowStar(league: league)
+            }
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
@@ -48,7 +57,7 @@ struct Top25Row: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Color.textPrimary)
                 .frame(width: markSize, height: markSize)
-            Text("Top 25")
+            Text(showsLeagueTag ? LeagueTitle.joined("Top 25", league: league) : "Top 25")
                 .font(.teamName)
                 .foregroundStyle(.textPrimary)
             Spacer(minLength: Spacing.sm)
@@ -63,5 +72,7 @@ struct Top25Row: View {
     /// the hub answers "which table", and a standing answered a different
     /// question in the same row. The spoken label follows it out: VoiceOver
     /// should hear the row that is there, not the one that used to be.
-    var accessibilitySummary: String { "Top 25" }
+    var accessibilitySummary: String {
+        showsLeagueTag ? LeagueTitle.spoken("Top 25", league: league) : "Top 25"
+    }
 }

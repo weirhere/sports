@@ -1,7 +1,16 @@
 "use client";
 
-// The Following section's cards, reorderable by dragging — a port of iOS
-// `FollowedTablesList` (2026-09-06, rebuilt 2026-09-07).
+// The Following section's cards — a port of iOS `FollowedTablesList`
+// (2026-09-06, rebuilt 2026-09-07, Edit/Done 2026-09-25).
+//
+// **Edit mode.** Arranging and unfollowing live behind an Edit link on the
+// section's heading, which reads Done while it's on (Andy, 2026-09-25, from
+// FotMob's Leagues tab). Outside it a card is only its row: no grip, no move
+// buttons, no gesture of any kind, so the page scrolls over these cards
+// exactly as it scrolls over the list below them. In it, each card gains a
+// leading dismiss button and a trailing grip, and stops navigating. That
+// replaces a press-and-hold on every card, which kept picking cards up out of
+// ordinary scrolls on a phone however long the hold was tuned to.
 //
 // **Why not the platform's own drag.** HTML5 drag-and-drop is built for
 // carrying an item *out* of a list: it detaches a small ghost from the
@@ -11,53 +20,48 @@
 // reached about `.draggable`/`.dropDestination`.
 //
 // **The order is one order.** It is the order these tables lead the Scores
-// page in, one tab over — one list, one order, both screens. A set saved
-// before dragging existed falls back to the hub's own tier order, so nothing
-// needs migrating.
+// page in, one tab over. A drop resolves against the cards on screen and
+// saves the whole order, hidden tables included (`moveAmongVisible`).
 //
-// A drag is not an accessible affordance, so every card also carries Move
-// up / Move down buttons.
+// A drag is not an accessible affordance, so edit mode also gives every card
+// Move up / Move down buttons, and the Edit link is an ordinary button.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
-import type { ConferenceStandingsGroup, Poll } from "@/lib/types";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ChevronDown, ChevronUp, GripVertical, Minus } from "lucide-react";
 import {
+  moveAmongVisible,
+  tableLeague,
   tableLogoUrl,
   tableName,
   tableToken,
   type FollowedTable,
 } from "@/lib/followed-tables";
-import { leaderOf, leaderRecord, isLeagueWide } from "@/lib/standings-tables";
+import { displayName, shortName } from "@/lib/leagues";
 import { conferencePath } from "@/lib/routes";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { cn } from "@/lib/utils";
 
-/** How long a press on the card body waits before it becomes a lift.
- *  Half a second, iOS's own drag-lift delay (2026-09-24: 350ms picked cards
- *  up out of ordinary scrolls on a phone). */
-const LIFT_DELAY_MS = 500;
-/** How far a press may drift before it's a scroll, not a lift. A finger
- *  that means to reorder settles; one that scrolls is moving at once. */
-const LIFT_TOLERANCE_PX = 5;
 /** The `gap-3` between cards, in px — what a neighbour travels past. */
 const CARD_GAP_PX = 12;
 
 interface FollowedTablesListProps {
-  /** The followed tables, already in the user's order. */
+  /** The cards on screen: the followed tables that loaded, in order. */
   tables: FollowedTable[];
-  order: string[];
+  /** Every followed table in the user's order, loaded or not. */
+  allTables: FollowedTable[];
+  isEditing: boolean;
   onReorder: (order: string[]) => void;
-  /** The loaded standings behind a table, for its leader teaser. */
-  resolve: (table: FollowedTable) => ConferenceStandingsGroup | undefined;
-  polls: Poll[];
+  onUnfollow: (table: FollowedTable) => void;
 }
 
 export function FollowedTablesList({
   tables,
+  allTables,
+  isEditing,
   onReorder,
-  resolve,
-  polls,
+  onUnfollow,
 }: FollowedTablesListProps) {
   const [lifted, setLifted] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
@@ -70,27 +74,14 @@ export function FollowedTablesList({
   const containerRef = useRef<HTMLDivElement>(null);
   const heights = useRef<number[]>([]);
   const startY = useRef(0);
-  const liftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingLift = useRef<{ index: number; y: number } | null>(null);
 
   const commit = useCallback(
     (from: number, to: number) => {
       if (from === to) return;
-      const next = [...tables];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      onReorder(next.map(tableToken));
+      onReorder(moveAmongVisible(allTables, tables[from], to, tables));
     },
-    [tables, onReorder]
+    [allTables, tables, onReorder]
   );
-
-  const cancelPending = () => {
-    if (liftTimer.current !== null) {
-      clearTimeout(liftTimer.current);
-      liftTimer.current = null;
-    }
-    pendingLift.current = null;
-  };
 
   const measure = () => {
     const container = containerRef.current;
@@ -108,6 +99,13 @@ export function FollowedTablesList({
     setTarget(index);
     setOffset(0);
   };
+
+  const endLift = useCallback(() => {
+    setLifted(null);
+    setTarget(null);
+    setOffset(0);
+    setLiftedHeight(0);
+  }, []);
 
   // The whole gesture lives on the window once a lift starts, so the card
   // keeps tracking even when the pointer leaves it.
@@ -141,10 +139,7 @@ export function FollowedTablesList({
 
     const onUp = () => {
       if (target !== null) commit(lifted, target);
-      setLifted(null);
-      setTarget(null);
-      setOffset(0);
-      setLiftedHeight(0);
+      endLift();
     };
 
     window.addEventListener("pointermove", onMove, { passive: false });
@@ -155,12 +150,14 @@ export function FollowedTablesList({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [lifted, target, commit]);
+  }, [lifted, target, commit, endLift]);
 
   const move = (from: number, to: number) => {
     if (to < 0 || to >= tables.length) return;
     commit(from, to);
   };
+
+  const reorderable = isEditing && tables.length > 1;
 
   return (
     <div
@@ -196,36 +193,17 @@ export function FollowedTablesList({
               zIndex: isLifted ? 10 : undefined,
               position: "relative",
             }}
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
-              pendingLift.current = { index, y: event.clientY };
-              liftTimer.current = setTimeout(() => {
-                const pending = pendingLift.current;
-                if (pending) beginLift(pending.index, pending.y);
-              }, LIFT_DELAY_MS);
-            }}
-            onPointerMove={(event) => {
-              const pending = pendingLift.current;
-              if (!pending) return;
-              // Drifted before the press matured: that's a scroll.
-              if (Math.abs(event.clientY - pending.y) > LIFT_TOLERANCE_PX) {
-                cancelPending();
-              }
-            }}
-            onPointerUp={cancelPending}
-            onPointerCancel={cancelPending}
           >
             <FollowedTableCard
               table={table}
-              standings={resolve(table)}
-              polls={polls}
+              isEditing={isEditing}
+              isReorderable={reorderable}
               isLifted={isLifted}
-              // The grip lifts with no press at all — a pointer user
-              // shouldn't have to wait out a delay meant for touch.
-              onGripDown={(y) => {
-                cancelPending();
-                beginLift(index, y);
-              }}
+              onUnfollow={() => onUnfollow(table)}
+              // Edit mode already said this is a reorder, so the grip lifts
+              // on press, with no hold to wait out — iOS's `List` reorder
+              // control does the same.
+              onGripDown={(y) => beginLift(index, y)}
               onMoveUp={index > 0 ? () => move(index, index - 1) : undefined}
               onMoveDown={
                 index < tables.length - 1
@@ -242,97 +220,163 @@ export function FollowedTablesList({
 
 function FollowedTableCard({
   table,
-  standings,
-  polls,
+  isEditing,
+  isReorderable,
   isLifted,
+  onUnfollow,
   onGripDown,
   onMoveUp,
   onMoveDown,
 }: {
   table: FollowedTable;
-  standings?: ConferenceStandingsGroup;
-  polls: Poll[];
+  isEditing: boolean;
+  isReorderable: boolean;
   isLifted: boolean;
+  onUnfollow: () => void;
   onGripDown: (y: number) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
 }) {
+  const reducedMotion = useReducedMotion();
   const name = tableName(table);
+  const league = tableLeague(table);
+  // "SEC - NCAAF", as the Scores section headers read (iOS, 2026-09-25):
+  // this list mixes every league, and "Eastern" is two different tables.
+  // A table named for its own league ("NFL") stays bare.
+  const tagged = name !== displayName(league) && name !== shortName(league);
+  const title = tagged ? `${name} - ${shortName(league)}` : name;
+  const spoken = tagged ? `${name}, ${displayName(league)}` : name;
   const href =
     table.kind === "poll" ? "/rankings/poll" : conferencePath(table.ref);
 
-  const teaser = (() => {
-    if (table.kind === "poll") {
-      const top = polls[0]?.ranks[0];
-      return top ? `#1 ${top.team.school}` : undefined;
-    }
-    if (!standings || isLeagueWide(standings)) return undefined;
-    const leader = leaderOf(standings);
-    const record = leader ? leaderRecord(leader) : undefined;
-    return leader && record ? `${leader.team.school} · ${record}` : undefined;
-  })();
+  // The controls slide in from the card's own edges; Reduce Motion gets the
+  // fade alone. Width animates too, so the name eases over rather than
+  // jumping when the dismiss button arrives.
+  const controlMotion = (edge: "leading" | "trailing") => ({
+    initial: reducedMotion
+      ? { opacity: 0 }
+      : { opacity: 0, width: 0, x: edge === "leading" ? -12 : 12 },
+    animate: reducedMotion
+      ? { opacity: 1 }
+      : { opacity: 1, width: "auto", x: 0 },
+    exit: reducedMotion
+      ? { opacity: 0 }
+      : { opacity: 0, width: 0, x: edge === "leading" ? -12 : 12 },
+    transition: { duration: 0.22, ease: [0.2, 0, 0, 1] as const },
+  });
+
+  const identity = (
+    <>
+      <ConferenceLogo src={tableLogoUrl(table)} name="" />
+      <span className="sr-only">{spoken}</span>
+      {/* No first-place teaser (iOS, 2026-09-21; Andy, 2026-09-25): the
+          card answers "which table", and a leader and a record answered a
+          different question in the same row. */}
+      <span
+        aria-hidden="true"
+        className="min-w-0 truncate type-team-name text-text-primary"
+      >
+        {title}
+      </span>
+    </>
+  );
 
   return (
     <section
       className={cn(
-        "flex min-h-12 items-center gap-1 pr-1 card-surface",
+        // A fixed minimum the edit controls fit inside, so a card keeps its
+        // height when they appear (Andy, 2026-09-25: only the controls
+        // should change).
+        "flex min-h-12 items-center overflow-hidden card-surface",
         isLifted && "shadow-lg"
       )}
     >
-      {/* Content stops hit-testing while anything is lifted, so a drag
-          can't end as a navigation. */}
-      <Link
-        href={href}
-        draggable={false}
-        className={cn(
-          "flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header",
-          isLifted && "pointer-events-none"
+      <AnimatePresence initial={false}>
+        {isEditing && (
+          <motion.span
+            key="dismiss"
+            className="flex shrink-0 overflow-hidden"
+            {...controlMotion("leading")}
+          >
+            {/* Gray, not red: the app's one red is the live accent, and a
+                removal one star below undoes doesn't need an alarm. */}
+            <button
+              type="button"
+              onClick={onUnfollow}
+              aria-label={`Unfollow ${spoken}`}
+              className="-mr-2 ml-1 flex h-10 w-10 items-center justify-center"
+            >
+              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-text-secondary text-bg-card">
+                <Minus aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
+              </span>
+            </button>
+          </motion.span>
         )}
-      >
-        <ConferenceLogo src={tableLogoUrl(table)} name="" />
-        <span className="shrink-0 type-team-name text-text-primary">
-          {name}
-        </span>
-        {teaser && (
-          <span className="truncate type-meta text-text-secondary">
-            {teaser}
-          </span>
-        )}
-      </Link>
+      </AnimatePresence>
 
-      <div className="flex shrink-0 items-center">
-        {/* A drag is not an accessible affordance. */}
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={onMoveUp === undefined}
-          aria-label={`Move ${name} up`}
-          className="flex h-8 w-7 items-center justify-center rounded text-text-secondary transition-colors hover:text-text-primary disabled:opacity-25"
+      {isEditing ? (
+        // In edit mode a card is something being arranged, not a link: a
+        // tap aimed at a control that lands a few pixels off shouldn't
+        // navigate.
+        // `pl-2`: the dismiss target already carries its own inset, so the
+        // row's 16px would leave a gap iOS tightened away.
+        <div className="flex min-w-0 flex-1 items-center gap-3 self-stretch py-[7px] pl-2 pr-4">
+          {identity}
+        </div>
+      ) : (
+        <Link
+          href={href}
+          draggable={false}
+          className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
         >
-          <ChevronUp aria-hidden="true" className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={onMoveDown === undefined}
-          aria-label={`Move ${name} down`}
-          className="flex h-8 w-7 items-center justify-center rounded text-text-secondary transition-colors hover:text-text-primary disabled:opacity-25"
-        >
-          <ChevronDown aria-hidden="true" className="h-4 w-4" />
-        </button>
-        <span
-          role="presentation"
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            event.preventDefault();
-            onGripDown(event.clientY);
-          }}
-          aria-hidden="true"
-          className="flex h-8 w-7 cursor-grab touch-none items-center justify-center text-text-secondary active:cursor-grabbing"
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
-      </div>
+          {identity}
+        </Link>
+      )}
+
+      <AnimatePresence initial={false}>
+        {isReorderable && (
+          <motion.span
+            key="reorder"
+            className="flex shrink-0 items-center overflow-hidden pr-1"
+            {...controlMotion("trailing")}
+          >
+            {/* A drag is not an accessible affordance, so the keyboard and
+                screen readers get Move up / Move down. Visually hidden until
+                focused: on a phone they cost the name ~56px, and iOS shows
+                only the grip. */}
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={onMoveUp === undefined}
+              aria-label={`Move ${spoken} up`}
+              className="sr-only flex h-8 w-7 items-center justify-center rounded text-text-secondary transition-colors hover:text-text-primary focus-visible:not-sr-only disabled:opacity-25"
+            >
+              <ChevronUp aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={onMoveDown === undefined}
+              aria-label={`Move ${spoken} down`}
+              className="sr-only flex h-8 w-7 items-center justify-center rounded text-text-secondary transition-colors hover:text-text-primary focus-visible:not-sr-only disabled:opacity-25"
+            >
+              <ChevronDown aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <span
+              role="presentation"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                onGripDown(event.clientY);
+              }}
+              aria-hidden="true"
+              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center text-text-secondary active:cursor-grabbing"
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
+          </motion.span>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
