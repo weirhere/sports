@@ -34,6 +34,7 @@ import { FollowPromptCard } from "@/components/follow-prompt-card";
 import { FollowingSidebar } from "@/components/following-sidebar";
 import { ConferenceGroupSkeleton } from "@/components/game-card-skeleton";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { PageHeader } from "@/components/page-header";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 
@@ -175,9 +176,8 @@ export function ScoresView({ seed }: ScoresViewProps) {
 
   return (
     <div>
-      {/* See TeamsList: the bar carries the wordmark on every route, so no
-          visible element on this page names it. */}
-      <h1 className="sr-only">Games</h1>
+      {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
+      <PageHeader title="Games" />
       <ScoreFilterSheet
         open={filterSheetOpen}
         onOpenChange={setFilterSheetOpen}

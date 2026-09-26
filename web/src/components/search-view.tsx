@@ -10,6 +10,7 @@ import Link from "next/link";
 import { TeamLogo } from "@/components/team-logo";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { SearchField } from "@/components/search-field";
+import { PageHeader } from "@/components/page-header";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import {
@@ -149,61 +150,64 @@ export function SearchView() {
     gameResults.length === 0;
 
   return (
-    <div className="space-y-3">
-      <h1 className="sr-only">Search</h1>
-      <SearchField
-        value={query}
-        onChange={setQuery}
-        placeholder="Teams, conferences, games"
-        autoFocus
-      />
+    <>
+      {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
+      <PageHeader title="Search" />
+      <div className="space-y-3">
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Teams, conferences, games"
+          autoFocus
+        />
 
-      {trimmed.length === 0 ? (
-        <p className="px-6 py-20 text-center type-team-name text-text-secondary">
-          Search teams, conferences, and this week&rsquo;s games
-        </p>
-      ) : isEmpty ? (
-        <p className="px-6 py-20 text-center type-team-name text-text-secondary">
-          No matches
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {teamResults.length > 0 && (
-            <ResultSection title="Teams">
-              {/* Keyed on the follow key, never the bare id: the Browns and
-                  UAB are both ESPN team 5, so `team.id` hands two different
-                  teams one React identity and the row keeps the previous
-                  team's state as the query changes — a Bills row wearing
-                  Auburn's mark. */}
-              {teamResults.map((team) => (
-                <TeamResultRow
-                  key={followKey({ league: team.league, teamId: team.id })}
-                  team={team}
-                />
-              ))}
-            </ResultSection>
-          )}
-          {conferenceResults.length > 0 && (
-            <ResultSection title="Conferences">
-              {conferenceResults.map((conference) => (
-                <ConferenceResultRow
-                  // Group 8 is the SEC here and the AFC in the NFL.
-                  key={`${conference.league}-${conference.id}`}
-                  conference={conference}
-                />
-              ))}
-            </ResultSection>
-          )}
-          {gameResults.length > 0 && (
-            <ResultSection title="This Week">
-              {gameResults.map((game) => (
-                <GameResultRow key={game.id} game={game} />
-              ))}
-            </ResultSection>
-          )}
-        </div>
-      )}
-    </div>
+        {trimmed.length === 0 ? (
+          <p className="px-6 py-20 text-center type-team-name text-text-secondary">
+            Search teams, conferences, and this week&rsquo;s games
+          </p>
+        ) : isEmpty ? (
+          <p className="px-6 py-20 text-center type-team-name text-text-secondary">
+            No matches
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {teamResults.length > 0 && (
+              <ResultSection title="Teams">
+                {/* Keyed on the follow key, never the bare id: the Browns and
+                    UAB are both ESPN team 5, so `team.id` hands two different
+                    teams one React identity and the row keeps the previous
+                    team's state as the query changes — a Bills row wearing
+                    Auburn's mark. */}
+                {teamResults.map((team) => (
+                  <TeamResultRow
+                    key={followKey({ league: team.league, teamId: team.id })}
+                    team={team}
+                  />
+                ))}
+              </ResultSection>
+            )}
+            {conferenceResults.length > 0 && (
+              <ResultSection title="Conferences">
+                {conferenceResults.map((conference) => (
+                  <ConferenceResultRow
+                    // Group 8 is the SEC here and the AFC in the NFL.
+                    key={`${conference.league}-${conference.id}`}
+                    conference={conference}
+                  />
+                ))}
+              </ResultSection>
+            )}
+            {gameResults.length > 0 && (
+              <ResultSection title="This Week">
+                {gameResults.map((game) => (
+                  <GameResultRow key={game.id} game={game} />
+                ))}
+              </ResultSection>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

@@ -47,9 +47,16 @@ import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useUIState } from "@/lib/hooks/use-ui-state";
 import { conferenceToken } from "@/lib/refs";
 import { conferencePath } from "@/lib/routes";
-import { orderedTables } from "@/lib/followed-tables";
+import {
+  orderedTables,
+  tableName,
+  type FollowedTable,
+} from "@/lib/followed-tables";
 import { FollowedTablesList } from "@/components/followed-tables-list";
 import { TrophyMark } from "@/components/theme/trophy-mark";
+import { PageHeader } from "@/components/page-header";
+import { SearchField } from "@/components/search-field";
+import { filterFollowed, filterHubGroups, hubQuery } from "@/lib/hub-filter";
 import { cn } from "@/lib/utils";
 
 interface LeaguesHubProps {
@@ -82,6 +89,10 @@ export function LeaguesHub({
   // Following's Edit/Done mode, the only state in which its cards show
   // their dismiss buttons and grips (iOS, 2026-09-25).
   const [isEditingFollowing, setIsEditingFollowing] = useState(false);
+  // "Find a league" (iOS, 2026-09-21). Nothing about it is stored: a
+  // reload is a fresh hub.
+  const [query, setQuery] = useState("");
+  const isFiltering = hubQuery(query).length > 0;
 
   /**
    * Divisions folded into their conference: the Sun Belt, not
@@ -217,80 +228,145 @@ export function LeaguesHub({
     [followed, loadedTables, polls]
   );
 
-  // Edit mode ends with the list it edits: the last card dismissed.
-  if (isEditingFollowing && followedRows.length === 0) {
+  const leagues = LEAGUES.filter((league) => rowsIn[league].length > 0);
+
+  /**
+   * The accordions the query leaves standing, each with the rows it
+   * matched — or all of them, when the league's own name did.
+   */
+  const visibleGroups = filterHubGroups(
+    leagues.map((league) => ({
+      league,
+      title: displayName(league),
+      rows: rowsIn[league],
+    })),
+    query,
+    hubRowTitle
+  );
+  /** Following, narrowed by the same query: it filters both lists. */
+  const visibleFollowed = filterFollowed(followedRows, query, followedTitle);
+
+  // Edit mode is a thing you do to the list in front of you, so it ends
+  // when the list does: the last card dismissed, or a search narrowing it
+  // (a reorder there would be arranging a filtered subset).
+  if (isEditingFollowing && (followedRows.length === 0 || isFiltering)) {
     setIsEditingFollowing(false);
   }
 
-  const leagues = LEAGUES.filter((league) => rowsIn[league].length > 0);
-
   if (leagues.length === 0) {
     return (
-      <p className="py-20 text-center type-team-name text-text-secondary">
-        No tables right now
-      </p>
+      <>
+        <PageHeader title="Leagues" />
+        <p className="py-20 text-center type-team-name text-text-secondary">
+          No tables right now
+        </p>
+      </>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* See TeamsList: the bar names the app, not the page. */}
-      <h1 className="sr-only">Leagues</h1>
-      {followedRows.length > 0 && (
-        <>
-          <SectionHeading
-            title="Following"
-            trailing={
-              // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
-              // the heading, "Edit" until pressed and "Done" while editing.
-              <button
-                type="button"
-                onClick={() => setIsEditingFollowing((editing) => !editing)}
-                aria-pressed={isEditingFollowing}
-                className={cn(
-                  "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
-                  isEditingFollowing
-                    ? "font-semibold text-text-primary"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                {isEditingFollowing ? "Done" : "Edit"}
-              </button>
-            }
-          />
-          <FollowedTablesList
-            tables={followedRows}
-            allTables={followed}
-            isEditing={isEditingFollowing}
-            onReorder={uiState.setTableOrder}
-            onUnfollow={(table) =>
-              table.kind === "poll"
-                ? toggleFavoritePoll(table.league)
-                : toggleFavoriteConference(conferenceToken(table.ref))
-            }
-          />
-        </>
-      )}
-
-      {/* The complete list. Followed rows repeat inside their league —
-          sections stay complete, never deduplicated. */}
-      {/* Names what's below rather than repeating the tab (iOS,
-          2026-09-21): every table the app has — the four leagues, their
-          conferences, and the divisions inside those. */}
-      {followedRows.length > 0 && (
-        <SectionHeading title="All leagues, conferences, divisions" />
-      )}
-      {leagues.map((league) => (
-        <LeagueAccordion
-          key={league}
-          league={league}
-          rows={rowsIn[league]}
-          isExpanded={!uiState.isCollapsed(`league-${league}`)}
-          onToggle={() => uiState.toggleSection(`league-${league}`)}
+    <>
+      {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
+      <PageHeader title="Leagues" />
+      <div className="flex flex-col gap-3">
+        {/* Under the title, above everything it filters (iOS, 2026-09-21).
+            At the head of the list, not its foot: it narrows a list you are
+            already reading, where the Search tab's field is that screen's
+            whole purpose. */}
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Find a league"
         />
-      ))}
-    </div>
+        {visibleFollowed.length > 0 && (
+          <>
+            <SectionHeading
+              title="Following"
+              trailing={
+                // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
+                // the heading, "Edit" until pressed and "Done" while
+                // editing. Hidden while a search narrows the list.
+                !isFiltering && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingFollowing((editing) => !editing)}
+                    aria-pressed={isEditingFollowing}
+                    className={cn(
+                      "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
+                      isEditingFollowing
+                        ? "font-semibold text-text-primary"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {isEditingFollowing ? "Done" : "Edit"}
+                  </button>
+                )
+              }
+            />
+            <FollowedTablesList
+              tables={visibleFollowed}
+              allTables={followed}
+              isEditing={isEditingFollowing}
+              onReorder={uiState.setTableOrder}
+              onUnfollow={(table) =>
+                table.kind === "poll"
+                  ? toggleFavoritePoll(table.league)
+                  : toggleFavoriteConference(conferenceToken(table.ref))
+              }
+            />
+          </>
+        )}
+
+        {/* The complete list. Followed rows repeat inside their league —
+            sections stay complete, never deduplicated. */}
+        {/* Names what's below rather than repeating the tab (iOS,
+            2026-09-21): every table the app has — the four leagues, their
+            conferences, and the divisions inside those. */}
+        {visibleFollowed.length > 0 && visibleGroups.length > 0 && (
+          <SectionHeading title="All leagues, conferences, divisions" />
+        )}
+        {visibleGroups.map(({ league, rows }) => (
+          <LeagueAccordion
+            key={league}
+            league={league}
+            rows={rows}
+            // A search opens what it matched: a filtered accordion that
+            // stayed shut would hide the thing you just asked for behind
+            // one more tap ("relevantly expanded", iOS 2026-09-21). A
+            // render-time override, never a write, so clearing the field
+            // hands the hub back exactly as it was.
+            isExpanded={
+              isFiltering || !uiState.isCollapsed(`league-${league}`)
+            }
+            onToggle={() => uiState.toggleSection(`league-${league}`)}
+          />
+        ))}
+        {isFiltering &&
+          visibleGroups.length === 0 &&
+          visibleFollowed.length === 0 && (
+            <p className="py-20 text-center type-team-name text-text-secondary">
+              No matches
+            </p>
+          )}
+      </div>
+    </>
   );
+}
+
+/**
+ * What "find a league" matches a hub row against (iOS
+ * `TableRow.searchTitle`): the poll by its league's name and "Poll", a
+ * table by its own name.
+ */
+function hubRowTitle(row: HubRow): string {
+  return row.kind === "poll" ? `${displayName(row.league)} Poll` : row.table.name;
+}
+
+/** The same rule for a Following card. */
+function followedTitle(table: FollowedTable): string {
+  return table.kind === "poll"
+    ? `${displayName(table.league)} Poll`
+    : tableName(table);
 }
 
 function SectionHeading({
