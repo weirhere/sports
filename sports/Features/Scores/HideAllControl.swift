@@ -25,7 +25,7 @@ struct HideAllControl: View {
                         .font(.system(size: 11, weight: .semibold))
                 }
                 .foregroundStyle(Color.textPrimary)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm + 2)
                 .background(Capsule().fill(Color.bgElevated))
                 .contentShape(Capsule())
@@ -47,6 +47,7 @@ struct HideAllControl: View {
             }
         }
         .padding(.vertical, Spacing.xs)
+        .frame(maxWidth: .infinity)
     }
 }
 
