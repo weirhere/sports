@@ -40,6 +40,12 @@ extension Color {
     /// The top of the ramp: floating controls (the header capsule's iOS 18
     /// fallback), banners, skeletons, placeholder discs, neutral score chips.
     static let bgElevated = Color(lightWhite: 0.93, darkWhite: 0.17)
+    /// A control set into the page rather than floating on it — the Scores
+    /// Hide all/Show all capsule. Light: one step below bgRecessed, since
+    /// bgElevated shares the page's 0.93 there and the capsule vanished
+    /// into it (Andy, 2026-09-25). Dark: bgElevated's grey, which already
+    /// reads against the black page.
+    static let bgInset = Color(lightWhite: 0.88, darkWhite: 0.17)
     /// Accordion header fill: a whisper off the card, FotMob-subtle. Light
     /// tints down from the card (#f8f8f8 — can't go lighter than white);
     /// dark tints up (0.15 on a 0.11 card — dark deltas need to be larger
