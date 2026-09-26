@@ -16,11 +16,16 @@ import Testing
     }
 
     /// A conference page offers its own level and the one under it — there
-    /// is no "league" view of a page that isn't the league.
-    @Test func aConferencePageOffersItselfAndItsDivisions() {
+    /// is no "league" view of a page that isn't the league. It opens on
+    /// its divisions, stacked, since they have no pages of their own
+    /// (2026-09-26).
+    @Test func aConferencePageOffersItselfAndOpensOnItsDivisions() {
         #expect(StandingsScope.scopes(for: .nfl(8)) == [.conference, .division])
         #expect(StandingsScope.scopes(for: .nfl(7)) == [.conference, .division])
-        #expect(StandingsScope.default(for: .nfl(8)) == .conference)
+        #expect(StandingsScope.default(for: .nfl(8)) == .division)
+        #expect(StandingsScope.default(for: .nba(5)) == .division)
+        // College football's conferences nest nothing; theirs stays whole.
+        #expect(StandingsScope.default(for: .cfb(8)) == .conference)
     }
 
     /// Nothing nests under a division, and nothing nests under a college

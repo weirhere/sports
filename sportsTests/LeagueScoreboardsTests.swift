@@ -105,6 +105,10 @@ private func confSection(_ id: ConferenceID) -> String {
 }
 
 private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawValue
+/// College football's all-FBS and all-FCS sections, which lead its
+/// conferences on every slate that has a game in them (2026-09-26).
+private let fbsSection = confSection(Conference.divisionRoot(.fbs))
+private let fcsSection = confSection(Conference.divisionRoot(.fcs))
 
 @MainActor
 @Suite struct LeagueScoreboardsTests {
@@ -122,9 +126,9 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         #expect(Set(scoreboards.selectedDayGames.map(\.id)) == ["c1", "n1"])
     }
 
-    @Test func collegeFootballBreaksDownByConferenceAndTheNFLDoesNot() async {
-        // Andy, 2026-09-06: "switch back to the conference (big 10, sec)
-        // but nfl can remain as is."
+    @Test func everyLeagueBreaksDownByConference() async {
+        // Andy, 2026-09-26: every league, then its conferences — and no
+        // lower. The NFL's divisions live on the AFC's and NFC's pages.
         let cfb = [game("sec", home: team("1", in: .collegeFootball, conference: 8),
                         away: team("2", in: .collegeFootball, conference: 8)),
                    game("b1g", home: team("3", in: .collegeFootball, conference: 5),
@@ -136,17 +140,20 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let scoreboards = await makeScoreboards(cfb: cfb, nfl: nfl)
 
         let sections = scoreboards.sections(followingIds: [])
-        #expect(sections.map(\.id) == [confSection(.cfb(5)), confSection(.cfb(8)),
-                                       GameSection.id(for: .nfl)])
-        #expect(sections.map(\.title) == ["Big Ten", "SEC", "NFL"])
-        #expect(sections.last?.games.map(\.id) == ["n1", "n2"])
+        #expect(sections.map(\.id) == [fbsSection, confSection(.cfb(5)), confSection(.cfb(8)),
+                                       GameSection.id(for: .nfl), "conf-nfl-8", "conf-nfl-7"])
+        #expect(sections.map(\.title) == ["FBS", "Big Ten", "SEC", "NFL", "AFC", "NFC"])
+        #expect(sections[3].games.map(\.id) == ["n1", "n2"])
+        // AFC East at AFC West is an AFC game; NFC South at AFC East is
+        // both conferences'.
+        #expect(sections[4].games.map(\.id) == ["n1", "n2"])
+        #expect(sections[5].games.map(\.id) == ["n2"])
         #expect(sections.allSatisfy { $0.league != nil })
     }
 
-    /// Which shape a league takes is a property of the league, not a
-    /// branch per league — basketball and hockey stand as one section each
-    /// for exactly the reason the NFL does.
-    @Test func everyLeagueButCollegeFootballStandsAsOneSection() async {
+    /// Basketball and hockey break down exactly as the NFL does: the
+    /// league, then its conferences, each wearing the league's mark.
+    @Test func proLeaguesListTheLeagueThenItsConferences() async {
         let cfb = [game("sec", home: team("1", in: .collegeFootball, conference: 8),
                         away: team("2", in: .collegeFootball, conference: 8))]
         let nba = [game("b1", home: team("13", in: .nba, conference: 4),
@@ -158,18 +165,23 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let scoreboards = await makeScoreboards(cfb: cfb, nba: nba, nhl: nhl)
 
         let sections = scoreboards.sections(followingIds: [])
-        // `League.displayOrder` — A–Z, so the NBA leads college football's
-        // conferences (2026-09-24) — and one section each for the three
-        // leagues that don't carve up.
+        // `League.displayOrder` — A–Z, so the NBA leads college football
+        // (2026-09-24). Both Toronto and the Rangers are East, so the NHL
+        // has no Western section today.
         #expect(sections.map(\.id) == [GameSection.id(for: .nba),
-                                       confSection(.cfb(8)),
-                                       GameSection.id(for: .nhl)])
-        #expect(sections.map(\.title) == ["NBA", "SEC", "NHL"])
+                                       confSection(.nba(5)), confSection(.nba(6)),
+                                       fbsSection, confSection(.cfb(8)),
+                                       GameSection.id(for: .nhl), confSection(.nhl(7))])
+        #expect(sections.map(\.title) == ["NBA", "Eastern Conference", "Western Conference",
+                                          "FBS", "SEC", "NHL", "Eastern Conference"])
         #expect(sections[0].games.map(\.id) == ["b1", "b2"])
         // Following the whole league on the hub hoists this very section,
         // so it has to carry the league-wide table's identity.
         #expect(sections[0].table == .conference(.nba(7)))
-        #expect(sections[2].table == .conference(.nhl(9)))
+        #expect(sections[5].table == .conference(.nhl(9)))
+        // A pro conference wears its league's mark, not its own.
+        #expect(sections[1].logoURL == League.nba.logoURL)
+        #expect(sections[6].logoURL == League.nhl.logoURL)
     }
 
     /// A followed hockey team and a followed college team share one
@@ -195,12 +207,12 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
                        away: team("2", in: .collegeFootball, conference: 5))])
 
         let sections = scoreboards.sections(followingIds: [])
-        #expect(sections.map(\.id) == [confSection(.cfb(5)), confSection(.cfb(8))])
+        #expect(sections.map(\.id) == [fbsSection, confSection(.cfb(5)), confSection(.cfb(8))])
         #expect(sections.allSatisfy { $0.games.map(\.id) == ["c1"] })
     }
 
-    @Test func conferencesSortByTierThenName() async {
-        // P4 → G5 → Independents → Other.
+    @Test func conferencesSortAlphabeticallyWithOtherLast() async {
+        // A–Z, not P4 → G5 → Independents (2026-09-26).
         let scoreboards = await makeScoreboards(
             cfb: [game("g5", home: team("1", in: .collegeFootball, conference: 15),
                        away: team("2", in: .collegeFootball, conference: 15)),
@@ -212,19 +224,29 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
                        away: team("8", in: .collegeFootball, conference: nil))])
 
         #expect(scoreboards.sections(followingIds: []).map(\.id)
-                == [confSection(.cfb(8)), confSection(.cfb(15)),
-                    confSection(.cfb(18)), otherSection])
+                == [fbsSection, confSection(.cfb(18)), confSection(.cfb(15)),
+                    confSection(.cfb(8)), otherSection])
     }
 
-    @Test func anFCSVisitorStaysInItsHostsConference() async {
-        // Or Week 1's ~48 FCS matchups pile into Other as duplicates. The
-        // slate is FBS-only unless someone opts in, so the visitor's own
-        // conference spawns no section either way.
+    @Test func anFCSVisitorListsUnderBothConferencesAndBothDivisions() async {
+        // With FCS on the slate (2026-09-26), Big Sky at SEC is an SEC
+        // game, a Big Sky game, an FBS game and an FCS game.
         let scoreboards = await makeScoreboards(
             cfb: [game("c1", home: team("1", in: .collegeFootball, conference: 8),
                        away: team("99", in: .collegeFootball, conference: 20))])
+        await scoreboards.select(divisions: ScoreboardStore.slateDivisions)
 
-        #expect(scoreboards.sections(followingIds: []).map(\.id) == [confSection(.cfb(8))])
+        #expect(scoreboards.sections(followingIds: []).map(\.id)
+                == [fbsSection, fcsSection, confSection(.cfb(20)), confSection(.cfb(8))])
+    }
+
+    @Test func aVisitorNoConferenceClaimsStaysInItsHostsConference() async {
+        // Or they'd pile into Other as duplicates.
+        let scoreboards = await makeScoreboards(
+            cfb: [game("c1", home: team("1", in: .collegeFootball, conference: 8),
+                       away: team("99", in: .collegeFootball, conference: 424_242))])
+
+        #expect(scoreboards.sections(followingIds: []).map(\.id) == [fbsSection, confSection(.cfb(8))])
     }
 
     @Test func aLeagueWithNoGamesGetsNoSection() async {
@@ -232,7 +254,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
                        away: team("2", in: .collegeFootball, conference: 8))
         let scoreboards = await makeScoreboards(cfb: [cfb], nfl: [])
 
-        #expect(scoreboards.sections(followingIds: []).map(\.id) == [confSection(.cfb(8))])
+        #expect(scoreboards.sections(followingIds: []).map(\.id) == [fbsSection, confSection(.cfb(8))])
     }
 
     // MARK: - Following
@@ -280,8 +302,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let scoreboards = await makeScoreboards(
             cfb: [game("c1", home: team("1", in: .collegeFootball, conference: 1),
                        away: team("2", in: .collegeFootball, conference: 1))])
-        #expect(scoreboards.sections(followingIds: []).first?.id
-                == confSection(.cfb(1)))
+        #expect(scoreboards.sections(followingIds: []).first?.id == fbsSection)
     }
 
     // MARK: - Followed tables
@@ -299,7 +320,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let sections = scoreboards.sections(followingIds: following.teamKeys,
                                             followedTables: following.orderedTables)
         // No Following section at all — nothing is followed by team.
-        #expect(sections.map(\.id) == [confSection(.cfb(8)), confSection(.cfb(1))])
+        #expect(sections.map(\.id) == [confSection(.cfb(8)), fbsSection, confSection(.cfb(1))])
         #expect(sections.first?.games.map(\.id) == ["sec"])
     }
 
@@ -311,7 +332,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 
         let sections = scoreboards.sections(followingIds: following.teamKeys,
                                             followedTables: following.orderedTables)
-        #expect(sections.map(\.id) == [confSection(.cfb(8))])
+        #expect(sections.map(\.id) == [confSection(.cfb(8)), fbsSection])
     }
 
     @Test func followedTablesFollowTheUsersDraggedOrder() async {
@@ -326,17 +347,18 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let following = makeFollowing(conferences: [.cfb(8), .cfb(5)])
         #expect(scoreboards.sections(followingIds: [],
                                      followedTables: following.orderedTables).map(\.id)
-                == [confSection(.cfb(8)), confSection(.cfb(5))])
+                == [confSection(.cfb(8)), confSection(.cfb(5)), fbsSection])
 
         following.move(.conference(.cfb(5)), onto: .conference(.cfb(8)))
         #expect(scoreboards.sections(followingIds: [],
                                      followedTables: following.orderedTables).map(\.id)
-                == [confSection(.cfb(5)), confSection(.cfb(8))])
+                == [confSection(.cfb(5)), confSection(.cfb(8)), fbsSection])
     }
 
-    @Test func aFollowedNFLConferenceGetsASectionTheStackDoesNotHave() async {
-        // The NFL stays one accordion, so a followed AFC has no counterpart
-        // to move — it earns a section, and its games stay in the NFL's too.
+    @Test func aFollowedNFLConferenceMovesUpOutOfTheStack() async {
+        // The AFC is in the stack now (2026-09-26), so following it moves
+        // that section up rather than building one — and its games stay in
+        // the NFL's too.
         let scoreboards = await makeScoreboards(
             nfl: [game("afc", home: team("2", in: .nfl, conference: 4),
                        away: team("7", in: .nfl, conference: 6)),
@@ -346,10 +368,12 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 
         let sections = scoreboards.sections(followingIds: following.teamKeys,
                                             followedTables: following.orderedTables)
-        #expect(sections.map(\.id) == ["conf-nfl-8", GameSection.id(for: .nfl)])
+        #expect(sections.map(\.id) == ["conf-nfl-8", GameSection.id(for: .nfl), "conf-nfl-7"])
         #expect(sections.first?.title == "AFC")
+        #expect(sections.first?.isFollowed == true)
+        #expect(sections.first?.logoURL == League.nfl.logoURL)
         #expect(sections.first?.games.map(\.id) == ["afc"])
-        #expect(sections.last?.games.map(\.id) == ["afc", "nfc"])
+        #expect(sections[1].games.map(\.id) == ["afc", "nfc"])
     }
 
     @Test func followingTheWholeNFLHoistsItsOwnSection() async {
@@ -362,10 +386,10 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 
         #expect(scoreboards.sections(followingIds: [],
                                      followedTables: following.orderedTables).map(\.id)
-                == [GameSection.id(for: .nfl), confSection(.cfb(8))])
+                == [GameSection.id(for: .nfl), fbsSection, confSection(.cfb(8)), "conf-nfl-8"])
     }
 
-    @Test func aFollowedPollGetsARankedSection() async {
+    @Test func aFollowedPollHoistsItsRankedSection() async {
         let scoreboards = await makeScoreboards(
             cfb: [game("ranked", home: team("1", in: .collegeFootball, conference: 8),
                        away: team("2", in: .collegeFootball, conference: 8), homeRank: 3),
@@ -375,7 +399,8 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 
         let sections = scoreboards.sections(followingIds: [],
                                             followedTables: following.orderedTables)
-        #expect(sections.map(\.id) == ["poll-cfb", confSection(.cfb(8))])
+        #expect(sections.map(\.id) == ["poll-cfb", fbsSection, confSection(.cfb(8))])
+        #expect(sections.first?.isFollowed == true)
         #expect(sections.first?.title == "Top 25")
         #expect(sections.first?.games.map(\.id) == ["ranked"])
     }
@@ -388,7 +413,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
 
         #expect(scoreboards.sections(followingIds: [],
                                      followedTables: following.orderedTables).map(\.id)
-                == [confSection(.cfb(1))])
+                == [fbsSection, confSection(.cfb(1))])
     }
 
     @Test func teamFollowsStillLeadWithTheirOwnSection() async {
@@ -402,7 +427,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let sections = scoreboards.sections(followingIds: following.teamKeys,
                                             followedTables: following.orderedTables)
         #expect(sections.map(\.id) == [GameSection.followingId, confSection(.cfb(5)),
-                                       confSection(.cfb(8))])
+                                       fbsSection, confSection(.cfb(8))])
         #expect(sections.first?.games.map(\.id) == ["mine"])
     }
 
@@ -425,11 +450,12 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         let sections = scoreboards.sections(followingIds: following.teamKeys,
                                             followedTables: following.orderedTables)
         #expect(sections.map(\.id) == [GameSection.followingId, confSection(.cfb(5)),
-                                       confSection(.cfb(1)), confSection(.cfb(8))])
+                                       fbsSection, confSection(.cfb(1)), confSection(.cfb(8))])
         #expect(sections[0].isFollowed) // Following
         #expect(sections[1].isFollowed) // Big Ten, hoisted as a followed table
-        #expect(!sections[2].isFollowed) // ACC, carries a table but unfollowed
-        #expect(!sections[3].isFollowed) // SEC, mine's own conference, unfollowed
+        #expect(!sections[2].isFollowed) // FBS, carries a table but unfollowed
+        #expect(!sections[3].isFollowed) // ACC, carries a table but unfollowed
+        #expect(!sections[4].isFollowed) // SEC, mine's own conference, unfollowed
     }
 
     @Test func nothingIsFollowedWhenNobodyIsFollowed() async {
@@ -452,8 +478,8 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
                        away: team("27", in: .nfl, conference: 6))])
 
         let sections = scoreboards.sections(followingIds: [], liveOnly: true)
-        #expect(sections.map(\.id) == [confSection(.cfb(8))])
-        #expect(sections.first?.games.map(\.id) == ["c-live"])
+        #expect(sections.map(\.id) == [fbsSection, confSection(.cfb(8))])
+        #expect(sections.allSatisfy { $0.games.map(\.id) == ["c-live"] })
     }
 
     @Test func aConferenceFilterHidesTheLeagueItCannotSpeakFor() async {
@@ -472,7 +498,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
         // are still complete over what's left.
         let sections = scoreboards.sections(followingIds: [],
                                             filter: .conference(.cfb(8)))
-        #expect(sections.map(\.id) == [confSection(.cfb(1)), confSection(.cfb(8))])
+        #expect(sections.map(\.id) == [fbsSection, confSection(.cfb(1)), confSection(.cfb(8))])
         #expect(sections.allSatisfy { $0.games.map(\.id) == ["c-sec"] })
     }
 
@@ -486,7 +512,7 @@ private let otherSection = GameSection.otherPrefix + League.collegeFootball.rawV
                        away: team("27", in: .nfl, conference: 6))])
 
         let sections = scoreboards.sections(followingIds: [], filter: .top25)
-        #expect(sections.map(\.id) == [confSection(.cfb(8))])
+        #expect(sections.map(\.id) == ["poll-cfb", fbsSection, confSection(.cfb(8))])
         #expect(sections.first?.games.map(\.id) == ["ranked"])
     }
 

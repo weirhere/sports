@@ -335,16 +335,10 @@ private func game(_ id: String, on date: Date?, live: Bool = false,
         #expect(provider.requests.count == before)
     }
 
-    @Test func divisionsNeededFollowTheFilterAndFollows() {
-        #expect(ScoreboardStore.divisions(filter: nil, followedConferenceIds: []) == [.fbs])
-        // 20 is an FCS conference in the registry; picking or following one
-        // is the only thing that puts group 81 on the slate.
-        #expect(ScoreboardStore.divisions(filter: .conference(.cfb(20)),
-                                          followedConferenceIds: []).contains(.fcs))
-        #expect(ScoreboardStore.divisions(filter: nil,
-                                          followedConferenceIds: [.cfb(20)]).contains(.fcs))
-        #expect(ScoreboardStore.divisions(filter: .conference(.cfb(8)),
-                                          followedConferenceIds: []) == [.fbs])
+    @Test func theScoresSlateCoversFBSAndFCS() {
+        // Every FCS conference lists on Scores (2026-09-26), so the slate
+        // no longer waits on an FCS follow to ask for group 81.
+        #expect(ScoreboardStore.slateDivisions == [.fbs, .fcs])
     }
 }
 

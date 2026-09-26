@@ -29,6 +29,16 @@ struct GameRow: View {
     /// Betting lines, per the Settings switch. The row only ever prints a
     /// pre-game line; see `line(for:showsLines:)`.
     var showsLine: Bool = false
+    /// The conference whose Scores section this row sits in. A visitor
+    /// from outside it wears its own conference after its name ("NFC"),
+    /// so an inter-conference game says which side the section is about
+    /// (2026-09-26). Nil everywhere else.
+    var sectionConference: ConferenceID? = nil
+
+    /// The visitor tag for one side, if it's a guest in this section.
+    func guestTag(_ competitor: Competitor) -> String? {
+        sectionConference.flatMap { Conference.guestTag(for: competitor.team.conference, in: $0) }
+    }
 
     /// The line a row prints: pre-game only, and only when switched on.
     /// ESPN drops `odds` from a final, but a live game may still carry one,
@@ -146,6 +156,13 @@ struct GameRow: View {
                     Text("\(rank)")
                         .font(.rowMeta)
                         .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
+                }
+                if let tag = guestTag(competitor) {
+                    Text(tag)
+                        .font(.rowMeta)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
             }
             if hasPossession(competitor) {
@@ -551,8 +568,10 @@ struct GameRow: View {
     }
 
     private func sideName(_ competitor: Competitor) -> String {
-        guard let rank = competitor.rank else { return competitor.team.location }
-        return "number \(rank) \(competitor.team.location)"
+        var name = competitor.rank.map { "number \($0) \(competitor.team.location)" }
+            ?? competitor.team.location
+        if let tag = guestTag(competitor) { name += " of the \(tag)" }
+        return name
     }
 
     /// "5-0" reads as "5 and 0", the spoken convention, not "5 minus 0".

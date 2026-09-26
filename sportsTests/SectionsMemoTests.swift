@@ -83,7 +83,8 @@ private func makeScoreboards(nfl: ChangingStub) async -> LeagueScoreboards {
         let first = scoreboards.sections(followingIds: [])
         let second = scoreboards.sections(followingIds: [])
         #expect(first == second)
-        #expect(first.flatMap(\.games).map(\.id) == ["1"])
+        // The league's own section; its conferences carry the game too.
+        #expect(first.first?.games.map(\.id) == ["1"])
     }
 
     @Test func aRefetchWithNewGamesIsNotServedFromTheMemo() async {
@@ -107,7 +108,7 @@ private func makeScoreboards(nfl: ChangingStub) async -> LeagueScoreboards {
         await scoreboards.refresh()
 
         #expect(scoreboards.sections(followingIds: [], liveOnly: true)
-            .flatMap(\.games).map(\.id) == ["1"])
+            .first?.games.map(\.id) == ["1"])
     }
 
     @Test func aFollowChangesTheAnswer() async {

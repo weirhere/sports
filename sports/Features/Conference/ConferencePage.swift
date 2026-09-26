@@ -680,14 +680,16 @@ struct ConferencePage: View {
     /// get to from it. The same rule the Scores accordion headers follow:
     /// the name of a group is the route to it.
     ///
-    /// Not a link when the card *is* this page's own group — a division's
-    /// page heads its one table with its own name, and a link there would
-    /// go nowhere.
+    /// Not a link when the card *is* this page's own group, and never to a
+    /// division: divisions have no pages (Andy, 2026-09-26) — they're read
+    /// stacked inside their conference's, which is where this card already
+    /// is.
     @ViewBuilder
     private func tableHeader(_ table: ConferenceStandings) -> some View {
         let title = table.divisionName(under: destination.name)
         if let id = table.conference, id != destination.conference,
-           Conference.isKnown(id.id, in: id.league) {
+           Conference.isKnown(id.id, in: id.league),
+           Conference.tier(for: id.id, in: id.league) != .division {
             NavigationLink(value: ConferenceDestination(conference: id,
                                                         name: Conference.name(for: id),
                                                         highlightTeamId: destination.highlightTeamId)) {

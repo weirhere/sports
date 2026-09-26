@@ -11,6 +11,8 @@ import SwiftUI
 struct SectionGameRow: View {
     let game: Game
     let leagueTag: League?
+    /// The conference this row's section is, for tagging a visitor.
+    var sectionConference: ConferenceID? = nil
 
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
@@ -20,7 +22,7 @@ struct SectionGameRow: View {
         let homeTitle = followActionTitle(for: game.home.team)
         NavigationLink(value: game) {
             GameRow(game: game, timeOnly: true, leagueTag: leagueTag,
-                    showsLine: uiState.showsLines)
+                    showsLine: uiState.showsLines, sectionConference: sectionConference)
         }
         // Not `.plain`: a full-width row is wider than any swipe, so the
         // day swipe used to end on this link.

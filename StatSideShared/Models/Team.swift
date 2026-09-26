@@ -383,6 +383,44 @@ nonisolated enum Conference {
         return name(for: conference.id, in: conference.league)
     }
 
+    /// The tag a visiting team wears in a conference section it doesn't
+    /// belong to: its own group at the section's rung, "NFC" in the AFC's
+    /// section, "Big Sky" in the SEC's (Andy, 2026-09-26: "call out which
+    /// team is from that conference since there are inter-conference games
+    /// so often"). The outsider is tagged rather than the member marked,
+    /// because the gray name is already the loser's, and the tag says
+    /// where the visitor is from besides.
+    ///
+    /// Nil for a member, a team we can't place, and any section that isn't
+    /// a conference — a league, FBS or FCS claims both teams anyway.
+    static func guestTag(for team: ConferenceID?, in section: ConferenceID) -> String? {
+        guard let team, team.league == section.league else { return nil }
+        let league = section.league
+        let chain = chain(for: team)
+        guard !chain.contains(section) else { return nil }
+        if let registry = registries[league] {
+            guard tier(for: section.id, in: league) == .conference,
+                  let own = chain.first(where: { tier(for: $0.id, in: league) == .conference })
+            else { return nil }
+            return registry.conferenceShorts[own.id]
+        }
+        guard !isDivisionRoot(section.id, in: league), isKnown(team.id, in: league) else { return nil }
+        return name(for: team)
+    }
+
+    /// What a pro conference is called as a Scores section, where it rides
+    /// behind its league's name — "NBA - Eastern Conference" (Andy,
+    /// 2026-09-26). The NFL's "AFC" already says what it is; the NBA's and
+    /// NHL's bare "Eastern" doesn't. Everything else — college football, a
+    /// league, anything unplaced — is `name(for:)`.
+    static func slateName(for conference: ConferenceID) -> String {
+        guard conference.league != .nfl,
+              registries[conference.league] != nil,
+              tier(for: conference.id, in: conference.league) == .conference
+        else { return name(for: conference) }
+        return "\(name(for: conference)) Conference"
+    }
+
     /// CFBD identifies conferences by name, not id. Maps their names onto
     /// our ESPN group ids so tiers, ordering, and logos keep working when
     /// the CFBD backend is active. Unknown names degrade to nil ("Other").

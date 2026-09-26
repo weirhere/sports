@@ -8,12 +8,12 @@ struct HideAllSummaryTests {
 
     @Test func namesTwoAndCountsTheRest() {
         #expect(HideAllControl.summary(of: sections("Big Ten", "SEC", "ACC", "Big 12"))
-                == "Big Ten, SEC and 2 other leagues, conferences or divisions play today")
+                == "Big Ten, SEC and 2 other leagues or conferences play today")
     }
 
     @Test func singularRemainder() {
         #expect(HideAllControl.summary(of: sections("Big Ten", "SEC", "ACC"))
-                == "Big Ten, SEC and 1 other league, conference or division play today")
+                == "Big Ten, SEC and 1 other league or conference play today")
     }
 
     @Test func twoSections() {
@@ -28,6 +28,6 @@ struct HideAllSummaryTests {
         let slate = sections("Big Ten")
             + [GameSection(id: GameSection.otherPrefix + "cfb", title: "Other", games: [])]
         #expect(HideAllControl.summary(of: slate)
-                == "Big Ten and 1 other league, conference or division play today")
+                == "Big Ten and 1 other league or conference play today")
     }
 }

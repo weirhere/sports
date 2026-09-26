@@ -439,14 +439,11 @@ final class LeagueScoreboards {
     /// directly beneath Following instead, in the order you dragged them
     /// into on the tables hub.
     ///
-    /// **College football breaks down by conference; nobody else does**
-    /// (Andy, 2026-09-06, superseding the one-accordion-per-league shape).
-    /// A single "College Football" accordion is 60 rows on a Saturday with
-    /// no way in; its conferences are the way fans already carve it up.
-    /// The NFL's 16 games, the NBA's 11 and the NHL's 8 are each the whole
-    /// slate at a glance, and their divisions would be one or two rows a
-    /// section. Which shape a league takes is `slateSplitsByConference`,
-    /// so the stack is one loop rather than a branch per league.
+    /// **Every league lists its conferences** (Andy, 2026-09-26). A pro
+    /// league is its whole slate, then each conference — never a division;
+    /// college football is its Top 25, FBS and FCS, then each conference.
+    /// Below Hide all, that's the full browse — anything you follow has
+    /// already moved up above it.
     ///
     /// Sections stay complete, never deduplicated: a game is in Following,
     /// in a followed table's section, and in its conference's. The one
@@ -543,9 +540,9 @@ final class LeagueScoreboards {
         for league in League.displayOrder {
             let games = visible[league] ?? []
             guard !games.isEmpty else { continue }
-            stack += league.slateSplitsByConference
-                ? conferenceSections(from: games, in: league)
-                : [leagueSection(league, games: games)]
+            stack += league == .collegeFootball
+                ? collegeSections(from: games, in: league)
+                : proSections(from: games, in: league)
         }
 
         // Followed tables lead the stack, in the user's order. One already
@@ -565,8 +562,8 @@ final class LeagueScoreboards {
             }
             let games = (visible[table.league] ?? []).filter(table.matches)
             guard !games.isEmpty else { continue }
-            let section = GameSection(id: table.token, title: table.name, games: games,
-                                      league: table.league, logoURL: table.logoURL,
+            let section = GameSection(id: table.token, title: Self.sectionTitle(for: table), games: games,
+                                      league: table.league, logoURL: Self.sectionLogo(for: table),
                                       table: table, isFollowed: true)
             guard hoistedIds.insert(section.id).inserted else { continue }
             hoisted.append(section)
@@ -583,19 +580,38 @@ final class LeagueScoreboards {
         return result + hoisted + stack.filter { !hoistedIds.contains($0.id) }
     }
 
-    /// College football's slate, one section per conference — the way fans
-    /// carve up a Saturday, and the app's shape until the day axis briefly
-    /// flattened it (Andy, 2026-09-06, restoring it).
-    ///
-    /// A cross-conference game lands in both sections. "Other" is a last
-    /// resort for games no section can claim: an FCS visitor at an FBS
-    /// school stays in the host's conference only, or Week 1's ~48 FCS
-    /// matchups would pile up in Other as duplicates.
-    ///
-    /// The buckets follow the *slate's* divisions, not the registry's
-    /// knowledge: FCS is opt-in, so until someone follows an FCS
-    /// conference a Big Sky visitor stays in its host's section rather
-    /// than spawning a Big Sky one.
+    /// A pro league's slate: the league whole, then each conference with a
+    /// game, A–Z — NFL, AFC, NFC (Andy, 2026-09-26, reversing the
+    /// one-section-per-league shape). Conferences are the floor: a
+    /// division is a breakdown *inside* its conference's page, never a
+    /// section of its own, which is also what keeps an AFC–NFC game to
+    /// three sections rather than the five the 2026-09-09 attempt was
+    /// pulled for.
+    private func proSections(from games: [Game], in league: League) -> [GameSection] {
+        guard !games.isEmpty else { return [] }
+        var byGroup: [ConferenceID: [Game]] = [:]
+        for game in games {
+            let groups = Set([game.home.team.conference, game.away.team.conference]
+                .compactMap { $0 }
+                .flatMap(Conference.chain(for:))
+                .filter { Conference.tier(for: $0.id, in: league) == .conference })
+            for id in groups {
+                byGroup[id, default: []].append(game)
+            }
+        }
+        let groups = byGroup.map { id, games in
+            GameSection(id: FollowedTable.conference(id).token,
+                        title: Conference.slateName(for: id),
+                        games: games,
+                        league: league,
+                        // Every section in a pro league wears the league's
+                        // mark, never the conference's (Andy, 2026-09-26).
+                        logoURL: league.logoURL,
+                        table: .conference(id))
+        }
+        return [leagueSection(league, games: games)] + groups.sorted { $0.title < $1.title }
+    }
+
     /// A league that stands as one section — its whole night at a glance.
     private func leagueSection(_ league: League, games: [Game]) -> GameSection {
         GameSection(id: GameSection.id(for: league),
@@ -609,8 +625,30 @@ final class LeagueScoreboards {
                         .map { FollowedTable.conference(ConferenceID(league, $0)) })
     }
 
-    private func conferenceSections(from games: [Game], in league: League) -> [GameSection] {
+    /// College football's slate: the Top 25, all of FBS and all of FCS,
+    /// then one section per conference, A–Z, with "Other" last (Andy,
+    /// 2026-09-26, replacing the P4 → G5 → FCS tier order).
+    ///
+    /// A cross-conference game lands in both conferences. "Other" is a
+    /// last resort for games no section can claim: an FCS visitor from a
+    /// conference the registry doesn't know stays in its host's section
+    /// only, or they'd pile up in Other as duplicates. The buckets follow
+    /// the *slate's* divisions, which since 2026-09-26 are FBS and FCS
+    /// both.
+    private func collegeSections(from games: [Game], in league: League) -> [GameSection] {
         guard !games.isEmpty else { return [] }
+        let umbrellas: [FollowedTable] = [
+            .poll(league),
+            .conference(Conference.divisionRoot(.fbs)),
+            .conference(Conference.divisionRoot(.fcs)),
+        ]
+        let leading = umbrellas.compactMap { table -> GameSection? in
+            let claimed = games.filter(table.matches)
+            guard !claimed.isEmpty else { return nil }
+            return GameSection(id: table.token, title: table.name, games: claimed,
+                               league: league, logoURL: table.logoURL, table: table)
+        }
+
         let divisions = store(for: league).divisions
         var byConference: [ConferenceID?: [Game]] = [:]
         for game in games {
@@ -628,16 +666,17 @@ final class LeagueScoreboards {
                 }
             }
         }
-        // P4 → G5 → Independents → FCS → Other, alphabetical within a tier.
-        // Tier and name looked up once per conference, not per comparison.
-        struct Keyed { let id: ConferenceID?; let tier: Conference.Tier; let name: String }
-        let keyed: [Keyed] = byConference.keys.map { id in
-            Keyed(id: id, tier: Conference.tier(for: id?.id, in: league), name: Conference.name(for: id))
+        // A–Z, Other last. Names looked up once per conference, not per
+        // comparison.
+        let named = byConference.keys.map { (id: $0, name: Conference.name(for: $0)) }
+        let ordered = named.sorted { lhs, rhs in
+            switch (lhs.id, rhs.id) {
+            case (nil, _): false
+            case (_, nil): true
+            default: lhs.name < rhs.name
+            }
         }
-        let ordered = keyed.sorted { lhs, rhs in
-            lhs.tier == rhs.tier ? lhs.name < rhs.name : lhs.tier < rhs.tier
-        }
-        return ordered.map { entry in
+        return leading + ordered.map { entry in
             let id = entry.id
             return GameSection(id: id.map { GameSection.conferencePrefix + $0.token }
                             ?? (GameSection.otherPrefix + league.rawValue),
@@ -647,6 +686,19 @@ final class LeagueScoreboards {
                         logoURL: Conference.logoURL(for: id),
                         table: id.map(FollowedTable.conference))
         }
+    }
+
+    /// What a followed table is called on Scores: the pro leagues' slate
+    /// names ("Eastern Conference (Atlantic)"), college football's own.
+    private static func sectionTitle(for table: FollowedTable) -> String {
+        guard case .conference(let id) = table, id.league != .collegeFootball else { return table.name }
+        return Conference.slateName(for: id)
+    }
+
+    /// The mark a followed table wears on Scores: the league's for any pro
+    /// table, the table's own for college football's.
+    private static func sectionLogo(for table: FollowedTable) -> URL? {
+        table.league == .collegeFootball ? table.logoURL : table.league.logoURL
     }
 
     /// Following's order: what's happening now, then what's about to, then

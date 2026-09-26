@@ -431,12 +431,10 @@ struct ScoresScreen: View {
         .onChange(of: path.count) { old, new in
             Self.logger.info("scores path depth \(old) -> \(new)")
         }
-        // The slate's divisions follow the user's choices: FBS always, FCS
-        // only while an FCS conference is followed (E8 scope (b) — the
-        // filter half of the rule left with the slate filter itself).
-        // `select(divisions:)` refetches and no-ops when nothing changed —
-        // so this fires freely.
-        .task(id: neededDivisions) { await scoreboards.select(divisions: neededDivisions) }
+        // The slate covers FBS and FCS both, since every FCS conference
+        // lists below Hide all (2026-09-26). `select(divisions:)` no-ops
+        // when nothing changed, so this costs one refetch per launch.
+        .task { await scoreboards.select(divisions: ScoreboardStore.slateDivisions) }
         .sheet(isPresented: $showsSettings) { SettingsScreen() }
         .sheet(isPresented: $showsCalendar) {
             DayCalendarSheet(days: scoreboards.days(),
@@ -468,11 +466,6 @@ struct ScoresScreen: View {
             if settlingFrom == nil { dragOffset = 0 }
             resolvePendingGame()
         }
-    }
-
-    private var neededDivisions: Set<Conference.Division> {
-        ScoreboardStore.divisions(filter: nil,
-                                  followedConferenceIds: following.conferenceIds)
     }
 
     /// The day the content panes are drawn for: the selected one, except

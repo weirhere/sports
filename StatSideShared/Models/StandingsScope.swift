@@ -100,10 +100,12 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Where a page opens. The widest view of itself: the league's own
-    /// table on the league page, its 16 on a conference page — and a
-    /// division page, which has no scopes to offer, still has to ask for
-    /// the divisional tables or it would find nothing at all.
+    /// Where a page opens. The league's own table on the league page; a
+    /// pro conference's divisions, stacked, on its page (Andy, 2026-09-26:
+    /// divisions have no pages of their own, so the conference is where
+    /// they're read, and its one 16-team table is a tap away on the chip).
+    /// A division id, which nothing links to any more, still has to ask
+    /// for the divisional tables or it would find nothing at all.
     static func `default`(for conference: ConferenceID) -> StandingsScope {
         switch Conference.tier(for: conference.id, in: conference.league) {
         // A league with no table of its own — college football, whose
@@ -112,7 +114,7 @@ nonisolated enum StandingsScope: String, CaseIterable, Sendable, Identifiable {
         case .league:
             Conference.leagueWideId(in: conference.league) == nil
                 ? StandingsScope.conference : StandingsScope.league
-        case .division: .division
+        case .conference, .division: .division
         default: .conference
         }
     }

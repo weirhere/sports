@@ -186,28 +186,6 @@ struct TablesScreen: View {
         return fetched.foldingDivisions()
     }
 
-    /// The divisions a league's accordion lists, grouped by the
-    /// conference they belong to and alphabetical inside it — the AFC's
-    /// four, then the NFC's.
-    ///
-    /// The mapper sorts divisions by name alone, which is right for a
-    /// standings pane listing one conference's and wrong for a list of
-    /// every one: alphabetically the NBA's six interleave their
-    /// conferences, and Northwest lands between Central and Pacific with
-    /// nothing on screen to explain why.
-    private func divisions(in league: League) -> [ConferenceStandings] {
-        let conferenceOrder = Conference.topLevelIds(in: league)
-        func rank(_ table: ConferenceStandings) -> Int {
-            table.parentId.flatMap(conferenceOrder.firstIndex(of:)) ?? conferenceOrder.count
-        }
-        return (standings[league] ?? [])
-            .filter { $0.parentId != nil }
-            .sorted { lhs, rhs in
-                let (l, r) = (rank(lhs), rank(rhs))
-                return l == r ? lhs.name < rhs.name : l < r
-            }
-    }
-
     /// The league's own table, where it has one — the NFL's 32 teams in a
     /// single ranking (Andy's ask, 2026-09-05: "the whole NFL as well, not
     /// just the different conferences"). College football answers the same
@@ -219,15 +197,14 @@ struct TablesScreen: View {
     /// What a league's accordion holds, league-wide row first: the whole
     /// thing above its parts.
     ///
-    /// The parts are **divisions** for the pro leagues (Andy, 2026-09-09:
-    /// "split into division rather than conference … conferences aren't as
-    /// a priority here") — a division is the race anyone is actually in,
-    /// where a conference is a playoff bracket's seeding pool. College
-    /// football's parts are its conferences, which is the same rung: the
-    /// group a team plays a schedule inside.
+    /// The parts are **conferences** in every league (Andy, 2026-09-26,
+    /// reversing 2026-09-09's divisions): a division has no page of its
+    /// own, and is read stacked inside its conference's instead. The fold
+    /// in `conferences(in:)` is what turns the divisional fetch back into
+    /// the AFC and NFC.
     private func tables(in league: League) -> [ConferenceStandings] {
         guard !league.hasCollegeDivisions else { return collegeFootballTables }
-        return (leagueTable(in: league).map { [$0] } ?? []) + divisions(in: league)
+        return (leagueTable(in: league).map { [$0] } ?? []) + conferences(in: league)
     }
 
     /// College football's list, each division led by its own root row
@@ -264,14 +241,10 @@ struct TablesScreen: View {
         Conference.isDivisionRoot(table.id, in: table.league)
     }
 
-    /// Every table a league offers that someone could be following,
-    /// including the conference rows the accordion no longer lists. A
-    /// conference follow made before the hub showed divisions still has a
-    /// card in Following and still hoists its section on Scores.
+    /// Every table a league offers that someone could be following —
+    /// since divisions left (2026-09-26), exactly what the accordion lists.
     private func followableTables(in league: League) -> [ConferenceStandings] {
-        var seen: Set<ConferenceID?> = []
-        return (tables(in: league) + conferences(in: league))
-            .filter { seen.insert($0.conference).inserted }
+        tables(in: league)
     }
 
     /// What a league's accordion holds — its tables, plus the poll row
@@ -341,9 +314,10 @@ struct TablesScreen: View {
                         // It names the contents rather than repeating that
                         // title (Andy, 2026-09-21) — "Leagues" under
                         // "Leagues" said nothing, and what is actually below
-                        // is every table the app has: the four leagues,
-                        // their conferences, and the divisions inside those.
-                        ListSectionHeading(title: "All leagues, conferences, divisions")
+                        // is every table the app has: the four leagues and
+                        // their conferences. Divisions are read inside their
+                        // conference's page (2026-09-26).
+                        ListSectionHeading(title: "All leagues and conferences")
                     }
                     ForEach(visibleGroups) { group in
                         groupSection(group)
