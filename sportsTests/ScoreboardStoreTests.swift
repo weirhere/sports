@@ -228,6 +228,65 @@ private func game(_ id: String, on date: Date?, live: Bool = false,
         #expect(store.games(on: day(0)).isEmpty)
     }
 
+    // MARK: - Polling through kickoff
+
+    private static let now = Date(timeIntervalSince1970: 1_790_000_000)
+    private static let interval = Duration.seconds(30)
+
+    private func kickoff(_ id: String, in seconds: TimeInterval, tbd: Bool = false,
+                         status: GameStatus = .pre(detail: nil)) -> Game {
+        let base = game(id, on: Self.now.addingTimeInterval(seconds))
+        var copy = Game(id: base.id, date: base.date, name: nil, shortName: nil, weekNumber: 1,
+                        status: status, home: base.home, away: base.away, broadcast: nil)
+        copy.timeTBD = tbd
+        return copy
+    }
+
+    private func delay(_ games: [Game]) -> Duration? {
+        ScoreboardStore.nextPollDelay(for: games, now: Self.now, interval: Self.interval)
+    }
+
+    @Test func aLiveGamePollsAtTheInterval() {
+        #expect(delay([game("live", on: Self.now, live: true)]) == Self.interval)
+    }
+
+    @Test func aKickoffInsideOneIntervalPollsAtTheInterval() {
+        #expect(delay([kickoff("soon", in: 10)]) == Self.interval)
+    }
+
+    @Test func aLaterKickoffSleepsUntilKickoff() {
+        #expect(delay([kickoff("later", in: 20 * 60), kickoff("evening", in: 6 * 3600)])
+                == .seconds(20 * 60))
+    }
+
+    @Test func aGameStillPreGameAnHourPastKickoffKeepsPolling() {
+        #expect(delay([kickoff("lagging", in: -3600)]) == Self.interval)
+    }
+
+    @Test func aGameStillPreGameFourHoursPastKickoffStopsPolling() {
+        #expect(delay([kickoff("ghost", in: -4 * 3600)]) == nil)
+    }
+
+    @Test func aPlaceholderKickoffSchedulesNothing() {
+        #expect(delay([kickoff("tbd", in: 60, tbd: true)]) == nil)
+    }
+
+    @Test func anAllFinalSlateStopsPolling() {
+        #expect(delay([kickoff("done", in: -3600, status: .final(detail: nil))]) == nil)
+    }
+
+    /// The bug: a slate opened before kickoff never polled, so rows sat at
+    /// their kickoff times until someone pulled to refresh.
+    @Test func aPreGameSlatePollsWithoutAnotherLoad() async throws {
+        let provider = DayProvider(games: [game("kicked", on: Date().addingTimeInterval(-600))])
+        let store = ScoreboardStore(client: provider, pollInterval: .milliseconds(50))
+        await store.load(around: Date())
+        #expect(provider.requests.count == 1)
+        try await Task.sleep(for: .milliseconds(400))
+        store.stopPolling()
+        #expect(provider.requests.count >= 3)
+    }
+
     // MARK: - Finding a day worth showing
 
     @Test func firstDayWithGamesProbesForward() async {

@@ -191,10 +191,16 @@ final class ScoreboardStore {
     /// day by day would otherwise accumulate every day it touched.
     private static let cacheRadius = 10
 
+    /// The poll cadence, read once. Injectable so a test can watch the
+    /// loop run without waiting out the real 30s.
+    @ObservationIgnored private let pollInterval: Duration
+
     init(league: League = .collegeFootball,
-         client: (any ScoresProviding)? = nil) {
+         client: (any ScoresProviding)? = nil,
+         pollInterval: Duration = DataProvider.pollInterval) {
         self.league = league
         self.client = client ?? DataProvider.makeClient(league: league)
+        self.pollInterval = pollInterval
     }
 
     /// A game's pre-game line, carried past the payload that drops it.
@@ -271,7 +277,7 @@ final class ScoreboardStore {
         let center = Calendar.current.startOfDay(for: day)
         windowCenter = center
         guard force || !covers(center) else {
-            startPollingIfNeeded()
+            reschedulePolling()
             return
         }
         let key = DayFormat.id(for: center)
@@ -283,7 +289,7 @@ final class ScoreboardStore {
         defer { isLoading = false }
         await fetchWindow(around: center)
         evict(around: center)
-        startPollingIfNeeded()
+        reschedulePolling()
     }
 
     /// The first day from `start` onward with at least one game, searched
@@ -427,24 +433,90 @@ final class ScoreboardStore {
     }
 
     // MARK: - Polling
-    // 30s auto-poll, only while the scene is active and ≥1 game is live.
+    // 30s auto-poll, only while the scene is active and a game is live or
+    // kicking off. Until the first kickoff the loop sleeps, and a sleep
+    // makes no request.
+
+    /// How long past its kickoff a game still showing pre-game keeps the
+    /// poll alive. ESPN takes a minute or two to flip a game to `in`, and a
+    /// weather delay can hold one at pre-game for an hour or more; three
+    /// hours covers both. The cap is for the postponement ESPN never
+    /// marks, which would otherwise poll all night.
+    nonisolated static let kickoffGrace: TimeInterval = 3 * 60 * 60
+
+    /// When the next scoreboard fetch is due, or nil when nothing on the
+    /// slate needs one.
+    ///
+    /// A live game polls at `interval`. So does a pre-game game within
+    /// `interval` of kickoff or up to `kickoffGrace` past it — the game
+    /// is about to go live, or already has and ESPN hasn't said so. A
+    /// later kickoff is a sleep until then. A `timeTBD` kickoff is a
+    /// placeholder time, so it schedules nothing.
+    nonisolated static func nextPollDelay(for games: [Game], now: Date,
+                                          interval: Duration) -> Duration? {
+        if games.contains(where: \.isLive) { return interval }
+        let step = interval.timeInterval
+        let kickoffs = games.compactMap { game -> Date? in
+            guard case .pre = game.status, !game.timeTBD else { return nil }
+            return game.date
+        }
+        if kickoffs.contains(where: { $0 >= now.addingTimeInterval(-kickoffGrace)
+                                      && $0 <= now.addingTimeInterval(step) }) {
+            return interval
+        }
+        guard let next = kickoffs.filter({ $0 > now }).min() else { return nil }
+        return max(.milliseconds(Int(next.timeIntervalSince(now) * 1000)), interval)
+    }
+
+    /// This store's next fetch. Live games anywhere in the cache count (a
+    /// followed game on a neighbouring day has to keep ticking); kickoffs
+    /// only on the window's own days, because those are what a tick
+    /// refetches.
+    private func pollDelay(now: Date = Date()) -> Duration? {
+        if hasLiveGames { return pollInterval }
+        return Self.nextPollDelay(for: boardGames, now: now, interval: pollInterval)
+    }
 
     func startPollingIfNeeded() {
-        guard pollTask == nil, hasLiveGames else { return }
-        Self.logger.info("polling: started (\(self.league.rawValue), groups \(self.groupsLabel))")
+        guard pollTask == nil, let first = pollDelay() else { return }
+        logSchedule(first, verb: "started")
         pollTask = Task { [weak self] in
+            var delay = first
             while !Task.isCancelled {
-                try? await Task.sleep(for: DataProvider.pollInterval)
+                try? await Task.sleep(for: delay)
                 guard !Task.isCancelled, let self else { return }
-                guard self.hasLiveGames, let center = self.windowCenter else {
-                    Self.logger.info("polling: stopped (no live games)")
+                guard self.windowCenter != nil, let next = self.pollDelay() else {
+                    Self.logger.info("polling: stopped (nothing live or kicking off)")
                     self.pollTask = nil
                     return
                 }
+                if next > self.pollInterval {
+                    // Woke early — the window moved to a quieter slate.
+                    self.logSchedule(next, verb: "waiting")
+                    delay = next
+                    continue
+                }
+                guard let center = self.windowCenter else { return }
                 Self.logger.info("polling: tick (\(self.league.rawValue), groups \(self.groupsLabel))")
                 await self.fetchWindow(around: center)
+                guard let after = self.pollDelay() else {
+                    Self.logger.info("polling: stopped (nothing live or kicking off)")
+                    self.pollTask = nil
+                    return
+                }
+                if after > self.pollInterval { self.logSchedule(after, verb: "waiting") }
+                delay = after
             }
         }
+    }
+
+    /// Start over against the current window. A loop asleep until an
+    /// evening kickoff would otherwise sit through a day with a game live
+    /// right now.
+    private func reschedulePolling() {
+        pollTask?.cancel()
+        pollTask = nil
+        startPollingIfNeeded()
     }
 
     func stopPolling() {
@@ -453,6 +525,15 @@ final class ScoreboardStore {
         }
         pollTask?.cancel()
         pollTask = nil
+    }
+
+    private func logSchedule(_ delay: Duration, verb: String) {
+        if delay > pollInterval {
+            let minutes = Int(delay.timeInterval / 60)
+            Self.logger.info("polling: \(verb), waiting for kickoff (\(self.league.rawValue), \(minutes) min)")
+        } else {
+            Self.logger.info("polling: \(verb) (\(self.league.rawValue), groups \(self.groupsLabel))")
+        }
     }
 
     /// The groups in flight, for the poll log. A union doubles every tick
@@ -481,5 +562,11 @@ final class ScoreboardStore {
             needed.insert(.fcs)
         }
         return needed
+    }
+}
+
+private extension Duration {
+    nonisolated var timeInterval: TimeInterval {
+        Double(components.seconds) + Double(components.attoseconds) / 1e18
     }
 }

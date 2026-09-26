@@ -70,6 +70,10 @@ struct PollScreen: View {
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
 
+    /// Optional like ConferencePage's: without the scoreboard in the
+    /// environment the slate simply stays the snapshot it was fetched as.
+    @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+
     /// How the Games tab heads its cards, and whose games it shows.
     /// Weeks and Date are on/off toggles over the same slate — a view
     /// choice, not a narrowing — and they're alternatives, so turning one
@@ -338,8 +342,17 @@ struct PollScreen: View {
     /// The season's slate narrowed to the poll's own teams — the app's
     /// "any ranked participant" rule (2026-07-21), which is what a Top 25
     /// slate has always meant here.
+    /// The season slate through the shared live merge. It's fetched once
+    /// per visit and never polled, so without this a live game froze at
+    /// the score it had when the page opened and a pre-game row never
+    /// turned live at all.
+    private var slate: [Game]? {
+        guard let games = gamesByYear[year] else { return nil }
+        return Game.merging(games, withLive: scoreboards?.store(for: league).boardGames ?? [])
+    }
+
     private var rankedGames: [Game]? {
-        guard let games = gamesByYear[year], let poll = selectedPoll else { return nil }
+        guard let games = slate, let poll = selectedPoll else { return nil }
         let ranked = Set(poll.ranks.map(\.team.id))
         return games.filter { ranked.contains($0.home.team.id) || ranked.contains($0.away.team.id) }
     }
@@ -381,7 +394,7 @@ struct PollScreen: View {
     }
 
     private var postseasonRounds: [PostseasonRound] {
-        Postseason.rounds(from: gamesByYear[year] ?? [], league: league)
+        Postseason.rounds(from: slate ?? [], league: league)
     }
 
     private var activePostseasonRound: String? {
@@ -394,7 +407,7 @@ struct PollScreen: View {
 
     private var postseasonSection: some View {
         PostseasonSection(rounds: postseasonRounds,
-                          exhibition: Postseason.exhibition(from: gamesByYear[year] ?? [],
+                          exhibition: Postseason.exhibition(from: slate ?? [],
                                                             league: league),
                           selection: activePostseasonRound,
                           onSelectRound: { postseasonRound = $0 })
