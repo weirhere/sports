@@ -91,7 +91,7 @@ struct ScoresScreen: View {
     /// control's position is *inside* that ordering, not before or after it.
     private enum ScoresRow: Identifiable {
         case section(GameSection)
-        case hideAllControl(otherCount: Int)
+        case hideAllControl(others: [GameSection])
 
         var id: String {
             switch self {
@@ -113,7 +113,7 @@ struct ScoresScreen: View {
             return sections.map(ScoresRow.section)
         }
         var rows = mine.map(ScoresRow.section)
-        rows.append(.hideAllControl(otherCount: other.count))
+        rows.append(.hideAllControl(others: other))
         if !hideOthers {
             rows += other.map(ScoresRow.section)
         }
@@ -621,9 +621,9 @@ struct ScoresScreen: View {
                                 )
                                 .equatable()
                                 .cardSurface()
-                            case .hideAllControl(let otherCount):
+                            case .hideAllControl(let others):
                                 HideAllControl(
-                                    otherCount: otherCount,
+                                    others: others,
                                     isHidden: uiState.hideOtherSections,
                                     onToggle: { withAnimation(Self.accordionAnimation) { uiState.hideOtherSections.toggle() } }
                                 )
@@ -732,8 +732,8 @@ struct ScoresScreen: View {
                                                  onToggle: {})
                                     .equatable()
                                     .cardSurface()
-                            case .hideAllControl(let otherCount):
-                                HideAllControl(otherCount: otherCount,
+                            case .hideAllControl(let others):
+                                HideAllControl(others: others,
                                                isHidden: uiState.hideOtherSections,
                                                onToggle: {})
                             }
