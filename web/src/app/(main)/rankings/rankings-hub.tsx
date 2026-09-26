@@ -49,6 +49,7 @@ import { conferenceToken } from "@/lib/refs";
 import { conferencePath } from "@/lib/routes";
 import { orderedTables } from "@/lib/followed-tables";
 import { FollowedTablesList } from "@/components/followed-tables-list";
+import { TrophyMark } from "@/components/theme/trophy-mark";
 import { cn } from "@/lib/utils";
 
 interface LeaguesHubProps {
@@ -273,7 +274,12 @@ export function LeaguesHub({
 
       {/* The complete list. Followed rows repeat inside their league —
           sections stay complete, never deduplicated. */}
-      {followedRows.length > 0 && <SectionHeading title="Leagues" />}
+      {/* Names what's below rather than repeating the tab (iOS,
+          2026-09-21): every table the app has — the four leagues, their
+          conferences, and the divisions inside those. */}
+      {followedRows.length > 0 && (
+        <SectionHeading title="All leagues, conferences, divisions" />
+      )}
       {leagues.map((league) => (
         <LeagueAccordion
           key={league}
@@ -322,22 +328,21 @@ function LeagueAccordion({
         type="button"
         onClick={onToggle}
         aria-expanded={isExpanded}
-        aria-label={`${displayName(league)}, ${rows.length} ${
-          rows.length === 1 ? "table" : "tables"
-        }`}
+        aria-label={displayName(league)}
         className="flex min-h-12 w-full items-center gap-3 bg-bg-header px-4 py-2.5 text-left transition-colors hover:bg-bg-elevated/60"
       >
         <ConferenceLogo src={leagueLogoUrl(league)} name="" />
-        <span className="type-section-header text-text-primary">
+        {/* The row type's own weight (iOS, 2026-09-21): a league header
+            is a row in the same stack as its tables, one step bolder, not
+            a smaller section caption. No table count: the hub answers
+            "which table", and a tally answered a different question. */}
+        <span className="type-team-name-em text-text-primary">
           {displayName(league)}
-        </span>
-        <span className="ml-auto type-meta text-text-secondary">
-          {rows.length}
         </span>
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "h-4 w-4 text-text-secondary transition-transform",
+            "ml-auto h-4 w-4 text-text-secondary transition-transform",
             isExpanded && "rotate-180"
           )}
         />
@@ -380,9 +385,10 @@ function rowKey(row: HubRow): string {
 /**
  * The poll's row — the same shape as a table row, leading its league.
  *
- * It wears **college football's mark, not a trophy** (iOS, 2026-09-06):
- * "Top 25" never said whose, which is fine while one league polls and
- * confusing the moment a second one does.
+ * It wears a **trophy** (iOS, 2026-09-21, superseding 2026-09-06's
+ * league mark): on a hub where every other row wears a real crest, a
+ * football among four leagues identified nothing its neighbours didn't.
+ * The trophy says what kind of table this is. See `TrophyMark`.
  */
 export function Top25Row({ league }: { league: League }) {
   const { isFavoritePoll, toggleFavoritePoll } = useFavoritesContext();
@@ -395,7 +401,7 @@ export function Top25Row({ league }: { league: League }) {
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
         aria-label="Top 25"
       >
-        <ConferenceLogo src={leagueLogoUrl(league)} name="" />
+        <TrophyMark />
         {/* No "#1 Ohio State" teaser (iOS, 2026-09-21): the hub answers
             "which table", and a standing answers a different question in
             the same row. The poll page is one tap away. */}
