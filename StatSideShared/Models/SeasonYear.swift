@@ -49,6 +49,35 @@ nonisolated enum SeasonSpan {
         return start...max(start, end)
     }
 
+    /// The seasons that did not end when the rule says they do — the month
+    /// each one's last game was played in, of the calendar year after the
+    /// season's own. Both are the pandemic: the 2019-20 bubbles finished in
+    /// the autumn (NBA Finals October 11, Stanley Cup September 28), and the
+    /// late-starting 2020-21 seasons ran into July (the 20th and the 7th).
+    /// Swept live 2026-09-25 across 2014 on; every other season fits the
+    /// rule. The web's `SEASON_OVERRUNS` is the same table.
+    static let overruns: [League: [Int: Int]] = [
+        .nba: [2019: 10, 2020: 7],
+        .nhl: [2019: 9, 2020: 7],
+    ]
+
+    /// The days a season's **games** occupy: `days(of:year:)` widened where
+    /// the season ran past its league's rollover month, for a fetch that
+    /// tables the season whole. A second span rather than a change to the
+    /// first, because the day strip's bounds are a rule about which season a
+    /// *day* belongs to, and a day in August 2020 has two answers — so a
+    /// fetch over this one also filters by ESPN's season stamp.
+    static func gameDays(of league: League, year: Int,
+                         calendar: Calendar = .current) -> ClosedRange<Date> {
+        let span = days(of: league, year: year, calendar: calendar)
+        guard let closesIn = overruns[league]?[year],
+              let afterEnd = calendar.date(from: DateComponents(
+                year: year + 1, month: closesIn + 1, day: 1)),
+              let end = calendar.date(byAdding: .day, value: -1, to: afterEnd)
+        else { return span }
+        return span.lowerBound...max(span.upperBound, end)
+    }
+
     /// Every covered league's season at once — the day strip's bounds. The
     /// NFL's February closes the app's season; college football's August
     /// opens it.
