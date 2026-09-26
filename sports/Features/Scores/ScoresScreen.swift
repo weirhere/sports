@@ -640,6 +640,13 @@ struct ScoresScreen: View {
                     // the first card down by it.
                     .id(Self.slateHome)
                 }
+                // A day swipe owns the thumb once its axis locks. The axis
+                // rule tolerates a fair diagonal, and the vertical half of
+                // one kept scrolling the slate underneath — at the top, far
+                // enough to pull-to-refresh mid-swipe (Andy, 2026-09-26).
+                // Locking scroll cancels the pan the moment the swipe is
+                // recognised, so neither the drift nor the refresh starts.
+                .scrollDisabled(dragAxis == .horizontal)
                 .refreshable {
                     await scoreboards.refresh()
                     refreshCount += 1
