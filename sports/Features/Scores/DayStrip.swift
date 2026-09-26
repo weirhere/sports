@@ -63,7 +63,7 @@ struct DayStrip: View, Equatable {
                     }
                 }
                 .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.sm)
+                .padding(.vertical, Spacing.md)
             }
             // Today's chip becomes "Ongoing" inside the Live toggle's
             // `withAnimation`, and inherited it — so the word grew and the
