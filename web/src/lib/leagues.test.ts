@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   apiBase,
-  canTableAWholeSeason,
+  belongsToSeason,
   espnSeason,
   hasPoll,
   hasWeeks,
@@ -9,6 +9,7 @@ import {
   parseLeague,
   playsOnASurface,
   seasonLabel,
+  seasonGamesSpan,
   seasonSpan,
   seasonYear,
   seasonYearContaining,
@@ -98,6 +99,56 @@ describe("which season a date belongs to", () => {
   });
 });
 
+describe("season games spans", () => {
+  it("is the day strip's span for every ordinary season", () => {
+    for (const league of ["cfb", "nfl", "nba", "nhl"] as const) {
+      for (const year of [2014, 2018, 2021, 2025]) {
+        expect(seasonGamesSpan(league, year)).toEqual(seasonSpan(league, year));
+      }
+    }
+  });
+
+  it("runs the 2019-20 bubbles into the autumn", () => {
+    // The NBA Finals ended 2020-10-11, the Stanley Cup 2020-09-28.
+    expect(seasonGamesSpan("nba", 2019)).toEqual({
+      start: new Date(2019, 8, 1),
+      end: new Date(2020, 9, 31),
+    });
+    expect(seasonGamesSpan("nhl", 2019).end).toEqual(new Date(2020, 8, 30));
+  });
+
+  it("runs the late-starting 2020-21 seasons into July", () => {
+    // NBA Finals 2021-07-20, Stanley Cup 2021-07-07.
+    expect(seasonGamesSpan("nba", 2020).end).toEqual(new Date(2021, 6, 31));
+    expect(seasonGamesSpan("nhl", 2020).end).toEqual(new Date(2021, 6, 31));
+  });
+
+  it("never moves football's seasons", () => {
+    expect(seasonGamesSpan("cfb", 2020)).toEqual(seasonSpan("cfb", 2020));
+    expect(seasonGamesSpan("nfl", 2019)).toEqual(seasonSpan("nfl", 2019));
+  });
+});
+
+describe("season membership", () => {
+  it("reads an end-year league's stamp onto the start-year axis", () => {
+    // ESPN stamps the 2025-26 NBA season 2026.
+    expect(belongsToSeason("nba", 2025, 2026)).toBe(true);
+    expect(belongsToSeason("nba", 2025, 2025)).toBe(false);
+    expect(belongsToSeason("cfb", 2025, 2025)).toBe(true);
+  });
+
+  it("keeps the bubble out of the season whose span overlaps it", () => {
+    // September 2020 is inside 2020-21's span and full of 2019-20's
+    // playoffs, which ESPN stamps 2020 — our 2019.
+    expect(belongsToSeason("nhl", 2020, 2020)).toBe(false);
+    expect(belongsToSeason("nhl", 2019, 2020)).toBe(true);
+  });
+
+  it("keeps an event with no stamp", () => {
+    expect(belongsToSeason("nba", 2025, undefined)).toBe(true);
+  });
+});
+
 describe("season spans", () => {
   it("opens the NFL's season in July for the Hall of Fame Game", () => {
     // An August floor cut the front off the season entirely.
@@ -110,6 +161,16 @@ describe("season spans", () => {
     const span = seasonSpan("cfb", 2026);
     expect(span.start.getMonth()).toBe(7);
     expect(span.end.getMonth()).toBe(0);
+  });
+
+  it("runs basketball and hockey September through June, by the start year", () => {
+    // Our 2025 is ESPN's 2026: the NHL's preseason opened 2025-09-20 and
+    // both finals were decided by 2026-06-15 (probed live 2026-09-25).
+    for (const league of ["nba", "nhl"] as const) {
+      const span = seasonSpan(league, 2025);
+      expect(span.start).toEqual(new Date(2025, 8, 1));
+      expect(span.end).toEqual(new Date(2026, 5, 30));
+    }
   });
 
   it("leaves the app no offseason — July through June", () => {
@@ -150,15 +211,6 @@ describe("behavioral gates", () => {
   it("polls college football alone", () => {
     expect(hasPoll("cfb")).toBe(true);
     expect(hasPoll("nfl")).toBe(false);
-  });
-
-  it("refuses a whole-season fetch for a league ESPN truncates", () => {
-    // A season-long NBA window returns exactly 900 events and 12 MB,
-    // silently truncating in February — and `groups=` is ignored outside
-    // football, so there is no narrow fetch to fall back on.
-    expect(canTableAWholeSeason("cfb")).toBe(true);
-    expect(canTableAWholeSeason("nba")).toBe(false);
-    expect(canTableAWholeSeason("nhl")).toBe(false);
   });
 
   it("only calls a surface a fact where the game is played on one", () => {

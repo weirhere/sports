@@ -17,11 +17,11 @@ import type {
 } from "@/lib/types";
 import {
   SEASON_FLOOR,
-  canTableAWholeSeason,
+  belongsToSeason,
   hasCollegeDivisions,
   hasPoll,
   headToHeadSeasons,
-  seasonSpan,
+  seasonGamesSpan,
   seasonYear as leagueSeasonYear,
   seasonYearFromEspn,
   seasonYears,
@@ -66,9 +66,7 @@ import {
   teamScheduleUrl,
   teamsUrl,
 } from "./endpoints";
-import { addDays, startOfDay } from "@/lib/day";
 import { FBS_GROUP_ID } from "@/lib/conferences";
-import { tableMatches, type FollowedTable } from "@/lib/followed-tables";
 import {
   transformCoreRanking,
   transformTeamDirectory,
@@ -369,8 +367,8 @@ async function teamDirectory(league: League): Promise<Map<string, Team>> {
  * 25's Games tab a filter over one slate rather than 25 schedule fetches.
  *
  * ESPN reads the FBS group as a conference, so this is `conferenceGames`
- * against group 80 — the same two-request season window, split at November 1
- * because a full FBS season is ~950 events against a 900 cap.
+ * against group 80 — the same month-by-month fetch, six requests for
+ * August through January.
  */
 export async function seasonGames(
   league: League,
@@ -696,6 +694,19 @@ export async function teamTrophyCase(
  * Measured live 2026-09-17: college football's September is 323 events and
  * the NHL's January 231, so the fan-out is a guard that does not fire in
  * normal operation.
+ *
+ * **Every league tables its whole season** — the NBA and NHL included, which
+ * until 2026-09-25 had a rolling four-week window here instead. That window
+ * was sized against an unscoped, season-long `dates=` range that truncated
+ * at 900 events; `groups=` narrows every league (iOS, 2026-09-10) and a
+ * month is at most ~240 events league-wide (re-measured 2026-09-25), so
+ * there is no league left whose season cannot be asked for. The bill is one
+ * request per month of the span: 6 for college football, 8 for the NFL, 10
+ * for basketball and hockey, each cached for an hour across every visitor.
+ *
+ * The span is `seasonGamesSpan`, not the day strip's: the pandemic seasons
+ * ran months past their rollover, and the next season's span then overlaps
+ * the bubble. Events are kept only when ESPN stamps them with this season.
  */
 export async function conferenceGames(
   league: League,
@@ -703,10 +714,7 @@ export async function conferenceGames(
   year?: number
 ): Promise<Game[]> {
   const seasonYear = year ?? leagueSeasonYear(league);
-  if (!canTableAWholeSeason(league)) {
-    return rollingConferenceGames(league, conferenceId, seasonYear);
-  }
-  const span = seasonSpan(league, seasonYear);
+  const span = seasonGamesSpan(league, seasonYear);
   const months = espnMonthTokens(span.start, span.end);
 
   const perMonth = await Promise.all(
@@ -729,9 +737,10 @@ export async function conferenceGames(
 
   const seen = new Set<string>();
   const games: Game[] = [];
-  for (const game of transformScoreboard(perMonth.flat(), league, {
-    seasonYear,
-  })) {
+  const events = perMonth
+    .flat()
+    .filter((event) => belongsToSeason(league, seasonYear, event.season?.year));
+  for (const game of transformScoreboard(events, league, { seasonYear })) {
     if (seen.has(game.id)) continue;
     seen.add(game.id);
     games.push(game);
@@ -752,61 +761,6 @@ async function seasonWindowEvents(
     REVALIDATE.conferenceGames
   );
   return data.events ?? [];
-}
-
-/** How many windows forward a Games tab looks before giving up. */
-const ROLLING_WINDOW_PROBES = 4;
-
-/**
- * The slate for a league whose season is too big to fetch whole: one
- * `dates=` window around today, narrowed to this page's teams.
- *
- * A season-long request for the NBA returns exactly **900 events and 12 MB**
- * and truncates silently in February (probed live 2026-09-08), and ESPN
- * ignores `groups=` outside football — so there is no narrow fetch to fall
- * back on and the narrowing happens here. It runs through the same rule
- * that decides whether a followed table claims a game, so a division's page
- * and a division follow can never disagree about which games are its; a
- * league-wide page keeps them all, because every team's chain reaches its
- * league.
- *
- * A week back and three weeks forward answers "when do they play next" and
- * "what did I miss" in one request of about a megabyte. The alternative is
- * nine monthly requests and 24 MB for a page view, which is not a tab, it is
- * a download.
- *
- * The window walks forward until one has games in it, the way the day
- * strip's own probe does: in September the NBA's next game is three weeks
- * past the end of the first window, and a tab saying "Schedule TBA" three
- * weeks before tip-off answers the wrong question. A finished season reads
- * from its **opening** instead of from today, which is nowhere near it.
- */
-async function rollingConferenceGames(
-  league: League,
-  conferenceId: number,
-  year: number
-): Promise<Game[]> {
-  const span = seasonSpan(league, year);
-  const table: FollowedTable = {
-    kind: "conference",
-    ref: { league, id: conferenceId },
-  };
-  const isCurrent = year === leagueSeasonYear(league);
-  let start = isCurrent ? addDays(startOfDay(new Date()), -7) : span.start;
-
-  for (let probe = 0; probe < ROLLING_WINDOW_PROBES; probe += 1) {
-    if (start > span.end) return [];
-    const end = addDays(start, 28);
-    const board = await scoreboardForDays(
-      league,
-      start,
-      end > span.end ? span.end : end
-    );
-    const games = board.games.filter((game) => tableMatches(table, game));
-    if (games.length > 0) return games;
-    start = end;
-  }
-  return [];
 }
 
 export async function gameSummary(
