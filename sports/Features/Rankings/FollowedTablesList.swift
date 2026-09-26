@@ -231,6 +231,11 @@ struct FollowedTablesList: View {
         // gap from the logo (Andy, 2026-09-25: the first cut left ~21pt).
         // The overlap is safe: the row stops hit-testing in edit mode.
         .padding(.trailing, Spacing.md - Self.dismissTargetOverhang - Spacing.lg)
+        // The same overhang, vertically: the 44pt target is taller than the
+        // row, and counting it in layout grew every card ~5pt on Edit
+        // (Andy, 2026-09-25). Only the controls should appear; the cards
+        // keep their height. The target still hit-tests at full size.
+        .padding(.vertical, -Self.dismissTargetOverhang)
         .accessibilityLabel("Unfollow \(table.name)")
         .accessibilityIdentifier("following-dismiss")
     }
