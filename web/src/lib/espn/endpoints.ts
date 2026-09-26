@@ -316,3 +316,22 @@ export function teamsUrl(league: League, limit = 1000): string {
 export function teamRosterUrl(league: League, teamId: string): string {
   return `${apiBase(league)}/teams/${teamId}/roster`;
 }
+
+/**
+ * ESPN's own search — the one request that reaches athletes in all four
+ * leagues at once (iOS `AthleteSearchClient`, 2026-09-21).
+ *
+ * League-agnostic, so it takes no league: `apiBase` is per league by
+ * construction, and this endpoint answers for every sport ESPN covers,
+ * which is why its results are filtered rather than trusted. It lives on
+ * `site.web.api`, not `site.api`, where the athlete endpoints are. Probed
+ * live 2026-09-21 (iOS) and 2026-09-25 (web): 200, no key.
+ */
+export function athleteSearchUrl(query: string, limit = 10): string {
+  const url = new URL("https://site.web.api.espn.com/apis/search/v2");
+  url.searchParams.set("region", "us");
+  url.searchParams.set("lang", "en");
+  url.searchParams.set("query", query);
+  url.searchParams.set("limit", String(limit));
+  return url.toString();
+}
