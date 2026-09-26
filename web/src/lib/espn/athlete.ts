@@ -351,7 +351,7 @@ export async function athleteProfile(
   return data ? transformAthleteProfile(data) : undefined;
 }
 
-/** Empty categories on any failure — the page then shows Profile alone. */
+/** Empty categories on any failure — the Stats and Career tabs then show their empty states. */
 export async function athleteStats(
   league: League,
   athleteId: string

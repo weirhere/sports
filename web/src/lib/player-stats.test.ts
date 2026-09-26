@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  categoriesWithLines,
   categoryValue,
   gameLogHeadline,
   gameLogIsEmpty,
@@ -206,5 +207,17 @@ describe("a game row's line", () => {
   it("calls a log with no games empty", () => {
     expect(gameLogIsEmpty(log)).toBe(true);
     expect(gameLogIsEmpty({ ...log, sections: [{ title: "x", entries: [entry] }] })).toBe(false);
+  });
+});
+
+describe("the Stats and Career tabs' contents", () => {
+  it("is empty for a player ESPN has no line for", () => {
+    expect(categoriesWithLines({ categories: [] })).toEqual([]);
+  });
+
+  it("drops a category with no season under it", () => {
+    const empty = category({ id: "rushing", seasons: [] });
+    const played = category();
+    expect(categoriesWithLines({ categories: [empty, played] })).toEqual([played]);
   });
 });

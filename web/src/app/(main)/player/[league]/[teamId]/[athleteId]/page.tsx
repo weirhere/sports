@@ -4,7 +4,8 @@
 // **Three requests, in parallel.** The team's roster (the row that linked
 // here, and college football's class year), ESPN's athlete profile (the
 // team, and the facts a roster no longer holds), and the athlete's stats
-// (which decide whether the page has tabs at all). All three are keyed off
+// (the This season card, and the Stats and Career tabs — which the page
+// draws either way, with empty states when ESPN has no line). All three are keyed off
 // the path, so a shared link or a refresh rebuilds the same page.
 //
 // **Why the team id is still in the URL.** It addresses the roster, which
