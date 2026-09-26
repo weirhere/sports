@@ -54,6 +54,12 @@ nonisolated struct PlayerStats: Sendable, Hashable {
 
     let categories: [Category]
 
+    /// The categories with at least one season line — what the Stats and
+    /// Career tabs draw. A category ESPN names with no rows would otherwise
+    /// be a table of headers with nothing under them. The web's
+    /// `categoriesWithLines` is the same rule.
+    var categoriesWithLines: [Category] { categories.filter { !$0.seasons.isEmpty } }
+
     static let empty = PlayerStats(categories: [])
 }
 

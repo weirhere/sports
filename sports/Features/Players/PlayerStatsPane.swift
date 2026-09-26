@@ -13,7 +13,7 @@ struct PlayerStatsPane: View {
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
-            ForEach(stats.categories) { category in
+            ForEach(stats.categoriesWithLines) { category in
                 if let line = category.seasons.last {
                     LabeledValueCard(title: category.title,
                                      subtitle: [line.label, line.teamName].compactMap(\.self)
