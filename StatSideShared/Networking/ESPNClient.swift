@@ -344,7 +344,7 @@ actor ESPNClient: ScoresProviding {
                 items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
             }
             items += query
-            let dto: ScoreboardDTO = try await fetch(base: base, path: "/scoreboard",
+            let dto: ScoreboardDTO = try await fetch(base: self.base, path: "/scoreboard",
                                                      query: items, live: true)
             return ESPNMapper.scoreboard(from: dto, league: league)
         }
@@ -725,7 +725,7 @@ actor ESPNClient: ScoresProviding {
 
     func gameSummary(eventId: String) async throws -> GameSummary {
         let dto: SummaryResponseDTO = try await fetch(
-            base: base, path: "/summary",
+            base: self.base, path: "/summary",
             query: [URLQueryItem(name: "event", value: eventId)], live: true
         )
         // `venueCapacity` is still decoded off the site payload's venue —
