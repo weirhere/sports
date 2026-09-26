@@ -66,6 +66,7 @@ import { summaryCarriesMatchupStandings } from "@/lib/standings-columns";
 import type {
   EspnScoreboardResponse,
   EspnEvent,
+  EspnCompetition,
   EspnCompetitor,
   EspnTeam,
   EspnTeamGroups,
@@ -398,7 +399,20 @@ export function transformEvent(
     // The only place a college-football playoff round is named — its whole
     // postseason is one `seasontype=3` week, bowls and bracket together.
     headline: comp.notes?.[0]?.headline,
+    favoriteIsHome: favoriteIsHome(comp.odds?.[0]),
   };
+}
+
+/**
+ * Who the first provider's line favors — iOS `ESPNClient.line(from:)`.
+ * Read off the per-team flags; neither flag set (a pick'em) is undefined.
+ */
+export function favoriteIsHome(
+  odds: NonNullable<EspnCompetition["odds"]>[number] | undefined
+): boolean | undefined {
+  if (odds?.homeTeamOdds?.favorite === true) return true;
+  if (odds?.awayTeamOdds?.favorite === true) return false;
+  return undefined;
 }
 
 export function transformScoreboard(

@@ -15,6 +15,7 @@ import { GameRow } from "./game-row";
 import { ConferenceLogo } from "./theme/conference-logo";
 import { cn } from "@/lib/utils";
 import { conferencePath } from "@/lib/routes";
+import { ACCORDION_TRANSITION, INSTANT_TRANSITION } from "@/lib/motion";
 
 interface SectionAccordionProps {
   section: GameSection;
@@ -109,7 +110,7 @@ export function SectionAccordion({
       <ChevronDown
         aria-hidden="true"
         className={cn(
-          "h-4 w-4 text-text-secondary transition-transform",
+          "h-4 w-4 text-text-secondary transition-transform duration-[180ms] ease-out motion-reduce:transition-none",
           isExpanded && "rotate-180"
         )}
       />
@@ -172,10 +173,10 @@ export function SectionAccordion({
           initial={{ height: 0 }}
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
+          // 0.18s ease-out, not the 0.25s material curve this had (iOS,
+          // 2026-09-24) — shared with Hide all/Show all.
           transition={
-            reducedMotion
-              ? { duration: 0 }
-              : { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
+            reducedMotion ? INSTANT_TRANSITION : ACCORDION_TRANSITION
           }
           // Collapsing rows stay inside the card instead of painting over
           // the next section's header (iOS 2026-08-29 `.clipped()`).

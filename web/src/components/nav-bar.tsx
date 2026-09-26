@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { handleScoresLinkClick } from "@/lib/scores-home";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/wordmark";
 import { GetTheAppPill } from "@/components/get-the-app";
@@ -85,6 +86,10 @@ export function NavBar() {
               <Link
                 key={link.href}
                 href={link.href}
+                // The desktop twin of the tab bar's Games re-tap.
+                onClick={(event) =>
+                  handleScoresLinkClick(link.href, pathname, event)
+                }
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "text-sm font-medium transition-colors hover:text-text-primary",

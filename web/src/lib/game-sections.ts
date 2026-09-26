@@ -34,7 +34,6 @@
 import {
   collegeDivision,
   conferenceLogoUrl,
-  conferenceName,
   conferenceNameFor,
   tier,
   tierRank,
@@ -48,8 +47,10 @@ import {
   tableLeague,
   type FollowedTable,
 } from "./followed-tables";
+import { isTight } from "./game-closeness";
 import {
   LEAGUES,
+  LEAGUE_DISPLAY_ORDER,
   displayName,
   leagueLogoUrl,
   slateSplitsByConference,
@@ -95,6 +96,14 @@ export interface GameSection {
    * section rather than cloning it.
    */
   table?: FollowedTable;
+  /**
+   * True on the sections that are *yours*: Following, and a followed table
+   * hoisted to lead the stack (iOS `GameSection.isFollowed`, 2026-09-22).
+   * Never merely because a section carries a `table` — every conference
+   * section does, followed or not, so it can be matched for hoisting. This
+   * is the line the Hide all/Show all control draws.
+   */
+  isFollowed?: boolean;
 }
 
 const LIVE_STATUSES: ReadonlySet<GameStatus> = new Set([
@@ -156,31 +165,6 @@ export function filterLeague(
 
 export function isValidScoreFilterToken(token: string): boolean {
   return token === "top25" || parseConferenceFilter(token) !== undefined;
-}
-
-/** The sheet/empty-state name for a filter token ("SEC", "Top 25"). */
-export function scoreFilterLabel(token: ScoreFilterToken): string {
-  if (token === "top25") return "Top 25";
-  const ref = parseConferenceFilter(token);
-  return ref !== undefined ? conferenceName(ref.id, ref.league) : token;
-}
-
-/**
- * The header chip's label — long conference names get their common short
- * forms so the chip row still fits (the iOS `chipLabel` table).
- */
-export function scoreFilterChipLabel(token: ScoreFilterToken): string {
-  const ref = parseConferenceFilter(token);
-  switch (ref?.league === "cfb" ? ref.id : undefined) {
-    case 12:
-      return "C-USA";
-    case 17:
-      return "MWC";
-    case 18:
-      return "Indep.";
-    default:
-      return scoreFilterLabel(token);
-  }
 }
 
 function matchesFilter(game: Game, token: ScoreFilterToken): boolean {
@@ -331,6 +315,12 @@ export interface BuildSectionsOptions {
   /** Followed tables in the user's own order — they lead the stack. */
   followedTables?: readonly FollowedTable[];
   liveOnly?: boolean;
+  /**
+   * The Tight filter (iOS, 2026-09-24): live and late within one score, or
+   * with the underdog leading — `isTight`. A narrower Live, so it composes
+   * with everything Live does.
+   */
+  tightOnly?: boolean;
   scoreFilter?: ScoreFilterToken | null;
   /**
    * The college-football divisions the slate was fetched with. FCS is
@@ -366,6 +356,7 @@ export function buildSections(
   for (const league of LEAGUES) {
     let slate = games.filter((game) => game.league === league);
     if (options.liveOnly) slate = slate.filter((g) => isLiveStatus(g.status));
+    if (options.tightOnly) slate = slate.filter(isTight);
     for (const game of slate) {
       const claimed = [game.homeTeam, game.awayTeam].some((side) =>
         followedTeamKeys.has(followKey({ league, teamId: side.team.id }))
@@ -381,10 +372,10 @@ export function buildSections(
     visible.set(league, chronological(slate));
   }
 
-  // The full slate, in its resting order — `LEAGUES`' own, which is also the
-  // Leagues hub's.
+  // The full slate, in its resting order — A–Z by league (2026-09-24), which
+  // is also the Leagues hub's.
   const stack: GameSection[] = [];
-  for (const league of LEAGUES) {
+  for (const league of LEAGUE_DISPLAY_ORDER) {
     const slate = visible.get(league) ?? [];
     if (slate.length === 0) continue;
     stack.push(
@@ -409,7 +400,7 @@ export function buildSections(
     if (existing) {
       if (hoistedIds.has(existing.id)) continue;
       hoistedIds.add(existing.id);
-      hoisted.push(existing);
+      hoisted.push({ ...existing, isFollowed: true });
       continue;
     }
     const slate = (visible.get(league) ?? []).filter((game) =>
@@ -426,6 +417,7 @@ export function buildSections(
       logoUrl: tableLogoUrl(table),
       conference: table.kind === "conference" ? table.ref : undefined,
       table,
+      isFollowed: true,
     });
   }
 
@@ -436,6 +428,7 @@ export function buildSections(
       title: "Following",
       kind: "following",
       games: byState(following),
+      isFollowed: true,
     });
   }
   return [
@@ -443,4 +436,62 @@ export function buildSections(
     ...hoisted,
     ...stack.filter((section) => !hoistedIds.has(section.id)),
   ];
+}
+
+// --- Hide all / Show all -----------------------------------------------
+
+/**
+ * Splits a day's sections into what's yours — Following plus every hoisted
+ * table — and the rest, which is where the Hide all/Show all control sits
+ * (iOS `ScoresScreen.scoresRows(for:hideOthers:)`, 2026-09-22). Only where
+ * both sides are non-empty: following nobody leaves nothing to set apart,
+ * and following enough to cover the whole day leaves nothing to hide, so
+ * the control is omitted rather than shown inert.
+ *
+ * The split doesn't read the hidden state: iOS drops the hidden sections
+ * from its rows, while the web keeps `others` so the screen can animate the
+ * stack closed rather than cut it.
+ */
+export function splitAtHideAll(sections: readonly GameSection[]): {
+  mine: GameSection[];
+  others: GameSection[];
+  /** False when there's no boundary to draw; `mine` is then everything. */
+  hasBoundary: boolean;
+} {
+  const mine = sections.filter((section) => section.isFollowed === true);
+  const others = sections.filter((section) => section.isFollowed !== true);
+  if (mine.length === 0 || others.length === 0) {
+    return { mine: [...sections], others: [], hasBoundary: false };
+  }
+  return { mine, others, hasBoundary: true };
+}
+
+/**
+ * The line under Show all — "Big Ten, SEC and 2 other leagues, conferences
+ * or divisions play today" (iOS `HideAllControl.summary(of:)`, 2026-09-25).
+ * The first two sections are named in slate order and the rest counted. A
+ * catch-all "Other" section is never one of the two named — "Big Ten, Other
+ * and…" names nothing — but it still counts.
+ */
+export function hiddenSectionsSummary(
+  sections: readonly Pick<GameSection, "id" | "title">[]
+): string {
+  const named = sections
+    .filter((section) => !section.id.startsWith("other-"))
+    .slice(0, 2)
+    .map((section) => section.title);
+  const rest = sections.length - named.length;
+  const parts = [...named];
+  if (rest > 0) {
+    parts.push(
+      rest === 1
+        ? "1 other league, conference or division"
+        : `${rest} other leagues, conferences or divisions`
+    );
+  }
+  const list =
+    parts.length <= 1
+      ? (parts[0] ?? "")
+      : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  return list + (sections.length === 1 ? " plays today" : " play today");
 }

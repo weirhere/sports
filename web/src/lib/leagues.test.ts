@@ -5,6 +5,8 @@ import {
   espnSeason,
   hasPoll,
   hasWeeks,
+  LEAGUE_DISPLAY_ORDER,
+  LEAGUES,
   leagueLogoUrl,
   parseLeague,
   playsOnASurface,
@@ -218,5 +220,15 @@ describe("behavioral gates", () => {
     // "Surface · Turf" on a hockey rink.
     expect(playsOnASurface("cfb")).toBe(true);
     expect(playsOnASurface("nhl")).toBe(false);
+  });
+});
+
+describe("display order", () => {
+  it("lists leagues A–Z by the name on screen", () => {
+    expect(LEAGUE_DISPLAY_ORDER).toEqual(["nba", "cfb", "nfl", "nhl"]);
+  });
+
+  it("leaves the declaration order alone for fetches and spans", () => {
+    expect(LEAGUES).toEqual(["cfb", "nfl", "nba", "nhl"]);
   });
 });

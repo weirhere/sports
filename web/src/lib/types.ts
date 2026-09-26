@@ -106,6 +106,13 @@ export interface Game {
    * the only thing separating a quarterfinal from a bowl.
    */
   headline?: string;
+  /**
+   * Who the scoreboard's pre-game line favored — ESPN's per-team `favorite`
+   * flag on `odds[0]`; undefined for a pick'em or no line at all. Nothing
+   * prints it: the Tight filter's underdog rule is its only reader (iOS
+   * `GameLine.favoriteIsHome`, 2026-09-24).
+   */
+  favoriteIsHome?: boolean;
 }
 
 export interface Conference {

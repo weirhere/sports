@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Search, Shield, Trophy } from "lucide-react";
+import { handleScoresLinkClick } from "@/lib/scores-home";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -39,6 +40,10 @@ export function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              // A Games re-tap goes home — top of the slate, and today.
+              onClick={(event) =>
+                handleScoresLinkClick(tab.href, pathname, event)
+              }
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 type-row-meta-medium transition-colors",
