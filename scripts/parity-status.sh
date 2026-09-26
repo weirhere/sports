@@ -55,8 +55,13 @@ for line in open(path, encoding="utf-8"):
     if in_na_section and not status.startswith("**"):
         counts["n/a"] += 1
         continue
+    # The leading bold status is the row's answer; the prose after it may
+    # mention other statuses ("**differs** — … `pending` for iOS"), so it
+    # is only consulted when there is no bold status to read.
+    lead = re.match(r"\*\*([^*]+)\*\*", status)
+    haystack = lead.group(1) if lead else status
     for key in ("shipped", "pending", "differs", "n/a"):
-        if key in status:
+        if key in haystack:
             counts[key] += 1
             break
     else:
