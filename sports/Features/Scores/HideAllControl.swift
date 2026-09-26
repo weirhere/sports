@@ -82,8 +82,9 @@ struct HideAllControl: View {
             .transition(.opacity)
     }
 
-    /// "Big Ten, SEC and 2 other leagues, conferences or divisions play
-    /// today" (Andy, 2026-09-25). The first two sections are named, the
+    /// "Big Ten, SEC and 2 other leagues or conferences play today" (Andy,
+    /// 2026-09-25; "divisions" dropped 2026-09-26 when they stopped being
+    /// sections). The first two sections are named, the
     /// rest counted. A catch-all "Other" section is never one of the two
     /// named — "Other" says nothing — but it still counts.
     static func summary(of sections: [GameSection]) -> String {
@@ -95,8 +96,8 @@ struct HideAllControl: View {
         var parts = named
         if rest > 0 {
             parts.append(rest == 1
-                ? "1 other league, conference or division"
-                : "\(rest) other leagues, conferences or divisions")
+                ? "1 other league or conference"
+                : "\(rest) other leagues or conferences")
         }
         let list = switch parts.count {
         case 0: ""

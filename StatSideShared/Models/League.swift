@@ -208,16 +208,6 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         return "\(year)-\(String(format: "%02d", (year + 1) % 100))"
     }
 
-    /// Whether the day's slate breaks into one section per conference, or
-    /// stands as one section for the league.
-    ///
-    /// Only college football is wide enough to need carving — 60 rows on a
-    /// Saturday with no way in, and conferences are how fans already carve
-    /// one up (Andy, 2026-09-06). A 16-game NFL Sunday, an 11-game NBA
-    /// night and an 8-game NHL night are each the whole slate at a glance,
-    /// and their divisions would be one or two rows a section.
-    var slateSplitsByConference: Bool { self == .collegeFootball }
-
     /// How many seasons back a head-to-head series is assembled from.
     ///
     /// The window is really sized in *meetings* — ten is the list length

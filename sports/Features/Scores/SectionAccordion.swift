@@ -84,7 +84,7 @@ struct SectionAccordion: View, Equatable {
     private var nameLink: some View {
         switch section.table {
         case .some(.conference(let id)):
-            NavigationLink(value: ConferenceDestination(conference: id, name: section.title)) {
+            NavigationLink(value: ConferenceDestination(conference: id, name: Conference.name(for: id))) {
                 nameLabel
             }
             .buttonStyle(SwipeSafeButtonStyle())
@@ -138,9 +138,17 @@ struct SectionAccordion: View, Equatable {
     /// 2026-09-25; one line of one type reads cleaner than two sizes. Same
     /// `shortName` the game rows and search results tag with, so the app has
     /// one word for a league everywhere.
-    private var titleText: String {
-        guard let league = tagLeague else { return section.title }
-        return "\(section.title) - \(league.shortName)"
+    private var titleText: String { Self.title(section.title, in: tagLeague) }
+
+    /// A pro league leads with its name — "NFL - AFC North", "NBA - Eastern
+    /// Conference (Central)" — so its conferences and divisions read as
+    /// parts of it, the way they sort (Andy, 2026-09-26). College
+    /// football's conferences stand on their own names: "Big Ten - NCAAF".
+    static func title(_ title: String, in league: League?) -> String {
+        guard let league else { return title }
+        return league == .collegeFootball
+            ? "\(title) - \(league.shortName)"
+            : "\(league.shortName) - \(title)"
     }
 
     /// The league a section needs spelled out: every one that has a league
@@ -200,6 +208,13 @@ struct SectionAccordion: View, Equatable {
         .accessibilityIdentifier("scores-section-\(section.id)")
     }
 
+    /// The conference this section is, if it is one — what a visiting
+    /// team's tag is measured against.
+    private var sectionConference: ConferenceID? {
+        guard case .conference(let id) = section.table else { return nil }
+        return id
+    }
+
     private var expandedRows: some View {
         ForEach(section.games) { game in
             // Every section on the screen is one day's slate, and the day
@@ -209,7 +224,8 @@ struct SectionAccordion: View, Equatable {
             // elsewhere the screen's scope already says which league
             // you're looking at.
             SectionGameRow(game: game,
-                           leagueTag: section.spansLeagues ? game.home.team.league : nil)
+                           leagueTag: section.spansLeagues ? game.home.team.league : nil,
+                           sectionConference: sectionConference)
             if game.id != section.games.last?.id {
                 Divider()
                     .overlay(Color.divider)

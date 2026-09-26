@@ -18,6 +18,8 @@ struct sportsApp: App {
         AppGroup.migrateFollowingIfNeeded()
         // Must run after the App Group copy: it reads the suite's bare keys.
         AppGroup.migrateLeagueNamespacingIfNeeded()
+        // Reads the league-qualified tokens the migration above writes.
+        AppGroup.migrateDivisionFollowsIfNeeded()
         let router = Router()
         let review = ReviewPrompt()
         let delegate = NotificationDelegate(router: router, reviewPrompt: review)

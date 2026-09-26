@@ -40,6 +40,7 @@ nonisolated enum AppGroup {
     static let snapshotKey = "widget.snapshot"
     private static let migrationKey = "migration.followingToGroup.done"
     private static let leagueMigrationKey = "migration.leagueNamespacing.done"
+    private static let divisionMigrationKey = "migration.divisionFollows.done"
 
     /// The suite, falling back to standard defaults if the entitlement is
     /// missing (previews, tests) so nothing force-unwraps.
@@ -87,5 +88,37 @@ nonisolated enum AppGroup {
                       forKey: followingConferenceTokensKey)
         }
         suite.set(true, forKey: leagueMigrationKey)
+    }
+
+    /// Moves a followed pro division up to its conference (2026-09-26).
+    /// Divisions stopped being tables of their own — no page, no row on
+    /// the hub, no section on Scores — so a division follow would be a
+    /// card that leads nowhere. Its conference is the page the division
+    /// now lives on. The drag order keeps each table's first position, so
+    /// following the AFC East and the AFC North leaves one AFC where the
+    /// East was.
+    static func migrateDivisionFollowsIfNeeded(in suite: UserDefaults = defaults) {
+        guard !suite.bool(forKey: divisionMigrationKey) else { return }
+        func lifted(_ id: ConferenceID) -> ConferenceID {
+            guard Conference.tier(for: id.id, in: id.league) == .division,
+                  let parent = Conference.parent(of: id.id, in: id.league) else { return id }
+            return ConferenceID(id.league, parent)
+        }
+        func deduped(_ tokens: [String]) -> [String] {
+            var seen: Set<String> = []
+            return tokens.filter { seen.insert($0).inserted }
+        }
+        if let tokens = suite.stringArray(forKey: followingConferenceTokensKey) {
+            let moved = tokens.map { ConferenceID(token: $0).map { lifted($0).token } ?? $0 }
+            suite.set(deduped(moved).sorted(), forKey: followingConferenceTokensKey)
+        }
+        if let order = suite.stringArray(forKey: followingTableOrderKey) {
+            let moved = order.map { token -> String in
+                guard case .conference(let id)? = FollowedTable(token: token) else { return token }
+                return FollowedTable.conference(lifted(id)).token
+            }
+            suite.set(deduped(moved), forKey: followingTableOrderKey)
+        }
+        suite.set(true, forKey: divisionMigrationKey)
     }
 }

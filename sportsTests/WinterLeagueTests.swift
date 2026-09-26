@@ -144,7 +144,6 @@ import Testing
             #expect(!league.hasPoll)
             #expect(!league.hasWeeks)
             #expect(!league.hasCollegeDivisions)
-            #expect(!league.slateSplitsByConference)
             #expect(Conference.division(for: 5, in: league) == nil)
             #expect(!Conference.titleGameIsTopTwo(id: 5, year: 2026, in: league))
         }

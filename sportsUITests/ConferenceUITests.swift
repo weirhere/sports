@@ -18,29 +18,12 @@ final class ConferenceUITests: XCTestCase {
         app.launch()
 
         // The tables hub is the way into a conference page now: the Teams
-        // tab lists the teams you follow rather than the directory, so its
-        // conference accordions (and their standings context menu) are
-        // gone. ACC, not SEC — the hub's college-football accordion lists
-        // conferences tier-then-name, so ACC is the first row under the
-        // Top 25 one and is realized even in a LazyVStack.
-        XCTAssertTrue(openTab("Leagues", in: app, until: app.top25Row),
-                      "Leagues should load its hub")
-        let accRow = app.buttons.matching(NSPredicate(
-            format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC,")).firstMatch
-        XCTAssertTrue(scrollUntilExists(accRow, in: app, timeout: 15),
-                      "The hub should list the ACC")
-        accRow.tap()
-
-        // ConferencePage: hero, follow pill, and standings-or-TBA. The name
-        // lives in the hero (TeamPage template), so the pill marks the
-        // page. Rows collapse to one element (a button, via
-        // NavigationLink), so query any descendant by label like
-        // UITestSupport's topRankedRow does.
-        let conferencePill = app.buttons.matching(NSPredicate(
-            format: "label == %@ OR label == %@",
-            "Follow conference", "Following conference")).firstMatch
-        XCTAssertTrue(conferencePill.waitForExistence(timeout: 10),
-                      "The hub row should push the ACC page")
+        // tab lists the teams you follow rather than the directory. ACC,
+        // not SEC — the hub lists FBS's conferences Power 4 first and
+        // alphabetical within, so the ACC is the first row under the FBS
+        // one and is realized even in a LazyVStack.
+        XCTAssertTrue(openCollegeConference("ACC", in: app),
+                      "The hub's ACC row should push the ACC page")
         // The page lands on its Games tab (2026-08-29) — the table is one
         // tab over, behind the hero's Standings chip.
         let standingsTab = app.buttons["Standings"].firstMatch
@@ -121,31 +104,11 @@ final class ConferenceUITests: XCTestCase {
         app.launchArguments += ["-ui.onboardingSeen", "YES"]
         app.launch()
 
-        // The root is the list: Top 25 row first, conferences right below.
-        XCTAssertTrue(openTab("Leagues", in: app, until: app.top25Row),
-                      "Leagues should lead with the Top 25 row")
-
-        // An ACC row exists year-round (the list renders offseason, teasers
-        // or not); its label is either bare "ACC" or "ACC, led by …".
-        let accRow = app.descendants(matching: .any).matching(NSPredicate(
-            format: "label == %@ OR label BEGINSWITH %@", "ACC", "ACC, led by")).firstMatch
-        XCTAssertTrue(scrollUntilExists(accRow, in: app, maxSwipes: 4, timeout: 5),
-                      "Leagues should list the ACC near the root")
-        // The pushed page's landmark is the follow pill, not the nav bar:
-        // ConferencePage went `.navigationTitle("")` with the hero template
-        // (172155d), so the bar is never identified "ACC" anymore. The tap
-        // is verified and retried — one issued mid-refresh can be swallowed
-        // without the push ever starting.
-        let conferencePill = app.buttons.matching(NSPredicate(
-            format: "label == %@ OR label == %@",
-            "Follow conference", "Following conference")).firstMatch
-        for _ in 0..<3 where !conferencePill.exists {
-            guard accRow.exists else { break }
-            accRow.tap()
-            _ = conferencePill.waitForExistence(timeout: 10)
-        }
-        XCTAssertTrue(conferencePill.exists,
+        // The ACC row exists year-round (the list renders offseason,
+        // teasers or not) and pushes its standings page.
+        XCTAssertTrue(openCollegeConference("ACC", in: app),
                       "Tapping the conference row should push its standings page")
+        let conferencePill = app.conferenceFollowPill
 
         // And the Top 25 row pushes the poll. The pop targets the back
         // button specifically — the follow pill rides the toolbar now

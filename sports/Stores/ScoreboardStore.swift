@@ -98,8 +98,8 @@ struct GameSection: Identifiable, Hashable {
     /// token, so a section and the table it belongs to spell themselves
     /// the same way. Same defaults-open routing.
     static let conferencePrefix = "conf-"
-    /// A poll section — "poll-cfb". Only ever on screen while its poll is
-    /// followed, since nothing else puts the Top 25 on Scores.
+    /// A poll section — "poll-cfb": college football's Top 25, which leads
+    /// that league's sections whether or not it's followed.
     static let pollPrefix = "poll-"
     /// Games no known conference in the fetched divisions can claim.
     static let otherPrefix = "other-"
@@ -663,26 +663,11 @@ final class ScoreboardStore {
         divisions.map { String($0.groupId) }.sorted().joined(separator: "+")
     }
 
-    /// The divisions a given set of user choices needs on the slate. FBS
-    /// is always there — the app's default promise — and FCS joins only
-    /// when someone selected an FCS conference in the filter sheet or
-    /// follows one. That "only when asked" is the whole of scope (b), and
-    /// it's what keeps the 30s poll at one request for everyone else.
-    nonisolated static func divisions(
-        filter: ScoreFilter?, followedConferenceIds: Set<ConferenceID>
-    ) -> Set<Conference.Division> {
-        var needed: Set<Conference.Division> = [.fbs]
-        if case .conference(let id) = filter,
-           Conference.division(for: id.id, in: id.league) == .fcs {
-            needed.insert(.fcs)
-        }
-        if followedConferenceIds.contains(where: {
-            Conference.division(for: $0.id, in: $0.league) == .fcs
-        }) {
-            needed.insert(.fcs)
-        }
-        return needed
-    }
+    /// The divisions the Scores slate covers: FBS and FCS both, since
+    /// every FCS conference has a section of its own (Andy, 2026-09-26).
+    /// Until then FCS was opt-in (E8 scope (b), 2026-09-01) and cost its
+    /// second request only while someone followed or filtered to it.
+    nonisolated static let slateDivisions = Set(Conference.Division.allCases)
 }
 
 private extension Duration {

@@ -500,10 +500,15 @@ struct TeamPage: View {
         }
     }
 
+    /// A pro team's group is its division, which has no page (2026-09-26):
+    /// the badge still says "AFC North" and opens the AFC, whose page
+    /// stacks its divisions with this team's row highlighted.
     private func groupLink(_ id: ConferenceID, label: String) -> some View {
-        NavigationLink(value: ConferenceDestination(conference: id,
-                                                    name: Conference.name(for: id),
-                                                    highlightTeamId: team.id)) {
+        let target = Conference.parent(of: id.id, in: id.league)
+            .map { ConferenceID(id.league, $0) } ?? id
+        return NavigationLink(value: ConferenceDestination(conference: target,
+                                                           name: Conference.name(for: target),
+                                                           highlightTeamId: team.id)) {
             HeaderLinkBadge(title: label)
         }
         .buttonStyle(.plain)
