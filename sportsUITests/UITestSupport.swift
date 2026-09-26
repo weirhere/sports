@@ -77,6 +77,13 @@ extension XCUIApplication {
         return buttons[id]
     }
 
+    /// ConferencePage's follow pill, in either state — the page's
+    /// landmark, since its name lives in the hero rather than the bar.
+    var conferenceFollowPill: XCUIElement {
+        buttons.matching(NSPredicate(format: "label == %@ OR label == %@",
+                                     "Follow conference", "Following conference")).firstMatch
+    }
+
     /// One named Scores section, by the title its header speaks —
     /// "SEC, 6 games".
     func scoresSection(_ title: String) -> XCUIElement {
@@ -113,6 +120,40 @@ extension XCTestCase {
         guard app.top25Row.waitForExistence(timeout: 10) else { return false }
         app.top25Row.tap()
         return app.topRankedRow.waitForExistence(timeout: 15)
+    }
+
+    /// Opens a college conference's page from the Leagues tab: tab →
+    /// college football's accordion → the conference's row → the page,
+    /// landmarked by its follow pill.
+    ///
+    /// Two traps, both of which broke `ConferenceUITests` for a while.
+    /// The hub's accordions open **closed** (2026-09-21), so the row isn't
+    /// in the tree until the league's header is tapped. And a loose
+    /// `BEGINSWITH "ACC,"` also matches the Scores tab's "ACC, NCAAF, 10
+    /// games" header, which stays in the hierarchy behind the Leagues tab —
+    /// tapping it does nothing you can see. The hub row only ever speaks
+    /// "ACC" or "ACC, led by …", so that's all this matches.
+    @MainActor
+    @discardableResult
+    func openCollegeConference(_ name: String, in app: XCUIApplication) -> Bool {
+        let cfbSection = app.descendants(matching: .any)
+            .matching(identifier: "tables-league-cfb").firstMatch
+        guard openTab("Leagues", in: app, until: cfbSection) else { return false }
+        let row = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", name, "\(name), led by")).firstMatch
+        // Asked of the tree rather than the header's value, as
+        // `openRankingsPoll` does, so either default keeps working.
+        if !row.exists { cfbSection.tap() }
+        guard scrollUntilExists(row, in: app, timeout: 10) else { return false }
+        // Verified and retried: a standings fetch landing mid-tap can
+        // swallow the push.
+        let pill = app.conferenceFollowPill
+        for _ in 0..<3 where !pill.exists {
+            guard row.exists else { break }
+            row.tap()
+            _ = pill.waitForExistence(timeout: 10)
+        }
+        return pill.exists
     }
 
     /// Opens the Add teams sheet from the Teams tab.
