@@ -7,6 +7,10 @@ struct Top25Row: View {
     let polls: [Poll]
     /// Whose poll this is — the follow star's id, and the page's.
     var league: League = .collegeFootball
+    /// Off on the Following card (Andy, 2026-09-25), which unfollows from
+    /// its Edit mode instead — `ConferenceListRow`'s flag, for the same
+    /// card.
+    var showsFollow: Bool = true
 
     var body: some View {
         HStack(spacing: Spacing.md) {
@@ -20,7 +24,9 @@ struct Top25Row: View {
             // inside the row — which a whole-card drag never leaves.
             .buttonStyle(SwipeSafeButtonStyle())
             .accessibilityIdentifier("rankings-top25-row")
-            PollFollowStar(league: league)
+            if showsFollow {
+                PollFollowStar(league: league)
+            }
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 7)
