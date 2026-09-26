@@ -39,6 +39,7 @@ import type {
   RosterPlayer,
   RosterCoach,
   GameLine,
+  WinProbability,
 } from "@/lib/types";
 import type { LivePhase } from "@/lib/format";
 import type { WeekSlot } from "@/lib/season";
@@ -47,6 +48,7 @@ import {
   collegeDivision,
   conferenceName,
   divisionForTeamId,
+  isDivisionRoot,
   parentOf,
   tier,
   tierRank,
@@ -60,6 +62,7 @@ import {
   teamLogoBase,
   type League,
 } from "@/lib/leagues";
+import { summaryCarriesMatchupStandings } from "@/lib/standings-columns";
 import type {
   EspnScoreboardResponse,
   EspnEvent,
@@ -69,6 +72,9 @@ import type {
   EspnStatus,
   EspnGameSummaryResponse,
   EspnPickcenter,
+  EspnPredictor,
+  EspnSummaryStandings,
+  EspnWinProbabilityPoint,
   EspnHeaderCompetitor,
   EspnRanking,
   EspnRank,
@@ -113,14 +119,25 @@ function clampRank(value: number | undefined): number | undefined {
  * The team's conference from its most specific group. When the group IS the
  * conference, its parent is FBS (80) — never walk up. When it's a division,
  * the parent is the conference.
+ *
+ * The two payloads that ship `groups` on a *team* object — the summary
+ * header and the rankings — don't mark `isConference` at all (iOS,
+ * 2026-09-21). They say it the other way: a conference's parent is its
+ * division root (FBS 80, FCS 81), and the summary names no parent at all,
+ * so the group it gives is the only group there is. Indiana arrives as
+ * `{id: "5"}` on a summary and `{id: "5", parent: {id: "80"}}` in the poll.
  */
 export function conferenceIdFromGroups(
-  groups: EspnTeamGroups | undefined
+  groups: EspnTeamGroups | undefined,
+  league: League = "cfb"
 ): number | undefined {
   if (!groups) return undefined;
-  return groups.isConference === true
-    ? flexibleNumber(groups.id)
-    : flexibleNumber(groups.parent?.id);
+  if (groups.isConference === true) return flexibleNumber(groups.id);
+  const parent = flexibleNumber(groups.parent?.id);
+  if (parent === undefined || isDivisionRoot(parent, league)) {
+    return flexibleNumber(groups.id);
+  }
+  return parent;
 }
 
 // --- Status mapping ---
@@ -189,7 +206,7 @@ export function transformTeam(
   // — without it every pro game falls into "Other" and a followed
   // conference matches nothing.
   const numericConferenceId =
-    conferenceIdFromGroups(espnTeam.groups) ??
+    conferenceIdFromGroups(espnTeam.groups, league) ??
     flexibleNumber(espnTeam.conferenceId) ??
     divisionForTeamId(espnTeam.id, league);
   const registryName = conferenceName(numericConferenceId, league);
@@ -1550,6 +1567,14 @@ export function transformGameSummary(
     // would print the same rows in two places.
     plays: drives.length > 0 ? [] : flatPlays,
     situation: transformSituation(summary.drives?.current, awayTeamEspnId),
+    winProbability: transformWinProbability(
+      summary.predictor,
+      summary.winprobability
+    ),
+    matchupStandings: transformMatchupStandings(summary.standings, league, [
+      game.awayTeam.team,
+      game.homeTeam.team,
+    ]),
   };
 }
 
@@ -1720,4 +1745,111 @@ export function transformGameLine(
     typeof entry?.overUnder === "number" ? entry.overUnder : undefined;
   if (details === undefined && overUnder === undefined) return undefined;
   return { details, overUnder };
+}
+
+// --- Win probability ---
+
+/**
+ * The per-play series once it has a line's worth of points (two or more),
+ * else ESPN's matchup predictor, else nothing — iOS `WinProbability.init?`.
+ * Every field optional: a missing or non-numeric value drops that point,
+ * and a predictor with a side missing is no predictor.
+ */
+export function transformWinProbability(
+  predictor: EspnPredictor | undefined,
+  points: readonly (EspnWinProbabilityPoint | null)[] | undefined
+): WinProbability | undefined {
+  const series = (points ?? [])
+    .map((point) => point?.homeWinPercentage)
+    .filter(
+      (value): value is number =>
+        typeof value === "number" && Number.isFinite(value)
+    )
+    .map((value) => Math.min(Math.max(value, 0), 1));
+  if (series.length >= 2) return { kind: "series", points: series };
+  const home = flexibleNumber(predictor?.homeTeam?.gameProjection);
+  const away = flexibleNumber(predictor?.awayTeam?.gameProjection);
+  if (
+    home !== undefined &&
+    away !== undefined &&
+    home >= 0 &&
+    away >= 0 &&
+    home + away > 0
+  ) {
+    return { kind: "pregame", home, away };
+  }
+  return undefined;
+}
+
+// --- Matchup standings, the summary's own copy ---
+
+/**
+ * The summary's standings block as the matchup card's tables — iOS
+ * `ESPNMapper.matchupStandings`.
+ *
+ * **The group's id comes from the competing team standing in it**, since
+ * the summary's groups carry no id of their own; that is what the header
+ * team's `groups` fix is for. A group neither team is in has no id, and
+ * names itself from the payload's own short header.
+ *
+ * **The two competing teams keep the identity the page already has.** The
+ * block's entries are a display string and an id, so every other row is a
+ * thin stand-in that exists to hold a place number. Always `played`: the
+ * block ships no season start to gate on, and a preseason table arrives
+ * honestly 0-0, which is what `matchupStandingsHasContent` hides on.
+ */
+export function transformMatchupStandings(
+  standings: EspnSummaryStandings | undefined,
+  league: League,
+  teams: readonly Team[]
+): ConferenceStandingsGroup[] {
+  if (!summaryCarriesMatchupStandings(league) || !standings) return [];
+  const tables: ConferenceStandingsGroup[] = [];
+  for (const group of standings.groups ?? []) {
+    const entries = group.standings?.entries ?? [];
+    if (entries.length === 0) continue;
+    const ids = new Set(entries.map((entry) => entry.id));
+    const competing = teams.find((team) => ids.has(team.id));
+    const rawId = competing ? Number(competing.conferenceId) : NaN;
+    const id = Number.isFinite(rawId) && rawId > 0 ? rawId : undefined;
+    const name =
+      tier(id, league) === "other"
+        ? (group.shortDivisionHeader ??
+          group.divisionHeader ??
+          group.header ??
+          "Conference")
+        : conferenceName(id, league);
+    const rows = entries
+      .map((entry, index) => {
+        if (!entry.id) return null;
+        const own = teams.find((team) => team.id === entry.id);
+        const standing = transformStandingsEntry(
+          {
+            team: {
+              id: entry.id,
+              location: entry.team,
+              displayName: entry.team,
+              logo: entry.logo?.find((logo) => !(logo.rel ?? []).includes("dark"))
+                ?.href,
+            },
+            stats: entry.stats,
+          },
+          id,
+          index,
+          league,
+          true
+        );
+        if (!standing) return null;
+        return own ? { ...standing, team: own } : standing;
+      })
+      .filter((entry): entry is ConferenceStanding => entry !== null);
+    if (rows.length === 0) continue;
+    tables.push({
+      id: id !== undefined ? String(id) : "",
+      league,
+      name,
+      entries: seedOrdered(rows),
+    });
+  }
+  return tables;
 }

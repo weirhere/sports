@@ -2,11 +2,19 @@
 // from the provider (no HTTP hop) — real ESPN event ids only; an unknown
 // or failed id is a 404. Standings ride along for the matchup card
 // (Promise.allSettled — a miss just hides the card, never errors the page).
+//
+// College football skips that fetch: its summary carries both competing
+// conferences' tables, so asking for the whole league was a second round
+// trip before the page could respond, for two rows it was about to be
+// handed anyway (iOS, 2026-09-21). A summary that comes back without the
+// block fires the old fetch — sequentially, so it costs a round trip only
+// on the path where the free copy didn't arrive.
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { gameSummary, conferenceStandings } from "@/lib/espn/provider";
 import { parseLeague } from "@/lib/leagues";
+import { summaryCarriesMatchupStandings } from "@/lib/standings-columns";
 import type { ConferenceStandingsGroup } from "@/lib/types";
 import { GameDetailView } from "./game-detail-view";
 import { ogCardModel } from "./og-card";
@@ -58,15 +66,19 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
     notFound();
   }
 
+  const fromSummary = summaryCarriesMatchupStandings(league);
   const [detailResult, standingsResult] = await Promise.allSettled([
     gameSummary(league, gameId),
-    conferenceStandings(league),
+    fromSummary ? Promise.resolve(null) : conferenceStandings(league),
   ]);
   if (detailResult.status !== "fulfilled") {
     notFound();
   }
-  const standings: ConferenceStandingsGroup[] | null =
+  let standings: ConferenceStandingsGroup[] | null =
     standingsResult.status === "fulfilled" ? standingsResult.value : null;
+  if (fromSummary && (detailResult.value.matchupStandings ?? []).length === 0) {
+    standings = await conferenceStandings(league).catch(() => null);
+  }
 
   return (
     <GameDetailView initialData={detailResult.value} standings={standings} />

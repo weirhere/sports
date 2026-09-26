@@ -2,8 +2,13 @@
 
 // The entity pages' hero tab row — iOS `HeroTabBar` (Theme/HeroTabBar.swift):
 // 40px gap, 14px vertical padding, bold 14 labels at −2% tracking, and
-// opacity alone separating active from inactive (no underline — the 3pt bar
+// ink alone separating active from inactive (no underline — the 3pt bar
 // retired 2026-08-31). Real tablist semantics: roving tabindex + arrow keys.
+//
+// Inactive tabs take `text-secondary`, not half-strength primary
+// (2026-09-21). `#1a1a1a` at 50% composites to 3.34:1 on the white card —
+// under AA's 4.5:1 for bold 14 — while dark measured 5.17:1, which is how
+// it survived. The token is 5.33:1 light and 6.36:1 dark on `bg-card`.
 //
 // The row is its own horizontal scroller (2026-09-20). It was a bare flex
 // row, so a five-tab team page on a narrow phone overflowed the document
@@ -109,10 +114,10 @@ export function HeroTabBar({ tabs, selected, onSelect }: HeroTabBarProps) {
             className={cn(
               // shrink-0: inside a scroller a flex label would otherwise
               // compress to its min-content width and wrap mid-word.
-              "shrink-0 py-3.5 type-tab transition-opacity",
+              "shrink-0 py-3.5 type-tab transition-colors",
               isSelected
                 ? "text-text-primary"
-                : "text-text-primary opacity-50 hover:opacity-75"
+                : "text-text-secondary hover:text-text-primary"
             )}
           >
             {tab.label}
