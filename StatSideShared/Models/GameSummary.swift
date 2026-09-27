@@ -212,6 +212,12 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Whose play it was, where the payload says. Only the flat feed
     /// carries it — a drive's plays belong to the drive's offense.
     var teamId: String? = nil
+    /// Whose ball it was once the play ended — ESPN's `end.team`. Not
+    /// always the drive's: after a punt, ESPN keeps the punting team's
+    /// drive current until the next snap, and the plays in between (the
+    /// punt's own end, a timeout, a review) belong to the receiving team.
+    /// `yardsToEndzone` counts toward the end zone *this* team attacks.
+    var endTeamId: String? = nil
     /// Distance from the offense's target end zone at the snap — where
     /// the field draws this play's arrow from. Nil when the play changed
     /// hands (a kickoff, a punt, a turnover): the two ends are measured
@@ -396,13 +402,25 @@ extension GameSummary {
     /// renders the lines it has and drops the ones it doesn't.
     var situation: GameSituation? {
         guard let drive = currentDrive, let play = drive.plays.last else { return nil }
-        let isAway = drive.teamId != nil && drive.teamId == away?.team.id
-        // yardsToEndzone counts down toward the *defense's* end zone, so
-        // which end of the field that is depends on who has the ball.
-        // Clamped: a payload can hand back a spot past the goal line on a
-        // scoring play.
-        func fromAwayGoal(_ yardsToEndzone: Int) -> Double {
-            min(max(Double(isAway ? 100 - yardsToEndzone : yardsToEndzone), 0), 100)
+        // Whose ball it is now, which isn't always the drive's: ESPN keeps a
+        // punting team's drive current until the next snap, and the plays
+        // after the punt (a timeout, a review) belong to the receiving team
+        // (verified live, NFL 2026-09-27).
+        let ballTeamId = play.endTeamId ?? drive.teamId
+        let handsChanged = ballTeamId != nil && drive.teamId != nil && ballTeamId != drive.teamId
+        let isAway = ballTeamId != nil && ballTeamId == away?.team.id
+        // yardsToEndzone counts down toward the end zone its own team
+        // attacks, so which end of the field that is depends on whose play
+        // it was. Clamped: a payload can hand back a spot past the goal line
+        // on a scoring play.
+        func fromAwayGoal(_ yardsToEndzone: Int, teamId: String? = ballTeamId) -> Double {
+            let measuredFromAway = teamId != nil && teamId == away?.team.id
+            return min(max(Double(measuredFromAway ? 100 - yardsToEndzone : yardsToEndzone), 0), 100)
+        }
+        // A snap is never from inside the end zone: a start of 0 is ESPN's
+        // filler on a timeout or review, not a spot.
+        func snapStart(_ play: Play) -> Int? {
+            play.startYardsToEndzone.flatMap { $0 > 0 ? $0 : nil }
         }
         let scoring = drive.plays.filter(\.isScoringPlay)
         let result: String? = scoring.isEmpty && !drive.isScore
@@ -422,16 +440,23 @@ extension GameSummary {
                 return fromAwayGoal(yardsToEndzone - distance)
             }()
             let type = play.typeText?.lowercased() ?? ""
+            // Once the ball has changed hands the drive is over in all but
+            // name: the field shows the ball and the new side's line, and
+            // no trail or arrow. A snap's start and end share a team, so
+            // its end team is the side its start was measured against.
+            let firstSnap = handsChanged ? nil : drive.plays.first { snapStart($0) != nil }
             return GameSituation.Field(
                 ball: fromAwayGoal(yardsToEndzone),
-                driveStart: drive.plays.lazy.compactMap(\.startYardsToEndzone).first.map(fromAwayGoal),
-                playStart: play.startYardsToEndzone.map(fromAwayGoal),
+                driveStart: firstSnap.flatMap { snap in
+                    snapStart(snap).map { fromAwayGoal($0, teamId: snap.endTeamId ?? drive.teamId) }
+                },
+                playStart: handsChanged ? nil : snapStart(play).map { fromAwayGoal($0) },
                 lineToGain: lineToGain,
                 isPass: type.contains("pass") && !type.contains("sack")
             )
         }
         return GameSituation(
-            possessionTeamId: drive.teamId,
+            possessionTeamId: ballTeamId,
             downDistanceText: play.nextDownDistanceText,
             possessionText: play.possessionText,
             driveSummary: drive.summary,
