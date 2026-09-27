@@ -7,6 +7,13 @@ import summaryJson from "./espn/__fixtures__/nba-summary-article.json";
 import feedJson from "./espn/__fixtures__/nba-team-news.json";
 import storyJson from "./espn/__fixtures__/nba-news-story.json";
 import overviewJson from "./espn/__fixtures__/nba-athlete-overview.json";
+import searchJson from "./espn/__fixtures__/search-knicks.json";
+import {
+  gameIdForStoryLink,
+  leagueForStoryLink,
+  transformStorySearch,
+} from "./espn/athlete-search";
+import type { EspnSearchResponse } from "./espn/types";
 import {
   forYou,
   playerFeed,
@@ -239,5 +246,32 @@ describe("a player's News tab (E26)", () => {
     expect(stories).toHaveLength(8);
     const times = stories.map((story) => story.published ?? "");
     expect([...times].sort().reverse()).toEqual(times);
+  });
+});
+
+describe("Search's News scope (E26)", () => {
+  it("reads the article group beside the people", () => {
+    // "knicks" on 2026-09-27: ten articles, one a New York story filed
+    // under the NFL. Clips and replays are video and never map.
+    const stories = transformStorySearch(searchJson as EspnSearchResponse);
+    expect(stories).toHaveLength(10);
+    expect(stories[0]).toMatchObject({
+      id: "50039929",
+      kind: "headline",
+      league: "nba",
+      attribution: "AP",
+    });
+    expect(stories.some((story) => story.league === "nfl")).toBe(true);
+    expect(stories.every((story) => story.published)).toBe(true);
+  });
+
+  it("drops leagues the app doesn't cover", () => {
+    expect(leagueForStoryLink("https://www.espn.com/college-football/story/_/id/1/x")).toBe("cfb");
+    expect(leagueForStoryLink("https://www.espn.com/soccer/story/_/id/1/x")).toBeUndefined();
+    expect(leagueForStoryLink("not a url")).toBeUndefined();
+    // AP's recaps and previews use ESPN's older paths.
+    const recap = "http://www.espn.com/ncf/recap?gameId=401858463";
+    expect(leagueForStoryLink(recap)).toBe("cfb");
+    expect(gameIdForStoryLink(recap)).toBe("401858463");
   });
 });

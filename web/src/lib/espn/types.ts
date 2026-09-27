@@ -694,4 +694,16 @@ export interface EspnSearchContent {
    *  rest, which is why this is filtered rather than trusted. */
   defaultLeagueSlug?: string;
   image?: { default?: string | null } | null;
+  /** An article's story id (`50039929`), the one the content API takes. A
+   *  person's is a GUID. */
+  id?: string;
+  /** An article's ESPN type, lowercased: `headlinenews`, `story`, `recap`,
+   *  `preview`. */
+  type?: string;
+  /** `https://www.espn.com/nba/story/_/id/…` — the path's first segment is
+   *  the only league an article hit carries. */
+  link?: { web?: string | null } | null;
+  /** An article's byline, or its wire: "Associated Press", "ESPN". */
+  byline?: string | null;
+  date?: string | null;
 }

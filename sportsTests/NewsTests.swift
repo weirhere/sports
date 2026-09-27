@@ -222,4 +222,35 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(try relative("2026-09-24T12:00:00Z") == "Sep 24")
         #expect(try relative("2025-11-05T12:00:00Z") == "Nov 5, 2025")
     }
+
+    // MARK: - Search's News scope (E26)
+
+    @Test func searchReadsTheArticleGroup() throws {
+        let dto = try JSONDecoder().decode(SearchResponseDTO.self, from: fixtureData("search-knicks"))
+        let stories = AthleteSearchClient.stories(in: dto)
+        // "knicks" on 2026-09-27: ten articles, one a New York story filed
+        // under the NFL. Clips and replays are video and never map.
+        #expect(stories.count == 10)
+        #expect(stories.first?.id == "50039929")
+        #expect(stories.first?.kind == .headline)
+        #expect(stories.first?.league == .nba)
+        #expect(stories.first?.attribution == "AP")
+        #expect(stories.first?.published != nil)
+        #expect(stories.first?.bodyURL?.absoluteString
+                == "https://content.core.api.espn.com/v1/sports/news/50039929")
+        #expect(stories.contains { $0.league == .nfl })
+        #expect(AthleteSearchClient.athletes(in: dto).isEmpty)
+    }
+
+    @Test func searchDropsLeaguesTheAppDoesNotCover() {
+        #expect(NewsMapper.league(fromStoryLink: "https://www.espn.com/college-football/story/_/id/1/x") == .collegeFootball)
+        #expect(NewsMapper.league(fromStoryLink: "https://www.espn.com/soccer/story/_/id/1/x") == nil)
+        #expect(NewsMapper.league(fromStoryLink: nil) == nil)
+        // AP's recaps and previews use ESPN's older paths.
+        let recap = "http://www.espn.com/ncf/recap?gameId=401858463"
+        #expect(NewsMapper.league(fromStoryLink: recap) == .collegeFootball)
+        #expect(NewsMapper.gameId(fromStoryLink: recap) == "401858463")
+        #expect(NewsStory.Kind(espnType: "headlinenews") == .headline)
+        #expect(NewsStory.Kind(espnType: "media") == nil)
+    }
 }

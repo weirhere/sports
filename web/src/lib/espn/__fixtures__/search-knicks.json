@@ -1,0 +1,463 @@
+{
+ "results": [
+  {
+   "type": "team",
+   "totalFound": 3,
+   "page": 1,
+   "limit": 10,
+   "displayName": "Teams",
+   "contents": [
+    {
+     "id": "61719eb2-11c3-4e3d-90c3-0a1319fd850b",
+     "uid": "s:40~l:46~t:18",
+     "guid": "61719eb2-11c3-4e3d-90c3-0a1319fd850b",
+     "type": "team",
+     "displayName": "New York Knicks",
+     "subtitle": "NBA",
+     "link": {
+      "app": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:46~t:18",
+      "web": "https://www.espn.com/nba/team/_/name/ny/new-york-knicks"
+     },
+     "image": {
+      "default": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+      "defaultDark": "https://a.espncdn.com/i/teamlogos/nba/500-dark/ny.png"
+     },
+     "defaultLeagueSlug": "nba",
+     "sport": "basketball"
+    }
+   ]
+  },
+  {
+   "type": "article",
+   "totalFound": 10,
+   "page": 1,
+   "limit": 10,
+   "displayName": "Articles",
+   "contents": [
+    {
+     "id": "50039929",
+     "nowId": "1-50039929",
+     "type": "headlinenews",
+     "displayName": "Host Jalen Brunson gets assist from Knicks on 'SNL' premiere",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/50039929/host-jalen-brunson-gets-assist-knicks-snl-premiere"
+     },
+     "byline": "Associated Press",
+     "date": "2026-09-27T05:09:02.000+00:00",
+     "isPremium": false
+    },
+    {
+     "id": "50028559",
+     "nowId": "1-50028559",
+     "type": "headlinenews",
+     "displayName": "Knicks' Jalen Brunson cleared after offseason wrist surgery",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/50028559/knicks-jalen-brunson-cleared-offseason-wrist-surgery"
+     },
+     "byline": "ESPN",
+     "date": "2026-09-25T19:38:28.000+00:00",
+     "isPremium": false
+    },
+    {
+     "id": "50014705",
+     "nowId": "1-50014705",
+     "type": "headlinenews",
+     "displayName": "Sources: Extension talks stall between Knicks, Karl-Anthony Towns",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/50014705/sources-knicks-karl-anthony-towns-contract-talks-standstill"
+     },
+     "byline": "Shams Charania, Vincent Goodwill",
+     "date": "2026-09-23T21:18:51.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 409224,
+       "description": "news",
+       "type": "topic",
+       "sportId": 0
+      },
+      {
+       "id": 689540,
+       "description": "Shams Charania",
+       "type": "contributor"
+      },
+      {
+       "id": 737430,
+       "description": "Vincent Goodwill",
+       "type": "contributor"
+      }
+     ]
+    },
+    {
+     "id": "49956980",
+     "nowId": "1-49956980",
+     "type": "story",
+     "displayName": "New York Knicks offseason recap, early 2026-27 season preview",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49956980/new-york-knicks-offseason-recap-early-2026-27-season-preview-jalen-brunson"
+     },
+     "byline": "NBA Insiders",
+     "date": "2026-09-18T11:29:46.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 701917,
+       "description": "NBA Insiders",
+       "type": "contributor"
+      }
+     ]
+    },
+    {
+     "id": "49967767",
+     "nowId": "1-49967767",
+     "type": "headlinenews",
+     "displayName": "Michael Sweetney, who played for Hoyas, Knicks, Bulls, dies at 43",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49967767/sweetney-played-hoyas-knicks-bulls-dies-43"
+     },
+     "byline": "Associated Press",
+     "date": "2026-09-19T11:44:31.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 409224,
+       "description": "news",
+       "type": "topic",
+       "sportId": 0
+      }
+     ]
+    },
+    {
+     "id": "49966211",
+     "nowId": "1-49966211",
+     "type": "headlinenews",
+     "displayName": "Knicks pause ticket sales after error leads to higher prices",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49966211/knicks-pause-ticket-sales-error-leads-higher-prices"
+     },
+     "byline": "Associated Press",
+     "date": "2026-09-17T19:23:48.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 409224,
+       "description": "news",
+       "type": "topic",
+       "sportId": 0
+      }
+     ]
+    },
+    {
+     "id": "49953279",
+     "nowId": "1-49953279",
+     "type": "headlinenews",
+     "displayName": "Knicks agree to deal with veteran free agent John Konchar",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49953279/knicks-add-free-agent-john-konchar-one-year-deal"
+     },
+     "byline": "Shams Charania",
+     "date": "2026-09-16T11:12:47.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 409224,
+       "description": "news",
+       "type": "topic",
+       "sportId": 0
+      },
+      {
+       "id": 689540,
+       "description": "Shams Charania",
+       "type": "contributor"
+      }
+     ]
+    },
+    {
+     "id": "49660378",
+     "nowId": "1-49660378",
+     "type": "story",
+     "displayName": "From Knicks to Yankees, Nick Jonas finds the perfect song",
+     "link": {
+      "web": "https://www.espn.com/nfl/story/_/id/49660378/nick-jonas-brother-new-york-knicks-yankees-giants-told-songs"
+     },
+     "byline": "Erika LeFlouria",
+     "date": "2026-08-31T19:22:20.000+00:00",
+     "isPremium": false
+    },
+    {
+     "id": "49753800",
+     "nowId": "1-49753800",
+     "type": "story",
+     "displayName": "Knicks fan reflects on viral Finals Game 4 win probability graph tattoo",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49753800/new-york-knicks-nba-finals-game-4-comeback-tattoo"
+     },
+     "byline": "J.J. Post",
+     "date": "2026-08-28T17:45:09.000+00:00",
+     "isPremium": false
+    },
+    {
+     "id": "49648776",
+     "nowId": "1-49648776",
+     "type": "headlinenews",
+     "displayName": "Knicks title run 'embarrassing' to Nets, owner Joe Tsai says",
+     "link": {
+      "web": "https://www.espn.com/nba/story/_/id/49648776/knicks-title-run-embarrassing-nets-owner-joe-tsai-says"
+     },
+     "byline": "ESPN",
+     "date": "2026-08-18T14:39:20.000+00:00",
+     "isPremium": false,
+     "categories": [
+      {
+       "id": 409224,
+       "description": "news",
+       "type": "topic",
+       "sportId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "replay",
+   "totalFound": 4,
+   "page": 1,
+   "limit": 10,
+   "displayName": "On Demand",
+   "contents": [
+    {
+     "id": "124e8849-3c49-4493-9cf2-f993a80140c1",
+     "guid": "124e8849-3c49-4493-9cf2-f993a80140c1",
+     "type": "listing",
+     "status": "replay",
+     "displayName": "Make your Name - Episodio 5",
+     "subtitle": "ESPN+ • Make your Name - Episodio 5",
+     "link": {
+      "app": "sportscenter://x-callback-url/showWatchStream?playID=124e8849-3c49-4493-9cf2-f993a80140c1",
+      "web": "https://www.espn.com/watch/player/_/id/124e8849-3c49-4493-9cf2-f993a80140c1"
+     },
+     "duration": 2817415,
+     "displayDuration": "46:57",
+     "date": "2024-10-12T02:00:00.000+00:00",
+     "airing": {
+      "createdOn": "2024-11-06T19:46:21.759+0000",
+      "lastModifiedOn": "2025-05-15T17:20:08.194+0000",
+      "artworkUrl": "https://artwork.api.espn.com/artwork/collections/media/124e8849-3c49-4493-9cf2-f993a80140c1",
+      "properties": {
+       "allowedAccess": "domestic",
+       "offlineViewing": "false",
+       "artworkLastModified": "202411210245",
+       "sponsored": "false",
+       "language": "es-US",
+       "contentCleared": "true",
+       "trackingId": "124e8849-3c49-4493-9cf2-f993a80140c1",
+       "dtcPackages": [
+        "ESPN_PLUS"
+       ]
+      },
+      "id": "124e8849-3c49-4493-9cf2-f993a80140c1",
+      "program": "70a0d2f7-8309-48ea-a6f2-e481da0e71c6",
+      "available": "2024-10-12T02:00:00.000+0000",
+      "expires": "2028-12-31T05:00:01.000+0000",
+      "type": "vod",
+      "network": "espn_dtc",
+      "networkId": "a698f0a3-dcfc-4684-9ca2-3082a28111cc",
+      "network_shortName": "ESPN+",
+      "network_displayName": "ESPN+",
+      "playableUrl": "https://playback.svcs.plus.espn.com/media/9549b316-9ab1-44ba-ae9b-a8b8e1e4f765/scenarios/{scenario}",
+      "playbackId": "eyJjaGFubmVsSWQiOm51bGwsIm1lZGlhSWQiOiJhNDRkMDdjZC02OTFhLTQ2NzYtYWQxYi0wY2YzOTg0NTliZmQiLCJjb250ZW50VHlwZSI6InZvZCIsInNvdXJjZUlkIjoidXJuOmVzcG46d2F0Y2g6bWVkaWE6MTI0ZTg4NDktM2M0OS00NDkzLTljZjItZjk5M2E4MDE0MGMxIn0=",
+      "withinPlayWindow": false,
+      "images": [
+       {
+        "height": 360,
+        "width": 640,
+        "url": "https://s.secure.espncdn.com/stitcher/artwork/collections/media/124e8849-3c49-4493-9cf2-f993a80140c1/16x9.png?timestamp=202411210245",
+        "peers": [
+         {
+          "height": 640,
+          "width": 360,
+          "url": "https://s.secure.espncdn.com/stitcher/artwork/collections/media/124e8849-3c49-4493-9cf2-f993a80140c1/16x9.png?timestamp=202411210245"
+         }
+        ]
+       }
+      ],
+      "program_categories": [
+       {
+        "artworkUrl": "https://artwork.api.espn.com/artwork/collections/categories/cd70a58e-a830-330c-93ed-52360b51b632",
+        "id": "cd70a58e-a830-330c-93ed-52360b51b632",
+        "type": "sport",
+        "name": "Basketball"
+       },
+       {
+        "artworkUrl": "https://artwork.api.espn.com/artwork/collections/categories/7b3729c9-7f69-308a-bf8a-ee15a6aba154",
+        "id": "7b3729c9-7f69-308a-bf8a-ee15a6aba154",
+        "type": "league",
+        "name": "NBA"
+       },
+       {
+        "artworkUrl": "https://artwork.api.espn.com/artwork/collections/categories/a17b799d-064a-43f8-8be1-2f5bea518075",
+        "id": "a17b799d-064a-43f8-8be1-2f5bea518075",
+        "type": "series",
+        "name": "Clutch: The NBA Playoffs"
+       }
+      ],
+      "program_language": "Spanish",
+      "program_title": "Make your Name - Episodio 5",
+      "webAiringLink": "https://www.espn.com/watch/player/_/id/124e8849-3c49-4493-9cf2-f993a80140c1",
+      "appAiringLink": "sportscenter://x-callback-url/showWatchStream?playID=124e8849-3c49-4493-9cf2-f993a80140c1",
+      "duration": 2817415,
+      "program_originalAirDate": "2024-11-05T00:00:00-05:00",
+      "program_firstPresented": "2024-11-05T05:00:00.000+0000",
+      "policyUrl": "https://restrictions.api.espn.com/restrictions/policies/25cbd55c-0b3d-4736-b680-02844b212309"
+     }
+    }
+   ]
+  },
+  {
+   "type": "clips",
+   "totalFound": 10,
+   "page": 1,
+   "limit": 10,
+   "displayName": "Clips",
+   "contents": [
+    {
+     "id": "50020500",
+     "guid": "50020500",
+     "type": "vod",
+     "displayName": "Why Stephen A. is worried about KAT, Knicks extension talks",
+     "subtitle": "Why Stephen A. is worried about KAT, Knicks extension talks",
+     "link": {
+      "app": "sportscenter://x-callback-url/showVideo?videoID=50020500",
+      "web": "https://www.espn.com/video/clip/_/id/50020500"
+     },
+     "duration": 143000,
+     "displayDuration": "2:23",
+     "date": "2026-09-24T14:41:40.000+00:00",
+     "timeRestrictions": {
+      "embargoDate": "2026-09-24T14:41:32.000+00:00",
+      "expirationDate": "2026-10-06T04:00:00.000+00:00"
+     },
+     "deviceRestrictions": {
+      "type": "whitelist",
+      "devices": [
+       "settop",
+       "tablet",
+       "handset",
+       "ipad",
+       "desktop"
+      ]
+     },
+     "geoRestrictions": {
+      "type": "whitelist",
+      "countries": [
+       "PR",
+       "HN",
+       "PY",
+       "HT",
+       "IE",
+       "AG",
+       "ZA",
+       "AI",
+       "AM",
+       "AO",
+       "AR",
+       "AS",
+       "ZM",
+       "RE",
+       "AU",
+       "AW",
+       "ZW",
+       "BB",
+       "JM",
+       "BF",
+       "RW",
+       "BI",
+       "BJ",
+       "BM",
+       "BO",
+       "BQ",
+       "BR",
+       "SC",
+       "BS",
+       "BW",
+       "BZ",
+       "SL",
+       "KE",
+       "SN",
+       "SR",
+       "SS",
+       "CD",
+       "ST",
+       "KM",
+       "KN",
+       "SV",
+       "CF",
+       "CG",
+       "SX",
+       "CI",
+       "SZ",
+       "CL",
+       "CM",
+       "CO",
+       "KY",
+       "TC",
+       "CR",
+       "CU",
+       "TG",
+       "CV",
+       "LC",
+       "TT",
+       "LR",
+       "TZ",
+       "LS",
+       "DO",
+       "UG",
+       "UK",
+       "UM",
+       "MF",
+       "MG",
+       "EC",
+       "US",
+       "ML",
+       "MP",
+       "UY",
+       "MQ",
+       "MS",
+       "MU",
+       "MW",
+       "MX",
+       "ER",
+       "VC",
+       "MZ",
+       "VE",
+       "ET",
+       "VG",
+       "VI",
+       "NA",
+       "NE",
+       "NG",
+       "NI",
+       "NZ",
+       "GA",
+       "GB",
+       "GD",
+       "GF",
+       "GH",
+       "GM",
+       "GN",
+       "GP",
+       "GQ",
+       "GT",
+       "GU",
+       "GW",
+       "PA",
+       "GY",
+       "PE",
+       "PH"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

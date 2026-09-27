@@ -14,7 +14,9 @@ import SwiftUI
 /// (2026-09-21) after asking what it was for, which is the difference
 /// between a kept decision and an unreviewed one.
 enum SearchScope: String, CaseIterable, Identifiable, Hashable {
-    case all, teams, players, games, conferences
+    // News last (Andy, 2026-09-27, E26): the stories ESPN's search sent
+    // with the people, one pill past the kinds of page search opens.
+    case all, teams, players, games, conferences, news
 
     var id: String { rawValue }
 
@@ -25,6 +27,7 @@ enum SearchScope: String, CaseIterable, Identifiable, Hashable {
         case .players: "Players"
         case .games: "Games"
         case .conferences: "Conferences"
+        case .news: "News"
         }
     }
 }

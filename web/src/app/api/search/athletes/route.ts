@@ -6,9 +6,12 @@
 // cache is the politeness throttle. The directory filter (FBS and FCS stay,
 // Division II does not) and the team resolution happen in the browser,
 // against the directory it has already loaded — see `lib/athlete-search`.
+//
+// The stories ride along (E26): ESPN's answer carries an `article` group
+// beside the people, and Search's News scope reads it from here.
 
 import { NextRequest, NextResponse } from "next/server";
-import { searchAthletes } from "@/lib/espn";
+import { searchAll } from "@/lib/espn";
 
 /** A query longer than any name is not a search anyone typed. */
 const MAX_QUERY_LENGTH = 100;
@@ -16,14 +19,14 @@ const MAX_QUERY_LENGTH = 100;
 export async function GET(request: NextRequest) {
   const query = (new URL(request.url).searchParams.get("q") ?? "").trim();
   // A cleared field costs no request and keeps no stale people.
-  if (query.length === 0) return NextResponse.json({ athletes: [] });
+  if (query.length === 0) return NextResponse.json({ athletes: [], stories: [] });
   if (query.length > MAX_QUERY_LENGTH) {
     return NextResponse.json({ error: "Query too long" }, { status: 400 });
   }
 
   try {
-    const athletes = await searchAthletes(query);
-    return NextResponse.json({ athletes });
+    const { athletes, stories } = await searchAll(query);
+    return NextResponse.json({ athletes, stories });
   } catch (err) {
     console.error("Athlete search error:", err);
     return NextResponse.json(

@@ -12,14 +12,19 @@ nonisolated struct NewsStory: Identifiable, Hashable, Sendable {
     /// The ESPN story types the app shows (N10). `Media` is video that only
     /// plays in ESPN's own apps, and `Eticket` is ticket commerce, which the
     /// Icebox keeps out; both map to nil and never reach a list.
-    enum Kind: String, Hashable, Sendable {
+    enum Kind: String, CaseIterable, Hashable, Sendable {
         case recap = "Recap"
         case preview = "Preview"
         case headline = "HeadlineNews"
         case story = "Story"
 
+        /// Case-blind: feeds say `HeadlineNews`, search says `headlinenews`.
         init?(espnType: String?) {
-            guard let espnType, let kind = Kind(rawValue: espnType) else { return nil }
+            guard let espnType,
+                  let kind = Self.allCases.first(where: {
+                      $0.rawValue.caseInsensitiveCompare(espnType) == .orderedSame
+                  })
+            else { return nil }
             self = kind
         }
     }

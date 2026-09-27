@@ -879,3 +879,4 @@ sibling below it.
 | 2026-09-27 | Top 25 (college football's league page) gains a News tab after Games: the NCAAF feed with the flood top-up | **shipped** — `poll-view.tsx`, through `getLeagueNews` |
 | 2026-09-27 | Player page News tab, second after Profile: the athlete overview's own list | **shipped** — `player-view.tsx`, through `/api/player/{id}/news` |
 | 2026-09-27 | Game page News tab, second after Summary: the two teams' feeds plus the game's own story | **shipped** — `game-detail-view.tsx`, through `getTeamsNews` |
+| 2026-09-27 | Search's News scope, the last pill: the article group of the same ESPN search answer | **shipped** — `search-view.tsx`, through `/api/search/athletes` (now `{ athletes, stories }`) |
