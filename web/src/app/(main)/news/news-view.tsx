@@ -17,8 +17,7 @@ import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getLeagueNews, getTeamNews } from "@/lib/api";
-import { forYou } from "@/lib/espn/news";
+import { getLeagueNews, getTeamsNews } from "@/lib/api";
 import { LEAGUES, isLeague, shortName, type League } from "@/lib/leagues";
 import type { NewsStory } from "@/lib/news";
 import { parseFollowKey } from "@/lib/refs";
@@ -32,21 +31,12 @@ const TABS: HeroTab[] = [
   ...LEAGUES.map((league) => ({ id: league, label: shortName(league) })),
 ];
 
-async function loadForYou(keys: string[]): Promise<NewsStory[]> {
+function loadForYou(keys: string[]): Promise<NewsStory[]> {
   const follows = keys
     .map(parseFollowKey)
     .filter((ref) => ref !== undefined)
     .slice(0, FOR_YOU_CAP);
-  if (follows.length === 0) return [];
-  const results = await Promise.allSettled(
-    follows.map((ref) => getTeamNews(ref.league, ref.teamId))
-  );
-  const feeds = results
-    .filter((result) => result.status === "fulfilled")
-    .map((result) => result.value);
-  // Some feeds failing is a thinner list; all of them failing is a failure.
-  if (feeds.length === 0) throw new Error("No team feed answered");
-  return forYou(feeds);
+  return getTeamsNews(follows);
 }
 
 export function NewsView() {

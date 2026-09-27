@@ -875,3 +875,4 @@ sibling below it.
 | 2026-09-27 | News tab second in the bottom bar: For you (followed teams' feeds, newest first) and a page per league (previews last) | **shipped** — `/news`, second in both navs; For you through `/api/team/{id}/news`, leagues through `/api/news` |
 | 2026-09-27 | Team page News tab second, after Overview | **shipped** — `TABS` in `team-view.tsx` |
 | 2026-09-27 | Flooded league news pages topped up with the AP Top 10's own stories | **shipped** — in `leagueNews`, behind `/api/news` |
+| 2026-09-27 | Conference page News tab after Games: members' feeds merged, league pages the league feed | **shipped** — `conference-view.tsx`, through `getTeamsNews` / `getLeagueNews` |

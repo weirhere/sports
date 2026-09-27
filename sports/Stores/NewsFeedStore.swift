@@ -60,7 +60,7 @@ final class NewsFeedStore {
         let client = NewsClient()
         let result: [NewsStory]?
         if let league = feed.league {
-            result = await Self.leagueNews(league, client: client)
+            result = await Self.leaguePage(league, client: client)
         } else {
             result = await Self.forYou(followedKeys: followedKeys, client: client)
         }
@@ -84,7 +84,7 @@ final class NewsFeedStore {
     /// every filter parameter ignored — so a flooded page is topped up
     /// with the AP Top 10's own stories. Leagues with no poll, and a poll
     /// that won't load, keep the feed as it came.
-    private static func leagueNews(_ league: League, client: NewsClient) async -> [NewsStory]? {
+    static func leaguePage(_ league: League, client: NewsClient = NewsClient()) async -> [NewsStory]? {
         guard let feed = await client.leagueNews(league: league) else { return nil }
         guard NewsMapper.isFlooded(feed),
               let polls = try? await DataProvider.makeClient(league: league).rankings(year: nil),
@@ -102,17 +102,24 @@ final class NewsFeedStore {
         return NewsMapper.toppedUp(feed, with: teamFeeds)
     }
 
-    /// Every followed team's own feed, merged. Some feeds failing makes a
-    /// thinner list; all of them failing is a failure. No follows is an
-    /// empty list, which the screen answers with a way to add some.
+    /// Every followed team's own feed, merged. No follows is an empty
+    /// list, which the screen answers with a way to add some.
     private static func forYou(followedKeys: Set<String>,
                                client: NewsClient) async -> [NewsStory]? {
         let follows = followedKeys.compactMap(FollowKey.init)
             .sorted { $0.rawValue < $1.rawValue }
             .prefix(forYouCap)
-        guard !follows.isEmpty else { return [] }
+        return await teamsPage(Array(follows), client: client)
+    }
+
+    /// Several teams' own feeds as one page: each story once, newest first
+    /// — For you's teams, or a conference's members. Some feeds failing
+    /// makes a thinner list; all of them failing is a failure.
+    static func teamsPage(_ teams: [FollowKey],
+                          client: NewsClient = NewsClient()) async -> [NewsStory]? {
+        guard !teams.isEmpty else { return [] }
         let feeds = await withTaskGroup(of: [NewsStory]?.self) { group in
-            for key in follows {
+            for key in teams {
                 group.addTask { await client.teamNews(teamId: key.teamId, league: key.league) }
             }
             var collected: [[NewsStory]?] = []

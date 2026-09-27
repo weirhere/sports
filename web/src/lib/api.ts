@@ -4,6 +4,8 @@ import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
 import type { League } from "./leagues";
 import type { NewsStory } from "./news";
+import type { TeamRef } from "./refs";
+import { forYou } from "./espn/news";
 import { dayId } from "./day";
 
 const BASE = "/api";
@@ -147,6 +149,23 @@ export async function getTeamTrophies(
  */
 export async function getTeamNews(league: League, teamId: string): Promise<NewsStory[]> {
   return fetchJson(`${BASE}/team/${teamId}/news?league=${league}`);
+}
+
+/**
+ * Several teams' own stories as one list (E26): each story once, newest
+ * first — the News tab's For you, and a conference's members. Some feeds
+ * failing makes a thinner list; all of them failing rejects.
+ */
+export async function getTeamsNews(teams: TeamRef[]): Promise<NewsStory[]> {
+  if (teams.length === 0) return [];
+  const results = await Promise.allSettled(
+    teams.map((ref) => getTeamNews(ref.league, ref.teamId))
+  );
+  const feeds = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
+  if (feeds.length === 0) throw new Error("No team feed answered");
+  return forYou(feeds);
 }
 
 /** A league's stories for the News tab (E26), newest first, previews last. */

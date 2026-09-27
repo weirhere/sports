@@ -13,12 +13,13 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, postseason, trades
+        case standings, games, news, postseason, trades
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .news: "News"
             case .postseason: "Postseason"
             case .trades: "Trades"
             }
@@ -72,6 +73,13 @@ struct ConferencePage: View {
     @State private var tradesFeed: RosterMovesFeed?
     /// "Signings & trades" or "All". Session-scoped like the team filter.
     @State private var tradesFilter: RosterMove.Filter = .signingsAndTrades
+    /// The News tab's stories (E26), fetched on the tab's first visit and
+    /// held for the page. Keyed to what they were built from — a league,
+    /// or a set of member teams — so a reused page can't show the last
+    /// conference's stories.
+    @State private var news: [NewsStory]?
+    @State private var newsKey: String?
+    @State private var newsFailed = false
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -331,6 +339,7 @@ struct ConferencePage: View {
                     switch tab {
                     case .standings: standingsCard
                     case .games: gamesSection(scrollInset: headerHeight)
+                    case .news: newsSection
                     case .postseason: postseasonSection
                     case .trades: tradesSection
                     }
@@ -501,6 +510,10 @@ struct ConferencePage: View {
                                         onSelect: { value in
                                             withAnimation(.default) { tradesFilter = value }
                                         })
+                    } else if tab == .news {
+                        // No control: stories are today's, whatever season
+                        // the other tabs are showing.
+                        EmptyView()
                     } else {
                         controlRow(for: tab)
                     }
@@ -535,8 +548,11 @@ struct ConferencePage: View {
     /// measurement was of an *unscoped* request, and `groups=` narrows the
     /// slate in every league we cover.
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = postseasonRounds.isEmpty
-            ? [.standings, .games] : [.standings, .games, .postseason]
+        var tabs: [Tab] = [.standings, .games]
+        // After Games (Andy, 2026-09-27, E26). ESPN-gated like the Trades
+        // tab, so the fixture-backed UI suites never reach the network.
+        if client.providesRoster { tabs.append(.news) }
+        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
         if showsTradesTab { tabs.append(.trades) }
         return tabs
     }
@@ -668,6 +684,82 @@ struct ConferencePage: View {
     private func loadTrades() async {
         if tradesFeed == nil { tradesFeed = RosterMovesFeed(league: destination.league, team: nil) }
         await tradesFeed?.loadFirst()
+    }
+
+    // MARK: - News
+
+    /// The conference's stories (E26). ESPN's news feed takes no group, so
+    /// a conference or division is its members' own feeds merged — one
+    /// request each — and a league's own page is the league's feed.
+    private var newsSection: some View {
+        VStack(spacing: Spacing.sm) {
+            if let stories = currentNews, !stories.isEmpty {
+                StoryListCard(stories: stories)
+            } else if currentNews != nil {
+                StatusMessage(text: "No \(destination.name) stories right now.")
+                    .cardSurface()
+            } else if newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews(force: true) } })
+                    .cardSurface()
+            } else {
+                // A lone spinner gets no card (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        // Re-keyed when the members land: the standings are fetched with
+        // the page, and a News tab opened first waits on them.
+        .task(id: newsSourceKey) { await loadNews() }
+    }
+
+    /// Whether the page is a whole league or a division's root (FBS, FCS),
+    /// whose stories are the league's feed rather than its members'.
+    private var newsFromLeagueFeed: Bool {
+        isLeagueWide || Conference.isDivisionRoot(destination.conferenceId, in: destination.league)
+    }
+
+    /// The member teams, from the conference-scope tables the page already
+    /// holds.
+    private var newsMembers: [FollowKey] {
+        var seen: Set<String> = []
+        return tables(for: .conference)
+            .flatMap(\.entries)
+            .map(\.team.id)
+            .filter { seen.insert($0).inserted }
+            .map { FollowKey(league: destination.league, teamId: $0) }
+    }
+
+    /// What the stories are built from; nil while a conference's members
+    /// are still loading.
+    private var newsSourceKey: String? {
+        if newsFromLeagueFeed { return "league:\(destination.league.rawValue)" }
+        let members = newsMembers
+        guard !members.isEmpty else { return nil }
+        return members.map(\.rawValue).sorted().joined(separator: ",")
+    }
+
+    private var currentNews: [NewsStory]? {
+        newsKey != nil && newsKey == newsSourceKey ? news : nil
+    }
+
+    private func loadNews(force: Bool = false) async {
+        guard let key = newsSourceKey else { return }
+        guard force || currentNews == nil else { return }
+        newsFailed = false
+        let loaded = newsFromLeagueFeed
+            ? await NewsFeedStore.leaguePage(destination.league)
+            : await NewsFeedStore.teamsPage(newsMembers)
+        guard key == newsSourceKey else { return }
+        if let loaded {
+            news = loaded
+            newsKey = key
+        } else {
+            newsFailed = true
+        }
     }
 
     // MARK: - Games
