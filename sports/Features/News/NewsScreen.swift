@@ -21,7 +21,7 @@ struct NewsScreen: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 // The masthead every root tab shares.
-                PageHeader(title: "News")
+                PageHeader("News")
                 HeroTabBar(tabs: NewsFeedStore.Feed.allCases, selection: feed,
                            onSelect: { feed = $0 })
                 ScrollView {
