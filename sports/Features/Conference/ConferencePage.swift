@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// One conference's home, on the TeamPage template (Andy's call,
-/// 2026-08-25): card-color hero header, Standings and Games tabs
+/// 2026-08-25): a hero header in the page's own color in light mode and
+/// the card color in dark (2026-09-27, `HeaderPaint`), Standings and Games tabs
 /// (Standings leads since 2026-08-31; the Games tab joined 2026-08-29 —
 /// the season's full conference slate, week by week), content as cards on
 /// the recessed surface. Standings stay in the provider's order
@@ -70,6 +71,29 @@ struct ConferencePage: View {
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the conference name (TeamPage's rule).
     @State private var showsInlineTitle = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    /// Bumped when the mark's color has been worked out, so the header
+    /// repaints from `HeaderPaint.markHex`'s cache.
+    @State private var markHexLoaded: String?
+
+    private var logoURL: URL? { Conference.logoURL(for: destination.conference) }
+
+    /// The whole-league table (the NFL, the NBA, the NHL) wears ESPN's
+    /// league color; every other page — a conference, a division, FBS —
+    /// the color its own mark is mostly made of. ESPN ships no conference
+    /// colors, and a division wears its parent's mark, so it wears the
+    /// parent's color too.
+    private var headerPaint: HeaderPaint? {
+        let isLeagueWide = destination.conferenceId == Conference.leagueWideId(in: destination.league)
+        let hex = isLeagueWide ? destination.league.brandColorHex : nil
+        return HeaderPaint(hex: hex ?? markHexLoaded ?? HeaderPaint.markHex(for: logoURL),
+                           colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
+    private var headerInk: Color { headerPaint?.ink ?? .textPrimary }
+    private var headerSecondaryInk: Color { headerPaint?.secondaryInk ?? .textSecondary }
 
     /// Whether the pane itself is using the horizontal axis, so the tab
     /// swipe stands down: the bracket walks its rounds on it, and a
@@ -372,19 +396,16 @@ struct ConferencePage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        // The hero's top-bounce paint; the bar itself is solid bgCard
-        // here, so this only shows while rubber-banding.
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .task(id: logoURL) { markHexLoaded = await HeaderPaint.loadMarkHex(for: logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(destination.name)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerInk)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
@@ -426,7 +447,9 @@ struct ConferencePage: View {
         if let league = parentLeagueDestination {
             HStack(spacing: Spacing.xs) {
                 NavigationLink(value: league) {
-                    HeaderLinkBadge(title: league.name)
+                    HeaderLinkBadge(title: league.name,
+                                    fill: headerPaint?.badgeFill ?? .bgRecessed,
+                                    ink: headerSecondaryInk)
                 }
                 .buttonStyle(SwipeSafeButtonStyle())
                 .accessibilityLabel(league.name)
@@ -434,13 +457,13 @@ struct ConferencePage: View {
                 if showsTeamCount {
                     Text("\(teamCount) teams")
                         .font(.chipEmphasis)
-                        .foregroundStyle(.textSecondary)
+                        .foregroundStyle(headerSecondaryInk)
                 }
             }
         } else if showsTeamCount {
             Text("\(teamCount) teams")
                 .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
+                .foregroundStyle(headerSecondaryInk)
         }
     }
 
@@ -465,7 +488,9 @@ struct ConferencePage: View {
     private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
-                LogoImage(url: Conference.logoURL(for: destination.conference))
+                // White-outlined where the mark blends into its own color —
+                // which a mark-derived ground always partly does.
+                LogoImage(url: logoURL, outlineAgainst: headerPaint?.hex)
                     .frame(width: 44, height: 44)
                     // Navy marks (Big Ten, ACC) vanish on black; the backing
                     // disc is chrome, not color, so the budget holds.
@@ -474,7 +499,7 @@ struct ConferencePage: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(destination.name)
                         .font(.heroTitle)
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(headerInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     subtitle
@@ -489,7 +514,7 @@ struct ConferencePage: View {
             .padding(.vertical, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bgCard)
+        .background(headerGround)
     }
 
     /// The sticky header: the tab row and the chips that scope the pane
@@ -509,7 +534,7 @@ struct ConferencePage: View {
                 // identity block's own bottom gap, so at rest the overhang
                 // lands on empty bgCard and can never cover the subtitle —
                 // whatever the text size does to it.
-                .background(Color.bgCard.padding(.top, -Spacing.sm))
+                .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
                 controlRow(for: tab)
                     .padding(.horizontal, Spacing.sm)
@@ -528,7 +553,8 @@ struct ConferencePage: View {
 
     // HeroTabBar carries the Figma tab specs.
     private var tabRow: some View {
-        HeroTabBar(tabs: availableTabs, selection: tab, onSelect: { select(tab: $0) })
+        HeroTabBar(tabs: availableTabs, selection: tab, onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
     }
 
     /// Postseason only where this season's slate actually has one — a

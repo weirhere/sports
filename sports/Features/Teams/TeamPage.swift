@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// One team's home: a card-color hero header (the team-color paint retired
-/// 2026-08-31 — headers match the cards, FotMob-style), Overview, Games,
+/// One team's home: a hero header in the team's own color in light mode and
+/// the card color in dark (2026-09-27; the both-modes team-color paint
+/// retired 2026-08-31 — see `HeaderPaint`), Overview, Games,
 /// and Standings tabs, and a schedule for any season back to the CFP era.
 struct TeamPage: View {
     let team: Team
@@ -135,6 +136,28 @@ struct TeamPage: View {
     private var currentSchedule: TeamSchedule? {
         currentSeasonYear.flatMap { schedules[$0] }
     }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The team's color, from whichever payload carried it: the pushed
+    /// team rarely does, the schedule's own team always should. Any
+    /// season's will do — a color doesn't change with the year viewed.
+    /// A team seen this launch paints from its first frame rather than
+    /// flashing white until the schedule lands again.
+    private var teamColorHex: String? {
+        team.colorHex ?? currentSchedule?.team?.colorHex
+            ?? schedules.values.lazy.compactMap { $0.team?.colorHex }.first
+            ?? HeaderPaint.remembered[team.followKey]
+    }
+
+    /// Nil in dark mode and until the schedule lands; the header is
+    /// `bgCard` then, exactly as before.
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamColorHex, colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
+    private var headerInk: Color { headerPaint?.ink ?? .textPrimary }
 
     /// Newest first, floored at the league's own floor — the CFP era for
     /// all four, matching the ConferencePage selector.
@@ -302,21 +325,18 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        // The card color through the status-bar strip and the top bounce.
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        // Solid card-color bar, seamless against the bgCard hero at rest —
-        // the transparent-until-scrolled dance retired with the team-color
-        // paint it existed for (2026-08-31).
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .onChange(of: teamColorHex, initial: true) { _, hex in
+            if let hex { HeaderPaint.remembered[team.followKey] = hex }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(team.location)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerInk)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
@@ -368,7 +388,7 @@ struct TeamPage: View {
                     // mistake, where a wrap reads as a long name.
                     Text(team.displayName ?? team.location)
                         .font(.heroTitle)
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(headerInk)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                     conferenceLine
@@ -389,7 +409,7 @@ struct TeamPage: View {
         // The strip above — through the bar and the top bounce — is
         // heroTopBand's job: an in-content extension never escaped the
         // ScrollView's clip (2026-08-31).
-        .background(Color.bgCard)
+        .background(headerGround)
     }
 
     /// The sticky header: the tab row and the chip that scopes the pane
@@ -410,7 +430,7 @@ struct TeamPage: View {
                 // identity block's own bottom gap, so at rest the overhang
                 // lands on empty bgCard and can never cover the subtitle —
                 // whatever the text size does to it.
-                .background(Color.bgCard.padding(.top, -Spacing.sm))
+                .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
                 // The Standings tab's own control: how wide the table is
                 // (Andy, 2026-09-07). Only the NFL's team pages have one —
@@ -450,8 +470,11 @@ struct TeamPage: View {
 
     /// Bare mark on the card-color header — dark mode reads the `500-dark`
     /// variant through LogoImage, so no backing disc (Andy, 2026-08-31).
+    /// On a team-color header the mark gets a white outline wherever it
+    /// would blend into the ground (Andy, 2026-09-27) — which, since ESPN
+    /// takes the color from the mark, is most of them.
     private var logoMark: some View {
-        LogoImage(url: team.logoURL)
+        LogoImage(url: team.logoURL, outlineAgainst: headerPaint?.hex)
             .frame(width: 56, height: 56)
     }
 
@@ -495,7 +518,7 @@ struct TeamPage: View {
                 // page to send it to.
                 Text(label)
                     .font(.chipEmphasis)
-                    .foregroundStyle(.textSecondary)
+                    .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
             }
         }
     }
@@ -509,15 +532,21 @@ struct TeamPage: View {
         return NavigationLink(value: ConferenceDestination(conference: target,
                                                            name: Conference.name(for: target),
                                                            highlightTeamId: team.id)) {
-            HeaderLinkBadge(title: label)
+            headerBadge(label)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View standings")
     }
 
+    private func headerBadge(_ title: String) -> some View {
+        HeaderLinkBadge(title: title,
+                        fill: headerPaint?.badgeFill ?? .bgRecessed,
+                        ink: headerPaint?.secondaryInk ?? .textSecondary)
+    }
+
     private func leagueLink(_ destination: ConferenceDestination) -> some View {
         NavigationLink(value: destination) {
-            HeaderLinkBadge(title: destination.name)
+            headerBadge(destination.name)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View league standings")
@@ -534,7 +563,8 @@ struct TeamPage: View {
 
     private var tabRow: some View {
         HeroTabBar(tabs: visibleTabs, selection: tab,
-                   onSelect: { select(tab: $0) })
+                   onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
     }
 
     private var visibleTabs: [Tab] {

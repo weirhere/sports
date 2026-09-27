@@ -128,6 +128,22 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// ESPN's own color for the league, as bare hex — the header of its
+    /// whole-league page in light mode (2026-09-27). Static like
+    /// `logoURL`: it lives on the core API's league object
+    /// (`sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}`),
+    /// a request for one never-changing value. College football's has no
+    /// `color` there (probed 2026-09-27), so its pages read theirs off the
+    /// mark instead.
+    var brandColorHex: String? {
+        switch self {
+        case .nfl: "013369"
+        case .nba: "253b73"
+        case .nhl: "000000"
+        case .collegeFootball: nil
+        }
+    }
+
     /// The glyph a surface falls back to when a mark won't load or doesn't
     /// exist — an unknown conference id, a team with no logo. Per sport,
     /// because a basketball row wearing a football is a worse answer than
