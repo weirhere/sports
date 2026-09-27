@@ -882,3 +882,4 @@ sibling below it.
 | 2026-09-27 | Game page News tab, second after Summary: the two teams' feeds plus the game's own story | **shipped** — `game-detail-view.tsx`, through `getTeamsNews` |
 | 2026-09-27 | Search's News scope, the last pill: the article group of the same ESPN search answer | **shipped** — `search-view.tsx`, through `/api/search/athletes` (now `{ athletes, stories }`) |
 | 2026-09-27 | Teams tab gains Teams · News: For you's followed-team stories | **shipped** — `teams-list.tsx`, through a shared `getFollowedNews` |
+| 2026-09-27 | Leagues tab gains Leagues · News: every league's feed merged, previews last | **shipped** — `rankings-hub.tsx`, through `getAllLeaguesNews` |

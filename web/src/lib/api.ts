@@ -2,10 +2,10 @@ import type { Game, GameDetail, Scoreboard } from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
-import type { League } from "./leagues";
+import { LEAGUES, type League } from "./leagues";
 import type { NewsStory } from "./news";
 import { parseFollowKey, type TeamRef } from "./refs";
-import { forYou } from "./espn/news";
+import { forYou, toppedUp } from "./espn/news";
 import { dayId } from "./day";
 
 const BASE = "/api";
@@ -192,6 +192,20 @@ export async function getPlayerNews(league: League, athleteId: string): Promise<
 /** A league's stories for the News tab (E26), newest first, previews last. */
 export async function getLeagueNews(league: League): Promise<NewsStory[]> {
   return fetchJson(`${BASE}/news?league=${league}`);
+}
+
+/**
+ * Every league's page as one (E26), for the Leagues tab's News: each story
+ * once, newest first, previews last. Some leagues failing makes a thinner
+ * list; all of them failing rejects.
+ */
+export async function getAllLeaguesNews(): Promise<NewsStory[]> {
+  const results = await Promise.allSettled(LEAGUES.map((league) => getLeagueNews(league)));
+  const pages = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => (result as PromiseFulfilledResult<NewsStory[]>).value);
+  if (pages.length === 0) throw new Error("No league news loaded");
+  return toppedUp([], pages);
 }
 
 /**

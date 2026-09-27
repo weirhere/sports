@@ -102,6 +102,22 @@ final class NewsFeedStore {
         return NewsMapper.toppedUp(feed, with: teamFeeds)
     }
 
+    /// Every league's page as one (E26), for the Leagues tab's News: each
+    /// story once, newest first, previews last. Some leagues failing makes
+    /// a thinner list; all of them failing is a failure.
+    static func allLeagues(client: NewsClient = NewsClient()) async -> [NewsStory]? {
+        let pages = await withTaskGroup(of: [NewsStory]?.self) { group in
+            for league in League.allCases {
+                group.addTask { await leaguePage(league, client: client) }
+            }
+            var collected: [[NewsStory]] = []
+            for await page in group { if let page { collected.append(page) } }
+            return collected
+        }
+        guard !pages.isEmpty else { return nil }
+        return NewsMapper.toppedUp([], with: pages)
+    }
+
     /// Every followed team's own feed, merged. No follows is an empty
     /// list, which the screen answers with a way to add some.
     private static func forYou(followedKeys: Set<String>,

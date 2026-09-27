@@ -53,6 +53,24 @@ struct TablesScreen: View {
     /// their dismiss buttons and grips (Andy, 2026-09-25).
     @State private var isEditingFollowing = false
     @State private var query = ""
+    @State private var tab: Tab = .leagues
+    /// The News tab's stories: every league's feed, fetched on the tab's
+    /// first open and held for the session.
+    @State private var news: [NewsStory]?
+    @State private var newsFailed = false
+
+    /// Leagues, then News (Andy, 2026-09-27, E26): the stories from every
+    /// league this tab lists, one tap from their tables.
+    private enum Tab: Int, CaseIterable, HeroTabItem {
+        case leagues, news
+
+        var title: String {
+            switch self {
+            case .leagues: "Leagues"
+            case .news: "News"
+            }
+        }
+    }
 
     /// One mark box across the hub and the search rows.
     @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 26
@@ -99,16 +117,21 @@ struct TablesScreen: View {
             VStack(spacing: 0) {
                 // Same masthead as Games and Teams (2026-09-21).
                 PageHeader("Leagues")
-                // Under the title, above everything it filters (Andy,
-                // 2026-09-21). Not at the bottom like the Search tab's:
-                // that field *is* the screen's purpose and belongs under
-                // the thumb, where this one narrows a list you are already
-                // reading and belongs at its head.
-                SearchField(text: $query, prompt: "Find a league",
-                            identifier: "search.leagues")
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.bottom, Spacing.sm)
-                content
+                HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 })
+                if tab == .leagues {
+                    // Under the title, above everything it filters (Andy,
+                    // 2026-09-21). Not at the bottom like the Search tab's:
+                    // that field *is* the screen's purpose and belongs under
+                    // the thumb, where this one narrows a list you are already
+                    // reading and belongs at its head.
+                    SearchField(text: $query, prompt: "Find a league",
+                                identifier: "search.leagues")
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.bottom, Spacing.sm)
+                    content
+                } else {
+                    newsContent
+                }
             }
                 .background(Color.bgPrimary)
                 .toolbar(.hidden, for: .navigationBar)
@@ -157,6 +180,45 @@ struct TablesScreen: View {
                 }
         }
         .task { await load() }
+        .task(id: tab == .news) {
+            guard tab == .news, news == nil else { return }
+            await loadNews()
+        }
+    }
+
+    /// The News tab: every league's stories in one list.
+    private var newsContent: some View {
+        ScrollView {
+            Group {
+                if let news, !news.isEmpty {
+                    StoryListCard(stories: news)
+                } else if news != nil {
+                    StatusMessage(text: "No stories right now.")
+                        .cardSurface()
+                } else if newsFailed {
+                    StatusMessage(text: "Couldn't load the news.",
+                                  retry: { Task { await loadNews() } })
+                        .cardSurface()
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xl)
+                }
+            }
+            .padding(Spacing.sm)
+        }
+        .background(Color.bgRecessed)
+        .refreshable { await loadNews() }
+    }
+
+    /// A refresh that fails keeps the list on screen.
+    private func loadNews() async {
+        newsFailed = false
+        if let loaded = await NewsFeedStore.allLeagues() {
+            news = loaded
+        } else if news == nil {
+            newsFailed = true
+        }
     }
 
     /// Every card the hub shows, in order, skipping any whose fetch came
