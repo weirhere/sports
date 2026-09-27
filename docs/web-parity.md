@@ -863,3 +863,4 @@ sibling below it.
 | 2026-09-27 | Games tabs lay out every week and open scrolled to the current week under a pinned tab row and chips; the "Earlier games" fold retired | **pending** — `conference-games-list.tsx` still folds them behind "Earlier games" |
 | 2026-09-27 | Collapsing entity-page header: expanded on landing (Games lands on this week), collapses on scroll down, stays expanded scrolling up through earlier weeks; other tabs snap to top | **pending** — the web's hero is plain page content |
 | 2026-09-27 | Top 25 hero mark is the trophy, not the league's football | **pending** — `poll-view.tsx`'s hero mark |
+| 2026-09-27 | Every push is by value, so a team page reached from the poll opens its conference and league badges instead of reloading | n/a — a SwiftUI navigation-stack fix; the web's badges are plain links |

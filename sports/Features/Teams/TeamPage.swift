@@ -542,6 +542,7 @@ struct TeamPage: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("View standings")
+        .accessibilityIdentifier("team-group-badge")
     }
 
     private func headerBadge(_ title: String) -> some View {
@@ -556,6 +557,7 @@ struct TeamPage: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("View league standings")
+        .accessibilityIdentifier("team-league-badge")
     }
 
     /// The list this team's group sits in: a pro league's whole-league
