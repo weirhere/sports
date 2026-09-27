@@ -5,6 +5,8 @@
 // layer. These types never leave lib/espn — transformers map them to the
 // domain models in @/lib/types.
 
+import type { EspnNewsArticle } from "./news";
+
 /** ESPN sends some numerics as numbers, some as numeric strings. */
 export type FlexibleNumber = number | string;
 
@@ -328,6 +330,9 @@ export interface EspnGameSummaryResponse {
   /** The two competing teams' own standings tables, shipped inside the
    *  request the game page already makes (iOS E21, 2026-09-21). */
   standings?: EspnSummaryStandings;
+  /** The game's own story: AP's preview before kickoff, its recap once
+   *  final, nothing live (iOS E25, docs/news.md N2 and N3). */
+  article?: EspnNewsArticle;
 }
 
 export interface EspnPredictor {

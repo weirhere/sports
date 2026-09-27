@@ -36,3 +36,12 @@ export function conferencePath(
   const query = params.toString();
   return `/conference/${ref.league}/${ref.id}${query ? `?${query}` : ""}`;
 }
+
+/**
+ * A story in the reader (iOS E25, docs/news.md N4). The league rides the URL
+ * for the game and team ids inside the story, which collide across leagues;
+ * the story id itself is ESPN's, and global.
+ */
+export function storyPath(story: { league: League; id: string }): string {
+  return `/story/${story.league}/${story.id}`;
+}
