@@ -782,6 +782,14 @@ nonisolated struct CoreRefDTO: Decodable {
     }
 }
 
+/// A poll's season index — `seasons/{year}/rankings/{id}` — whose
+/// `rankings` are one ref per week that poll was published, preseason to
+/// final. The only document that says which weeks exist before they're
+/// fetched.
+nonisolated struct CoreRankingIndexDTO: Decodable {
+    let rankings: LossyArray<CoreRefDTO>?
+}
+
 nonisolated struct CoreRankingDTO: Decodable {
     let id: String?
     let name: String?

@@ -44,6 +44,12 @@ nonisolated protocol ScoresProviding: Sendable {
     /// final AP and Coaches votes, and the CFP's selection-day table —
     /// because a finished season has no "current" ranking to serve.
     func rankings(year: Int?) async throws -> [Poll]
+    /// Every week the season's polls were published in, oldest first —
+    /// the union across the polls the app shows, so a week only the CFP
+    /// voted in is still a week. Empty where the provider has no week axis.
+    func rankingWeeks(year: Int) async throws -> [PollWeek]
+    /// One week's polls, whichever of them published that week.
+    func rankings(year: Int, week: PollWeek) async throws -> [Poll]
     /// One division's conferences and their member teams, for browse,
     /// search, and onboarding. Alphabetical by conference — the browse
     /// screen re-sorts by tier itself.
@@ -119,6 +125,14 @@ nonisolated extension ScoresProviding {
     var providesRoster: Bool { false }
 
     func roster(teamId: String) async throws -> TeamRoster { .empty }
+
+    /// A backend with no week axis offers no weeks, and the page shows
+    /// its season's one table with no week chip.
+    func rankingWeeks(year: Int) async throws -> [PollWeek] { [] }
+
+    func rankings(year: Int, week: PollWeek) async throws -> [Poll] {
+        try await rankings(year: year)
+    }
 
     /// The season in progress.
     func rankings() async throws -> [Poll] {
@@ -575,6 +589,50 @@ actor ESPNClient: ScoresProviding {
         )
         guard let last = weeks?.count, last > 0 else { return nil }
         return await coreRanking(year: year, seasonType: 2, week: last, rankingId: 21)
+    }
+
+    /// Each shown poll's season index, one request apiece, unioned. A
+    /// poll that doesn't answer drops out — the CFP's index is empty until
+    /// its first table in late October — and only all three failing fails
+    /// the season (probed live 2026-09-27: 2025's AP lists Preseason,
+    /// Weeks 2–16 and Final; its CFP Weeks 11–16; 2026's AP, Weeks 1–4).
+    func rankingWeeks(year: Int) async throws -> [PollWeek] {
+        guard league == .collegeFootball else { return [] }
+        async let ap = rankingIndex(year: year, rankingId: 1)
+        async let coaches = rankingIndex(year: year, rankingId: 2)
+        async let cfp = rankingIndex(year: year, rankingId: 21)
+        let indexes = await [ap, coaches, cfp]
+        let answered = indexes.compactMap { $0 }
+        guard !answered.isEmpty else { throw ESPNError.badStatus(404) }
+        let weeks = answered
+            .flatMap { $0.rankings?.elements ?? [] }
+            .compactMap { $0.ref.flatMap(PollWeek.init(ref:)) }
+        return Set(weeks).sorted()
+    }
+
+    /// The core API's ids are 1 AP, 2 Coaches, 21 CFP; the season's index
+    /// lists others too (FCS, DII, DIII), never asked for.
+    private func rankingIndex(year: Int, rankingId: Int) async -> CoreRankingIndexDTO? {
+        try? await fetch(base: coreBase, path: "/seasons/\(year)/rankings/\(rankingId)", query: [])
+    }
+
+    /// The polls published that week, in the shown order. A poll that
+    /// skipped the week (the CFP before November) just isn't in the list.
+    func rankings(year: Int, week: PollWeek) async throws -> [Poll] {
+        guard league == .collegeFootball else { return [] }
+        async let directoryFetch = teamDirectory()
+        async let ap = coreRanking(year: year, seasonType: week.seasonType,
+                                   week: week.number, rankingId: 1)
+        async let coaches = coreRanking(year: year, seasonType: week.seasonType,
+                                        week: week.number, rankingId: 2)
+        async let cfp = coreRanking(year: year, seasonType: week.seasonType,
+                                    week: week.number, rankingId: 21)
+        let directory = await directoryFetch
+        // A week a poll skipped answers 200 with no ranks rather than 404.
+        let dtos = await [ap, coaches, cfp].compactMap { $0 }
+            .filter { !($0.ranks?.elements.isEmpty ?? true) }
+        guard !dtos.isEmpty, !directory.isEmpty else { throw ESPNError.badStatus(404) }
+        return dtos.map { ESPNMapper.poll(from: $0, teams: directory) }
     }
 
     private func coreRanking(year: Int, seasonType: Int, week: Int,
