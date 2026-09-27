@@ -2,7 +2,7 @@ import SwiftUI
 
 /// One team's home: a hero header in the team's own color in light mode and
 /// the card color in dark (2026-09-27; the both-modes team-color paint
-/// retired 2026-08-31 — see `TeamHeaderPaint`), Overview, Games,
+/// retired 2026-08-31 — see `HeaderPaint`), Overview, Games,
 /// and Standings tabs, and a schedule for any season back to the CFP era.
 struct TeamPage: View {
     let team: Team
@@ -147,13 +147,13 @@ struct TeamPage: View {
     private var teamColorHex: String? {
         team.colorHex ?? currentSchedule?.team?.colorHex
             ?? schedules.values.lazy.compactMap { $0.team?.colorHex }.first
-            ?? TeamHeaderPaint.remembered[team.followKey]
+            ?? HeaderPaint.remembered[team.followKey]
     }
 
     /// Nil in dark mode and until the schedule lands; the header is
     /// `bgCard` then, exactly as before.
-    private var headerPaint: TeamHeaderPaint? {
-        TeamHeaderPaint(hex: teamColorHex, colorScheme: colorScheme)
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamColorHex, colorScheme: colorScheme)
     }
 
     private var headerGround: Color { headerPaint?.background ?? .bgCard }
@@ -325,24 +325,12 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        // The header's ground through the status-bar strip and the top bounce.
-        .heroTopBand(headerGround)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        // Solid bar in the header's ground, seamless against the hero at
-        // rest — the transparent-until-scrolled dance retired with the
-        // 2026-08-31 paint and stays retired: a solid team-color bar needs
-        // no glass trick to read as part of the header.
-        .toolbarBackground(headerGround, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        // On a team color the bar's contents take the header's ink: a dark
-        // ground turns the back button, bell, pill and share white. Nil
-        // leaves the bar on the app's own appearance.
-        .toolbarColorScheme(headerPaint.map { $0.isDarkGround ? .dark : .light },
-                            for: .navigationBar)
         .onChange(of: teamColorHex, initial: true) { _, hex in
-            if let hex { TeamHeaderPaint.remembered[team.followKey] = hex }
+            if let hex { HeaderPaint.remembered[team.followKey] = hex }
         }
         .toolbar {
             ToolbarItem(placement: .principal) {

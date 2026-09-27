@@ -52,6 +52,21 @@ struct PollScreen: View {
 
     @Environment(UIStateStore.self) private var uiState
     @State private var showsInlineTitle = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    /// Bumped when the mark's color has been worked out (ConferencePage's
+    /// pattern).
+    @State private var markHexLoaded: String?
+
+    /// The poll is its league's, so its header is the league's: ESPN's
+    /// color where it has one, the mark's own where it doesn't (college
+    /// football, 2026-09-27).
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: league.brandColorHex ?? markHexLoaded ?? HeaderPaint.markHex(for: league.logoURL),
+                    colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
     @State private var tab: Tab = .standings
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
@@ -111,17 +126,16 @@ struct PollScreen: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .task(id: league) { markHexLoaded = await HeaderPaint.loadMarkHex(for: league.logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Top 25")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
@@ -229,14 +243,14 @@ struct PollScreen: View {
     /// say whose, and the trophy said even less.
     private var hero: some View {
         HStack(spacing: Spacing.md) {
-            LogoImage(url: league.logoURL, placeholder: nil)
+            LogoImage(url: league.logoURL, placeholder: nil, outlineAgainst: headerPaint?.hex)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.logoBacking).padding(-6))
                 .padding(6)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Top 25")
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 // ESPN's own line for the poll ("2026 AP Poll: Preseason")
@@ -247,7 +261,7 @@ struct PollScreen: View {
                 if let subtitle {
                     Text(subtitle)
                         .font(.chipEmphasis)
-                        .foregroundStyle(.textSecondary)
+                        .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -257,7 +271,7 @@ struct PollScreen: View {
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bgCard)
+        .background(headerGround)
     }
 
     /// The poll's own headline, or the bare season while there's no poll
@@ -270,8 +284,9 @@ struct PollScreen: View {
         // Unpadded: HeroTabBar carries its own gutter so tabs scroll out
         // at the surface edge (2026-09-21).
         HeroTabBar(tabs: availableTabs, selection: tab,
-                   onSelect: { select(tab: $0) })
-            .background(Color.bgCard)
+                   onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
+            .background(headerGround)
     }
 
     // MARK: - Standings

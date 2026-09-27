@@ -1,9 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// TeamPage's header in the team's own color — light mode only (Andy,
+/// An entity page's header in its own color — light mode only (Andy,
 /// 2026-09-27: "in dark mode, this looks great, but when we're in light
-/// mode, the background of the page header should be the team color").
+/// mode, the background of the page header should be the team color";
+/// the same day, "let's do this change for leagues as well"). TeamPage
+/// paints ESPN's team color; ConferencePage and PollScreen paint the
+/// league's ESPN color on a whole-league page and the mark's own dominant
+/// color everywhere else (`LogoContrast.dominantHex`), since ESPN ships
+/// no conference colors.
 ///
 /// The team-color hero ran once before (2026-08-25 to 2026-08-31) and came
 /// out in both appearances. Dark mode keeps what replaced it: a `bgCard`
@@ -14,7 +19,7 @@ import UIKit
 /// Everything painted on the ground takes its ink from here — one ink, the
 /// one with more contrast against the color, so a pale team color gets
 /// black type rather than white type it can't carry.
-struct TeamHeaderPaint: Equatable {
+struct HeaderPaint: Equatable {
     /// The color as ESPN sent it; the logo outline tests against it.
     let hex: String
     let background: Color
@@ -37,10 +42,37 @@ struct TeamHeaderPaint: Equatable {
         ink = isDarkGround ? .white : .black
     }
 
-    /// Colors seen this launch, by follow key — the schedule is the only
-    /// payload carrying one, so without this every visit opens white and
-    /// turns team-colored when the request lands.
+    /// Team colors seen this launch, by follow key — the schedule is the
+    /// only payload carrying one, so without this every visit opens white
+    /// and turns team-colored when the request lands.
     static var remembered: [String: String] = [:]
+
+    /// Mark colors worked out this launch, by logo URL — a mark doesn't
+    /// change color, and the pixel read is the only cost of the answer.
+    private static var markColors: [URL: String] = [:]
+
+    /// The dominant color of a mark already in `LogoCache`, or nil until
+    /// `loadMarkHex` has fetched it. Synchronous so a page opened a second
+    /// time paints on its first frame.
+    static func markHex(for url: URL?) -> String? {
+        guard let url else { return nil }
+        if let known = markColors[url] { return known }
+        guard let image = LogoCache.shared.cachedImage(for: url),
+              let hex = LogoContrast.dominantHex(of: image) else { return nil }
+        markColors[url] = hex
+        return hex
+    }
+
+    /// Fetches the mark if it isn't cached yet and works out its color;
+    /// the caller bumps its own state so `markHex` gets asked again.
+    static func loadMarkHex(for url: URL?) async -> String? {
+        guard let url else { return nil }
+        if let known = markHex(for: url) { return known }
+        guard let image = await LogoCache.shared.image(for: url),
+              let hex = LogoContrast.dominantHex(of: image) else { return nil }
+        markColors[url] = hex
+        return hex
+    }
 
     /// Second-rank ink: the inactive tabs, the badge labels.
     var secondaryInk: Color { ink.opacity(0.78) }
@@ -86,9 +118,44 @@ nonisolated enum LogoContrast {
         guard !pixels.isEmpty else { return false }
         let groundLum = SurfaceColors.luminance(ground)
         let close = pixels.lazy.filter {
-            TeamHeaderPaint.contrast(SurfaceColors.luminance($0), groundLum) < minimumContrast
+            HeaderPaint.contrast(SurfaceColors.luminance($0), groundLum) < minimumContrast
         }.count
         return Double(close) / Double(pixels.count) >= conflictShare
+    }
+
+    /// The color a mark is mostly made of, for a header with no color of
+    /// its own — a conference, college football. Colored pixels win over
+    /// black and gray whenever there's a real share of them, so the SEC
+    /// reads navy-and-gold rather than its black type; near-white never
+    /// counts, since it would only make a white header. Pixels are bucketed
+    /// at 16 levels a channel and the biggest bucket's average is the
+    /// answer. Nil when the mark is all white or won't decode.
+    static func dominantHex(of image: UIImage) -> String? {
+        opaquePixels(of: image).flatMap(dominantHex(pixels:))
+    }
+
+    static func dominantHex(pixels: [(r: Double, g: Double, b: Double)]) -> String? {
+        let inked = pixels.filter { SurfaceColors.luminance($0) <= 0.8 }
+        let colored = inked.filter { saturation($0) >= 0.25 }
+        let pool = Double(colored.count) >= Double(inked.count) * 0.1 && !colored.isEmpty
+            ? colored : inked
+        guard !pool.isEmpty else { return nil }
+        var buckets: [Int: [(r: Double, g: Double, b: Double)]] = [:]
+        for p in pool {
+            let key = Int(p.r * 15.99) << 8 | Int(p.g * 15.99) << 4 | Int(p.b * 15.99)
+            buckets[key, default: []].append(p)
+        }
+        guard let top = buckets.values.max(by: { $0.count < $1.count }) else { return nil }
+        let n = Double(top.count)
+        func byte(_ v: Double) -> String { String(format: "%02x", Int((min(max(v, 0), 1) * 255).rounded())) }
+        return byte(top.map(\.r).reduce(0, +) / n)
+            + byte(top.map(\.g).reduce(0, +) / n)
+            + byte(top.map(\.b).reduce(0, +) / n)
+    }
+
+    private static func saturation(_ p: (r: Double, g: Double, b: Double)) -> Double {
+        let hi = max(p.r, p.g, p.b), lo = min(p.r, p.g, p.b)
+        return hi == 0 ? 0 : (hi - lo) / hi
     }
 
     /// The mark's opaque pixels, un-premultiplied, from a 32×32 redraw.
@@ -117,5 +184,35 @@ nonisolated enum LogoContrast {
                            Double(bytes[i + 2]) / 255 / a))
         }
         return pixels
+    }
+}
+
+/// The chrome half of a painted header: the status-bar strip, the solid
+/// nav bar, and the bar's contents flipped to the header's ink. Nil paint
+/// is the monochrome `bgCard` header every entity page had before.
+struct HeaderChrome: ViewModifier {
+    let paint: HeaderPaint?
+
+    func body(content: Content) -> some View {
+        content
+            // The header's ground through the status-bar strip and the
+            // top bounce.
+            .heroTopBand(paint?.background ?? .bgCard)
+            // Solid, seamless against the hero at rest — the
+            // transparent-until-scrolled dance retired 2026-08-31 and stays
+            // retired: a solid colored bar needs no glass trick to read as
+            // part of the header.
+            .toolbarBackground(paint?.background ?? .bgCard, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            // A dark ground turns the back button and the toolbar's
+            // controls white; nil leaves the bar on the app's appearance.
+            .toolbarColorScheme(paint.map { $0.isDarkGround ? .dark : .light },
+                                for: .navigationBar)
+    }
+}
+
+extension View {
+    func headerChrome(_ paint: HeaderPaint?) -> some View {
+        modifier(HeaderChrome(paint: paint))
     }
 }
