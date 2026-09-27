@@ -18,6 +18,7 @@ import {
   conferenceLogoUrl,
   conferenceName,
   divisionForTeamId,
+  parentOf,
 } from "@/lib/conferences";
 import { displayName, shortName, type League } from "@/lib/leagues";
 import { conferencePath, teamPath } from "@/lib/routes";
@@ -135,7 +136,12 @@ export function SearchConferenceRow({
   // row, and the sport is what separates them.
   return (
     <Link
-      href={conferencePath(conference)}
+      // A division ("AFC East") stays findable but opens its conference,
+      // which stacks it: divisions have no pages (iOS, 2026-09-26).
+      href={conferencePath({
+        league: conference.league,
+        id: parentOf(conference.id, conference.league) ?? conference.id,
+      })}
       onClick={onSelect}
       aria-label={`${conference.name}, ${displayName(conference.league)}`}
       className={ROW}

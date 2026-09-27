@@ -8,7 +8,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { conferenceName, divisionForTeamId } from "@/lib/conferences";
+import { conferenceName, divisionForTeamId, parentOf } from "@/lib/conferences";
+import { conferencePath } from "@/lib/routes";
 import type { TeamLeaders, TeamSeasonStats } from "@/lib/espn/team-stats";
 import { teamFullName } from "@/lib/team-name";
 import {
@@ -281,8 +282,15 @@ export function TeamView({
         rank={apRank}
         subtitle={
           conferenceId !== undefined ? (
+            // A pro team's group is its division, which has no page (iOS,
+            // 2026-09-26): the badge still says "AFC North" and opens the
+            // AFC, whose page stacks its divisions with this team's row
+            // highlighted.
             <Link
-              href={`/conference/${league}/${conferenceId}?team=${teamId}`}
+              href={conferencePath(
+                { league, id: parentOf(conferenceId, league) ?? conferenceId },
+                { team: teamId }
+              )}
               className="inline-flex items-center gap-1 type-chip-em text-text-secondary transition-colors hover:text-text-primary"
             >
               {conferenceName(conferenceId, league)}
