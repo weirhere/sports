@@ -57,6 +57,10 @@ struct NewsScreen: View {
                 PlayerPage(player: player)
                     .id(player.id)
             }
+            .navigationDestination(for: CoachIdentity.self) { coach in
+                CoachPage(coach: coach)
+                    .id(coach.id)
+            }
             // A pro league page's "See more", and whatever a team page's
             // badges open.
             .navigationDestination(for: ConferenceDestination.self) { destination in

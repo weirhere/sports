@@ -2153,7 +2153,7 @@ nonisolated enum ESPNMapper {
         // `experience` comes as a bare integer with no unit attached. It reads
         // like seasons as a head coach, but ESPN never says so, and a page
         // that guesses at a number is worse than one that omits it.
-        return RosterCoach(name: name)
+        return RosterCoach(id: first.id?.value, name: name)
     }
 }
 

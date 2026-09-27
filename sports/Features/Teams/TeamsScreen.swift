@@ -46,6 +46,10 @@ struct TeamsScreen: View {
                     PlayerPage(player: player)
                         .id(player.id)
                 }
+                .navigationDestination(for: CoachIdentity.self) { coach in
+                    CoachPage(coach: coach)
+                        .id(coach.id)
+                }
                 // The story reader (docs/news.md): game pages and team
                 // pages push it.
                 .navigationDestination(for: StoryDestination.self) { destination in
