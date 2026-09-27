@@ -328,6 +328,9 @@ nonisolated struct ScheduleTeamDTO: Decodable {
     let recordSummary: String?
     let standingSummary: String?
     let groups: TeamGroupsDTO?
+    /// The team's primary color — TeamPage's light-mode header. The
+    /// schedule endpoint sends no `alternateColor` (probed 2026-09-27:
+    /// Texas, Ohio State, the Celtics).
     let color: String?
 }
 

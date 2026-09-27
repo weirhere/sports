@@ -25,11 +25,12 @@ The target user checks scores 20+ times a fall weekend and is tired of ad-stuffe
 ## Design system
 
 - **Palette:** Black, white, and grays only for all UI chrome, text, dividers, and backgrounds. Support light (white bg) and dark (black bg) via semantic colors from day one.
-- **The color budget:** exactly four exceptions to monochrome:
+- **The color budget:** exactly five exceptions to monochrome:
   1. Logos — team and conference — render in full color (grayscale logos would make Michigan and Iowa look like the same team).
   2. The live indicator (a small pulsing dot + live score emphasis) may use a single red accent.
   3. Rankings movement indicators: green up, red down (the same red as the live accent — the app carries exactly one red). Arrows carry the meaning too; color is never the only signal.
   4. The Gamecast surface on the live card renders as the place it pictures: football's field in turf green with each team's own color in its end zone and the broadcast's yellow line to gain; basketball's court in maple; hockey's rink as white ice, its red lines in the app's one red and its blue lines in gray. Shot marks on the court and rink wear their team's color. `SurfaceColors` holds it and only `DriveField`, `CourtSurface`, `RinkSurface` and `ShotMarksLayer` draw it; the card around it stays monochrome, and it is only ever drawn while a game is live. *(Added 2026-09-27 for the field; widened the same day from "field" to "surface" for the NBA and NHL cards.)*
+  5. The team page's header, in light mode only, paints in the team's own color (identity band, nav bar, sticky tab row), with white or black ink by contrast and a white outline on the logo wherever it would blend in. `TeamHeaderPaint` holds it; dark mode keeps the card-color header. *(Added 2026-09-27; the both-modes version ran 2026-08-25 to 2026-08-31.)*
 - **Live state spends the visual budget:** heavier type weight on live scores, pulsing dot, possession indicator. Pre-game and final rows stay quiet.
 - **Typography:** system font (SF Pro). Weight and size create hierarchy, not color. Scores use monospaced digits (`.monospacedDigit()`) so they don't jitter as clocks tick.
 - **Density target:** FotMob-level. A game row is one compact line: logo, team, record, score/time, network. No cards-with-shadows padding inflation.

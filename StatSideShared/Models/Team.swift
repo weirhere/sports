@@ -16,6 +16,11 @@ nonisolated struct Team: Identifiable, Hashable, Sendable {
     /// unchanged; the ESPN mapper always sets it from the client's own
     /// league, so a decoded team can never guess wrong.
     var league: League = .collegeFootball
+    /// ESPN's primary team color as bare hex ("af5c37"). Only the schedule
+    /// payload's own team carries it — the one surface that reads it is
+    /// TeamPage's light-mode header (2026-09-27). Defaulted so every other
+    /// mapper keeps compiling colorless.
+    var colorHex: String? = nil
 
     /// The unambiguous follow key. ESPN team ids collide across leagues —
     /// 26 is UCLA in college football and the Seahawks in the NFL — so the

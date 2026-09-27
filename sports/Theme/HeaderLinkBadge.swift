@@ -31,6 +31,9 @@ struct HeaderLinkBadge: View {
     /// 2026-09-21). It rode outside on the player hero, which read as a
     /// loose logo next to a pill rather than one badge naming one club.
     var logoURL: URL? = nil
+    /// The label's ink. `textSecondary` on the monochrome surfaces; a team
+    /// header in its own color passes the ink it chose for that color.
+    var ink: Color = .textSecondary
 
     @ScaledMetric(relativeTo: .caption) private var logoSize: CGFloat = 14
 
@@ -43,7 +46,7 @@ struct HeaderLinkBadge: View {
             }
             Text(title)
                 .font(.chipEmphasis)
-                .foregroundStyle(.textSecondary)
+                .foregroundStyle(ink)
                 .lineLimit(1)
         }
         .padding(.horizontal, Spacing.sm)
