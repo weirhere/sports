@@ -136,12 +136,6 @@ export function ConferenceView({
     [games, activeTeam?.id]
   );
 
-  // The hero count sums every division, however the tables are sliced.
-  const teamCount = useMemo(() => {
-    if (!allTables) return 0;
-    const own = tablesAtScope(allTables, conferenceRef, "conference");
-    return own.reduce((total, table) => total + table.entries.length, 0);
-  }, [allTables, conferenceRef]);
   const logoUrl = conferenceLogoUrl(conferenceId, league);
 
   // The postseason is already in hand: the Games tab fetches the whole
@@ -211,14 +205,9 @@ export function ConferenceView({
             <ConferenceLogo src={undefined} name="" />
           )
         }
+        // No team count under the title (iOS, 2026-09-27): no page header
+        // carries one. The table under the hero is the count.
         title={name}
-        subtitle={
-          teamCount > 0 ? (
-            <span className="type-chip-em text-text-secondary">
-              {teamCount} teams
-            </span>
-          ) : undefined
-        }
         trailing={
           <>
             {/* The season scopes every tab, so it sits beside the page's
