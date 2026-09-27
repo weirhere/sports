@@ -4,19 +4,6 @@ import SwiftUI
 /// first. Shared by the Scores header, TeamPage and ConferencePage so the
 /// three read as one control.
 struct SeasonMenuChip: View {
-    /// Which surface the chip is riding.
-    enum Style {
-        /// The floating control layer — glass where the OS offers it.
-        /// Every chip that sits over content.
-        case chrome
-        /// The navigation bar, whose background is a solid `bgCard`:
-        /// glass over an opaque bar reads as a smudge, and the bar's other
-        /// control is the outlined follow pill. So the chip borrows the
-        /// pill's shape instead, and the pair reads as one row of controls
-        /// (PollScreen, Andy 2026-09-05).
-        case bar
-    }
-
     let current: Int
     let seasons: [Int]
     /// Whose season this is. Football names a season by the year it opens
@@ -24,7 +11,6 @@ struct SeasonMenuChip: View {
     /// render "2026-27", which is ESPN's own spelling and the only one
     /// that isn't ambiguous about which winter you're looking at.
     var league: League = .collegeFootball
-    var style: Style = .chrome
     let onSelect: (Int) -> Void
 
     private func label(_ year: Int) -> String { league.seasonLabel(year) }
@@ -42,33 +28,25 @@ struct SeasonMenuChip: View {
         .disabled(seasons.isEmpty)
         .accessibilityLabel("Season, \(label(current))")
         // A stable handle for the screenshot flow, which has to reach the
-        // chip wherever it rides — the Scores strip, a hero toolbar, or a
-        // tab pane. Matching the spoken label instead would break every
-        // time the wording moves.
+        // chip wherever it rides — the Scores strip or a tab pane.
+        // Matching the spoken label instead would break every time the
+        // wording moves.
         .accessibilityIdentifier("season-chip")
         .accessibilityValue(label(current))
     }
 
-    @ViewBuilder
+    /// Same capsule as the Scores header chips and the panes' other
+    /// chips, so every chip over content reads as one family. (The `.bar`
+    /// variant for the toolbar row retired 2026-09-27, when every entity
+    /// page moved its season chip into the pane.)
     private var label: some View {
-        switch style {
-        case .chrome:
-            // Same capsule as the Scores header chips so the chrome chips
-            // read as one family.
-            content
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 8)
-                .glassCapsuleInteractive(fallback: Color.bgElevated)
-                // Compact capsule, 44 pt tap target.
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-        case .bar:
-            content
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 7)
-                .overlay(Capsule().strokeBorder(Color.textPrimary, lineWidth: 1))
-                .contentShape(Capsule())
-        }
+        content
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, 8)
+            .glassCapsuleInteractive(fallback: Color.bgElevated)
+            // Compact capsule, 44 pt tap target.
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
     }
 
     private var content: some View {

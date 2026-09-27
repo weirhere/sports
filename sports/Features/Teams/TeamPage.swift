@@ -343,9 +343,9 @@ struct TeamPage: View {
             }
             // The control row, FotMob's pattern (Andy, 2026-08-31): bell,
             // follow, and share ride beside the system back button. The
-            // season chip moved into the tab panes to make the room.
+            // season chip lives in the pane's pinned row (2026-09-27), so
+            // this row is the same three controls on every tab.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                seasonChip
                 NotificationBell()
                 FollowPill(team: team)
                 shareButton
@@ -432,18 +432,24 @@ struct TeamPage: View {
                 // whatever the text size does to it.
                 .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                // The Standings tab's own control: how wide the table is
-                // (Andy, 2026-09-07). Only the NFL's team pages have one —
-                // a college team belongs to a conference and nothing else,
-                // so there is no other level to read it at.
-                if showsScopeChip {
+                // The pane's own controls, above the first card they scope:
+                // the season (see `seasonChip`), then on Standings how wide
+                // the table is (Andy, 2026-09-07). Only the NFL's team pages
+                // have a scope — a college team belongs to a conference and
+                // nothing else, so there is no other level to read it at.
+                // Season leads so it holds the same spot on Games and
+                // Standings, and the scope chip is the one that comes and goes.
+                if showsSeasonChip || showsScopeChip {
                     HStack(spacing: Spacing.sm) {
-                        StandingsScopeChip(
-                            scopes: availableScopes, selection: scope,
-                            isNarrowed: resolvedConference.map {
-                                scope.isNarrower(than: StandingsScope.default(forTeamIn: $0))
-                            } ?? false,
-                            onSelect: { select(scope: $0) })
+                        seasonChip
+                        if showsScopeChip {
+                            StandingsScopeChip(
+                                scopes: availableScopes, selection: scope,
+                                isNarrowed: resolvedConference.map {
+                                    scope.isNarrower(than: StandingsScope.default(forTeamIn: $0))
+                                } ?? false,
+                                onSelect: { select(scope: $0) })
+                        }
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, Spacing.sm)
@@ -452,7 +458,7 @@ struct TeamPage: View {
                 // The gap that used to be the pane's own top padding, so
                 // pinned cards never touch the row above. Its own view
                 // rather than the chip's padding: every other tab has no
-                // chip, and a collapsed gap there merges a bgCard card into
+                // chip row, and a collapsed gap there merges a bgCard card into
                 // the bgCard tab row (ConferencePage's shape).
                 Color.clear.frame(height: Spacing.sm)
             }
@@ -691,10 +697,11 @@ struct TeamPage: View {
             .first
     }
 
-    /// The season picker rides the toolbar row (Andy, 2026-09-05,
-    /// superseding the 2026-08-31 move into the panes) — it scopes the
-    /// schedule and the standings alike, so it sits with the page's
-    /// identity rather than above one pane's cards.
+    /// The season picker leads the pane's pinned control row, above the
+    /// first card it scopes (Andy, 2026-09-27, superseding the 2026-09-05
+    /// move onto the toolbar row). On the bar it came and went with the tab,
+    /// shifting bell, follow and share each time; in the pane it sits with
+    /// the content it changes, and a tab without one simply has no row.
     ///
     /// Overview is the exception it has always been: its record card is
     /// pinned to the current season, so there is nothing there for a year
@@ -713,11 +720,15 @@ struct TeamPage: View {
     /// Stats is the fourth, for Roster's reason (2026-09-24): the team
     /// statistics endpoint answers for ESPN's current season only, and its
     /// card already names which season that is.
+    private var showsSeasonChip: Bool {
+        selectedYear != nil && (tab == .games || tab == .standings)
+    }
+
     @ViewBuilder
     private var seasonChip: some View {
-        if let selectedYear, tab != .overview, tab != .roster, tab != .trophies, tab != .stats {
+        if showsSeasonChip, let selectedYear {
             SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
-                           style: .bar, onSelect: { select(year: $0) })
+                           onSelect: { select(year: $0) })
         }
     }
 
