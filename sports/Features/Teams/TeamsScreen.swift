@@ -17,23 +17,6 @@ struct TeamsScreen: View {
     // ConferenceDestination — a typed path can't hold both.
     @State private var path = NavigationPath()
     @State private var isAddingTeams = false
-    @State private var tab: Tab = .teams
-    /// The News tab's stories: For you's, from a store of its own. Loaded on
-    /// the tab's first open and rebuilt when a follow changes.
-    @State private var news = NewsFeedStore()
-
-    /// Teams, then News (Andy, 2026-09-27, E26): the stories about the
-    /// teams this tab lists, one tap from their cards.
-    private enum Tab: Int, CaseIterable, HeroTabItem {
-        case teams, news
-
-        var title: String {
-            switch self {
-            case .teams: "Teams"
-            case .news: "News"
-            }
-        }
-    }
 
     @ScaledMetric(relativeTo: .body) private var addIconSize: CGFloat = 40
 
@@ -45,11 +28,7 @@ struct TeamsScreen: View {
                 // never is, and the toolbar plus sat higher than the Live
                 // and calendar chips it lines up with one tab over.
                 PageHeader(title: "Teams") { addButton }
-                HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 })
-                switch tab {
-                case .teams: content
-                case .news: newsContent
-                }
+                content
             }
                 .background(Color.bgRecessed)
                 .toolbar(.hidden, for: .navigationBar)
@@ -89,10 +68,6 @@ struct TeamsScreen: View {
                 }
         }
         .task { await directory.load() }
-        .task(id: "\(tab == .news):\(following.teamKeys.sorted())") {
-            guard tab == .news else { return }
-            await loadNews()
-        }
         // Tab content is created lazily (iOS 18 Tab builder), so an intent
         // set before the first visit predates the onChange observers —
         // onAppear catches it.
@@ -185,41 +160,6 @@ struct TeamsScreen: View {
                 .padding(Spacing.sm)
             }
         }
-    }
-
-    /// The News tab: the News screen's For you, over the same follows.
-    private var newsContent: some View {
-        ScrollView {
-            Group {
-                switch news.state(.forYou) {
-                case .loaded(let stories) where !stories.isEmpty:
-                    StoryListCard(stories: stories)
-                case .loaded where following.teamKeys.isEmpty:
-                    VStack(spacing: Spacing.sm) {
-                        StatusMessage(text: "Follow teams and their stories collect here.")
-                            .cardSurface()
-                        addTeamsCard
-                    }
-                case .loaded:
-                    StatusMessage(text: "No stories about your teams right now.")
-                        .cardSurface()
-                case .failed:
-                    StatusMessage(text: "Couldn't load the news.",
-                                  retry: { Task { await loadNews(force: true) } })
-                        .cardSurface()
-                case .loading:
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
-                }
-            }
-            .padding(Spacing.sm)
-        }
-        .refreshable { await loadNews(force: true) }
-    }
-
-    private func loadNews(force: Bool = false) async {
-        await news.load(.forYou, followedKeys: following.teamKeys, force: force)
     }
 
     private var emptyState: some View {

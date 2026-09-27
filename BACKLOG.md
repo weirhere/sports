@@ -538,8 +538,9 @@ Andy, 2026-09-27, from FotMob's News screen on Mobbin: "a News bottom nav item t
 - [x] **P2** **News on the league pages**, after Games (Andy, 2026-09-27): the pro leagues' own pages via the conference tab, and college football's Top 25 with the NCAAF feed. *(Shipped 2026-09-27, iOS and web.)*
 - [x] **P2** **News on the game page**, second after Summary (Andy, 2026-09-27). The two teams' own feeds merged, with the game's recap or preview folded in; N11's league-feed "Related news" stays refused. *(Shipped 2026-09-27, iOS and web.)*
 - [x] **P2** **News in Search**, a scope pill after Conferences (Andy, 2026-09-27). The article group from the search request Players already makes; video and other sports dropped. *(Shipped 2026-09-27, iOS and web.)*
-- [x] **P2** **News on the Teams tab**, a Teams · News row (Andy, 2026-09-27). For you's source over the same follows. *(Shipped 2026-09-27, iOS and web.)*
-- [x] **P2** **News on the Leagues tab**, a Leagues · News row (Andy, 2026-09-27). Every league's feed merged, previews last. *(Shipped 2026-09-27, iOS and web.)*
+- [x] ~~**P2** **News on the Teams tab**, a Teams · News row (Andy, 2026-09-27).~~ *(Shipped and removed the same day: Andy wants News on the team and league pages, not on the bottom-bar Teams and Leagues tabs.)*
+- [x] ~~**P2** **News on the Leagues tab**, a Leagues · News row (Andy, 2026-09-27).~~ *(Shipped and removed the same day, as above.)*
+- [x] **P2** **Photos and sections** (Andy, 2026-09-27, Mobbin `bfd98a17` and flow `c834c5a9`). Photos are the color budget's sixth exception. For you is Trending, one section per followed team (featured + 4 + See more to the team's News tab), then Latest as full-width cards; a league page is one section with See more to the league's News tab; the reader opens on a hero photo. *(Shipped 2026-09-27, iOS and web.)*
 - [ ] **P3** **Follow order.** FotMob ranks For you by the order of your favorites; ours are a set. If the Teams tab ever gains drag-to-order (the tables hub has it), For you should follow it.
 
 ## Icebox (deliberately not now)

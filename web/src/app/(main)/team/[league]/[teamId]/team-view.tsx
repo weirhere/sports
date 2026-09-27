@@ -104,6 +104,8 @@ interface TeamViewProps {
   seasonStats: Promise<TeamSeasonStats>;
   /** The season's leaders, current season only — streamed, never rejects. */
   leaders?: Promise<TeamLeaders>;
+  /** Open on News — a News page's "See more" (`?tab=news`). */
+  opensNews?: boolean;
 }
 
 export function TeamView({
@@ -117,9 +119,10 @@ export function TeamView({
   isCurrentSeason,
   seasonStats,
   leaders,
+  opensNews = false,
 }: TeamViewProps) {
   const router = useRouter();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(opensNews ? "news" : "overview");
 
   // The schedule payload's conference wins (season-scoped, so a realignment
   // year reads correctly); the standings groups cover entry paths where the
@@ -156,7 +159,7 @@ export function TeamView({
   const [trophiesRequested, setTrophiesRequested] = useState(false);
   // The News tab's feed, latched the same way: one request on the tab's
   // first open, never polled.
-  const [newsRequested, setNewsRequested] = useState(false);
+  const [newsRequested, setNewsRequested] = useState(opensNews);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "trophies") setTrophiesRequested(true);

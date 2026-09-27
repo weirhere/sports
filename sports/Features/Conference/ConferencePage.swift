@@ -165,7 +165,7 @@ struct ConferencePage: View {
         self.destination = destination
         // Standings lead (Andy, 2026-08-31) — which is also where a
         // standings-anchored push (a team's "3rd in SEC" line) lands.
-        _tab = State(initialValue: .standings)
+        _tab = State(initialValue: destination.opensNews ? .news : .standings)
         // The widest view of the page's own level: the league's table on
         // the league page, its 16 on a conference page.
         _scope = State(initialValue: StandingsScope.default(for: destination.conference))

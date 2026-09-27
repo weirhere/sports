@@ -6,7 +6,7 @@
 import { notFound, redirect } from "next/navigation";
 import { hubStandings, conferenceGames } from "@/lib/espn";
 import { conferenceName, parentOf } from "@/lib/conferences";
-import { conferencePath } from "@/lib/routes";
+import { conferencePath, opensNews } from "@/lib/routes";
 import {
   SEASON_FLOOR,
   displayName,
@@ -21,7 +21,11 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ league: string; conferenceId: string }>;
-  searchParams: Promise<{ year?: string | string[]; team?: string | string[] }>;
+  searchParams: Promise<{
+    year?: string | string[];
+    team?: string | string[];
+    tab?: string | string[];
+  }>;
 }
 
 /** A validated season year, or undefined (= the current season). */
@@ -110,6 +114,7 @@ export default async function ConferencePage({
       games={games}
       displayYear={year ?? currentYear}
       highlightTeamId={highlightTeamId}
+      opensNews={opensNews(sp.tab)}
     />
   );
 }

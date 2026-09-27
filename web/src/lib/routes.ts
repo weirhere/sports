@@ -19,22 +19,37 @@ export function gamePath(game: { league: League; id: string }): string {
 
 export function teamPath(
   team: TeamRef | { league: League; id: string },
-  options?: { year?: number }
+  options?: { year?: number; tab?: "news" }
 ): string {
   const id = "teamId" in team ? team.teamId : team.id;
-  const query = options?.year !== undefined ? `?year=${options.year}` : "";
-  return `/team/${team.league}/${id}${query}`;
+  const params = new URLSearchParams();
+  if (options?.year !== undefined) params.set("year", String(options.year));
+  if (options?.tab) params.set("tab", options.tab);
+  const query = params.toString();
+  return `/team/${team.league}/${id}${query ? `?${query}` : ""}`;
 }
 
 export function conferencePath(
   ref: ConferenceRef | { league: League; id: string | number },
-  options?: { year?: number; team?: string }
+  options?: { year?: number; team?: string; tab?: "news" }
 ): string {
   const params = new URLSearchParams();
   if (options?.year !== undefined) params.set("year", String(options.year));
   if (options?.team !== undefined) params.set("team", options.team);
+  if (options?.tab) params.set("tab", options.tab);
   const query = params.toString();
   return `/conference/${ref.league}/${ref.id}${query ? `?${query}` : ""}`;
+}
+
+/** College football's league page, the Top 25, opened on a tab — a News
+ *  page's "See more" (2026-09-27). */
+export function pollPath(options?: { tab?: "news" }): string {
+  return options?.tab ? `/rankings/poll?tab=${options.tab}` : "/rankings/poll";
+}
+
+/** Whether a page's `tab` query asks for News. */
+export function opensNews(tab: string | string[] | undefined): boolean {
+  return (Array.isArray(tab) ? tab[0] : tab) === "news";
 }
 
 /**

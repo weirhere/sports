@@ -16,6 +16,7 @@
 import { LEAGUES, leagueSpec, type League } from "@/lib/leagues";
 import type { SearchAthlete } from "@/lib/types";
 import { attribution, decodeEntities, storyKind, type NewsStory } from "@/lib/news";
+import { storyImage } from "./news";
 import { athleteSearchUrl } from "./endpoints";
 import { EspnApiError } from "./provider";
 import type { EspnSearchContent, EspnSearchResponse } from "./types";
@@ -145,6 +146,7 @@ export function transformSearchStory(content: EspnSearchContent): NewsStory | un
     published: content.date ?? undefined,
     gameId: gameIdForStoryLink(content.link?.web),
     teams: [],
+    imageUrl: storyImage(content.images ?? undefined),
   };
 }
 

@@ -22,6 +22,7 @@ import {
   leagueFeed,
   toppedUp,
   newsStory,
+  storyImage,
   storyUrl,
   teamFeed,
   teamNewsUrl,
@@ -35,6 +36,7 @@ import {
   isFocused,
   relativeTime,
   storyBlocks,
+  arrangedStories,
   storyForGame,
   storyKind,
   type NewsStory,
@@ -273,5 +275,54 @@ describe("Search's News scope (E26)", () => {
     const recap = "http://www.espn.com/ncf/recap?gameId=401858463";
     expect(leagueForStoryLink(recap)).toBe("cfb");
     expect(gameIdForStoryLink(recap)).toBe("401858463");
+  });
+});
+
+describe("photos (2026-09-27)", () => {
+  it("leads with the header photo", () => {
+    const video = { type: "Media", url: "https://e.com/still.jpg" };
+    const header = { type: "header", url: "https://e.com/header.jpg" };
+    const plain = { url: "https://e.com/plain.jpg" };
+    expect(storyImage([video, plain, header])).toBe(header.url);
+    // No header: a photo before a video's still; only a still beats nothing.
+    expect(storyImage([video, plain])).toBe(plain.url);
+    expect(storyImage([video])).toBe(video.url);
+    expect(storyImage([{ type: "header" }])).toBeUndefined();
+    expect(storyImage(undefined)).toBeUndefined();
+    // ESPN's generated matchup cards 404; a recap with only one has none.
+    const stitcher = {
+      type: "header",
+      url: "https://s.espncdn.com/stitcher/sports/football/college-football/events/401858463.png?templateId=espn",
+    };
+    expect(storyImage([stitcher])).toBeUndefined();
+    expect(storyImage([stitcher, plain])).toBe(plain.url);
+  });
+
+  it("leads a section with a photo, the rest in order", () => {
+    const story = (id: string, imageUrl?: string): NewsStory => ({
+      id,
+      kind: "story",
+      league: "nba",
+      headline: id,
+      teams: [],
+      imageUrl,
+    });
+    const list = [story("a"), story("b"), story("c", "x.jpg"), story("d"), story("e"), story("f")];
+    expect(arrangedStories(list).map((entry) => entry.id)).toEqual(["c", "a", "b", "d", "e"]);
+    expect(arrangedStories([story("a"), story("b")]).map((entry) => entry.id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps a feed item's photo", () => {
+    const feed: EspnNewsFeed = {
+      articles: [
+        {
+          id: 1,
+          type: "HeadlineNews",
+          headline: "With a photo",
+          images: [{ type: "header", url: "https://a.espncdn.com/photo/x.jpg" }],
+        },
+      ],
+    };
+    expect(leagueFeed(feed, "nba")[0].imageUrl).toBe("https://a.espncdn.com/photo/x.jpg");
   });
 });

@@ -403,7 +403,8 @@ struct ScoresScreen: View {
             // Scores holds no polls — the page fetches the season in
             // progress itself, so the value is just the league.
             .navigationDestination(for: PollDestination.self) { destination in
-                PollScreen(league: destination.league)
+                PollScreen(polls: destination.polls, league: destination.league,
+                           opensNews: destination.opensNews)
                     .id(destination)
             }
             // Identity follows the team (2026-09-10). Search and the

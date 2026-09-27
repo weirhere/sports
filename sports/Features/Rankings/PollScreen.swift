@@ -51,6 +51,13 @@ struct PollScreen: View {
     /// Whose poll this is — the follow control's id.
     var league: League = .collegeFootball
 
+    init(polls: [Poll] = [], league: League = .collegeFootball, opensNews: Bool = false) {
+        self.polls = polls
+        self.league = league
+        // A News page's "See more" lands on News (2026-09-27).
+        _tab = State(initialValue: opensNews ? .news : .standings)
+    }
+
     @Environment(UIStateStore.self) private var uiState
     @State private var showsInlineTitle = false
 

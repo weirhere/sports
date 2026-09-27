@@ -120,6 +120,8 @@ nonisolated struct SearchContentDTO: Decodable {
     /// An article's byline, or its wire: "Associated Press", "ESPN".
     let byline: String?
     let date: String?
+    /// An article's photos, in the feeds' shape.
+    let images: LossyArray<NewsImageDTO>?
 }
 
 nonisolated struct SearchLinkDTO: Decodable {
@@ -291,7 +293,8 @@ nonisolated extension NewsMapper {
             gameId: gameId(fromStoryLink: content.link?.web),
             teams: [],
             body: nil,
-            bodyURL: bodyURL
+            bodyURL: bodyURL,
+            imageURL: imageURL(from: content.images?.elements ?? [])
         )
     }
 

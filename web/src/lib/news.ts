@@ -58,6 +58,9 @@ export interface NewsStory {
   teams: StoryTeamTag[];
   /** The text, where it rode along. A team feed's items have none. */
   body?: StoryBlock[];
+  /** The lead photo — the color budget's sixth exception (2026-09-27),
+   *  drawn only in story cards, rows and the reader's hero. */
+  imageUrl?: string;
 }
 
 /**
@@ -207,4 +210,17 @@ export function exactTime(iso: string, timeZone?: string): string {
 export function storyMeta(story: NewsStory, time: string | undefined): string | undefined {
   const parts = [story.attribution, time].filter((part): part is string => !!part);
   return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
+/** A section's size: the featured story and the four under it (iOS
+ *  `NewsFeedStore.sectionSize`, 2026-09-27). */
+export const SECTION_SIZE = 5;
+
+/** A section's stories in the order it draws them: the featured spot goes
+ *  to the newest story with a photo, so the full-width card always has one;
+ *  the rest keep their order (iOS `StorySection.arranged`). */
+export function arrangedStories(stories: readonly NewsStory[]): NewsStory[] {
+  const index = stories.findIndex((story) => story.imageUrl);
+  if (index <= 0) return stories.slice(0, SECTION_SIZE);
+  return [stories[index], ...stories.filter((_, i) => i !== index)].slice(0, SECTION_SIZE);
 }

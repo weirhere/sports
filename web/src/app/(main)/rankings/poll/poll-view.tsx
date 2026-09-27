@@ -56,6 +56,7 @@ export function PollView({
   polls,
   games,
   displayYear,
+  opensNews = false,
 }: {
   league: League;
   /** The season's displayable polls; null = the fetch failed. */
@@ -63,9 +64,11 @@ export function PollView({
   /** The division's whole season, the ranked slate's source; null = failed. */
   games: Game[] | null;
   displayYear: number;
+  /** Open on News — a News page's "See more" (`?tab=news`). */
+  opensNews?: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState("standings");
+  const [tab, setTab] = useState(opensNews ? "news" : "standings");
   const [pollChoice, setPollChoice] = useState<string>("ap");
   const [grouping, setGrouping] = useState<SlateGrouping>("week");
   const [teamChoice, setTeamChoice] = useState<string | undefined>();
@@ -158,7 +161,7 @@ export function PollView({
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
 
   // Fetched on the tab's first open, and kept.
-  const [newsRequested, setNewsRequested] = useState(false);
+  const [newsRequested, setNewsRequested] = useState(opensNews);
   const news = useOnDemand(newsRequested ? `league:${league}` : undefined, () =>
     getLeagueNews(league)
   );

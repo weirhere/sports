@@ -73,6 +73,8 @@ FotMob shows `SI · 8 hours ago` in feeds and `Nov 5, 2025 at 5:06 AM` on the ar
 
 Every FotMob news surface leans on full-color photography. The color budget has 5 exceptions and press photos aren't one of them; the full-size headshot on the player page is the only photo in the app, and it's a fact about the player. **Andy's call** if photos should become a 6th exception.
 
+*Superseded 2026-09-27:* Andy made news photos the color budget's sixth exception, in full color. Story rows carry a thumbnail, each section leads with a full-width photo card, and the reader opens on a hero photo.
+
 ### N9 · Adapt · Team pages get a News tab, last in the tab row, filtered to stories that are actually about the team.
 **From FotMob:** R9
 

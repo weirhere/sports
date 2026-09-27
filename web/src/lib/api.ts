@@ -172,17 +172,6 @@ export async function getTeamsNews(teams: TeamRef[]): Promise<NewsStory[]> {
  *  doesn't open the page onto forty requests (iOS `forYouCap`). */
 export const FOR_YOU_CAP = 20;
 
-/** For you (E26): the followed teams' own feeds, merged — the News tab's
- *  first page and the Teams tab's News. */
-export function getFollowedNews(keys: readonly string[]): Promise<NewsStory[]> {
-  const follows = [...keys]
-    .sort()
-    .map(parseFollowKey)
-    .filter((ref) => ref !== undefined)
-    .slice(0, FOR_YOU_CAP);
-  return getTeamsNews(follows);
-}
-
 /** A player's stories (E26), newest first. Requested when the player
  *  page's News tab first opens. */
 export async function getPlayerNews(league: League, athleteId: string): Promise<NewsStory[]> {
@@ -194,8 +183,59 @@ export async function getLeagueNews(league: League): Promise<NewsStory[]> {
   return fetchJson(`${BASE}/news?league=${league}`);
 }
 
+/** For you's sections (2026-09-27), iOS `NewsFeedStore.ForYouPage`. */
+export interface ForYouPage {
+  /** The newest real stories across the leagues — recency, not popularity,
+   *  which ESPN doesn't publish. */
+  trending: NewsStory[];
+  /** Each followed team's own stories, by follow key; a team whose feed
+   *  failed or came back empty isn't here. */
+  teams: Record<string, NewsStory[]>;
+  /** Every league's stories, newest first, previews last. */
+  latest: NewsStory[];
+}
+
+/** Trending's size: the featured story and four under it. */
+const TRENDING_SIZE = 5;
+/** Latest is full-width photo cards; past this it's a scroll nobody
+ *  finishes (iOS `latestCap`). */
+const LATEST_CAP = 30;
+
 /**
- * Every league's page as one (E26), for the Leagues tab's News: each story
+ * For you: every league at once (Trending and Latest) beside each followed
+ * team's own feed. Rejects only when all of it failed.
+ */
+export async function getForYouPage(keys: readonly string[]): Promise<ForYouPage> {
+  const follows = [...keys]
+    .sort()
+    .map((key) => ({ key, ref: parseFollowKey(key) }))
+    .filter((entry): entry is { key: string; ref: TeamRef } => entry.ref !== undefined)
+    .slice(0, FOR_YOU_CAP);
+  const [leagues, ...teamResults] = await Promise.allSettled([
+    getAllLeaguesNews(),
+    ...follows.map((entry) => getTeamNews(entry.ref.league, entry.ref.teamId)),
+  ]);
+  const teams: Record<string, NewsStory[]> = {};
+  let answered = 0;
+  teamResults.forEach((result, index) => {
+    if (result.status !== "fulfilled") return;
+    answered += 1;
+    const stories = result.value as NewsStory[];
+    if (stories.length > 0) teams[follows[index].key] = stories;
+  });
+  if (leagues.status === "rejected" && answered === 0) {
+    throw new Error("No news loaded");
+  }
+  const latest = leagues.status === "fulfilled" ? (leagues.value as NewsStory[]) : [];
+  return {
+    trending: latest.filter((story) => story.kind !== "preview").slice(0, TRENDING_SIZE),
+    teams,
+    latest: latest.slice(0, LATEST_CAP),
+  };
+}
+
+/**
+ * Every league's page as one (E26), for For you's Trending and Latest: each story
  * once, newest first, previews last. Some leagues failing makes a thinner
  * list; all of them failing rejects.
  */

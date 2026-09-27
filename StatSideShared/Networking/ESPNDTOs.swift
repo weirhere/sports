@@ -492,6 +492,14 @@ nonisolated struct NewsArticleDTO: Decodable {
     let gameId: FlexibleInt?
     let categories: LossyArray<NewsCategoryDTO>?
     let links: NewsLinksDTO?
+    let images: LossyArray<NewsImageDTO>?
+}
+
+/// One of a story's photos. `header` is the story's own lead photo; `Media`
+/// is a video's still.
+nonisolated struct NewsImageDTO: Decodable {
+    let type: String?
+    let url: String?
 }
 
 nonisolated struct NewsCategoryDTO: Decodable {
