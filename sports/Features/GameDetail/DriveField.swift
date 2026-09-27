@@ -9,7 +9,7 @@ import SwiftUI
 /// field keeps its proportions on every phone: 10-yard end zones and
 /// 100 yards of turf at 3 units a yard, the away end zone on the left to
 /// match the header's logo order. The turf is the color budget's fourth
-/// exception — see `FieldColors`.
+/// exception — see `SurfaceColors`.
 struct DriveField: View {
     let field: GameSituation.Field
     let away: GameSummary.Side?
@@ -51,9 +51,9 @@ struct DriveField: View {
                                       animates: hasAppeared && !reduceMotion)
                                 .id(playId)
                         }
-                        pin
+                        LogoPin(logoURL: offenseLogoURL)
                             .position(x: Self.x(field.ball) * s,
-                                      y: Self.turfTop * s - Pin.height / 2 - 2)
+                                      y: Self.turfTop * s - LogoPin.height / 2 - 2)
                             .animation(hasAppeared && !reduceMotion ? .easeOut(duration: 0.6) : nil,
                                        value: field.ball)
                     }
@@ -87,7 +87,7 @@ struct DriveField: View {
             context.fill(Path(CGRect(x: 330, y: 0, width: 30, height: h)), with: .color(homeZone))
             for band in 0..<10 {
                 context.fill(Path(CGRect(x: 30 + 30 * CGFloat(band), y: 0, width: 30, height: h)),
-                             with: .color(band.isMultiple(of: 2) ? FieldColors.turf : FieldColors.turfAlternate))
+                             with: .color(band.isMultiple(of: 2) ? SurfaceColors.turf : SurfaceColors.turfAlternate))
             }
             for yard in stride(from: 10, to: 100, by: 10) where yard != 50 {
                 line(at: Self.x(Double(yard)), in: &context, height: h, opacity: 0.45, width: 1 / s)
@@ -106,11 +106,11 @@ struct DriveField: View {
         var path = Path()
         path.move(to: CGPoint(x: x, y: 0))
         path.addLine(to: CGPoint(x: x, y: height))
-        context.stroke(path, with: .color(FieldColors.chalk.opacity(opacity)), lineWidth: width)
+        context.stroke(path, with: .color(SurfaceColors.chalk.opacity(opacity)), lineWidth: width)
     }
 
     private func endZone(_ side: GameSummary.Side?) -> Color {
-        FieldColors.endZone(primary: side?.color, alternate: side?.alternateColor,
+        SurfaceColors.teamMark(primary: side?.color, alternate: side?.alternateColor,
                             isDark: colorScheme == .dark)
     }
 
@@ -143,7 +143,7 @@ struct DriveField: View {
                 var path = Path()
                 path.move(to: CGPoint(x: Self.x(gain), y: Self.turfTop - 3))
                 path.addLine(to: CGPoint(x: Self.x(gain), y: Self.turfTop + Self.turfHeight + 3))
-                context.stroke(path, with: .color(FieldColors.lineToGain), lineWidth: 2 / s)
+                context.stroke(path, with: .color(SurfaceColors.lineToGain), lineWidth: 2 / s)
             }
             guard let start = field.driveStart else { return }
             let from = Self.x(start)
@@ -152,28 +152,14 @@ struct DriveField: View {
                 var trail = Path()
                 trail.move(to: CGPoint(x: from, y: Self.midline))
                 trail.addLine(to: CGPoint(x: to, y: Self.midline))
-                context.stroke(trail, with: .color(FieldColors.chalk),
+                context.stroke(trail, with: .color(SurfaceColors.chalk),
                                style: StrokeStyle(lineWidth: 2 / s, lineCap: .round))
             }
             let dot = Path(ellipseIn: CGRect(x: from - 3.2, y: Self.midline - 3.2, width: 6.4, height: 6.4))
-            context.fill(dot, with: .color(FieldColors.chalk))
-            context.stroke(dot, with: .color(FieldColors.ink), lineWidth: 1.5 / s)
+            context.fill(dot, with: .color(SurfaceColors.chalk))
+            context.stroke(dot, with: .color(SurfaceColors.ink), lineWidth: 1.5 / s)
         }
         .frame(width: Self.width * s, height: Self.height * s)
-    }
-
-    // MARK: - Pin
-
-    private var pin: some View {
-        ZStack(alignment: .top) {
-            Pin()
-                .fill(Color.bgCard)
-                .overlay(Pin().stroke(Color.divider, lineWidth: 1))
-            LogoImage(url: offenseLogoURL, placeholder: nil)
-                .frame(width: 17, height: 17)
-                .padding(.top, 4.5)
-        }
-        .frame(width: Pin.width, height: Pin.height)
     }
 }
 
@@ -208,9 +194,9 @@ private struct PlayArrow: View {
         ZStack(alignment: .topLeading) {
             PlayPath(from: from, to: to, control: isPass ? control : nil)
                 .trim(from: 0, to: progress)
-                .stroke(FieldColors.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .stroke(SurfaceColors.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
             Arrowhead()
-                .fill(FieldColors.ink)
+                .fill(SurfaceColors.ink)
                 .frame(width: 8, height: 8)
                 .rotationEffect(headAngle)
                 .position(to)
@@ -256,23 +242,6 @@ private struct Arrowhead: Shape {
         path.move(to: CGPoint(x: rect.midX, y: rect.midY))
         path.addLine(to: CGPoint(x: rect.minX - rect.width / 2, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.minX - rect.width / 2, y: rect.maxY))
-        path.closeSubpath()
-        return path
-    }
-}
-
-/// A map pin: a disc for the logo with a point beneath it.
-private struct Pin: Shape {
-    static let width: CGFloat = 26
-    static let height: CGFloat = 33
-
-    func path(in rect: CGRect) -> Path {
-        let radius = rect.width / 2
-        let center = CGPoint(x: rect.midX, y: radius)
-        var path = Path()
-        path.addArc(center: center, radius: radius,
-                    startAngle: .degrees(145), endAngle: .degrees(35), clockwise: false)
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
         path.closeSubpath()
         return path
     }

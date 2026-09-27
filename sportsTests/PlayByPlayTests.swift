@@ -389,23 +389,23 @@ private func summary(current: Drive?, drives: [Drive] = []) -> GameSummary {
 /// The end zones take the team's color unless it would vanish.
 @Suite struct FieldColorTests {
     @Test func aPrimaryColorIsUsedAsIs() {
-        #expect(FieldColors.endZoneHex(primary: "970310", alternate: "ffffff", isDark: false) == "970310")
-        #expect(FieldColors.endZoneHex(primary: "970310", alternate: "ffffff", isDark: true) == "970310")
+        #expect(SurfaceColors.teamMarkHex(primary: "970310", alternate: "ffffff", isDark: false) == "970310")
+        #expect(SurfaceColors.teamMarkHex(primary: "970310", alternate: "ffffff", isDark: true) == "970310")
     }
 
     @Test func blackFallsBackToTheAlternateInDarkMode() {
-        #expect(FieldColors.endZoneHex(primary: "000000", alternate: "ffcd00", isDark: true) == "ffcd00")
-        #expect(FieldColors.endZoneHex(primary: "000000", alternate: "ffcd00", isDark: false) == "000000")
+        #expect(SurfaceColors.teamMarkHex(primary: "000000", alternate: "ffcd00", isDark: true) == "ffcd00")
+        #expect(SurfaceColors.teamMarkHex(primary: "000000", alternate: "ffcd00", isDark: false) == "000000")
     }
 
     @Test func whiteFallsBackToTheAlternateInLightMode() {
-        #expect(FieldColors.endZoneHex(primary: "ffffff", alternate: "002244", isDark: false) == "002244")
+        #expect(SurfaceColors.teamMarkHex(primary: "ffffff", alternate: "002244", isDark: false) == "002244")
     }
 
     @Test func nothingUsableMeansGray() {
-        #expect(FieldColors.endZoneHex(primary: nil, alternate: nil, isDark: false) == nil)
-        #expect(FieldColors.endZoneHex(primary: "zzz", alternate: nil, isDark: false) == nil)
-        #expect(FieldColors.endZoneHex(primary: "000000", alternate: "000000", isDark: true) == nil)
+        #expect(SurfaceColors.teamMarkHex(primary: nil, alternate: nil, isDark: false) == nil)
+        #expect(SurfaceColors.teamMarkHex(primary: "zzz", alternate: nil, isDark: false) == nil)
+        #expect(SurfaceColors.teamMarkHex(primary: "000000", alternate: "000000", isDark: true) == nil)
     }
 }
 
