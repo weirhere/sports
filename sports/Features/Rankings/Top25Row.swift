@@ -17,9 +17,7 @@ struct Top25Row: View {
 
     var body: some View {
         HStack(spacing: Spacing.md) {
-            NavigationLink {
-                PollScreen(polls: polls, league: league)
-            } label: {
+            NavigationLink(value: PollDestination(league: league, polls: polls)) {
                 rowContent
             }
             // Not `.plain`: this row is also a card the Following list

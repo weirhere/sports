@@ -321,9 +321,8 @@ struct PollScreen: View {
             RankColumnCaptions()
             LazyVStack(spacing: 0) {
                 ForEach(poll.ranks) { ranked in
-                    NavigationLink {
-                        TeamPage(team: ranked.team)
-                    } label: {
+                    // By value, never view-based: see PollDestination.
+                    NavigationLink(value: ranked.team) {
                         RankRow(ranked: ranked)
                     }
                     .buttonStyle(.plain)

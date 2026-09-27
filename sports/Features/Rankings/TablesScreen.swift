@@ -112,9 +112,9 @@ struct TablesScreen: View {
             }
                 .background(Color.bgPrimary)
                 .toolbar(.hidden, for: .navigationBar)
-                // TeamPage is pushed view-based here, but its standing line
-                // and a standings row's team both push values — register
-                // them so those links work inside this stack too.
+                // Every push in this stack is by value — a view-based push
+                // sits above the path, and a value pushed from on top of it
+                // lands underneath instead (see PollDestination).
                 // Identity follows the conference, for the reason the team
                 // destination below does: a replaced value at the same path
                 // position otherwise reuses the page and its caches.
@@ -128,6 +128,12 @@ struct TablesScreen: View {
                 // identity doesn't change is reused with all of its `@State`
                 // intact — which is how the Lakers page came to show Ole Miss's
                 // schedule, standings and roster under a Lakers crest.
+                // The Top 25 row's push, with the polls this hub already
+                // fetched.
+                .navigationDestination(for: PollDestination.self) { destination in
+                    PollScreen(polls: destination.polls, league: destination.league)
+                        .id(destination.league)
+                }
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                         .id(team.followKey)
