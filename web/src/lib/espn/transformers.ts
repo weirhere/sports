@@ -1249,46 +1249,208 @@ function transformDrive(drive: EspnDrive, index: number): GameDrive {
 }
 
 /**
- * The live situation — the Gamecast strip's whole source.
+ * The live situation — the Gamecast card's whole source (iOS
+ * `GameSummary.situation`).
  *
  * Built from the **drive in progress**'s last play, not from a second
  * live-only payload: the last play knows the down it left behind, where the
  * ball sits, and how far that is from the end zone. ESPN drops
- * `drives.current` the moment a game is final, so the strip retires itself
+ * `drives.current` the moment a game is final, so the card retires itself
  * with no clock check of its own.
+ *
+ * `previous` is the finished drives, read only for the running score going
+ * into this one — a scoring play's side is the score that moved, and a pick
+ * six moves the defense's.
  *
  * Returns undefined unless a drive is in progress with a play on it.
  */
 export function transformSituation(
   current: EspnDrive | undefined,
-  awayTeamId: string
+  awayTeamId: string,
+  homeTeamId?: string,
+  previous: EspnDrive[] = []
 ): GameSituation | undefined {
   const play = current?.plays?.[current.plays.length - 1];
   if (!current || !play) return undefined;
-  const isAway = current.team?.id !== undefined && current.team.id === awayTeamId;
+  const driveTeam = nonEmpty(current.team?.id);
+  // Whose ball it is now, which isn't always the drive's: ESPN keeps a
+  // punting team's drive as `current` until the next snap, and the plays
+  // after the punt (a timeout, a review) belong to the receiving team. Every
+  // `yardsToEndzone` counts toward the end zone *its* team attacks, so each
+  // spot is measured against its own side (verified live, NFL 2026-09-27).
+  const ballTeam = nonEmpty(play.end?.team?.id) ?? driveTeam;
+  const handsChanged =
+    ballTeam !== undefined && driveTeam !== undefined && ballTeam !== driveTeam;
+  const isAway = ballTeam !== undefined && ballTeam === awayTeamId;
   const yardsToEndzone = play.end?.yardsToEndzone;
+  // Clamped: a payload can hand back a spot past the goal line on a scoring
+  // play.
+  const fromAwayGoal = (yards: number, teamId: string | undefined = ballTeam) =>
+    Math.min(Math.max(teamId === awayTeamId ? 100 - yards : yards, 0), 100);
+
+  const plays = current.plays ?? [];
+  const scoring = plays.filter((p) => p.scoringPlay === true);
+  const result =
+    scoring.length === 0 && !current.isScore
+      ? undefined
+      : (scoringResultName(scoring) ??
+        nonEmpty(current.displayResult?.trim()) ??
+        "Score");
+  const scorer =
+    result === undefined
+      ? undefined
+      : scoringSideOf(scoring[scoring.length - 1], previous, plays);
+  const resultTeamId =
+    result === undefined
+      ? undefined
+      : scorer === "away"
+        ? awayTeamId
+        : scorer === "home" && homeTeamId !== undefined
+          ? homeTeamId
+          : driveTeam;
+
+  let field: GameSituation["field"];
+  if (yardsToEndzone !== undefined) {
+    const distance = play.end?.distance;
+    const lineToGain =
+      result === undefined &&
+      distance !== undefined &&
+      distance > 0 &&
+      distance < yardsToEndzone
+        ? fromAwayGoal(yardsToEndzone - distance)
+        : undefined;
+    // A snap is never from inside the end zone: a start of 0 is ESPN's
+    // filler on a timeout or review, not a spot.
+    const snapped = (p: EspnPlay) =>
+      sameHands(p) && (p.start?.yardsToEndzone ?? 0) > 0;
+    // Once the ball has changed hands the drive is over in all but name:
+    // the field shows the ball and the new side's line, no trail or arrow.
+    const firstSnap = handsChanged ? undefined : plays.find(snapped);
+    const playStart =
+      !handsChanged && snapped(play) ? play.start?.yardsToEndzone : undefined;
+    const type = play.type?.text?.toLowerCase() ?? "";
+    field = {
+      ball: fromAwayGoal(yardsToEndzone),
+      driveStart:
+        firstSnap?.start?.yardsToEndzone === undefined
+          ? undefined
+          : fromAwayGoal(
+              firstSnap.start.yardsToEndzone,
+              nonEmpty(firstSnap.start.team?.id) ?? driveTeam
+            ),
+      playStart: playStart === undefined ? undefined : fromAwayGoal(playStart),
+      lineToGain,
+      isPass: type.includes("pass") && !type.includes("sack"),
+    };
+  }
 
   return {
-    possessionTeamId: nonEmpty(current.team?.id),
+    possessionTeamId: ballTeam,
     downDistanceText: nonEmpty(play.end?.shortDownDistanceText),
     possessionText: nonEmpty(play.end?.possessionText),
     driveSummary: nonEmpty(current.description),
-    lastPlayText: nonEmpty(play.text),
-    fieldPosition:
-      yardsToEndzone === undefined
-        ? undefined
-        : // `yardsToEndzone` counts down toward the *defence's* end zone, so
-          // which end of the bar that is depends on who has the ball.
-          // Clamped: a payload can hand back a spot past the goal line on a
-          // scoring play.
-          Math.min(
-            Math.max((isAway ? 100 - yardsToEndzone : yardsToEndzone) / 100, 0),
-            1
-          ),
-    // The away team attacks the home end zone, which the bar draws on the
-    // right — so the arrow points right exactly when the away side has it.
+    driveLine: driveLine(current),
+    lastPlayText: play.text === undefined ? undefined : nonEmpty(playText(play.text)),
+    lastPlayDownText: nonEmpty(play.start?.downDistanceText),
+    lastPlayClock: nonEmpty(play.clock?.displayValue),
+    lastPlayId: nonEmpty(play.id),
+    result,
+    resultTeamId,
+    driveId: nonEmpty(current.id),
+    field,
+    fieldPosition: field === undefined ? undefined : field.ball / 100,
+    // The away team attacks the home end zone, which the field draws on the
+    // right — so the offence moves right exactly when the away side has it.
     drivingRight: isAway,
   };
+}
+
+/** "4 plays, 57 yds". ESPN's own line carries the elapsed time too, which
+ *  the card leaves to the Plays tab. */
+function driveLine(drive: EspnDrive): string | undefined {
+  const plays = drive.offensivePlays;
+  const yards = drive.yards;
+  if (plays === undefined || yards === undefined) {
+    return nonEmpty(drive.description);
+  }
+  return `${plays} ${plays === 1 ? "play" : "plays"}, ${yards} ${
+    Math.abs(yards) === 1 ? "yd" : "yds"
+  }`;
+}
+
+/** The name a scoring drive goes by. A touchdown outranks the extra point
+ *  that follows it, which is the last scoring play on the drive but not
+ *  what anyone calls it. */
+function scoringResultName(scoring: EspnPlay[]): string | undefined {
+  const types = scoring.map((p) => p.type?.text?.toLowerCase() ?? "");
+  if (types.some((t) => t.includes("touchdown"))) return "Touchdown";
+  if (types.some((t) => t.includes("field goal"))) return "Field Goal";
+  if (types.some((t) => t.includes("safety"))) return "Safety";
+  return undefined;
+}
+
+/** Whose points a play in the drive in progress were, read off the running
+ *  score going into it — the finished drives, then this drive's own plays. */
+function scoringSideOf(
+  target: EspnPlay | undefined,
+  previous: EspnDrive[],
+  plays: EspnPlay[]
+): ScoringSide | undefined {
+  if (!target || target.awayScore === undefined || target.homeScore === undefined) {
+    return undefined;
+  }
+  let away = 0;
+  let home = 0;
+  for (const p of [...previous.flatMap((d) => d.plays ?? []), ...plays]) {
+    if (p === target) break;
+    if (p.awayScore === undefined || p.homeScore === undefined) continue;
+    away = p.awayScore;
+    home = p.homeScore;
+  }
+  if (target.awayScore > away) return "away";
+  if (target.homeScore > home) return "home";
+  return undefined;
+}
+
+/**
+ * Whether both ends of a play are measured toward the same end zone — a
+ * snap, as opposed to a kickoff, punt or turnover, whose start belongs to one
+ * team and whose end to the other. Only a snap gets an arrow on the field. A
+ * side ESPN didn't name is given the benefit of the doubt, since the drive's
+ * own team is the likely one.
+ */
+function sameHands(play: EspnPlay): boolean {
+  const start = play.start?.team?.id;
+  const end = play.end?.team?.id;
+  if (start === undefined || end === undefined) return true;
+  return start === end;
+}
+
+/**
+ * ESPN's narration without the clock it leads with: "(7:53) Shotgun…" reads
+ * "Shotgun…". Every surface that prints a play prints its clock beside it,
+ * so leaving it in printed the time twice. Only a leading clock goes —
+ * "(Shotgun)" and "(J.Taylor)" are part of the call.
+ */
+export function playText(raw: string): string {
+  const trimmed = raw.trim();
+  const match = /^\(\d{1,2}:\d{2}\)\s*/.exec(trimmed);
+  if (!match) return trimmed;
+  const rest = trimmed.slice(match[0].length);
+  return rest === "" ? trimmed : rest;
+}
+
+/** A play's spot, or undefined where ESPN has none: a free throw, a rebound
+ *  or a substitution carries -214748340 on both axes, and a map that trusted
+ *  it would draw a mark far off the court. */
+function playCoordinate(
+  dto: EspnPlay["coordinate"]
+): { x: number; y: number } | undefined {
+  const x = dto?.x;
+  const y = dto?.y;
+  if (typeof x !== "number" || typeof y !== "number") return undefined;
+  if (Math.abs(x) >= 1000 || Math.abs(y) >= 1000) return undefined;
+  return { x, y };
 }
 
 /**
@@ -1316,7 +1478,7 @@ export function transformPlays(plays: EspnPlay[]): PlayItem[] {
     }
     mapped.push({
       id: play.id ?? `play-${index}`,
-      text: nonEmpty(play.text),
+      text: play.text === undefined ? undefined : nonEmpty(playText(play.text)),
       downDistanceText: nonEmpty(play.start?.downDistanceText),
       nextDownDistanceText: nonEmpty(play.end?.shortDownDistanceText),
       possessionText: nonEmpty(play.end?.possessionText),
@@ -1329,6 +1491,11 @@ export function transformPlays(plays: EspnPlay[]): PlayItem[] {
       homeScore: home,
       scoringSide,
       teamId: nonEmpty(play.team?.id),
+      startYardsToEndzone: sameHands(play) ? play.start?.yardsToEndzone : undefined,
+      nextDistance: play.end?.distance,
+      coordinate: playCoordinate(play.coordinate),
+      isShootingPlay: play.shootingPlay ?? false,
+      strength: nonEmpty(play.strength?.abbreviation),
     });
     if (away !== undefined) previousAway = away;
     if (home !== undefined) previousHome = home;
@@ -1593,7 +1760,12 @@ export function transformGameSummary(
     // football's plays live inside its drives, and carrying them twice
     // would print the same rows in two places.
     plays: drives.length > 0 ? [] : flatPlays,
-    situation: transformSituation(summary.drives?.current, awayTeamEspnId),
+    situation: transformSituation(
+      summary.drives?.current,
+      awayTeamEspnId,
+      homeTeamEspnId,
+      drives
+    ),
     winProbability: transformWinProbability(
       summary.predictor,
       summary.winprobability

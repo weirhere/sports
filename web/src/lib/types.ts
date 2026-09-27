@@ -339,6 +339,21 @@ export interface PlayItem {
   scoringSide?: ScoringSide;
   /** Whose play it was, where the payload says — the flat feed only. */
   teamId?: string;
+  /** Distance from the offense's target end zone at the snap — where the
+   *  Gamecast field draws this play's arrow from. Absent when the play
+   *  changed hands (a kickoff, a punt, a turnover): its two ends are
+   *  measured toward different end zones, so no one arrow joins them. */
+  startYardsToEndzone?: number;
+  /** Yards to a first down once the play ended — the field's line to gain. */
+  nextDistance?: number;
+  /** Where a basketball or hockey play happened, in ESPN's feet. Absent in
+   *  football and wherever ESPN gave no usable spot. */
+  coordinate?: { x: number; y: number };
+  /** ESPN's flag for a shot attempt, free throws included. */
+  isShootingPlay?: boolean;
+  /** Hockey's manpower, ESPN's abbreviation: "even-strength",
+   *  "power-play", "short-handed", "empty-net". */
+  strength?: string;
 }
 
 /**
@@ -354,8 +369,26 @@ export interface GameSituation {
   possessionText?: string;
   /** The drive so far: "1 play, 6 yards, 0:05". */
   driveSummary?: string;
+  /** The Drive column: "4 plays, 57 yds" from the drive's own numbers, or
+   *  ESPN's line when they didn't arrive. */
+  driveLine?: string;
   /** ESPN's narration of the play that just ended. */
   lastPlayText?: string;
+  /** The down that play faced — "2nd & 15 at WSU 48" — for the Last play
+   *  label. The columns above already say where things stand now. */
+  lastPlayDownText?: string;
+  lastPlayClock?: string;
+  /** What the field keys its animation on: a new id is a new play, and a
+   *  poll that brings the same play back redraws nothing. */
+  lastPlayId?: string;
+  /** Set once the drive has scored — "Touchdown" — with the team whose
+   *  points they were, which a pick six makes the defense. */
+  result?: string;
+  resultTeamId?: string;
+  /** The drive in progress, for keying the field: a new possession starts
+   *  its pin where the drive does instead of sliding over. */
+  driveId?: string;
+  field?: GameSituationField;
   /**
    * Where the ball sits, 0 at the away team's own goal line and 1 at the
    * home team's. Absent when the payload gave no distance, which leaves the
@@ -364,6 +397,21 @@ export interface GameSituation {
   fieldPosition?: number;
   /** True when the offence is moving toward the home end zone. */
   drivingRight: boolean;
+}
+
+/** Every spot in yards from the away team's goal line, 0…100 — left to
+ *  right on a field drawn away-end-zone-left. */
+export interface GameSituationField {
+  ball: number;
+  /** The drive's first snap — the trail's hollow dot. */
+  driveStart?: number;
+  /** Where the last play began. Absent when it changed hands, which leaves
+   *  the field showing the ball without an arrow. */
+  playStart?: number;
+  /** Absent on goal to go, and once the drive has scored. */
+  lineToGain?: number;
+  /** Passes arc; runs, sacks and penalties travel along the ground. */
+  isPass: boolean;
 }
 
 /**
