@@ -872,3 +872,4 @@ sibling below it.
 | 2026-09-27 | Team page News tab, last, filtered to stories tagging the team and at most one other | **shipped** — last in the web row, fetched on first open via `/api/team/{id}/news` |
 | 2026-09-27 | Web story reader at `/story/{league}/{id}`, times drawn in the browser's zone | **shipped** — web-only; iOS has no URL to rebuild from |
 | 2026-09-27 | Team page tab order: Trades ahead of Roster | **pending** — rides the web's Trades tab, which doesn't exist yet |
+| 2026-09-27 | News tab second in the bottom bar: For you (followed teams' feeds, newest first) and a page per league (previews last) | **shipped** — `/news`, second in both navs; For you through `/api/team/{id}/news`, leagues through `/api/news` |

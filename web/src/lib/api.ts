@@ -149,6 +149,11 @@ export async function getTeamNews(league: League, teamId: string): Promise<NewsS
   return fetchJson(`${BASE}/team/${teamId}/news?league=${league}`);
 }
 
+/** A league's stories for the News tab (E26), newest first, previews last. */
+export async function getLeagueNews(league: League): Promise<NewsStory[]> {
+  return fetchJson(`${BASE}/news?league=${league}`);
+}
+
 /**
  * One season of a player's games. `season` is ESPN's own year (the ending
  * year for basketball and hockey); undefined asks for ESPN's current one.

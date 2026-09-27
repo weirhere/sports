@@ -7,6 +7,8 @@ import summaryJson from "./espn/__fixtures__/nba-summary-article.json";
 import feedJson from "./espn/__fixtures__/nba-team-news.json";
 import storyJson from "./espn/__fixtures__/nba-news-story.json";
 import {
+  forYou,
+  leagueFeed,
   newsStory,
   storyUrl,
   teamFeed,
@@ -155,5 +157,36 @@ describe("timestamps (N7)", () => {
 
   it("is exact in the reader", () => {
     expect(exactTime("2026-09-27T19:44:00Z", zone)).toBe("Sep 27, 2026 at 3:44 PM");
+  });
+});
+
+describe("the News tab (E26)", () => {
+  it("puts a league's previews last", () => {
+    // ESPN's college-football feed on 2026-09-27 was 50 AP previews
+    // published within four minutes. Newer isn't enough to lead.
+    const feed: EspnNewsFeed = {
+      articles: [
+        { id: 1, type: "Preview", headline: "Next week", published: "2026-09-27T19:47:00Z" },
+        { id: 2, type: "Story", headline: "Older story", published: "2026-09-27T12:00:00Z" },
+        { id: 3, type: "Media", headline: "A video", published: "2026-09-27T20:00:00Z" },
+        { id: 4, type: "HeadlineNews", headline: "Newest news", published: "2026-09-27T18:00:00Z" },
+      ],
+    };
+    expect(leagueFeed(feed, "cfb").map((story) => story.id)).toEqual(["4", "2", "1"]);
+  });
+
+  it("merges For you once each, newest first", () => {
+    const story = (id: string, published: string): NewsStory => ({
+      id,
+      kind: "recap",
+      league: "nba",
+      headline: id,
+      published,
+      teams: [],
+    });
+    // A recap tags both teams, and both are followed.
+    const knicks = [story("recap", "2026-09-27T03:00:00Z"), story("knicks", "2026-09-26T12:00:00Z")];
+    const nets = [story("nets", "2026-09-27T12:00:00Z"), story("recap", "2026-09-27T03:00:00Z")];
+    expect(forYou([knicks, nets]).map((entry) => entry.id)).toEqual(["nets", "recap", "knicks"]);
   });
 });

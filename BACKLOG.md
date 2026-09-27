@@ -526,6 +526,14 @@ The pattern brief is `docs/news.md`: 16 decisions from FotMob's news screens on 
 - [ ] **P3** **Photos**, if ever (N8). Every row and the reader are text by decision: press photography would be the color budget's sixth exception. Recorded so it meets a written answer.
 - [ ] **P3** **A Transfers-style module** for recruiting commitments (N16). *(The pro half shipped separately as E24's Trades tab, #234, the same day. What's left is college's, and it's E24's P2: ESPN has no portal or commitments feed.)*
 
+## E26 — A News tab
+
+Andy, 2026-09-27, from FotMob's News screen on Mobbin: "a News bottom nav item to be an aggregated source for all News across all leagues." It reverses `docs/news.md` N1 on purpose; the rest of the brief stands.
+
+- [x] **P1** **News, second in the bottom bar, on iOS and web.** For you (followed teams' own feeds, merged newest first, capped at 20 follows) and a page per league (`/news?limit=50`, previews last). iOS `NewsScreen` + `NewsFeedStore`; web `/news`. *(Shipped 2026-09-27.)*
+- [ ] **P2** **A better college-football league page.** ESPN's feed can be nothing but next week's AP previews (all 50 items on 2026-09-27). Candidates: the Top 25's team feeds merged, or a second request past the previews. Needs a probe before a choice.
+- [ ] **P3** **Follow order.** FotMob ranks For you by the order of your favorites; ours are a set. If the Teams tab ever gains drag-to-order (the tables hub has it), For you should follow it.
+
 ## Icebox (deliberately not now)
 
 - ~~Widgets~~ / ~~Live Activities~~ *(widgets de-iceboxed 2026-08-04 → E7; Live Activities de-iceboxed 2026-09-05 → E9 as a decision item, and **decided 2026-09-10 → E12 as a build** — the "no push story without a backend" verdict collapsed three paths into one, and only two of them need a server; the one chosen is path 3, broadcast channels, which needs a service holding no user data)*

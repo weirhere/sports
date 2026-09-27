@@ -1051,7 +1051,7 @@ struct TeamPage: View {
     private var newsContent: some View {
         VStack(spacing: Spacing.sm) {
             if let stories = currentNews, !stories.isEmpty {
-                TeamNewsList(stories: stories, gameFor: scheduledGame(for:))
+                StoryListCard(stories: stories, gameFor: scheduledGame(for:))
             } else if currentNews != nil {
                 StatusMessage(text: "No \(team.location) stories right now.")
                     .cardSurface()

@@ -5,6 +5,8 @@
 import type { League } from "@/lib/leagues";
 import type { NewsStory } from "@/lib/news";
 import {
+  leagueFeed,
+  leagueNewsUrl,
   newsStory,
   storyUrl,
   teamFeed,
@@ -28,6 +30,13 @@ async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
 export async function teamNews(league: League, teamId: string): Promise<NewsStory[]> {
   const feed = await fetchJson<EspnNewsFeed>(teamNewsUrl(league, teamId), REVALIDATE.feed);
   return teamFeed(feed, teamId, league);
+}
+
+/** A league's feed for the News tab (E26), previews last. Throws when the
+ *  request failed. */
+export async function leagueNews(league: League): Promise<NewsStory[]> {
+  const feed = await fetchJson<EspnNewsFeed>(leagueNewsUrl(league), REVALIDATE.feed);
+  return leagueFeed(feed, league);
 }
 
 /** One story with its text, or undefined for an id that isn't a story the

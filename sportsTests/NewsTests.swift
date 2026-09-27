@@ -110,6 +110,40 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(!story(["17"]).isFocused(on: "18"))
     }
 
+    // MARK: - The News tab (E26)
+
+    @Test func aLeagueFeedPutsPreviewsLast() throws {
+        // ESPN's college-football feed on 2026-09-27 was 50 AP previews
+        // published within four minutes. Newer isn't enough to lead.
+        let json = """
+        {"articles": [
+          {"id": 1, "type": "Preview", "headline": "Next week", "published": "2026-09-27T19:47:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/1"}}}},
+          {"id": 2, "type": "Story", "headline": "Older story", "published": "2026-09-27T12:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/2"}}}},
+          {"id": 3, "type": "Media", "headline": "A video", "published": "2026-09-27T20:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/3"}}}},
+          {"id": 4, "type": "HeadlineNews", "headline": "Newest news", "published": "2026-09-27T18:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/4"}}}}
+        ]}
+        """
+        let dto = try JSONDecoder().decode(NewsFeedDTO.self, from: Data(json.utf8))
+        let stories = NewsMapper.leagueFeed(from: dto, league: .collegeFootball)
+        #expect(stories.map(\.id) == ["4", "2", "1"])
+    }
+
+    @Test func forYouMergesEachStoryOnceNewestFirst() {
+        func story(_ id: String, _ published: String) -> NewsStory {
+            NewsStory(id: id, kind: .recap, league: .nba, headline: id, dek: nil,
+                      attribution: nil, published: ISO8601DateFormatter().date(from: published),
+                      gameId: nil, teams: [])
+        }
+        // A recap tags both teams, and both are followed.
+        let knicks = [story("recap", "2026-09-27T03:00:00Z"), story("knicks", "2026-09-26T12:00:00Z")]
+        let nets = [story("nets", "2026-09-27T12:00:00Z"), story("recap", "2026-09-27T03:00:00Z")]
+        #expect(NewsMapper.forYou([knicks, nets]).map(\.id) == ["nets", "recap", "knicks"])
+    }
+
     // MARK: - The reader (N4)
 
     @Test func readsTheContentAPIsParagraphs() throws {

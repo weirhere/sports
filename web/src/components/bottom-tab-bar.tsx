@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Search, Shield, Trophy } from "lucide-react";
+import { House, Newspaper, Search, Shield, Trophy } from "lucide-react";
 import { handleScoresLinkClick } from "@/lib/scores-home";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,9 @@ const TABS = [
   // view and every `scores*` symbol keep their names — only the word moved,
   // exactly as the Tables → Leagues rename did.
   { href: "/", label: "Games", icon: House },
+  // Second, after FotMob's Matches · News (iOS E26, 2026-09-27): every
+  // league's stories in one place. Games stays first, and home.
+  { href: "/news", label: "News", icon: Newspaper },
   // "Leagues", not "Rankings" (iOS, 2026-09-09): what the hub lists is
   // leagues, and a conference or a poll is reached *through* one. The
   // trophy replaced a numbered-list glyph that drew the standings table the

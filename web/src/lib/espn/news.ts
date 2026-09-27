@@ -65,6 +65,11 @@ export function teamNewsUrl(league: League, teamId: string): string {
   return `https://site.web.api.espn.com/apis/site/v2/sports/${SPECS[league]}/news?team=${teamId}&limit=25`;
 }
 
+/** A league's own feed, for the News tab's league pages (E26). */
+export function leagueNewsUrl(league: League): string {
+  return `https://site.web.api.espn.com/apis/site/v2/sports/${SPECS[league]}/news?limit=50`;
+}
+
 export function storyUrl(storyId: string): string {
   return `https://content.core.api.espn.com/v1/sports/news/${storyId}`;
 }
@@ -122,4 +127,43 @@ export function teamFeed(dto: EspnNewsFeed, teamId: string, league: League): New
     .filter((story): story is NewsStory => story !== undefined && isFocused(story, teamId))
     .map((story) => ({ ...story, body: undefined }))
     .sort((a, b) => (b.published ?? "").localeCompare(a.published ?? ""));
+}
+
+function newestFirst(a: NewsStory, b: NewsStory): number {
+  return (b.published ?? "").localeCompare(a.published ?? "");
+}
+
+/**
+ * A league's feed (E26): the types the app shows, newest first, and
+ * **previews last**. ESPN's college-football feed floods with AP's previews
+ * for the next slate — on 2026-09-27 all 50 items were previews published
+ * within four minutes — and a page that leads with 50 of them buries every
+ * other story. Demoted rather than dropped: on a quiet day they're what
+ * there is.
+ */
+export function leagueFeed(dto: EspnNewsFeed, league: League): NewsStory[] {
+  return (dto.articles ?? [])
+    .map((article) => newsStory(article, league))
+    .filter((story): story is NewsStory => story !== undefined)
+    .map((story) => ({ ...story, body: undefined }))
+    .sort((a, b) => {
+      const aPreview = a.kind === "preview";
+      const bPreview = b.kind === "preview";
+      if (aPreview !== bPreview) return aPreview ? 1 : -1;
+      return newestFirst(a, b);
+    });
+}
+
+/**
+ * For you (E26): every followed team's own stories in one list, each story
+ * once — a recap tags both teams, and a user may follow both — newest
+ * first. Follows carry no order of their own, so time is the only honest
+ * ranking.
+ */
+export function forYou(feeds: NewsStory[][]): NewsStory[] {
+  const seen = new Set<string>();
+  return feeds
+    .flat()
+    .filter((story) => (seen.has(story.id) ? false : (seen.add(story.id), true)))
+    .sort(newestFirst);
 }

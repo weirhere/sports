@@ -28,6 +28,8 @@ Flows: [News](https://mobbin.com/flows/6b380a74-8f75-4159-af29-7aad2dc57d07) · 
 ## Where news lives
 
 ### N1 · Don't take · No News tab. News appears only attached to a game or a team.
+
+*Superseded 2026-09-27 (E26): Andy added a News tab, second in the bottom bar, with For you and a page per league. Stories still attach to games and teams too.*
 **From FotMob:** R1
 
 FotMob gives News the 2nd slot in its tab bar. StatSide's charter keeps scores first, and the Scores sort order is the product. Attaching news to entities gets most of the value without a destination competing with Scores.
@@ -126,4 +128,4 @@ FotMob's Transfer Center puts structured from-club → to-club cards above prose
 - **Host.** The team feed uses `site.web.api.espn.com`. On `site.api` the same path answers 403 to a browser or empty User-Agent; `site.web.api` answers all of them. The reader's body comes from `content.core.api.espn.com/v1/sports/news/{id}`, which the feed links as `links.api.self`.
 - **Type.** No new tokens. Headline `heroTitle`, paragraphs `teamName`, subheads and row headlines `teamNameEmphasis`, meta `meta`. Cards are `CardHeader` + `cardSurface()`; the game row is `GameRow` in `NextGameCard`'s recipe; follow rows are `TeamFollowRow(opensTeam: true)`.
 - **Web.** `web/src/lib/news.ts` and `web/src/lib/espn/news.ts` port the model, parser and mapper; `StoryRow` and `StoryMeta` in `web/src/components/`; the reader is `/story/{league}/{id}`, which rebuilds a story from the content API by id, so its score row always links. Tests: `web/src/lib/news.test.ts`, over the same fixtures.
-- **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `TeamNewsList`, `StoryDestination`. Tests: `sportsTests/NewsTests.swift`.
+- **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `StoryListCard`, `StoryDestination`, and the News tab's `NewsScreen` with `NewsFeedStore` (E26). Tests: `sportsTests/NewsTests.swift`.
