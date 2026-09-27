@@ -10,7 +10,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus, Star } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
+import { FollowCapsuleButton } from "@/components/follow-capsule";
 import { AddTeamsSheet } from "@/components/add-teams-sheet";
 import { PageHeader } from "@/components/page-header";
 import { TeamLogo } from "@/components/team-logo";
@@ -18,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { LEAGUES } from "@/lib/leagues";
-import { followedLeagues, followKey, type FollowKey } from "@/lib/refs";
+import { followedLeagues, followKey } from "@/lib/refs";
 import { teamPath } from "@/lib/routes";
 import { teamFullName, teamSpokenLabel, teamSubtitle } from "@/lib/team-name";
 import type { Team } from "@/lib/types";
@@ -142,7 +143,7 @@ function EmptyState() {
 }
 
 /**
- * One followed team, as its own card. The card navigates; the star unfollows
+ * One followed team, as its own card. The card navigates; the Following button unfollows
  * — the same split every browse row in the app uses.
  *
  * The full name, with "NCAAF • SEC" under it (iOS, 2026-09-21). Both lines
@@ -150,11 +151,12 @@ function EmptyState() {
  * not a mistake.
  */
 function FollowedTeamCard({ team }: { team: Team }) {
+  const { toggleFavorite } = useFavoritesContext();
   const key = followKey({ league: team.league, teamId: team.id });
   const name = teamFullName(team);
 
   return (
-    <div className="card-surface flex items-center pr-2">
+    <div className="card-surface flex items-center pr-4">
       <Link
         href={teamPath(team)}
         aria-label={teamSpokenLabel(team)}
@@ -175,29 +177,12 @@ function FollowedTeamCard({ team }: { team: Team }) {
           </span>
         </span>
       </Link>
-      <UnfollowStar teamKey={key} label={name} />
+      <FollowCapsuleButton
+        followed
+        name={name}
+        onToggle={() => toggleFavorite(key)}
+      />
     </div>
   );
 }
 
-/** The card navigates; the star unfollows, and doesn't navigate. */
-function UnfollowStar({
-  teamKey,
-  label,
-}: {
-  teamKey: FollowKey;
-  label: string;
-}) {
-  const { toggleFavorite } = useFavoritesContext();
-  return (
-    <button
-      type="button"
-      onClick={() => toggleFavorite(teamKey)}
-      aria-label={`Unfollow ${label}`}
-      aria-pressed={true}
-      className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-bg-header"
-    >
-      <Star aria-hidden="true" className="h-4 w-4 fill-current" />
-    </button>
-  );
-}
