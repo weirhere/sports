@@ -870,3 +870,4 @@ sibling below it.
 | 2026-09-27 | Stories open in an in-app reader, text-only, ending in follow rows for the tagged teams | **pending** — a `/story/{league}/{id}` route |
 | 2026-09-27 | News is text-only, no photos | **pending** — rides the reader and the rows above |
 | 2026-09-27 | Team page News tab, last, filtered to stories tagging the team and at most one other | **pending** — `HeroHeader` tab on the web team page |
+| 2026-09-27 | Team page tab order: Trades ahead of Roster | **pending** — rides the web's Trades tab, which doesn't exist yet |
