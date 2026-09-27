@@ -16,6 +16,14 @@ struct LogoImage: View {
     /// `.fill` for imagery that should crop to its frame (player
     /// headshots); logos keep the letterboxing `.fit` default.
     var contentMode: ContentMode = .fit
+    /// A team-color ground this mark sits on, as ESPN's hex. When the
+    /// mark's own pixels blend into it, the mark gets a white sticker
+    /// outline (TeamPage's light-mode header, 2026-09-27). Nil draws the
+    /// mark bare, as everywhere else.
+    var outlineAgainst: String? = nil
+
+    /// The outline's reach past the mark's silhouette.
+    @ScaledMetric private var outlineWidth: CGFloat = 2.5
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var image: UIImage?
@@ -38,6 +46,24 @@ struct LogoImage: View {
         return nil
     }
 
+    /// The mark's silhouette in white, stamped in a ring around it — a
+    /// dilation SwiftUI has no filter for. Sixteen copies is where the
+    /// edge stops showing steps at this width.
+    private func outline(of image: UIImage) -> some View {
+        ZStack {
+            ForEach(0..<16, id: \.self) { step in
+                let angle = Double(step) / 16 * 2 * .pi
+                Image(uiImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: contentMode)
+                    .foregroundStyle(.white)
+                    .offset(x: cos(angle) * outlineWidth, y: sin(angle) * outlineWidth)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
     var body: some View {
         // Resolved once per pass: the dark variant is a string rewrite of
         // the URL, and the body used to derive it three times over.
@@ -45,6 +71,12 @@ struct LogoImage: View {
         Group {
             if let image = displayImage(for: target) {
                 Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
+                    .background {
+                        if let ground = outlineAgainst,
+                           LogoContrast.conflicts(image, groundHex: ground) {
+                            outline(of: image)
+                        }
+                    }
             } else if let placeholder {
                 Circle().fill(placeholder)
             } else {
