@@ -34,8 +34,8 @@ import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
 } from "@/components/slate-control-row";
-import { scoringCardTitle, seasonYear } from "@/lib/leagues";
-import { showsScores } from "./game-status";
+import { periodFormat, scoringCardTitle, seasonYear } from "@/lib/leagues";
+import { isLiveStatus, showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
 import {
   GameInfoCard,
@@ -44,7 +44,14 @@ import {
   venueHasContent,
 } from "./game-info-cards";
 import { GetTheAppCard } from "@/components/get-the-app";
-import { LiveSituationCard } from "./live-situation-card";
+import {
+  DriveGamecastCard,
+  ShotGamecastCard,
+} from "./live-situation-card";
+import { DetailCard } from "./detail-card";
+import { currentShotMap, shotMapGamecast } from "@/lib/gamecast";
+import { allowsShootout } from "@/lib/period-label";
+
 import { LineScoreCard } from "./line-score-card";
 import { WinProbabilityCard } from "./win-probability-card";
 import { ScoringPlaysCard } from "./scoring-plays-card";
@@ -151,6 +158,18 @@ export function GameDetailView({
   // "Scoring" in football, "Goals" in hockey, and no card at all in
   // basketball — ~98 buckets a game is the box score with worse formatting.
   const scoringTitle = scoringCardTitle(game.league);
+  // The court or rink Gamecast, live games only: the color budget's surface
+  // exception is "only ever drawn while a game is live", and a final keeps
+  // the page it had. Undefined in football, whose card is the drive, and
+  // wherever the feed has nothing to draw.
+  const shotGamecast = (() => {
+    if (!isLiveStatus(game.status)) return undefined;
+    const plays = data.plays ?? [];
+    const shootout = allowsShootout(game);
+    const map = currentShotMap(game, plays, shootout);
+    const content = shotMapGamecast(game, plays, shootout);
+    return map && content ? { map, content } : undefined;
+  })();
 
   const showsTabs = tabs.length > 1;
 
@@ -174,12 +193,28 @@ export function GameDetailView({
         // right. The iPhone's single column keeps the same reading order.
         <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            {/* The Gamecast strip leads while a game is live: the down, the
-                spot and the last play are what the page is being opened for
-                at 3:30 on a Saturday. It is built from the drive in
+            {/* The Gamecast leads while a game is live: the down, the spot
+                and the last play are what the page is being opened for at
+                3:30 on a Saturday. Football's is built from the drive in
                 progress, which ESPN drops at final — so it retires itself. */}
-            {data.situation && (
-              <LiveSituationCard game={game} situation={data.situation} />
+            {data.situation ? (
+              <DetailCard title="Current drive">
+                <DriveGamecastCard game={game} situation={data.situation} />
+              </DetailCard>
+            ) : (
+              shotGamecast && (
+                // Basketball and hockey: the same card over this period's
+                // shots (iOS, 2026-09-27).
+                <DetailCard
+                  title={`Current ${periodFormat(game.league).longName.toLowerCase()}`}
+                >
+                  <ShotGamecastCard
+                    game={game}
+                    content={shotGamecast.content}
+                    map={shotGamecast.map}
+                  />
+                </DetailCard>
+              )
             )}
             {hasLinescores && <LineScoreCard game={game} />}
             {/* ESPN's predictor before kickoff, the per-play value after
