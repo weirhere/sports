@@ -549,6 +549,21 @@ nonisolated struct PlayDTO: Decodable {
     /// in; a flat feed has no drive, and a goals card with no mark beside
     /// the row can't say whose goal it was.
     let team: TeamRefDTO?
+    /// Where a basketball or hockey play happened, in feet — the Gamecast
+    /// shot map's only input (2026-09-27). Basketball folds every shot onto
+    /// one half court (x across, y out from the baseline); hockey is the
+    /// whole rink from center ice. A play with no spot ships
+    /// `-214748340`, which the shot map drops.
+    let coordinate: PlayCoordinateDTO?
+    let shootingPlay: Bool?
+    /// Hockey's manpower on the play: "even-strength", "power-play",
+    /// "short-handed", "empty-net" — from the play's team's side.
+    let strength: PlayTypeDTO?
+}
+
+nonisolated struct PlayCoordinateDTO: Decodable {
+    let x: Double?
+    let y: Double?
 }
 
 nonisolated struct TeamRefDTO: Decodable {

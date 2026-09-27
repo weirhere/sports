@@ -589,6 +589,12 @@ struct GameDetailScreen: View {
                         card(title: "Current drive") {
                             LiveSituationCard(summary: summary, situation: situation)
                         }
+                    } else if let shots = shotGamecast(summary) {
+                        // Basketball and hockey: the same card over this
+                        // period's shots (2026-09-27).
+                        card(title: "Current \(gameLeague.periodFormat.longName.lowercased())") {
+                            LiveSituationCard(summary: summary, content: shots.content, map: shots.map)
+                        }
                     }
                     // When and where to watch is one question; the
                     // ground it's played on is another (FotMob's Preview
@@ -664,6 +670,21 @@ struct GameDetailScreen: View {
                     }
             }
             .padding(Spacing.sm)
+    }
+
+    /// The court or rink Gamecast, live games only (D1): the color budget's
+    /// surface exception is "only ever drawn while a game is live", and a
+    /// final keeps the page it had. Nil in football, whose card is the
+    /// drive, and wherever the feed has nothing to draw.
+    private func shotGamecast(_ summary: GameSummary) -> (content: GamecastContent, map: ShotMap)? {
+        guard case .live = GameHeaderState.status(game, summary),
+              let map = ShotMap.current(plays: summary.plays, league: gameLeague,
+                                        awayId: summary.away?.team.id,
+                                        allowsShootout: allowsShootout),
+              let content = GamecastContent.shotMap(summary: summary, league: gameLeague,
+                                                    allowsShootout: allowsShootout)
+        else { return nil }
+        return (content, map)
     }
 
     /// The Plays tab: the Games tabs' control row language — two toggles

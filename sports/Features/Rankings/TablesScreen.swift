@@ -431,11 +431,10 @@ struct TablesScreen: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        // The column the rows' stars centre in, so the
-                        // header's chevron and every star below it share
-                        // one vertical line.
-                        .frame(width: ConferenceFollowStar.controlColumn)
-                        .padding(.trailing, ConferenceFollowStar.controlNudge)
+                        // Inset into the rows' follow capsules' round
+                        // ends, so the chevron sits over the controls
+                        // below it rather than past their edge.
+                        .padding(.trailing, Spacing.sm)
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
@@ -486,9 +485,9 @@ struct TablesScreen: View {
     }
 
     /// What a followed table's card measures, and so what a league header
-    /// does: the follow star's 34pt tap target, inside the row's 7pt and
-    /// the card's 4pt.
-    private static let headerHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
+    /// does: the follow capsule's 34pt tap target, inside the row's 7pt
+    /// and the card's 4pt.
+    private static let headerHeight: CGFloat = FollowCapsule.height + (7 * 2) + (Spacing.xs * 2)
 
     /// League-qualified and namespaced: the collapse state is persisted
     /// alongside every conference accordion's, so the key has to be unique

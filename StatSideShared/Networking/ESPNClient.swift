@@ -1636,9 +1636,21 @@ nonisolated enum ESPNMapper {
                 homeScore: play.homeScore,
                 teamId: play.team?.id,
                 startYardsToEndzone: sameHands(play) ? play.start?.yardsToEndzone : nil,
-                nextDistance: play.end?.distance?.value
+                nextDistance: play.end?.distance?.value,
+                coordinate: coordinate(play.coordinate),
+                isShootingPlay: play.shootingPlay ?? false,
+                strength: play.strength?.abbreviation
             )
         }
+    }
+
+    /// A play's spot, or nil where ESPN has none. A play with no location
+    /// — a free throw, a rebound, a substitution — carries
+    /// `-214748340` on both axes rather than leaving the field out, and a
+    /// map that trusted it would draw a mark far off the court.
+    static func coordinate(_ dto: PlayCoordinateDTO?) -> PlayCoordinate? {
+        guard let x = dto?.x, let y = dto?.y, abs(x) < 1000, abs(y) < 1000 else { return nil }
+        return PlayCoordinate(x: x, y: y)
     }
 
     /// ESPN's narration without the clock it leads with: "(7:53) Shotgun…"
