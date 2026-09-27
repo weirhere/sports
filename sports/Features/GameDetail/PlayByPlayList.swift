@@ -24,6 +24,11 @@ struct PlayByPlayList: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption) private var clockWidth: CGFloat = 40
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 16
+    /// The drive row's three stat columns, fixed so "10 pl", "79 yd" and
+    /// "5:16" line up down all 22 possessions.
+    @ScaledMetric(relativeTo: .caption) private var playsColumn: CGFloat = 32
+    @ScaledMetric(relativeTo: .caption) private var yardsColumn: CGFloat = 40
+    @ScaledMetric(relativeTo: .caption) private var timeColumn: CGFloat = 32
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -90,23 +95,32 @@ struct PlayByPlayList: View {
             guard canExpand else { return }
             if expanded.contains(drive.id) { expanded.remove(drive.id) } else { expanded.insert(drive.id) }
         } label: {
-            HStack(spacing: Spacing.md) {
-                LogoImage(url: summary.team(withId: drive.teamId)?.logoURL)
-                    .frame(width: logoSize, height: logoSize)
-                Text(drive.result ?? "—")
-                    .font(drive.isScore ? .metaEmphasis : .meta)
-                    .foregroundStyle(.textPrimary)
-                Spacer(minLength: Spacing.sm)
-                if let line = drive.summary {
-                    Text(line)
-                        .font(.meta.monospacedDigit())
-                        .foregroundStyle(.textSecondary)
-                }
-                if canExpand {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.textSecondary)
-                        .rotationEffect(.degrees(expanded.contains(drive.id) ? 180 : 0))
+            Group {
+                if isStacked {
+                    // At accessibility sizes the columns can't share a
+                    // line with the result, so the numbers drop beneath.
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Spacing.md) {
+                            driveMark(drive)
+                            driveTitle(drive)
+                            Spacer(minLength: Spacing.sm)
+                            chevron(drive, canExpand: canExpand)
+                        }
+                        if let line = spokenStats(drive) {
+                            Text(line)
+                                .font(.meta.monospacedDigit())
+                                .foregroundStyle(.textSecondary)
+                                .padding(.leading, logoSize + Spacing.md)
+                        }
+                    }
+                } else {
+                    HStack(spacing: Spacing.md) {
+                        driveMark(drive)
+                        driveTitle(drive)
+                        Spacer(minLength: Spacing.sm)
+                        driveStats(drive)
+                        chevron(drive, canExpand: canExpand)
+                    }
                 }
             }
             .padding(.horizontal, Spacing.lg)
@@ -124,6 +138,91 @@ struct PlayByPlayList: View {
         .accessibilityLabel(accessibilitySummary(for: drive))
         .accessibilityAddTraits(canExpand ? .isButton : [])
         .accessibilityValue(canExpand ? (expanded.contains(drive.id) ? "expanded" : "collapsed") : "")
+    }
+
+    private func driveMark(_ drive: Drive) -> some View {
+        LogoImage(url: summary.team(withId: drive.teamId)?.logoURL)
+            .frame(width: logoSize, height: logoSize)
+    }
+
+    /// The result, then the score it left if it scored: "Touchdown 7–0".
+    /// The drive in progress has no result yet, so it says where things
+    /// stand instead — the one-line version of the Summary tab's card.
+    private func driveTitle(_ drive: Drive) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+            Text(title(for: drive))
+                .font(drive.isScore || isInProgress(drive) ? .metaEmphasis : .meta)
+                .foregroundStyle(.textPrimary)
+                .lineLimit(1)
+            if let score = drive.runningScore {
+                PlayRow.runningScore(away: score.away, home: score.home, side: score.side)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        }
+    }
+
+    private func isInProgress(_ drive: Drive) -> Bool {
+        drive.id == summary.currentDrive?.id
+    }
+
+    /// Internal, not private, so the in-progress rule is unit-testable.
+    func title(for drive: Drive) -> String {
+        if let result = drive.result { return result }
+        if isInProgress(drive), let situation = summary.situation {
+            if let result = situation.result { return result }
+            let now = [situation.downDistanceText, situation.possessionText].compactMap(\.self)
+            if !now.isEmpty { return now.joined(separator: " · ") }
+        }
+        return "—"
+    }
+
+    /// Plays, yards and time in fixed columns, or ESPN's whole line where
+    /// the drive didn't carry its parts (CFBD, the fixtures).
+    @ViewBuilder
+    private func driveStats(_ drive: Drive) -> some View {
+        if drive.offensivePlays == nil, drive.yards == nil, drive.timeElapsed == nil {
+            if let line = drive.summary {
+                Text(line)
+                    .font(.meta.monospacedDigit())
+                    .foregroundStyle(.textSecondary)
+                    .lineLimit(1)
+            }
+        } else {
+            HStack(spacing: Spacing.sm) {
+                statColumn(drive.offensivePlays.map { "\($0) pl" }, width: playsColumn)
+                statColumn(drive.yards.map { "\($0) yd" }, width: yardsColumn)
+                statColumn(drive.timeElapsed, width: timeColumn)
+            }
+        }
+    }
+
+    private func statColumn(_ text: String?, width: CGFloat) -> some View {
+        Text(text ?? "—")
+            .font(.meta.monospacedDigit())
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
+            .frame(width: width, alignment: .trailing)
+    }
+
+    /// Always laid out, invisible when there's nothing to open, so a row
+    /// with no plays doesn't pull its columns out of line with the rest.
+    private func chevron(_ drive: Drive, canExpand: Bool) -> some View {
+        Image(systemName: "chevron.down")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.textSecondary)
+            .rotationEffect(.degrees(expanded.contains(drive.id) ? 180 : 0))
+            .opacity(canExpand ? 1 : 0)
+    }
+
+    /// "10 plays, 79 yards, 5:16" — ESPN's line where it shipped one,
+    /// built from the parts where it didn't.
+    private func spokenStats(_ drive: Drive) -> String? {
+        if let line = drive.summary { return line }
+        let parts = [drive.offensivePlays.map { "\($0) \($0 == 1 ? "play" : "plays")" },
+                     drive.yards.map { "\($0) \(abs($0) == 1 ? "yard" : "yards")" },
+                     drive.timeElapsed].compactMap(\.self)
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     // MARK: - Plays
@@ -147,13 +246,25 @@ struct PlayByPlayList: View {
         .padding(.bottom, Spacing.xs)
     }
 
-    /// One spoken sentence: "Miami, punt, 5 plays, 20 yards, 2:39".
+    /// One spoken sentence: "Miami, punt, 5 plays, 20 yards, 2:39". A
+    /// scoring drive adds the score it left ("Indiana 7, Miami 0"); the
+    /// drive in progress says where things stand in place of a result.
     /// Internal, not private, so the label shape is unit-testable.
     func accessibilitySummary(for drive: Drive) -> String {
         var parts: [String] = []
         if let location = summary.team(withId: drive.teamId)?.location { parts.append(location) }
-        if let result = drive.result { parts.append(result.lowercased()) }
-        if let line = drive.summary { parts.append(line) }
+        let title = title(for: drive)
+        if title != "—" {
+            parts.append(drive.result == nil && isInProgress(drive) && summary.situation?.result == nil
+                         ? "in progress, \(title.replacingOccurrences(of: " · ", with: ", "))"
+                         : title.lowercased())
+        }
+        if let score = drive.runningScore {
+            let awayName = summary.away?.team.location ?? "Away"
+            let homeName = summary.home?.team.location ?? "Home"
+            parts.append("\(awayName) \(score.away), \(homeName) \(score.home)")
+        }
+        if let line = spokenStats(drive) { parts.append(line) }
         return parts.joined(separator: ", ")
     }
 

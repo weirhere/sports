@@ -25,10 +25,11 @@ The target user checks scores 20+ times a fall weekend and is tired of ad-stuffe
 ## Design system
 
 - **Palette:** Black, white, and grays only for all UI chrome, text, dividers, and backgrounds. Support light (white bg) and dark (black bg) via semantic colors from day one.
-- **The color budget:** exactly three exceptions to monochrome:
+- **The color budget:** exactly four exceptions to monochrome:
   1. Logos — team and conference — render in full color (grayscale logos would make Michigan and Iowa look like the same team).
   2. The live indicator (a small pulsing dot + live score emphasis) may use a single red accent.
   3. Rankings movement indicators: green up, red down (the same red as the live accent — the app carries exactly one red). Arrows carry the meaning too; color is never the only signal.
+  4. The Gamecast field on the live drive card renders as a field: turf green, each team's own color in its end zone, and the broadcast's yellow line to gain. `FieldColors` holds it and only `DriveField` draws it; the card around it stays monochrome. *(Added 2026-09-27.)*
 - **Live state spends the visual budget:** heavier type weight on live scores, pulsing dot, possession indicator. Pre-game and final rows stay quiet.
 - **Typography:** system font (SF Pro). Weight and size create hierarchy, not color. Scores use monospaced digits (`.monospacedDigit()`) so they don't jitter as clocks tick.
 - **Density target:** FotMob-level. A game row is one compact line: logo, team, record, score/time, network. No cards-with-shadows padding inflation.

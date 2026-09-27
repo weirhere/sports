@@ -1551,7 +1551,10 @@ nonisolated enum ESPNMapper {
             summary: dto.description,
             period: dto.start?.period?.number,
             plays: plays(from: dto.plays?.elements ?? [],
-                         idPrefix: dto.id ?? fallbackId)
+                         idPrefix: dto.id ?? fallbackId),
+            offensivePlays: dto.offensivePlays?.value,
+            yards: dto.yards?.value,
+            timeElapsed: dto.timeElapsed?.displayValue
         )
     }
 
@@ -1561,7 +1564,7 @@ nonisolated enum ESPNMapper {
         dtos.enumerated().map { index, play in
             Play(
                 id: play.id ?? "\(idPrefix)-play-\(index)",
-                text: play.text?.trimmingCharacters(in: .whitespaces),
+                text: play.text.map(playText),
                 downDistanceText: play.start?.downDistanceText,
                 nextDownDistanceText: play.end?.shortDownDistanceText
                     ?? play.end?.downDistanceText,
@@ -1573,9 +1576,32 @@ nonisolated enum ESPNMapper {
                 isScoringPlay: play.scoringPlay ?? false,
                 awayScore: play.awayScore,
                 homeScore: play.homeScore,
-                teamId: play.team?.id
+                teamId: play.team?.id,
+                startYardsToEndzone: sameHands(play) ? play.start?.yardsToEndzone : nil,
+                nextDistance: play.end?.distance?.value
             )
         }
+    }
+
+    /// ESPN's narration without the clock it leads with: "(7:53) Shotgun…"
+    /// reads "Shotgun…". Every surface that prints a play prints its clock
+    /// beside it, so leaving it in printed the time twice. Only a leading
+    /// clock goes — "(Shotgun)" and "(J.Taylor)" are part of the call.
+    static func playText(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard let match = trimmed.firstMatch(of: #/^\(\d{1,2}:\d{2}\)\s*/#) else { return trimmed }
+        let rest = trimmed[match.range.upperBound...]
+        return rest.isEmpty ? trimmed : String(rest)
+    }
+
+    /// Whether both ends of a play are measured toward the same end zone —
+    /// a snap, as opposed to a kickoff, punt or turnover, whose start
+    /// belongs to one team and whose end to the other. Only a snap gets an
+    /// arrow on the field. A side ESPN didn't name is given the benefit of
+    /// the doubt, since the drive's own team is the likely one.
+    static func sameHands(_ play: PlayDTO) -> Bool {
+        guard let start = play.start?.team?.id, let end = play.end?.team?.id else { return true }
+        return start == end
     }
 
     /// The Scoring card's rows: ESPN's own `scoringPlays` where it ships
@@ -1640,7 +1666,9 @@ nonisolated enum ESPNMapper {
                     .flatMap { $0.summary ?? $0.displayValue },
                 rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
                 winner: comp.winner,
-                linescores: (comp.linescores ?? []).compactMap(\.displayValue)
+                linescores: (comp.linescores ?? []).compactMap(\.displayValue),
+                color: comp.team?.color,
+                alternateColor: comp.team?.alternateColor
             )
         }
 
