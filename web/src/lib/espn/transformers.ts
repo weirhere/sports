@@ -103,6 +103,7 @@ import type {
   EspnRosterCoach,
 } from "./types";
 import { flexibleNumber } from "./types";
+import { newsStory } from "./news";
 import { parseKickoff } from "@/lib/format";
 
 // --- Small shared helpers ---
@@ -1773,6 +1774,7 @@ export function transformGameSummary(
       game.awayTeam.team,
       game.homeTeam.team,
     ]),
+    article: summary.article ? newsStory(summary.article, league) : undefined,
   };
 }
 

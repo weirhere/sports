@@ -3,6 +3,7 @@ import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
 import type { League } from "./leagues";
+import type { NewsStory } from "./news";
 import { dayId } from "./day";
 
 const BASE = "/api";
@@ -138,6 +139,14 @@ export async function getTeamTrophies(
   teamId: string
 ): Promise<TrophyCase> {
   return fetchJson(`${BASE}/team/${teamId}/trophies?league=${league}`);
+}
+
+/**
+ * A team's own stories, newest first (iOS E25, docs/news.md N9). Requested
+ * when the News tab first opens — most visits never do.
+ */
+export async function getTeamNews(league: League, teamId: string): Promise<NewsStory[]> {
+  return fetchJson(`${BASE}/team/${teamId}/news?league=${league}`);
 }
 
 /**

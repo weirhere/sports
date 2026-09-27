@@ -48,7 +48,6 @@ import {
   DriveGamecastCard,
   ShotGamecastCard,
 } from "./live-situation-card";
-import { DetailCard } from "./detail-card";
 import { currentShotMap, shotMapGamecast } from "@/lib/gamecast";
 import { allowsShootout } from "@/lib/period-label";
 
@@ -64,6 +63,9 @@ import {
 import { BoxScoreList } from "./box-score-list";
 import { DrivePlayList, PeriodPlayList } from "./play-lists";
 import { HeadToHeadPane } from "./head-to-head-pane";
+import { DetailCard } from "./detail-card";
+import { StoryRow } from "@/components/story-row";
+import { storyForGame, storyKindTitle } from "@/lib/news";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
@@ -173,6 +175,16 @@ export function GameDetailView({
 
   const showsTabs = tabs.length > 1;
 
+  // The game's own story (iOS E25, docs/news.md N2 and N3): the recap once
+  // final, the preview before kickoff, nothing live. It rode in with the
+  // summary, so the card costs no request of its own.
+  const story = storyForGame(data.article, game.id, game.status);
+  const storyCard = story && (
+    <DetailCard title={storyKindTitle(story.kind)}>
+      <StoryRow story={story} />
+    </DetailCard>
+  );
+
   return (
     <div className="flex w-full flex-col gap-2">
       {/* The header sits on the card surface, and the tab row with it —
@@ -193,6 +205,8 @@ export function GameDetailView({
         // right. The iPhone's single column keeps the same reading order.
         <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
+            {/* A final leads with its recap, FotMob's match report on Facts. */}
+            {story?.kind === "recap" && storyCard}
             {/* The Gamecast leads while a game is live: the down, the spot
                 and the last play are what the page is being opened for at
                 3:30 on a Saturday. Football's is built from the drive in
@@ -261,6 +275,9 @@ export function GameDetailView({
             {infoVisible && (
               <GameInfoCard game={game} detail={data} standings={standings} />
             )}
+            {/* Pre-game the preview follows Game info: when and where to
+                watch is still the first question. */}
+            {story?.kind === "preview" && storyCard}
             {venueVisible && <VenueCard game={game} detail={data} />}
             {standingsVisible && (
               <MatchupStandingsCard

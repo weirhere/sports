@@ -44,7 +44,9 @@ import {
 } from "@/components/team-trophies-card";
 import { trophyCaseIsEmpty } from "@/lib/trophies";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getTeamTrophies } from "@/lib/api";
+import { getTeamNews, getTeamTrophies } from "@/lib/api";
+import { StoryRow } from "@/components/story-row";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StandingsList } from "@/components/standings-list";
 import { StandingsScopeChip } from "@/components/standings-scope-chip";
 import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
@@ -71,6 +73,9 @@ import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 // seconds after the page opened, which reads as a bug; gating on the current
 // season alone would hide the tab on a team that won its conference last
 // December. So the row is stable and the empty state does the talking.
+//
+// News is last (iOS E25, docs/news.md N9): the page is about the team's
+// games first. FotMob puts it second.
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
   { id: "games", label: "Games" },
@@ -78,6 +83,7 @@ const TABS: HeroTab[] = [
   { id: "standings", label: "Standings" },
   { id: "roster", label: "Roster" },
   { id: "trophies", label: "Trophies" },
+  { id: "news", label: "News" },
 ];
 
 interface TeamViewProps {
@@ -148,13 +154,21 @@ export function TeamView({
   // opens it, and keyed by the team so a shelf can never be shown under
   // another team's crest.
   const [trophiesRequested, setTrophiesRequested] = useState(false);
+  // The News tab's feed, latched the same way: one request on the tab's
+  // first open, never polled.
+  const [newsRequested, setNewsRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "trophies") setTrophiesRequested(true);
+    if (id === "news") setNewsRequested(true);
   };
   const trophies = useOnDemand(
     trophiesRequested ? `${league}:${teamId}` : undefined,
     () => getTeamTrophies(league, teamId)
+  );
+  const news = useOnDemand(
+    newsRequested ? `${league}:${teamId}` : undefined,
+    () => getTeamNews(league, teamId)
   );
 
   // The full name — "Philadelphia Flyers", not "Philadelphia" (iOS,
@@ -293,7 +307,8 @@ export function TeamView({
             {activeTab !== "overview" &&
               activeTab !== "roster" &&
               activeTab !== "trophies" &&
-              activeTab !== "stats" && (
+              activeTab !== "stats" &&
+              activeTab !== "news" && (
               <SeasonMenuChip
                 value={displayYear}
                 years={seasonYears(league)}
@@ -445,6 +460,49 @@ export function TeamView({
             </section>
           ) : (
             <TeamTrophiesCard trophyCase={trophies.state.value} />
+          ))}
+
+        {activeTab === "news" &&
+          // The team's own stories (N9), text only (N8). A feed that didn't
+          // answer and a team with no stories look identical on this tab,
+          // and only one of them is worth a Retry button.
+          (news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">
+                Couldn&apos;t load the news.
+              </p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <section className="card-surface pb-1" aria-busy="true">
+              <CardHeader title="Latest" />
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex flex-col gap-1.5 px-4 py-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </section>
+          ) : news.state.value.length === 0 ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No {identity?.school ?? school} stories right now.
+            </section>
+          ) : (
+            <section className="card-surface pb-1">
+              <CardHeader title="Latest" />
+              {news.state.value.map((story, index) => (
+                <div key={story.id}>
+                  {index > 0 && <div className="ml-4 border-t border-divider" />}
+                  <StoryRow story={story} />
+                </div>
+              ))}
+            </section>
           ))}
 
         {activeTab === "standings" &&

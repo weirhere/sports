@@ -119,10 +119,11 @@ FotMob's Transfer Center puts structured from-club → to-club cards above prose
 
 - **N8, photos.** Built text-only, as recommended. Photos would be the budget's 6th exception, and every news surface would then carry uncontrolled color. Parked as an E25 P3.
 - ~~**N3, preview probe.**~~ Resolved 2026-09-27, above.
-- **N9, NFL team feed.** The Vikings request timed out during the probe, so the 2-team filter's hit rate is unverified for the NFL.
+- ~~**N9, NFL team feed.**~~ Resolved 2026-09-27 through the web's News route: the Vikings kept 6 of 25.
 
 ## As built
 
 - **Host.** The team feed uses `site.web.api.espn.com`. On `site.api` the same path answers 403 to a browser or empty User-Agent; `site.web.api` answers all of them. The reader's body comes from `content.core.api.espn.com/v1/sports/news/{id}`, which the feed links as `links.api.self`.
 - **Type.** No new tokens. Headline `heroTitle`, paragraphs `teamName`, subheads and row headlines `teamNameEmphasis`, meta `meta`. Cards are `CardHeader` + `cardSurface()`; the game row is `GameRow` in `NextGameCard`'s recipe; follow rows are `TeamFollowRow(opensTeam: true)`.
+- **Web.** `web/src/lib/news.ts` and `web/src/lib/espn/news.ts` port the model, parser and mapper; `StoryRow` and `StoryMeta` in `web/src/components/`; the reader is `/story/{league}/{id}`, which rebuilds a story from the content API by id, so its score row always links. Tests: `web/src/lib/news.test.ts`, over the same fixtures.
 - **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `TeamNewsList`, `StoryDestination`. Tests: `sportsTests/NewsTests.swift`.
