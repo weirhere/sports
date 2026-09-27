@@ -59,6 +59,10 @@ nonisolated struct GameSummary: Sendable {
     /// wherever the payload has neither block, which is how the card hides
     /// itself for hockey.
     var winProbability: WinProbability? = nil
+    /// The game's own story, body included: a Preview before kickoff, a
+    /// Recap once final (docs/news.md, N2 and N3). Nil for CFBD and every
+    /// fixture, and for a live game, whose summary ships none.
+    var article: NewsStory? = nil
 }
 
 /// Who's likely to win, as ESPN models it. Two shapes, because the payload

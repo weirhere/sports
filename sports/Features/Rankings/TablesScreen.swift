@@ -142,6 +142,12 @@ struct TablesScreen: View {
                     PlayerPage(player: player)
                         .id(player.id)
                 }
+                // The story reader (docs/news.md): game pages and team
+                // pages push it.
+                .navigationDestination(for: StoryDestination.self) { destination in
+                    StoryReader(destination: destination)
+                        .id(destination.story.id)
+                }
                 // TeamPage's Next game card pushes game detail. Identity
                 // follows the game, exactly as the two destinations above
                 // follow theirs.

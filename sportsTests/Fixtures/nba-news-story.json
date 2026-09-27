@@ -1,0 +1,40 @@
+{
+ "headlines": [
+  {
+   "id": 50028559,
+   "type": "HeadlineNews",
+   "headline": "Knicks' Jalen Brunson cleared after offseason wrist surgery",
+   "description": "Knicks star guard Jalen Brunson is ready for the 2026-27 season after acknowledging that he underwent left wrist surgery.",
+   "published": "2026-09-25T19:38:28Z",
+   "source": "ESPN",
+   "categories": [
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson"
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "league",
+     "description": "NBA"
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    }
+   ],
+   "story": "<p><a href=\"https://www.espn.com/nba/team/_/name/ny/new-york-knicks\">New York Knicks</a> star guard <a href=\"https://www.espn.com/nba/player/_/id/3934672/jalen-brunson\">Jalen Brunson</a> is ready for the 2026-27 season after acknowledging that he underwent left wrist surgery.</p>\n<p>\"As you guys know, I had surgery this offseason,\" Brunson said Thursday night during a live recording of his \"Roommates Show\" podcast. \"Just want to tell you guys I am fully cleared.\"</p>\n<p>The announcement drew an ovation from the live crowd and chants of \"MVP\" for the reigning NBA Finals MVP.</p>\n<p>Sources had told ESPN's Shams Charania that Brunson had played through the injury during the Knicks' title run before the July surgery, which was not expected to affect his availability for the upcoming season.</p>\n<p><alsosee></p>\n<p>Brunson averaged 32.6 points, 4.6 assists, 4.2 rebounds and 2.0 steals in five games during the Finals as the Knicks beat the <a href=\"https://www.espn.com/nba/team/_/name/sa/san-antonio-spurs\">San Antonio Spurs</a> for their first championship in 53 years. He averaged 26.0 points and 6.8 assists during the regular season.</p>\n\n\n\n\n",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50028559"
+     }
+    }
+   }
+  }
+ ]
+}

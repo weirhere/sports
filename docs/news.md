@@ -1,6 +1,6 @@
 # News: a pattern brief
 
-**Status:** **proposal, 2026-09-27.** Nothing here is decided. It un-ices part of BACKLOG's Icebox line *"News content (may be never; scores-first is the identity)"*, so nothing builds until Andy signs off, the items land in BACKLOG.md, and each decision gets its own row in [`decisions.md`](decisions.md) (plus [`web-parity.md`](web-parity.md)).
+**Status:** **accepted and built, 2026-09-27.** Written as a proposal the same day; Andy's call was to build it with this brief as the source of truth. It un-ices part of BACKLOG's Icebox line *"News content (may be never; scores-first is the identity)"* and nothing more. Backlog: E24. The decisions are rows in [`decisions.md`](decisions.md) and [`web-parity.md`](web-parity.md).
 
 News attaches to games and teams, reads natively, and ends in a follow. There's no News tab, no photos, and nothing labeled "related" that isn't. 16 decisions follow, each traced to the FotMob screen it came from.
 
@@ -40,7 +40,7 @@ FotMob leads the Facts tab with the match report, above highlights and Player of
 ### N3 · Adapt · A pre-game page shows a preview card only when the summary's article is a Preview.
 **From FotMob:** R5
 
-FotMob slots the preview story between the prediction poll and venue info. Same card as N2, gated on `article.type == "Preview"`. **Probe owed:** all our summary fixtures are finals, so nobody has confirmed that a pre-game summary carries a Preview. Live games get no article card, since live state spends the visual budget.
+FotMob slots the preview story between the prediction poll and venue info. Same card as N2, gated on `article.type == "Preview"`. **Probed 2026-09-27:** an NFL pre-game summary (ARI @ SF) carries an AP Preview with its `gameId`; a live NFL game and one that had just gone final carried no article, and the NBA and NHL preseason games carried none. Live games get no article card either way, since live state spends the visual budget. **As built:** the preview follows the Game info card, because when and where to watch is still the first pre-game question; the recap leads a final's Summary tab.
 
 ## The reader
 
@@ -117,6 +117,12 @@ FotMob's Transfer Center puts structured from-club → to-club cards above prose
 
 ## Open for Andy
 
-- **N8, photos.** Text-only rows are the recommendation. Photos would be the budget's 6th exception, and every news surface would then carry uncontrolled color.
-- **N3, preview probe.** Hit a pre-game summary in each league and confirm `article.type == "Preview"` before scoping the card.
+- **N8, photos.** Built text-only, as recommended. Photos would be the budget's 6th exception, and every news surface would then carry uncontrolled color. Parked as an E24 P3.
+- ~~**N3, preview probe.**~~ Resolved 2026-09-27, above.
 - **N9, NFL team feed.** The Vikings request timed out during the probe, so the 2-team filter's hit rate is unverified for the NFL.
+
+## As built
+
+- **Host.** The team feed uses `site.web.api.espn.com`. On `site.api` the same path answers 403 to a browser or empty User-Agent; `site.web.api` answers all of them. The reader's body comes from `content.core.api.espn.com/v1/sports/news/{id}`, which the feed links as `links.api.self`.
+- **Type.** No new tokens. Headline `heroTitle`, paragraphs `teamName`, subheads and row headlines `teamNameEmphasis`, meta `meta`. Cards are `CardHeader` + `cardSurface()`; the game row is `GameRow` in `NextGameCard`'s recipe; follow rows are `TeamFollowRow(opensTeam: true)`.
+- **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `TeamNewsList`, `StoryDestination`. Tests: `sportsTests/NewsTests.swift`.

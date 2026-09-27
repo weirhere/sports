@@ -420,6 +420,12 @@ struct ScoresScreen: View {
                 PlayerPage(player: player)
                     .id(player.id)
             }
+            // The story reader (docs/news.md): game pages and team pages
+            // push it. Identity follows the story, like every other page.
+            .navigationDestination(for: StoryDestination.self) { destination in
+                StoryReader(destination: destination)
+                    .id(destination.story.id)
+            }
         }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can
         // predate the onChange observers. Scores is the launch tab, so this

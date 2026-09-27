@@ -132,6 +132,9 @@ struct SearchScreen: View {
             .navigationDestination(for: PlayerIdentity.self) { player in
                 PlayerPage(player: player).id(player.id)
             }
+            .navigationDestination(for: StoryDestination.self) { destination in
+                StoryReader(destination: destination).id(destination.story.id)
+            }
             .navigationDestination(for: ConferenceDestination.self) { destination in
                 ConferencePage(destination: destination).id(destination)
             }

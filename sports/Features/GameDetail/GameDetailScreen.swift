@@ -581,7 +581,14 @@ struct GameDetailScreen: View {
     /// the Box score tab is additive, so nothing here moved.
     @ViewBuilder
     private func summaryCards(_ summary: GameSummary) -> some View {
+        let story = summary.story(forGame: game.id, status: GameHeaderState.status(game, summary))
         VStack(spacing: Spacing.sm) {
+                    // A final leads with its recap, FotMob's match report
+                    // on Facts (docs/news.md, N2). It rode in with the
+                    // summary, so the card costs no request of its own.
+                    if let story, story.kind == .recap {
+                        storyCard(story)
+                    }
                     // The Gamecast strip leads while a game is live: the
                     // down, the spot, and the last play are what the page
                     // is being opened for at 3:30 on a Saturday.
@@ -607,6 +614,11 @@ struct GameDetailScreen: View {
                         card(title: "Game info") {
                             KickoffInfoRows(game: game, summary: summary, showsLines: showsLines)
                         }
+                    }
+                    // Pre-game the preview follows Game info (N3): when
+                    // and where to watch is still the first question.
+                    if let story, story.kind == .preview {
+                        storyCard(story)
                     }
                     if !showsScores, GameInfoRows.hasVenueContent(summary) {
                         card(title: "Venue") {
@@ -670,6 +682,17 @@ struct GameDetailScreen: View {
                     }
             }
             .padding(Spacing.sm)
+    }
+
+    /// The game's story as one `StoryRow`, opening the reader. The reader's
+    /// score row doesn't link back: this page is where it would go.
+    private func storyCard(_ story: NewsStory) -> some View {
+        card(title: story.kind.title) {
+            NavigationLink(value: StoryDestination(story: story, game: game, linksGame: false)) {
+                StoryRow(story: story)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     /// The court or rink Gamecast, live games only (D1): the color budget's

@@ -34,6 +34,8 @@ struct AddTeamsSheet: View {
                 // and a player page can be reached from this sheet's team
                 // pages — so this stack needs the game destination too.
                 .navigationDestination(for: Game.self) { GameDetailScreen(game: $0).id($0.routeKey) }
+                // The team pages this sheet opens have a News tab.
+                .navigationDestination(for: StoryDestination.self) { StoryReader(destination: $0).id($0.story.id) }
                 .navigationTitle("Add teams")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
