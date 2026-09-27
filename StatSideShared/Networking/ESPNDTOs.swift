@@ -522,6 +522,8 @@ nonisolated struct DriveDTO: Decodable {
     /// failed to decode over one mistyped number would drop off the log.
     let offensivePlays: FlexibleInt?
     let yards: FlexibleInt?
+    /// "2:39" — the Plays tab's third drive column.
+    let timeElapsed: ClockRefDTO?
     let displayResult: String?   // "Punt", not the ALL-CAPS `result`
     let isScore: Bool?
     let team: TeamDTO?

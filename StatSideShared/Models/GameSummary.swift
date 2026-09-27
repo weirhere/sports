@@ -159,6 +159,19 @@ nonisolated struct Drive: Identifiable, Hashable, Sendable {
     /// Defaulted for CFBD and the fixtures, which fall back to `summary`.
     var offensivePlays: Int? = nil
     var yards: Int? = nil
+    /// "2:39", the Plays tab row's time column.
+    var timeElapsed: String? = nil
+}
+
+extension Drive {
+    /// The last score this drive put up, with whose points they were —
+    /// the Plays tab row prints it after the result. Nil on a drive that
+    /// scored nothing, and on one whose numbers ESPN didn't ship.
+    var runningScore: (away: Int, home: Int, side: ScoringSide?)? {
+        guard let play = scoringPlays.last,
+              let away = play.awayScore, let home = play.homeScore else { return nil }
+        return (away, home, play.scoringSide)
+    }
 }
 
 /// One play inside a drive: ESPN's play-by-play row, and the source of

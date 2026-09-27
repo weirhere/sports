@@ -423,3 +423,48 @@ private func summary(current: Drive?, drives: [Drive] = []) -> GameSummary {
                 "Washington State touchdown, Shotgun #11 pass complete short middle to #3 for 7 yards, TOUCHDOWN")
     }
 }
+
+/// The Plays tab's drive rows (2026-09-27): the score a drive left, and a
+/// title for the one still being played.
+@MainActor
+@Suite struct DriveRowTests {
+    private func list(_ model: GameSummary) -> PlayByPlayList {
+        PlayByPlayList(summary: model, scoringOnly: false)
+    }
+
+    @Test func aScoringDriveSpeaksTheScoreItLeft() {
+        var td = play(id: "td", text: "pass for 7 yards, TOUCHDOWN", type: "Passing Touchdown",
+                      scoring: true, away: 7, home: 10)
+        td.scoringSide = .away
+        let drive = Drive(id: "d", teamId: wsu.id, result: "Touchdown", isScore: true,
+                          summary: nil, period: 2, plays: [td],
+                          offensivePlays: 10, yards: 79, timeElapsed: "5:16")
+        #expect(drive.runningScore?.away == 7)
+        #expect(drive.runningScore?.side == .away)
+        #expect(list(summary(current: nil)).accessibilitySummary(for: drive) ==
+                "Washington State, touchdown, Washington State 7, Washington 10, 10 plays, 79 yards, 5:16")
+    }
+
+    @Test func aDriveThatDidntScoreHasNoScore() {
+        let drive = Drive(id: "d", teamId: wsu.id, result: "Punt", isScore: false,
+                          summary: nil, period: 2, plays: [play()])
+        #expect(drive.runningScore == nil)
+    }
+
+    /// ESPN has no result for a drive still being played, so the row said
+    /// "—" at the top of every live list.
+    @Test func theDriveInProgressSaysWhereThingsStand() {
+        let drive = Drive(id: "now", teamId: wsu.id, result: nil, isScore: false,
+                          summary: nil, period: 2, plays: [play(yardsToEndzone: 74)])
+        let model = summary(current: drive)
+        #expect(list(model).title(for: drive) == "2nd & 4 · WSU 26")
+        #expect(list(model).accessibilitySummary(for: drive) ==
+                "Washington State, in progress, 2nd & 4, WSU 26")
+    }
+
+    @Test func aFinishedDriveWithNoResultStillReadsAsADash() {
+        let old = Drive(id: "old", teamId: wsu.id, result: nil, isScore: false,
+                        summary: nil, period: 1)
+        #expect(list(summary(current: nil)).title(for: old) == "—")
+    }
+}

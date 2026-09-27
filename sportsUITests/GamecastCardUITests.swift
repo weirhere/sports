@@ -65,5 +65,17 @@ final class GamecastCardUITests: XCTestCase {
             add(attachment)
             Thread.sleep(forTimeInterval: 2.5)
         }
+
+        // The same drive as the Plays tab's top row: its down and spot in
+        // place of a result, over the finished drives' stat columns.
+        let playsTab = app.buttons["Plays"]
+        if playsTab.waitForExistence(timeout: 5) {
+            playsTab.tap()
+            Thread.sleep(forTimeInterval: 1.5)
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "plays-tab"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 }

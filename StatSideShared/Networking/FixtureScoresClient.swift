@@ -234,7 +234,8 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         return Drive(id: "fx-current-drive", teamId: game.away.team.id,
                      result: nil, isScore: false,
                      summary: "\(plays.count) plays, \(gained) yards", period: 2,
-                     plays: plays, offensivePlays: plays.count, yards: gained)
+                     plays: plays, offensivePlays: plays.count, yards: gained,
+                     timeElapsed: ["0:05", "0:39", "1:12", "1:48", "2:20", "2:58"][plays.count - 1])
     }
 
     // MARK: - The scripted Saturday

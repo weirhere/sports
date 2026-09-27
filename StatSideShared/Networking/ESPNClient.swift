@@ -1553,7 +1553,8 @@ nonisolated enum ESPNMapper {
             plays: plays(from: dto.plays?.elements ?? [],
                          idPrefix: dto.id ?? fallbackId),
             offensivePlays: dto.offensivePlays?.value,
-            yards: dto.yards?.value
+            yards: dto.yards?.value,
+            timeElapsed: dto.timeElapsed?.displayValue
         )
     }
 

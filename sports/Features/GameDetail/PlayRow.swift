@@ -98,12 +98,19 @@ struct PlayRow: View {
     @ViewBuilder
     private var scoreText: some View {
         if play.isScoringPlay, let away = play.awayScore, let home = play.homeScore {
-            (Self.number(away, emphasized: play.scoringSide == .away)
-             + Text("–").font(.meta).foregroundStyle(Color.textSecondary)
-             + Self.number(home, emphasized: play.scoringSide == .home))
+            Self.runningScore(away: away, home: home, side: play.scoringSide)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
+    }
+
+    /// "7–14", the scorer's number in ink and weight. Shared with the
+    /// drive rows above the plays, which print the same score after a
+    /// scoring drive's result.
+    static func runningScore(away: Int, home: Int, side: ScoringSide?) -> Text {
+        number(away, emphasized: side == .away)
+            + Text("–").font(.meta).foregroundStyle(Color.textSecondary)
+            + number(home, emphasized: side == .home)
     }
 
     private static func number(_ value: Int, emphasized: Bool) -> Text {
