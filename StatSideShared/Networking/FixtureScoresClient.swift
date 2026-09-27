@@ -153,11 +153,16 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         let away = GameSummary.Side(team: game.away.team, score: game.away.score,
                                     record: game.away.record, rank: game.away.rank,
                                     winner: game.away.winner,
-                                    linescores: ["7", "3"])
+                                    linescores: ["7", "3"],
+                                    // Colors for the Gamecast field's end zones: one
+                                    // usable pair, so the fixture shows the painted field
+                                    // rather than the gray fallback.
+                                    color: "981e32", alternateColor: "5e6a71")
         let home = GameSummary.Side(team: game.home.team, score: game.home.score,
                                     record: game.home.record, rank: game.home.rank,
                                     winner: game.home.winner,
-                                    linescores: ["0", "7"])
+                                    linescores: ["0", "7"],
+                                    color: "dc4405", alternateColor: "000000")
         return GameSummary(
             home: home, away: away, status: game.status,
             scoringPlays: [ScoringPlay(id: "fx-play-1", period: 1, clock: "8:12",
@@ -167,6 +172,12 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
             drives: [Drive(id: "fx-drive-1", teamId: game.away.team.id,
                            result: "Touchdown", isScore: true,
                            summary: "8 plays, 75 yards, 3:41", period: 1)],
+            // Football only, like ESPN: basketball and hockey ship no
+            // drives, and the fixture serves one slate to every league's
+            // client, so without this an NBA copy of the game would grow
+            // a football field.
+            currentDrive: game.isLive && [.collegeFootball, .nfl].contains(league)
+                ? Self.currentDrive(for: game, at: tick) : nil,
             teamStats: [StatComparison(id: "totalYards", label: "Total yards",
                                        away: "312", home: "287",
                                        awayValue: 312, homeValue: 287)],
@@ -176,6 +187,54 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
                 home: .init(name: "B. Thrower", statLine: "14/20, 178 yds"))],
             venue: "Fixture Field", attendance: 54_321,
             venueCity: "Fixture City, TX", venueCapacity: 60_000, grassSurface: true)
+    }
+
+    /// The Gamecast card's drive: the away team marching 75 yards in six
+    /// plays — a run, a pass, a sack, a deep pass, a run into goal to go,
+    /// then the touchdown — one more play every three ticks, and round
+    /// again. Enough to see every shape the field draws.
+    static func currentDrive(for game: Game, at tick: Int) -> Drive {
+        let awayAbbreviation = game.away.team.abbreviation ?? "AWY"
+        let homeAbbreviation = game.home.team.abbreviation ?? "HME"
+        // Yards from the away goal line, which is the offense's own.
+        func spot(_ yard: Int) -> String {
+            yard < 50 ? "\(awayAbbreviation) \(yard)"
+                : yard > 50 ? "\(homeAbbreviation) \(100 - yard)" : "50"
+        }
+        typealias Snap = (from: Int, to: Int, down: String, next: String?, distance: Int?,
+                          type: String, text: String, clock: String)
+        let script: [Snap] = [
+            (25, 31, "1st & 10", "2nd & 4", 4, "Rush", "Shotgun #20 rush middle for 6 yards", "14:55"),
+            (31, 53, "2nd & 4", "1st & 10", 10, "Pass Reception",
+             "Shotgun #11 pass complete short right to #3 for 22 yards", "14:21"),
+            (53, 48, "1st & 10", "2nd & 15", 15, "Sack", "Shotgun #11 sacked for a loss of 5 yards", "13:48"),
+            (48, 82, "2nd & 15", "1st & 10", 10, "Pass Reception",
+             "Shotgun #11 pass complete deep right to #3 for 34 yards", "13:12"),
+            (82, 93, "1st & 10", "1st & Goal", 7, "Rush", "#20 rush left end for 11 yards", "12:40"),
+            (93, 100, "1st & Goal", nil, nil, "Passing Touchdown",
+             "Shotgun #11 pass complete short middle to #3 for 7 yards, TOUCHDOWN", "12:02"),
+        ]
+        let shown = 1 + (tick / 3) % script.count
+        let plays = script.prefix(shown).enumerated().map { index, snap in
+            let scored = snap.to >= 100
+            var play = Play(id: "fx-current-play-\(index)", text: snap.text,
+                            downDistanceText: "\(snap.down) at \(spot(snap.from))",
+                            nextDownDistanceText: snap.next,
+                            possessionText: scored ? nil : spot(snap.to),
+                            yardsToEndzone: 100 - snap.to, clock: snap.clock, period: 2,
+                            typeText: snap.type, isScoringPlay: scored,
+                            awayScore: scored ? (game.away.score ?? 0) + 6 : nil,
+                            homeScore: scored ? game.home.score ?? 0 : nil)
+            play.scoringSide = scored ? .away : nil
+            play.startYardsToEndzone = 100 - snap.from
+            play.nextDistance = snap.distance
+            return play
+        }
+        let gained = (plays.last?.yardsToEndzone).map { 75 - $0 } ?? 0
+        return Drive(id: "fx-current-drive", teamId: game.away.team.id,
+                     result: nil, isScore: false,
+                     summary: "\(plays.count) plays, \(gained) yards", period: 2,
+                     plays: plays, offensivePlays: plays.count, yards: gained)
     }
 
     // MARK: - The scripted Saturday

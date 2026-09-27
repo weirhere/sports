@@ -226,6 +226,11 @@ nonisolated struct TeamDTO: Decodable {
     /// under FBS, both times). Read as a fallback, so a team decoded from
     /// either one knows its conference instead of guessing nil.
     let groups: TeamGroupsDTO?
+    /// ESPN's team colors as bare hex ("970310"). Only the Gamecast
+    /// field's end zones read them (2026-09-27) — the one place the color
+    /// budget lets a team's own color in besides its logo.
+    let color: String?
+    let alternateColor: String?
 }
 
 nonisolated struct LogoDTO: Decodable {
@@ -512,6 +517,11 @@ nonisolated struct DrivesDTO: Decodable {
 nonisolated struct DriveDTO: Decodable {
     let id: String?
     let description: String?     // "5 plays, 20 yards, 2:39"
+    /// The same line's parts, which the current drive card lays out as
+    /// its own "4 plays, 57 yds" column. Flexible, since a drive that
+    /// failed to decode over one mistyped number would drop off the log.
+    let offensivePlays: FlexibleInt?
+    let yards: FlexibleInt?
     let displayResult: String?   // "Punt", not the ALL-CAPS `result`
     let isScore: Bool?
     let team: TeamDTO?
@@ -548,6 +558,12 @@ nonisolated struct PlayEndpointDTO: Decodable {
     let shortDownDistanceText: String?  // "1st & 10"
     let possessionText: String?         // "MIA 28"
     let yardsToEndzone: Int?
+    /// Yards to a first down from this spot — the field's line to gain.
+    let distance: FlexibleInt?
+    /// Whose ball it was at this end of the play. A kickoff starts with
+    /// the kicking team and ends with the receiver, which is how the
+    /// mapper tells a snap from a change of possession.
+    let team: TeamRefDTO?
 }
 
 nonisolated struct DriveEndpointDTO: Decodable {
