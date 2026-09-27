@@ -17,27 +17,13 @@ import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getLeagueNews, getTeamsNews } from "@/lib/api";
+import { getFollowedNews, getLeagueNews } from "@/lib/api";
 import { LEAGUES, isLeague, shortName, type League } from "@/lib/leagues";
-import type { NewsStory } from "@/lib/news";
-import { parseFollowKey } from "@/lib/refs";
-
-/** For you asks each followed team's own feed; capped so a long follow
- *  list doesn't open the tab onto forty requests (iOS `forYouCap`). */
-const FOR_YOU_CAP = 20;
 
 const TABS: HeroTab[] = [
   { id: "for-you", label: "For you" },
   ...LEAGUES.map((league) => ({ id: league, label: shortName(league) })),
 ];
-
-function loadForYou(keys: string[]): Promise<NewsStory[]> {
-  const follows = keys
-    .map(parseFollowKey)
-    .filter((ref) => ref !== undefined)
-    .slice(0, FOR_YOU_CAP);
-  return getTeamsNews(follows);
-}
 
 export function NewsView() {
   const [tab, setTab] = useState("for-you");
@@ -54,7 +40,7 @@ export function NewsView() {
       ? `for-you:${keys.join(",")}`
       : undefined;
   const feed = useOnDemand(key, () =>
-    league ? getLeagueNews(league) : loadForYou(keys)
+    league ? getLeagueNews(league) : getFollowedNews(keys)
   );
 
   return (

@@ -538,6 +538,7 @@ Andy, 2026-09-27, from FotMob's News screen on Mobbin: "a News bottom nav item t
 - [x] **P2** **News on the league pages**, after Games (Andy, 2026-09-27): the pro leagues' own pages via the conference tab, and college football's Top 25 with the NCAAF feed. *(Shipped 2026-09-27, iOS and web.)*
 - [x] **P2** **News on the game page**, second after Summary (Andy, 2026-09-27). The two teams' own feeds merged, with the game's recap or preview folded in; N11's league-feed "Related news" stays refused. *(Shipped 2026-09-27, iOS and web.)*
 - [x] **P2** **News in Search**, a scope pill after Conferences (Andy, 2026-09-27). The article group from the search request Players already makes; video and other sports dropped. *(Shipped 2026-09-27, iOS and web.)*
+- [x] **P2** **News on the Teams tab**, a Teams · News row (Andy, 2026-09-27). For you's source over the same follows. *(Shipped 2026-09-27, iOS and web.)*
 - [ ] **P3** **Follow order.** FotMob ranks For you by the order of your favorites; ours are a set. If the Teams tab ever gains drag-to-order (the tables hub has it), For you should follow it.
 
 ## Icebox (deliberately not now)

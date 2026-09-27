@@ -4,7 +4,7 @@ import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
 import type { League } from "./leagues";
 import type { NewsStory } from "./news";
-import type { TeamRef } from "./refs";
+import { parseFollowKey, type TeamRef } from "./refs";
 import { forYou } from "./espn/news";
 import { dayId } from "./day";
 
@@ -166,6 +166,21 @@ export async function getTeamsNews(teams: TeamRef[]): Promise<NewsStory[]> {
     .map((result) => result.value);
   if (feeds.length === 0) throw new Error("No team feed answered");
   return forYou(feeds);
+}
+
+/** For you asks each followed team's own feed; capped so a long follow list
+ *  doesn't open the page onto forty requests (iOS `forYouCap`). */
+export const FOR_YOU_CAP = 20;
+
+/** For you (E26): the followed teams' own feeds, merged — the News tab's
+ *  first page and the Teams tab's News. */
+export function getFollowedNews(keys: readonly string[]): Promise<NewsStory[]> {
+  const follows = [...keys]
+    .sort()
+    .map(parseFollowKey)
+    .filter((ref) => ref !== undefined)
+    .slice(0, FOR_YOU_CAP);
+  return getTeamsNews(follows);
 }
 
 /** A player's stories (E26), newest first. Requested when the player
