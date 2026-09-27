@@ -507,6 +507,14 @@ Coard Miller, 2026-09-24, on accounts: *"sign in with Apple would be preferred�
 - **Web parity:** `n/a` for the mechanism, since iCloud is iOS-only. Sync across web and iOS is the accounts question below.
 - **Accounts / Sign in with Apple:** still iced. Revisit only if a feature needs an identity that iCloud and StoreKit can't provide: web sync, or memberships across platforms (E18 already notes a StoreKit entitlement can't cross to a browser without an account).
 
+## E24 — Trades
+
+Andy, 2026-09-27, from the Mobbin research and the pattern brief built on it (FotMob's transfer centre, the NBA app's transactions list, the Premier League app's transfers). Named **Trades** (Andy's call over "Transactions"), though most rows are signings and roster upkeep, which is what the default filter's label admits.
+
+- [x] **P1** **A Trades tab on pro team pages and pro league pages.** ESPN's `/transactions` on `site.web.api.espn.com` (`site.api` 403s a browser User-Agent on this path): date, team and one hand-typed sentence per record, no athlete id, no from/to, no fee. So each row is the team's mark and ESPN's sentence verbatim, with each move's verb in semibold; a trade is both sides' rows; day cards newest first, "Today"/"Yesterday" named; "Signings & trades" by default with "All" beside it, hiding a row only when every move in it leads with a known upkeep verb (waived, placed, elevated…), so an unknown or misspelt verb fails open. The team page drops the mark from its rows. No season chip: ESPN pages the wire by **calendar year**, so the feed reads this year and then last year behind a "Show older" footer, and stops. Not on college football (ESPN answers `count: 0`, there is no portal feed) and not on CFBD or the UI-test fixture. `RosterMove`, `RosterMovesClient`, `RosterMovesFeed`, `Features/Trades/`. *(Built 2026-09-27 on Linux: the model, mapper, day grouping and feed paging were compiled with Swift 6.2 and run against fixtures and live ESPN, but the SwiftUI was not built. **Owed:** an Xcode build, the unit suite, and a look at both tabs in light and dark before it counts as shipped.)*
+- [ ] **P2** **The college transfer portal.** The transfer story college fans actually follow, and ESPN has no feed for it. Needs a second source, which belongs in the data-licensing decision (open question #6).
+- [ ] **P3** **Trade alerts on followed teams.** FotMob's model: bells on your follows, already on. Needs something polling ESPN while the app is closed, which is a backend.
+
 ## Icebox (deliberately not now)
 
 - ~~Widgets~~ / ~~Live Activities~~ *(widgets de-iceboxed 2026-08-04 → E7; Live Activities de-iceboxed 2026-09-05 → E9 as a decision item, and **decided 2026-09-10 → E12 as a build** — the "no push story without a backend" verdict collapsed three paths into one, and only two of them need a server; the one chosen is path 3, broadcast channels, which needs a service holding no user data)*
