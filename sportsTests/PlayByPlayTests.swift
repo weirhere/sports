@@ -376,6 +376,40 @@ private func summary(current: Drive?, drives: [Drive] = []) -> GameSummary {
         #expect(summary(current: drive).situation?.resultTeamId == washington.id)
     }
 
+    /// Probed live, NFL 2026-09-27: after a punt ESPN keeps the punting
+    /// team's drive as `drives.current`, and the plays that follow (the
+    /// punt's end, an Official Timeout) are the receiver's, measured toward
+    /// the receiver's end zone. The timeout's start is a filler 0.
+    @Test func aPuntedDrivesLeftoversBelongToTheTeamWithTheBall() throws {
+        var first = snap(id: "1", from: 75, to: 70)
+        first.endTeamId = wsu.id
+        var timeout = snap(id: "2", from: 0, to: 86, type: "Official Timeout")
+        timeout.endTeamId = washington.id
+        let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false, summary: nil,
+                          period: 2, plays: [first, timeout])
+        let situation = try #require(summary(current: drive).situation)
+        let field = try #require(situation.field)
+        // Washington (home) at its own 14: 86 yards from the away goal.
+        #expect(field.ball == 86)
+        #expect(field.lineToGain == 76)
+        #expect(field.driveStart == nil)
+        #expect(field.playStart == nil)
+        #expect(situation.possessionTeamId == washington.id)
+        #expect(situation.drivingRight == false)
+    }
+
+    /// A timeout mid-drive keeps the trail but draws no arrow from the
+    /// goal line.
+    @Test func aTimeoutIsNotASnap() throws {
+        let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false, summary: nil,
+                          period: 2, plays: [snap(id: "1", from: 75, to: 70),
+                                             snap(id: "2", from: 0, to: 70, type: "Timeout")])
+        let field = try #require(summary(current: drive).situation?.field)
+        #expect(field.playStart == nil)
+        #expect(field.driveStart == 25)
+        #expect(field.ball == 30)
+    }
+
     @Test func aDriveWithoutTotalsFallsBackToESPNsLine() {
         let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false,
                           summary: "1 play, 6 yards, 0:05", period: 2)

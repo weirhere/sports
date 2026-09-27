@@ -220,6 +220,12 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Yards to a first down once the play ended — the field's line to
     /// gain. Goal to go when it reaches the end zone.
     var nextDistance: Int? = nil
+    /// Whose ball it was when the play ended. Every `yardsToEndzone`
+    /// counts toward the end zone *this* team attacks, which isn't always
+    /// the drive's: ESPN keeps a punting team's drive as `drives.current`
+    /// until the next snap, and the plays after the punt are the
+    /// receiver's (probed live, NFL 2026-09-27).
+    var endTeamId: String? = nil
     /// Where a basketball or hockey play happened, in ESPN's feet. Nil in
     /// football and on a play ESPN gave no usable spot.
     var coordinate: PlayCoordinate? = nil
@@ -396,13 +402,26 @@ extension GameSummary {
     /// renders the lines it has and drops the ones it doesn't.
     var situation: GameSituation? {
         guard let drive = currentDrive, let play = drive.plays.last else { return nil }
-        let isAway = drive.teamId != nil && drive.teamId == away?.team.id
-        // yardsToEndzone counts down toward the *defense's* end zone, so
-        // which end of the field that is depends on who has the ball.
-        // Clamped: a payload can hand back a spot past the goal line on a
-        // scoring play.
-        func fromAwayGoal(_ yardsToEndzone: Int) -> Double {
-            min(max(Double(isAway ? 100 - yardsToEndzone : yardsToEndzone), 0), 100)
+        // Whose ball it is now, which after a punt isn't the drive's team
+        // (see `Play.endTeamId`). Each spot is measured against its own
+        // side: `yardsToEndzone` counts down toward the end zone that side
+        // attacks. Clamped: a payload can hand back a spot past the goal
+        // line on a scoring play.
+        let ballTeamId = play.endTeamId ?? drive.teamId
+        let handsChanged = ballTeamId != nil && drive.teamId != nil && ballTeamId != drive.teamId
+        let isAway = ballTeamId != nil && ballTeamId == away?.team.id
+        func fromAwayGoal(_ yardsToEndzone: Int, for teamId: String? = nil) -> Double {
+            let side = teamId ?? ballTeamId
+            let isAwaySide = side != nil && side == away?.team.id
+            return min(max(Double(isAwaySide ? 100 - yardsToEndzone : yardsToEndzone), 0), 100)
+        }
+        // A snap is never from inside the end zone: a start of 0 is ESPN's
+        // filler on a timeout or a review, not a spot. And once the ball
+        // has changed hands the drive is over in all but name, so the
+        // field shows the ball and the new side's line, no trail or arrow.
+        func snapStart(_ play: Play) -> Int? {
+            guard !handsChanged, let start = play.startYardsToEndzone, start > 0 else { return nil }
+            return start
         }
         let scoring = drive.plays.filter(\.isScoringPlay)
         let result: String? = scoring.isEmpty && !drive.isScore
@@ -422,16 +441,19 @@ extension GameSummary {
                 return fromAwayGoal(yardsToEndzone - distance)
             }()
             let type = play.typeText?.lowercased() ?? ""
+            let firstSnap = drive.plays.first { snapStart($0) != nil }
             return GameSituation.Field(
                 ball: fromAwayGoal(yardsToEndzone),
-                driveStart: drive.plays.lazy.compactMap(\.startYardsToEndzone).first.map(fromAwayGoal),
-                playStart: play.startYardsToEndzone.map(fromAwayGoal),
+                driveStart: firstSnap.flatMap(snapStart).map {
+                    fromAwayGoal($0, for: firstSnap?.endTeamId ?? drive.teamId)
+                },
+                playStart: snapStart(play).map { fromAwayGoal($0) },
                 lineToGain: lineToGain,
                 isPass: type.contains("pass") && !type.contains("sack")
             )
         }
         return GameSituation(
-            possessionTeamId: drive.teamId,
+            possessionTeamId: ballTeamId,
             downDistanceText: play.nextDownDistanceText,
             possessionText: play.possessionText,
             driveSummary: drive.summary,

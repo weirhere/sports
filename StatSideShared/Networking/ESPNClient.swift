@@ -1638,6 +1638,7 @@ nonisolated enum ESPNMapper {
                 teamId: play.team?.id,
                 startYardsToEndzone: sameHands(play) ? play.start?.yardsToEndzone : nil,
                 nextDistance: play.end?.distance?.value,
+                endTeamId: play.end?.team?.id,
                 coordinate: coordinate(play.coordinate),
                 isShootingPlay: play.shootingPlay ?? false,
                 strength: play.strength?.abbreviation
