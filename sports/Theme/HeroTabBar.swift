@@ -17,6 +17,12 @@ struct HeroTabBar<T: HeroTabItem>: View {
     let tabs: [T]
     let selection: T
     let onSelect: (T) -> Void
+    /// A team header in its own color (TeamPage, light mode, 2026-09-27)
+    /// passes the ink it picked for that color: full strength for the
+    /// active tab, its second rank for the rest. Nil keeps the monochrome
+    /// tokens below.
+    var ink: Color? = nil
+    var secondaryInk: Color? = nil
 
     /// The unselected tab's ink.
     ///
@@ -35,7 +41,8 @@ struct HeroTabBar<T: HeroTabItem>: View {
     /// uses the token: 5.32:1 on a light card, 6.37:1 on a dark one, and
     /// 4.55:1 in the worst case anywhere on the ramp. `ContrastTests`
     /// holds every one of those numbers to the surface it was measured on.
-    private var inactiveInk: Color { .textSecondary }
+    private var inactiveInk: Color { secondaryInk ?? .textSecondary }
+    private var activeInk: Color { ink ?? .textPrimary }
 
     /// The row scrolls itself, and carries its own `Spacing.lg` gutter.
     ///
@@ -74,7 +81,7 @@ struct HeroTabBar<T: HeroTabItem>: View {
                                 .tracking(-0.28)
                                 .lineLimit(1)
                                 .fixedSize()
-                                .foregroundStyle(selection == tab ? Color.textPrimary : inactiveInk)
+                                .foregroundStyle(selection == tab ? activeInk : inactiveInk)
                                 .padding(.vertical, 14)
                                 .contentShape(Rectangle())
                         }

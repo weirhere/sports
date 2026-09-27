@@ -1422,7 +1422,8 @@ nonisolated enum ESPNMapper {
                 shortDisplayName: scheduleTeam.shortDisplayName,
                 logoURL: logo.flatMap(URL.init(string:)),
                 conferenceId: conferenceId(from: scheduleTeam.groups, league: league),
-                league: league
+                league: league,
+                colorHex: scheduleTeam.color
             )
         }
         let games = ((dto.events?.elements ?? []) + extraEvents)

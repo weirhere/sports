@@ -52,6 +52,21 @@ struct PollScreen: View {
 
     @Environment(UIStateStore.self) private var uiState
     @State private var showsInlineTitle = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    /// Bumped when the mark's color has been worked out (ConferencePage's
+    /// pattern).
+    @State private var markHexLoaded: String?
+
+    /// The poll is its league's, so its header is the league's: ESPN's
+    /// color where it has one, the mark's own where it doesn't (college
+    /// football, 2026-09-27).
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: league.brandColorHex ?? markHexLoaded ?? HeaderPaint.markHex(for: league.logoURL),
+                    colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
     @State private var tab: Tab = .standings
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
@@ -132,17 +147,16 @@ struct PollScreen: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .task(id: league) { markHexLoaded = await HeaderPaint.loadMarkHex(for: league.logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Top 25")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
@@ -317,20 +331,23 @@ struct PollScreen: View {
         HStack(spacing: Spacing.md) {
             // The trophy, not the league's football (Andy, 2026-09-27) —
             // the hub row's mark since 2026-09-21, and the Leagues tab's
-            // glyph, so the row and the page it opens agree. Black ink in
-            // both modes: the disc behind it is light in dark mode and
-            // clear on the light hero, which is exactly where a crest's
-            // own dark ink would sit.
+            // glyph, so the row and the page it opens agree. On a painted
+            // header it takes the header's ink; unpainted (dark mode, or a
+            // color too pale to paint) it's black on the logo-backing disc,
+            // which is light in dark mode and clear on a light hero. The
+            // header's color still comes from the league's mark
+            // (`headerPaint`), which is what the page is — only the glyph
+            // changed.
             Image(systemName: "trophy.fill")
                 .font(.system(size: 24, weight: .medium))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(headerPaint?.ink ?? Color.black)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.logoBacking).padding(-6))
                 .padding(6)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Top 25")
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 // No subtitle (Andy, 2026-09-27): ESPN's headline ("2025
@@ -343,14 +360,15 @@ struct PollScreen: View {
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bgCard)
+        .background(headerGround)
     }
 
     private var tabRow: some View {
         // Unpadded: HeroTabBar carries its own gutter so tabs scroll out
         // at the surface edge (2026-09-21).
         HeroTabBar(tabs: availableTabs, selection: tab,
-                   onSelect: { select(tab: $0) })
+                   onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
     }
 
     /// The sticky header — the tab row and the pane's control row, both
@@ -361,7 +379,7 @@ struct PollScreen: View {
             tabRow
                 // Reaches above the strip's frame to cover the seam a
                 // pinned header leaves under the bar.
-                .background(Color.bgCard.padding(.top, -Spacing.sm))
+                .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
                 controlRow(for: tab)
                     .padding(.horizontal, Spacing.sm)
