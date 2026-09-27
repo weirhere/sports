@@ -9,9 +9,14 @@
 // so every one of them is college football's — the app had no other league
 // — which makes the mapping exact rather than a guess. Idempotent: an
 // already-qualified key passes through untouched.
+//
+// Divisions have no pages (iOS, 2026-09-26), so a pro division follow
+// ("nba:1", the Atlantic) moves to its conference ("nba:5", the East) —
+// see `foldDivisionTokens`.
 
-import { FBS_GROUP_ID, collegeDivision } from "@/lib/conferences";
+import { FBS_GROUP_ID, collegeDivision, parentOf } from "@/lib/conferences";
 import { isLeague } from "@/lib/leagues";
+import { conferenceToken, parseConferenceToken } from "@/lib/refs";
 
 /**
  * Frozen snapshot of the mock roster's id → ESPN id mapping
@@ -95,7 +100,7 @@ export function migrateFavorites(
 
   const migratedConfs: string[] = [];
   const seenConfs = new Set<string>();
-  for (const id of confs) {
+  for (const id of foldDivisionTokens(confs)) {
     if (isQualified(id)) {
       if (seenConfs.has(id)) continue;
       seenConfs.add(id);
@@ -117,4 +122,33 @@ export function migrateFavorites(
   }
 
   return { teams: migratedTeams, confs: migratedConfs };
+}
+
+/**
+ * Each pro division token swapped for its conference's, deduped so the
+ * first one keeps its place (iOS `AppGroup.migrateDivisionFollowsIfNeeded`,
+ * 2026-09-26). Runs over the follows and the Following drag order alike, so
+ * a followed Atlantic lands where the Atlantic was dragged; `prefix` is
+ * the drag order's `"conf-"`. Anything that isn't a known division passes
+ * through untouched, which makes it idempotent.
+ */
+export function foldDivisionTokens(
+  tokens: readonly string[],
+  prefix = ""
+): string[] {
+  const folded: string[] = [];
+  const seen = new Set<string>();
+  for (const token of tokens) {
+    const bare = token.startsWith(prefix) ? token.slice(prefix.length) : "";
+    const ref = isQualified(bare) ? parseConferenceToken(bare) : undefined;
+    const parent = ref ? parentOf(ref.id, ref.league) : undefined;
+    const next =
+      ref && parent !== undefined
+        ? prefix + conferenceToken({ league: ref.league, id: parent })
+        : token;
+    if (seen.has(next)) continue;
+    seen.add(next);
+    folded.push(next);
+  }
+  return folded;
 }
