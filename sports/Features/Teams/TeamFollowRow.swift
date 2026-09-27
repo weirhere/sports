@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// A team row with a follow star.
+/// A team row with a follow button (`FollowCapsule`).
 ///
 /// Two shapes, because the two surfaces ask different questions.
 /// **Onboarding** asks "do I want this team?" and the whole row is the
-/// toggle — a bigger target than the star alone, which is what a
+/// toggle — a bigger target than the button alone, which is what a
 /// rapid-multi-select moment wants. The **Add teams sheet** asks the same
 /// question of someone who may not know the answer yet, so its rows open
 /// the team (Andy, 2026-09-09: "tapping the team name should take the user
-/// to the team page. only tapping the star should favorite") and the star
-/// keeps the follow to itself.
+/// to the team page. only tapping the star should favorite") and the
+/// button keeps the follow to itself.
 ///
 /// The row names the team in one string — "Ohio State Buckeyes", "Dallas
 /// Cowboys" (Andy, 2026-09-21). It used to set the location against the
@@ -35,7 +35,7 @@ struct TeamFollowRow: View {
         if opensTeam { splitRow } else { wholeRowToggle }
     }
 
-    /// The sheet's shape: the body opens the team, the star follows it.
+    /// The sheet's shape: the body opens the team, the button follows it.
     private var splitRow: some View {
         HStack(spacing: Spacing.md) {
             NavigationLink(value: team) {
@@ -51,7 +51,7 @@ struct TeamFollowRow: View {
             .buttonStyle(SwipeSafeButtonStyle())
             .accessibilityLabel(spokenLabel)
             .accessibilityHint("Opens the team")
-            star
+            followButton
                 .accessibilityLabel(isFollowing ? "Unfollow \(teamName)"
                                                 : "Follow \(teamName)")
         }
@@ -68,16 +68,11 @@ struct TeamFollowRow: View {
         nameText
     }
 
-    private var star: some View {
+    private var followButton: some View {
         Button {
             following.toggle(team)
         } label: {
-            Image(systemName: isFollowing ? "star.fill" : "star")
-                .font(.system(size: 16))
-                .foregroundStyle(.textPrimary)
-                // A star is a small mark; the target around it is not.
-                .frame(width: 44, height: 32)
-                .contentShape(Rectangle())
+            FollowCapsule(isFollowing: isFollowing)
         }
         .buttonStyle(.plain)
         .accessibilityValue(isFollowing ? "following" : "not following")
@@ -91,9 +86,9 @@ struct TeamFollowRow: View {
                 identity
                 Spacer(minLength: Spacing.sm)
                 leagueTagText
-                Image(systemName: isFollowing ? "star.fill" : "star")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.textPrimary)
+                // Drawn, not a button of its own: the whole row is the
+                // toggle here, so the capsule only says which way it's set.
+                FollowCapsule(isFollowing: isFollowing)
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, 7)

@@ -5,7 +5,7 @@ import SwiftUI
 struct Top25Row: View {
     /// The FBS polls, filtered and in picker order; pushed on to PollScreen.
     let polls: [Poll]
-    /// Whose poll this is — the follow star's id, and the page's.
+    /// Whose poll this is — the follow button's id, and the page's.
     var league: League = .collegeFootball
     /// Off on the Following card (Andy, 2026-09-25), which unfollows from
     /// its Edit mode instead — `ConferenceListRow`'s flag, for the same
@@ -28,7 +28,7 @@ struct Top25Row: View {
             .buttonStyle(SwipeSafeButtonStyle())
             .accessibilityIdentifier("rankings-top25-row")
             if showsFollow {
-                PollFollowStar(league: league)
+                PollFollowButton(league: league)
             }
         }
         .padding(.horizontal, Spacing.lg)

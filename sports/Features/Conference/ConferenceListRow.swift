@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One conference in the Rankings list: mark, name, leader teaser, follow
-/// star. The row navigates to the standings page; the star doesn't.
+/// button. The row navigates to the standings page; the button doesn't.
 ///
 /// At accessibility text sizes the teaser drops under the name instead of
 /// the two splitting one line into a pair of ellipses.
@@ -25,7 +25,7 @@ struct ConferenceListRow: View {
     /// Shared with the league accordion's own header and the search rows.
     @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 26
     /// Off for a row that names a group nobody can follow — college
-    /// football's FBS and FCS, whose ids no team carries, so a star there
+    /// football's FBS and FCS, whose ids no team carries, so a follow button there
     /// would set a follow that matched no game.
     var showsFollow: Bool = true
     /// Whether the name carries its league, as the Scores headers do:
@@ -52,7 +52,7 @@ struct ConferenceListRow: View {
                 // leaves.
                 .buttonStyle(SwipeSafeButtonStyle())
                 if showsFollow {
-                    ConferenceFollowStar(conference: id, conferenceName: conference.name)
+                    ConferenceFollowButton(conference: id, conferenceName: conference.name)
                 }
             } else {
                 // No id means no page and no follow — CFBD's unknown-name
