@@ -24,7 +24,7 @@ Alternates:
 
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
 exactly what the app covers. Audited again at 2.5.0 and unchanged, for the
-same reason, and at 2.6.0.
+same reason, and at 2.6.0 and 2.6.1.
 
 Audited at 2.4.0 and unchanged, with one question asked and answered. 2.4.0
 renames college football to **NCAAF everywhere inside the app** — the league
@@ -52,6 +52,24 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.6.1 (build 21)
+
+> • Live scores keep up. The Scores list checks every second while games are
+>   on, and it can't fall behind the game page anymore. If one screen knows
+>   the clock moved, the other does too, and a score never steps backwards.
+> • Fixed: a live game could sit frozen on the Scores list for over a minute,
+>   even after a pull to refresh.
+> • Fixed: swiping to the next day at the top of the list could pull to
+>   refresh halfway through the swipe.
+> • Hide all works on days your teams are off, too. And it's nicer to watch:
+>   the sections fold up into a stack and slide away, and Show all deals them
+>   back out.
+> • In dark mode, a switch that's on in Settings turns green now, instead of
+>   the gray that looked like off.
+
+2.6.0 (20) went up to App Store Connect before this cut, so these notes cover
+only what's new since it.
 
 ### 2.6.0 (build 20)
 
@@ -384,6 +402,9 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.6.1 and left alone: fixes and polish, nothing in the line
+changed.
+
 Audited at 2.6.0 and left alone: 2.6.0 is polish, and nothing in the line
 stopped being true.
 
@@ -451,6 +472,10 @@ leagues ever stop being the thing worth saying first; no review needed.
 > StatSide is an independent app and is not affiliated with or endorsed by the
 > NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
 
+Audited at 2.6.1 and unchanged. The description never named a refresh rate,
+and Hide all, the day swipe and the switches are refinements of surfaces
+it doesn't list.
+
 Changed for 2.6.0, in one place: DESIGNED QUIET names the Appearance
 switch (light, dark or matching the phone), since the paragraph said "black,
 white" and the app now lets you choose which leads. Nothing else in 2.6.0 is
@@ -505,6 +530,8 @@ four are in the subtitle, so repeating them would spend characters on nothing.
 Audited at 2.3.0 and unchanged: at 95 of 100 there are five characters
 spare, and nothing 2.3.0 added is a term this audience types into search —
 nobody looks for an app by "head to head" or "trophies".
+
+Audited at 2.6.1 and unchanged. Nothing 2.6.1 adds is a search term.
 
 Audited at 2.6.0 and unchanged. Nothing 2.6.0 adds is a search term.
 
@@ -600,6 +627,11 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 2.6.1: carried forward a fifth time
+
+Nothing in the frames became false. No frame shows a Settings switch in dark
+mode or Hide all mid-motion.
 
 ### 2.6.0: carried forward a fourth time
 
@@ -810,7 +842,7 @@ self-describes as displaying aggregated content.
 >   the app
 > • Local game reminders with deep links to the game
 > • Siri Shortcut / App Intent: "What's my next game?"
-> • Live scores that update in place every 30 seconds while games are on,
+> • Live scores that update in place every second while games are on,
 >   with haptic feedback on score changes
 > • Share sheets, context menus on every row, full Dynamic Type and
 >   VoiceOver support, light/dark mode
@@ -830,6 +862,14 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.6.1: one line changed.** The live-scores bullet said
+"every 30 seconds"; 2.6.1 polls every second while games are live (quiet
+slates still make no requests), so it says "every second" now. Paste the
+whole block fresh rather than trusting what ASC carried over from 2.6.0.
+Nothing else moved: no entitlement, account or data collection. The
+reviewer-timing note above is still current until the NBA and NHL open in
+late October.
 
 **Notes audit at 2.6.0: no rewrite; keep the 2.5.0 paragraph below.** 2.6.0
 adds no entitlement, account or data collection. The Appearance switch is
