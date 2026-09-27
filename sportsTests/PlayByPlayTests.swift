@@ -376,6 +376,36 @@ private func summary(current: Drive?, drives: [Drive] = []) -> GameSummary {
         #expect(summary(current: drive).situation?.resultTeamId == washington.id)
     }
 
+    /// Live, NFL 2026-09-27: the away side punted; `drives.current` stayed
+    /// its drive while the last play, a timeout, was the home side's with
+    /// a start of 0.
+    @Test func aPuntedDrivesLeftoversAreMeasuredAgainstTheTeamWithTheBall() throws {
+        var punted = snap(id: "snap", from: 75, to: 70)
+        punted.endTeamId = wsu.id
+        var timeout = snap(id: "timeout", from: 0, to: 86, type: "Official Timeout")
+        timeout.endTeamId = washington.id
+        let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false, summary: nil,
+                          period: 2, plays: [punted, timeout])
+        let situation = try #require(summary(current: drive).situation)
+        #expect(situation.possessionTeamId == washington.id)
+        #expect(situation.drivingRight == false)
+        let field = try #require(situation.field)
+        #expect(field.ball == 86)
+        #expect(field.driveStart == nil)
+        #expect(field.playStart == nil)
+        #expect(field.lineToGain == 76)
+        #expect(field.isPass == false)
+    }
+
+    @Test func aTimeoutMidDriveHasNoArrow() throws {
+        let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false, summary: nil,
+                          period: 2, plays: [snap(id: "snap", from: 75, to: 70),
+                                             snap(id: "to", from: 0, to: 70, type: "Timeout")])
+        let field = try #require(summary(current: drive).situation?.field)
+        #expect(field.playStart == nil)
+        #expect(field.driveStart == 25)
+    }
+
     @Test func aDriveWithoutTotalsFallsBackToESPNsLine() {
         let drive = Drive(id: "d", teamId: wsu.id, result: nil, isScore: false,
                           summary: "1 play, 6 yards, 0:05", period: 2)
