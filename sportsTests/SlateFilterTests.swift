@@ -195,8 +195,8 @@ private func nflGame(_ id: String, week: Int?, seasonType: Int?,
     }
 }
 
-/// Where a Games tab opens mid-season: the played cards folded behind one
-/// row, so the first card on screen holds the next game (Andy, 2026-09-08).
+/// Where a Games tab opens mid-season: scrolled to the card holding the
+/// next game (Andy, 2026-09-27; a fold behind one row from 2026-09-08).
 @MainActor
 @Suite struct SlateFoldTests {
     private let calendar = Calendar.current
@@ -223,6 +223,28 @@ private func nflGame(_ id: String, week: Int?, seasonType: Int?,
                                         now: noon(9, 26), calendar: calendar)
         #expect(fold.earlier.map(\.id) == ["week-1", "week-2", "week-3"])
         #expect(fold.upcoming.map(\.id) == ["week-4", "week-5"])
+    }
+
+    /// The Games tab opens scrolled to the fold's split (2026-09-27): the
+    /// first card with football left in it.
+    @Test func theOpeningCardIsTheFirstUnplayedWeek() {
+        let slate = (1...5).map { week in
+            game("w\(week)", week: week, day: day(9, 5 + (week - 1) * 7))
+        }
+        #expect(ConferenceSlate.openingCardId(games: slate, by: .week,
+                                              now: noon(9, 26), calendar: calendar) == "week-4")
+    }
+
+    /// Nothing to scroll past — before the first kickoff, or after the
+    /// last whistle — and the tab opens at the top.
+    @Test func noOpeningCardBeforeOrAfterTheSeason() {
+        let slate = (1...3).map { week in
+            game("w\(week)", week: week, day: day(9, 5 + (week - 1) * 7))
+        }
+        #expect(ConferenceSlate.openingCardId(games: slate, by: .week,
+                                              now: noon(8, 1), calendar: calendar) == nil)
+        #expect(ConferenceSlate.openingCardId(games: slate, by: .week,
+                                              now: noon(12, 25), calendar: calendar) == nil)
     }
 
     /// A season with nothing left folds nothing: every past season, and

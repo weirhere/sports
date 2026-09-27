@@ -68,6 +68,8 @@ struct ConferencePage: View {
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
+    /// How far the hero has collapsed under the bar (`CollapsingHeaderScrollView`).
+    @State private var heroCollapse: CGFloat = 0
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the conference name (TeamPage's rule).
     @State private var showsInlineTitle = false
@@ -213,18 +215,6 @@ struct ConferencePage: View {
         return own.isEmpty ? all.foldingDivisions() : own
     }
 
-    /// Every table's teams: a divisional conference's hero count is the
-    /// conference's, not one division's. Counted at conference scope
-    /// whatever the page is showing — the answer is the page's, and the
-    /// subtitle shouldn't blink while a division fetch is in flight.
-    private var teamCount: Int {
-        let conference = tables(for: .conference)
-        // A page whose own level the shipped response doesn't carry — one
-        // of the NFL's divisions — counts what it is actually showing.
-        let counted = conference.isEmpty ? standingsTables : conference
-        return counted.reduce(0) { $0 + $1.entries.count }
-    }
-
     /// Whether each table names itself. Divisions always do, and so does
     /// any scope that draws more than one card — an unheaded pair of
     /// tables is two rankings with no way to tell which is which.
@@ -322,60 +312,51 @@ struct ConferencePage: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                // Lazy only for the pinning — the stack has two children,
-                // and the section's content is the whole pane in one
-                // subtree, so every standings row is still realized and
-                // `scrollTo` below can find one.
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    heroIdentity
-                    Section {
-                        Group {
-                            switch tab {
-                            case .standings: standingsCard
-                            case .games: gamesSection
-                            case .postseason: postseasonSection
-                            }
-                        }
-                        // geometryGroup pins row logos to the sliding pane —
-                        // TeamPage's fix (2026-08-31).
-                        .geometryGroup()
-                        .id(tab)
-                        .transition(.push(from: tabSlideEdge))
-                        // The week swipe's sibling (Andy, 2026-08-29): swipe
-                        // the content to walk the tabs; the buttons stay.
-                        //
-                        // Except on Postseason, where the same gesture walks
-                        // the bracket's rounds instead (Andy, 2026-09-06),
-                        // and on a Standings tab whose table is wider than
-                        // the screen, where it scrolls the columns
-                        // (2026-09-13). One horizontal axis, and on those
-                        // tabs something else is what it moves — the tabs
-                        // keep their buttons either way.
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 20)
-                                .onEnded { value in
-                                    guard !tabOwnsHorizontalAxis else { return }
-                                    let dx = value.translation.width
-                                    guard abs(dx) > 50,
-                                          abs(dx) > abs(value.translation.height) * 1.5,
-                                          let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
-                                    else { return }
-                                    select(tab: target)
-                                }
-                        )
-                    } header: {
-                        pinnedControls
+            // The header rides over the content and collapses as it
+            // scrolls, so a Games tab can open on this week with the hero
+            // still fully expanded (Andy, 2026-09-27).
+            CollapsingHeaderScrollView(landing: landing, collapse: $heroCollapse) {
+                heroIdentity
+            } strip: {
+                pinnedControls
+            } content: { headerHeight in
+                Group {
+                    switch tab {
+                    case .standings: standingsCard
+                    case .games: gamesSection(scrollInset: headerHeight)
+                    case .postseason: postseasonSection
                     }
                 }
+                // geometryGroup pins row logos to the sliding pane —
+                // TeamPage's fix (2026-08-31).
+                .geometryGroup()
+                .id(tab)
+                .transition(.push(from: tabSlideEdge))
+                // The week swipe's sibling (Andy, 2026-08-29): swipe
+                // the content to walk the tabs; the buttons stay.
+                //
+                // Except on Postseason, where the same gesture walks
+                // the bracket's rounds instead (Andy, 2026-09-06),
+                // and on a Standings tab whose table is wider than
+                // the screen, where it scrolls the columns
+                // (2026-09-13). One horizontal axis, and on those
+                // tabs something else is what it moves — the tabs
+                // keep their buttons either way.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 20)
+                        .onEnded { value in
+                            guard !tabOwnsHorizontalAxis else { return }
+                            let dx = value.translation.width
+                            guard abs(dx) > 50,
+                                  abs(dx) > abs(value.translation.height) * 1.5,
+                                  let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
+                            else { return }
+                            select(tab: target)
+                        }
+                )
             }
             // The anchor scroll: a push from a TeamPage lands with the
-            // team's own row in view, FotMob's table pattern. The Games
-            // tab still has no equivalent and never will — the page opens
-            // at the top with the hero in view (Andy, 2026-08-29,
-            // reverting the scroll-to-current-week first cut). What it
-            // has instead is `ConferenceSlate.fold`, which brings the next
-            // game up to the top rather than taking the top away.
+            // team's own row in view, FotMob's table pattern.
             .onChange(of: standingsTables) { _, loaded in
                 guard tab == .standings,
                       let target = destination.highlightTeamId,
@@ -389,9 +370,7 @@ struct ConferencePage: View {
         // over the identity — TeamPage's handoff. The threshold is this
         // hero's own: the title row ends ~68pt down (12 top + the 56pt
         // logo row), not TeamPage's 120.
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, scrolledPastHero in
+        .onChange(of: heroCollapse > 64) { _, scrolledPastHero in
             withAnimation(.easeInOut(duration: 0.15)) {
                 showsInlineTitle = scrolledPastHero
             }
@@ -411,14 +390,9 @@ struct ConferencePage: View {
                     .accessibilityHidden(!showsInlineTitle)
             }
             // The follow pill rides the toolbar row, FotMob's pattern
-            // (Andy, 2026-08-31), and the season chip came back up beside
-            // it (Andy, 2026-09-05, superseding the move into the panes):
-            // the season scopes the whole page, both tabs, so it belongs
-            // with the page's identity rather than above one pane's cards.
-            // Declaration order is left-to-right — season, then follow.
+            // (Andy, 2026-08-31). The season chip leads the pane's control
+            // row instead (2026-09-27) — see `controlRow(for:)`.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: destination.league,
-                               style: .bar, onSelect: { select(year: $0) })
                 ConferenceFollowPill(conference: destination.conference)
             }
         }
@@ -431,50 +405,26 @@ struct ConferencePage: View {
     /// so it can stick (Andy, 2026-09-05). This block is what scrolls
     /// away and hands the nav bar its title.
     /// The line under the hero title: the league this page sits inside,
-    /// and how many teams the page holds.
+    /// as a link (Andy, 2026-09-09: "an affordance to easily and quickly
+    /// get to the league page"). A division is two rungs down from its
+    /// league and the only way back was the tables hub — TeamPage has had
+    /// exactly this line, pointing one rung up, since its hero landed.
     ///
-    /// The league half is a link (Andy, 2026-09-09: "an affordance to
-    /// easily and quickly get to the league page"). A division is two
-    /// rungs down from its league and the only way back was the tables
-    /// hub — TeamPage has had exactly this line, pointing one rung up,
-    /// since its hero landed.
-    ///
-    /// College football gets no link and needs none: its conferences sit
-    /// directly under a division of the sport, not under a league table,
-    /// so `leagueWideId` is nil there and the line is just the count.
+    /// No team count beside it (Andy, 2026-09-27): no page header carries
+    /// one. The table under the hero is the count. A page with no parent —
+    /// a pro league's whole table, a college division — has no line at all.
     @ViewBuilder
     private var subtitle: some View {
         if let league = parentLeagueDestination {
-            HStack(spacing: Spacing.xs) {
-                NavigationLink(value: league) {
-                    HeaderLinkBadge(title: league.name,
-                                    fill: headerPaint?.badgeFill ?? .bgRecessed,
-                                    ink: headerSecondaryInk)
-                }
-                .buttonStyle(SwipeSafeButtonStyle())
-                .accessibilityLabel(league.name)
-                .accessibilityHint("Opens the league's standings")
-                if showsTeamCount {
-                    Text("\(teamCount) teams")
-                        .font(.chipEmphasis)
-                        .foregroundStyle(headerSecondaryInk)
-                }
+            NavigationLink(value: league) {
+                HeaderLinkBadge(title: league.name,
+                                fill: headerPaint?.badgeFill ?? .bgRecessed,
+                                ink: headerSecondaryInk)
             }
-        } else if showsTeamCount {
-            Text("\(teamCount) teams")
-                .font(.chipEmphasis)
-                .foregroundStyle(headerSecondaryInk)
+            .buttonStyle(SwipeSafeButtonStyle())
+            .accessibilityLabel(league.name)
+            .accessibilityHint("Opens the league's standings")
         }
-    }
-
-    /// Whether the count earns its place. A division is five teams and the
-    /// table under it is five rows — the number is right there (Andy,
-    /// 2026-09-09). A conference's sixteen and a league's thirty-two are
-    /// not countable at a glance, so those keep it.
-    private var showsTeamCount: Bool {
-        teamCount > 0
-            && Conference.tier(for: destination.conferenceId,
-                               in: destination.league) != .division
     }
 
     /// The list this page belongs to: a pro league's whole-league table,
@@ -540,10 +490,7 @@ struct ConferencePage: View {
                     .padding(.horizontal, Spacing.sm)
                     .padding(.top, Spacing.sm)
                 // The gap that used to be the pane's own top padding, so
-                // pinned cards never touch the row above. Its own view
-                // rather than the chip's padding: Standings has no chip,
-                // and a collapsed gap there merges a bgCard table into the
-                // bgCard tab strip (TeamPage's Overview shape).
+                // pinned cards never touch the row above.
                 Color.clear.frame(height: Spacing.sm)
             }
             .frame(maxWidth: .infinity)
@@ -599,38 +546,43 @@ struct ConferencePage: View {
                           onSelectRound: { postseasonRound = $0 })
     }
 
-    /// The pane's control row — the Games tab's Weeks / Date toggles and
-    /// its team filter, the same set the Top 25's Games tab carries
-    /// (Andy, 2026-09-05). The season chip left this row for the toolbar
-    /// the same day: it scopes both tabs, so it belongs beside the page's
-    /// identity, and the row is free for the controls that shape only
-    /// these cards.
-    @ViewBuilder
+    /// The pane's control row: the season chip leading on every tab
+    /// (Andy, 2026-09-27, superseding its 2026-09-05 move onto the toolbar
+    /// row), then the controls that shape only this pane — the Games tab's
+    /// Weeks / Date toggles and team filter, the same set the Top 25's
+    /// Games tab carries, or the Standings tab's scope.
     private func controlRow(for tab: Tab) -> some View {
+        SeasonControlRow(season: seasonChip) {
+            paneControls(for: tab)
+        }
+    }
+
+    private var seasonChip: SeasonMenuChip {
+        SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: destination.league,
+                       onSelect: { select(year: $0) })
+    }
+
+    @ViewBuilder
+    private func paneControls(for tab: Tab) -> some View {
         // The Postseason tab brings its own control — the round chips,
         // inside the pane where the bracket is. The standings scope has
-        // nothing to say about a playoff bracket (Andy, 2026-09-06), and a
-        // second row of chrome above the rounds was just noise.
-        if tab == .postseason {
-            EmptyView()
-        } else if tab == .games {
+        // nothing to say about a playoff bracket (Andy, 2026-09-06), so
+        // the season stands alone above the rounds.
+        if tab == .games {
             SlateControlRow(grouping: grouping,
                             onToggle: { toggle(grouping: $0) },
                             teams: filterableTeams,
                             teamSelection: activeTeamFilter,
                             onSelectTeam: { teamFilter = $0 },
                             league: destination.league)
-        } else if availableScopes.count > 1 {
+        } else if tab == .standings, availableScopes.count > 1 {
             // The Standings tab's own control: how wide the table is
             // (Andy, 2026-09-06). Only the NFL's pages have one — college
             // football's conferences nest nothing to scope down to.
-            HStack(spacing: Spacing.sm) {
-                StandingsScopeChip(scopes: availableScopes, selection: scope,
-                                   isNarrowed: scope.isNarrower(
-                                       than: StandingsScope.default(for: destination.conference)),
-                                   onSelect: { select(scope: $0) })
-                Spacer(minLength: 0)
-            }
+            StandingsScopeChip(scopes: availableScopes, selection: scope,
+                               isNarrowed: scope.isNarrower(
+                                   than: StandingsScope.default(for: destination.conference)),
+                               onSelect: { select(scope: $0) })
         }
     }
 
@@ -665,10 +617,27 @@ struct ConferencePage: View {
 
     // MARK: - Games
 
-    private var gamesSection: some View {
+    private var gamesOpeningCardId: String? {
+        filteredGames.flatMap { ConferenceSlate.openingCardId(games: $0, by: grouping) }
+    }
+
+    /// Where the scroll lands on a tab flip (Andy, 2026-09-27): the Games
+    /// tab on the week the season is on, played weeks above it — keyed so
+    /// it lands again when the slate changes under it (a season, grouping
+    /// or team switch). Every other tab, and a Games tab with nothing to
+    /// scroll past, snaps straight back to the top.
+    private var landing: ScrollLanding {
+        ScrollLanding(key: "\(tab)",
+                      target: tab == .games
+                          ? gamesOpeningCardId.map(ConferenceGamesList.scrollAnchor(for:))
+                          : nil)
+    }
+
+    private func gamesSection(scrollInset: CGFloat) -> some View {
         VStack(spacing: Spacing.sm) {
             if let filteredGames, !filteredGames.isEmpty {
-                ConferenceGamesList(games: filteredGames, grouping: grouping)
+                ConferenceGamesList(games: filteredGames, grouping: grouping,
+                                    scrollInset: scrollInset)
             } else if let activeTeamName, games?.isEmpty == false {
                 // The narrowed-empty state, Scores' rule (2026-08-29):
                 // name what's hiding the games and offer them back, so a

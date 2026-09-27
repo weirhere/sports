@@ -101,15 +101,15 @@ nonisolated extension ConferenceSlate {
     }
 }
 
-/// Where a Games tab opens: the cards already played, folded away behind
-/// one row, so the pane's first card is the one with the next game in it
-/// (Andy, 2026-09-08).
+/// Where a Games tab opens: scrolled to the card with the next game in
+/// it, the played weeks laid out above (Andy, 2026-09-27).
 ///
-/// This is deliberately *not* a scroll. Scrolling the pane to the current
-/// week takes the hero and the page's identity off screen with it — which
-/// is why the 2026-08-29 scroll-to-current-week cut was reverted the day
-/// it landed. Folding leaves the page at its true top, full header and
-/// all, and the season's history one tap up rather than one scroll up.
+/// It was a fold until then — the spent cards behind one "Earlier games"
+/// row — because scrolling took the hero and the page's identity off screen
+/// with it, which is why the 2026-08-29 scroll-to-current-week cut was
+/// reverted the day it landed. The tab row and the chips have pinned since
+/// 2026-09-05, so a scrolled pane keeps them, and the history is one scroll
+/// up instead of one tap. The split below still decides where that is.
 nonisolated extension ConferenceSlate {
     /// A slate split at the first card that still has football left in it.
     struct Fold: Equatable {
@@ -139,6 +139,18 @@ nonisolated extension ConferenceSlate {
             return Fold(earlier: [], upcoming: groups)
         }
         return Fold(earlier: Array(groups[..<split]), upcoming: Array(groups[split...]))
+    }
+
+    /// The card a Games tab opens scrolled to: the one the season is on,
+    /// or nil where there's nothing to scroll past — a season not yet
+    /// started, or one with nothing left (every past season), which opens
+    /// at the top. `fold`'s split, read as a scroll target now that
+    /// nothing is folded away (2026-09-27).
+    static func openingCardId(games: [Game], by grouping: Grouping,
+                              now: Date = .now, calendar: Calendar = .current) -> String? {
+        let split = fold(groups(from: games, by: grouping), now: now, calendar: calendar)
+        guard !split.earlier.isEmpty else { return nil }
+        return split.upcoming.first?.id
     }
 
     /// Whether a card has stopped being the one to look at: nothing in it
