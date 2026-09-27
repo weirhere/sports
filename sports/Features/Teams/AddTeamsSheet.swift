@@ -30,6 +30,7 @@ struct AddTeamsSheet: View {
                 // path position otherwise reuses the page's caches.
                 .navigationDestination(for: Team.self) { TeamPage(team: $0).id($0.followKey) }
                 .navigationDestination(for: PlayerIdentity.self) { PlayerPage(player: $0).id($0.id) }
+                .navigationDestination(for: CoachIdentity.self) { CoachPage(coach: $0).id($0.id) }
                 // A player's Games tab pushes the games it lists (2026-09-24),
                 // and a player page can be reached from this sheet's team
                 // pages — so this stack needs the game destination too.

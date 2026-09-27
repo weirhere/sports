@@ -1,0 +1,36 @@
+{
+ "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2016/coaches/7157?lang=en&region=us",
+ "id": "7157",
+ "uid": "s:20~l:28~co:7157",
+ "firstName": "Todd",
+ "lastName": "Bowles",
+ "dateOfBirth": "1963-11-18T08:00Z",
+ "birthPlace": {
+  "city": "Elizabeth",
+  "state": "New Jersey"
+ },
+ "college": {
+  "$ref": "http://sports.core.api.espn.com/v2/colleges/218?lang=en&region=us"
+ },
+ "headshot": {
+  "href": "https://a.espncdn.com/i/headshots/nfl/coaches/65/7157.jpg",
+  "alt": "Todd Bowles"
+ },
+ "person": {
+  "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157?lang=en&region=us"
+ },
+ "team": {
+  "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2016/teams/20?lang=en&region=us"
+ },
+ "experience": 9,
+ "records": [
+  {
+   "team": {
+    "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2016/teams/20?lang=en&region=us"
+   },
+   "record": {
+    "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2016/types/2/coaches/7157/record?lang=en&region=us"
+   }
+  }
+ ]
+}

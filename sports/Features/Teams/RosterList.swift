@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The Roster tab's card stack: the head coach, then a card per position
+/// The Roster tab's card stack: the head coach (a link to their page since
+/// E27), then a card per position
 /// group in the payload's own order, each group's players in jersey order.
 ///
 /// FotMob's squad screen is the reference — a card per group, its header
@@ -31,24 +32,47 @@ struct RosterList: View {
         }
     }
 
+    /// A link to the coach's page when ESPN sent an id (E27, 2026-09-27),
+    /// the plain row it always was when it didn't.
     private func coachCard(_ coach: RosterCoach) -> some View {
         VStack(spacing: 0) {
             CardHeader(title: "Coach")
-            HStack(spacing: Spacing.md) {
-                Text(coach.name)
-                    .font(.teamName)
-                    .foregroundStyle(.textPrimary)
-                    .lineLimit(1)
-                Spacer(minLength: Spacing.sm)
-                Text("Head coach")
-                    .font(.meta)
-                    .foregroundStyle(.textSecondary)
+            if let id = coach.id {
+                NavigationLink(value: CoachIdentity(coachId: id, name: coach.name,
+                                                    league: league, team: team)) {
+                    coachRow(coach, isLink: true)
+                }
+                .buttonStyle(.plain)
+            } else {
+                coachRow(coach, isLink: false)
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
-            .accessibilityElement(children: .combine)
         }
         .cardSurface()
+    }
+
+    private func coachRow(_ coach: RosterCoach, isLink: Bool) -> some View {
+        HStack(spacing: Spacing.md) {
+            Text(coach.name)
+                .font(.teamName)
+                .foregroundStyle(.textPrimary)
+                .lineLimit(1)
+            Spacer(minLength: Spacing.sm)
+            Text("Head coach")
+                .font(.meta)
+                .foregroundStyle(.textSecondary)
+            if isLink {
+                // `RosterRow`'s chevron, so the two kinds of row on the tab
+                // say "this goes somewhere" the same way.
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.md)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private func groupCard(_ group: RosterGroup) -> some View {

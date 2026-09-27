@@ -1023,6 +1023,8 @@ nonisolated struct RosterInjuryDTO: Decodable {
 }
 
 nonisolated struct RosterCoachDTO: Decodable {
+    /// Joins to the core API's `coaches/{id}` (E27, 2026-09-27).
+    let id: FlexibleID?
     let firstName: String?
     let lastName: String?
 }
