@@ -456,6 +456,11 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// headline line and total are read (2026-09-24); the moneyline,
     /// per-team odds and bet links are deliberately left undecoded.
     let pickcenter: LossyArray<PickcenterDTO>?
+    /// The game's own story: AP's preview before kickoff, its recap once
+    /// the game is final, and nothing while it's live (probed 2026-09-27).
+    /// The body rides along whole, so the game page's story card costs no
+    /// request of its own (docs/news.md, N2 and N3).
+    let article: NewsArticleDTO?
 }
 
 nonisolated struct PickcenterDTO: Decodable {
@@ -463,6 +468,63 @@ nonisolated struct PickcenterDTO: Decodable {
     /// the moneyline ("ANA -185") in hockey.
     let details: String?
     let overUnder: Double?
+}
+
+// MARK: - News
+// One shape across three sources: the summary's `article`, a `/news` feed's
+// `articles[]`, and the content API's `headlines[]`. Each carries a subset —
+// the feed has no `story`, no `source` and no `gameId` — so every field is
+// optional and the mapper names what's missing rather than guessing.
+//
+// `images`, `video`, `links.web` and the reactions and comments flags are
+// deliberately not decoded: the reader is text-only (N8) and never sends
+// anyone to espn.com (N4).
+
+nonisolated struct NewsArticleDTO: Decodable {
+    let id: FlexibleInt?
+    let type: String?
+    let headline: String?
+    let description: String?
+    let byline: String?
+    let source: String?
+    let published: String?
+    let story: String?
+    let gameId: FlexibleInt?
+    let categories: LossyArray<NewsCategoryDTO>?
+    let links: NewsLinksDTO?
+}
+
+nonisolated struct NewsCategoryDTO: Decodable {
+    let type: String?
+    let description: String?
+    let teamId: FlexibleInt?
+    let eventId: FlexibleInt?
+}
+
+nonisolated struct NewsLinksDTO: Decodable {
+    let api: NewsAPILinksDTO?
+}
+
+nonisolated struct NewsAPILinksDTO: Decodable {
+    let selfLink: NewsHrefDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case selfLink = "self"
+    }
+}
+
+nonisolated struct NewsHrefDTO: Decodable {
+    let href: String?
+}
+
+/// `/news?team=`: a team's feed, headlines only.
+nonisolated struct NewsFeedDTO: Decodable {
+    let articles: LossyArray<NewsArticleDTO>?
+}
+
+/// The content API's single story, the body a feed item opens to.
+nonisolated struct NewsHeadlinesDTO: Decodable {
+    let headlines: LossyArray<NewsArticleDTO>?
 }
 
 // MARK: - Standings, the summary's own copy

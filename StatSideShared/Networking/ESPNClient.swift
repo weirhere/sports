@@ -1792,7 +1792,8 @@ nonisolated enum ESPNMapper {
             winProbability: WinProbability(
                 predictor: dto.predictor.map { ($0.homeTeam?.gameProjection?.value,
                                                 $0.awayTeam?.gameProjection?.value) },
-                series: dto.winprobability?.elements.compactMap(\.homeWinPercentage) ?? [])
+                series: dto.winprobability?.elements.compactMap(\.homeWinPercentage) ?? []),
+            article: dto.article.flatMap { NewsMapper.story(from: $0, league: league) }
         )
     }
 

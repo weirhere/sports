@@ -21,7 +21,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, stats, standings, roster, trades, trophies
+        case overview, games, stats, standings, roster, trades, trophies, news
 
         var title: String {
             switch self {
@@ -32,6 +32,7 @@ struct TeamPage: View {
             case .roster: "Roster"
             case .trades: "Trades"
             case .trophies: "Trophies"
+            case .news: "News"
             }
         }
     }
@@ -111,6 +112,13 @@ struct TeamPage: View {
     /// Overview leads with both. Keyed to the team like the roster, so a
     /// reused page can't show the last team's numbers.
     @State private var teamStats: TeamStatsModel?
+    /// The News tab's stories (docs/news.md, N9): one request on the tab's
+    /// first visit, held for the page's life and never polled. Keyed to the
+    /// team like the roster, for the same reason.
+    @State private var news: [NewsStory]?
+    @State private var newsTeamKey: String?
+    @State private var newsLoading = false
+    @State private var newsFailed = false
 
     /// The Trades tab's wire (2026-09-27), made on the tab's first visit and
     /// keyed to the team like the stats — a reused page can't show the last
@@ -125,6 +133,11 @@ struct TeamPage: View {
 
     private var currentTeamStats: TeamStatsModel? {
         teamStats?.team.followKey == team.followKey ? teamStats : nil
+    }
+
+    /// The stories, but only if they belong to the team on screen.
+    private var currentNews: [NewsStory]? {
+        newsTeamKey == team.followKey ? news : nil
     }
 
     /// The roster, but only if it belongs to the team on screen.
@@ -294,6 +307,7 @@ struct TeamPage: View {
                         case .roster: rosterContent
                         case .trades: tradesContent
                         case .trophies: trophiesContent
+                        case .news: newsContent
                         }
                     }
                     // geometryGroup pins every child (row logos included) to
@@ -604,6 +618,10 @@ struct TeamPage: View {
         if showsRosterTab { tabs.append(.roster) }
         if showsTradesTab { tabs.append(.trades) }
         tabs.append(.trophies)
+        // Last: the page is about the team's games first (N9). ESPN-gated
+        // like the roster, so the fixture-backed UI suites never reach the
+        // network through it.
+        if showsRosterTab { tabs.append(.news) }
         return tabs
     }
 
@@ -1022,6 +1040,62 @@ struct TeamPage: View {
         // by the team so a reused page re-fetches rather than keeping the
         // last one's squad.
         .task(id: team.followKey) { await loadRoster() }
+    }
+
+    // MARK: - News
+
+    /// The team's own stories (N9) — FotMob's team News tab, last in the
+    /// row rather than second, and without the photos (N8).
+    private var newsContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let stories = currentNews, !stories.isEmpty {
+                TeamNewsList(stories: stories, gameFor: scheduledGame(for:))
+            } else if currentNews != nil {
+                StatusMessage(text: "No \(team.location) stories right now.")
+                    .cardSurface()
+            } else if newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews(force: true) } })
+                    .cardSurface()
+            } else {
+                // A lone spinner gets no card (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .task(id: team.followKey) { await loadNews() }
+    }
+
+    /// The game a story is about, when this season's schedule has it — so
+    /// the reader's score row opens it (N5).
+    private func scheduledGame(for story: NewsStory) -> Game? {
+        guard let gameId = story.gameId,
+              let game = currentSchedule?.games.first(where: { $0.id == gameId }) else { return nil }
+        return fresher(game)
+    }
+
+    /// The one feed request, the roster's fetch-once shape.
+    private func loadNews(force: Bool = false) async {
+        let key = team.followKey
+        if newsTeamKey != key {
+            news = nil
+            newsFailed = false
+        }
+        guard force || currentNews == nil, !newsLoading else { return }
+        newsLoading = true
+        newsFailed = false
+        defer { newsLoading = false }
+        let loaded = await NewsClient().teamNews(teamId: team.id, league: pageLeague)
+        guard team.followKey == key else { return }
+        if let loaded {
+            news = loaded
+            newsTeamKey = key
+        } else {
+            newsFailed = true
+        }
     }
 
     /// The team's moves, without its mark on every row: the header above
