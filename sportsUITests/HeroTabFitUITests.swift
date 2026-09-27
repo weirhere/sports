@@ -61,8 +61,8 @@ final class HeroTabFitUITests: XCTestCase {
                       "Search should land on the Georgia team page")
 
         // Six since the Stats tab (2026-09-24), seven since News
-        // (2026-09-27, docs/news.md N9).
-        let titles = ["Overview", "Games", "Stats", "Standings", "Roster", "Trophies", "News"]
+        // (2026-09-27), which sits second since E26.
+        let titles = ["Overview", "News", "Games", "Stats", "Standings", "Roster", "Trophies"]
         let tabs = titles.map { app.buttons["hero-tab-\($0.lowercased())"] }
         XCTAssertTrue(tabs[0].waitForExistence(timeout: 10),
                       "The team page should show its hero tab row")

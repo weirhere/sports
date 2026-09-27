@@ -6,7 +6,21 @@ import { describe, it, expect } from "vitest";
 import summaryJson from "./espn/__fixtures__/nba-summary-article.json";
 import feedJson from "./espn/__fixtures__/nba-team-news.json";
 import storyJson from "./espn/__fixtures__/nba-news-story.json";
+import overviewJson from "./espn/__fixtures__/nba-athlete-overview.json";
+import searchJson from "./espn/__fixtures__/search-knicks.json";
 import {
+  gameIdForStoryLink,
+  leagueForStoryLink,
+  transformStorySearch,
+} from "./espn/athlete-search";
+import type { EspnSearchResponse } from "./espn/types";
+import {
+  forYou,
+  playerFeed,
+  type EspnAthleteOverviewNews,
+  isFlooded,
+  leagueFeed,
+  toppedUp,
   newsStory,
   storyUrl,
   teamFeed,
@@ -155,5 +169,109 @@ describe("timestamps (N7)", () => {
 
   it("is exact in the reader", () => {
     expect(exactTime("2026-09-27T19:44:00Z", zone)).toBe("Sep 27, 2026 at 3:44 PM");
+  });
+});
+
+describe("the News tab (E26)", () => {
+  it("puts a league's previews last", () => {
+    // ESPN's college-football feed on 2026-09-27 was 50 AP previews
+    // published within four minutes. Newer isn't enough to lead.
+    const feed: EspnNewsFeed = {
+      articles: [
+        { id: 1, type: "Preview", headline: "Next week", published: "2026-09-27T19:47:00Z" },
+        { id: 2, type: "Story", headline: "Older story", published: "2026-09-27T12:00:00Z" },
+        { id: 3, type: "Media", headline: "A video", published: "2026-09-27T20:00:00Z" },
+        { id: 4, type: "HeadlineNews", headline: "Newest news", published: "2026-09-27T18:00:00Z" },
+      ],
+    };
+    expect(leagueFeed(feed, "cfb").map((story) => story.id)).toEqual(["4", "2", "1"]);
+  });
+
+  it("merges For you once each, newest first", () => {
+    const story = (id: string, published: string): NewsStory => ({
+      id,
+      kind: "recap",
+      league: "nba",
+      headline: id,
+      published,
+      teams: [],
+    });
+    // A recap tags both teams, and both are followed.
+    const knicks = [story("recap", "2026-09-27T03:00:00Z"), story("knicks", "2026-09-26T12:00:00Z")];
+    const nets = [story("nets", "2026-09-27T12:00:00Z"), story("recap", "2026-09-27T03:00:00Z")];
+    expect(forYou([knicks, nets]).map((entry) => entry.id)).toEqual(["nets", "recap", "knicks"]);
+  });
+});
+
+describe("the preview flood (E26)", () => {
+  const story = (id: string, kind: NewsStory["kind"], published: string): NewsStory => ({
+    id,
+    kind,
+    league: "cfb",
+    headline: id,
+    published,
+    teams: [],
+  });
+  // The 2026-09-27 feed: nothing but next week's previews.
+  const flood = Array.from({ length: 12 }, (_, i) =>
+    story(`p${i + 1}`, "preview", `2026-09-27T19:4${(i + 1) % 10}:00Z`)
+  );
+
+  it("knows a flood from a news day", () => {
+    expect(isFlooded(flood)).toBe(true);
+    expect(
+      isFlooded(Array.from({ length: 10 }, (_, i) => story(`s${i}`, "story", "2026-09-27T12:00:00Z")))
+    ).toBe(false);
+  });
+
+  it("tops a flood up with the ranked teams, previews still last", () => {
+    const michigan = [story("recap", "recap", "2026-09-27T03:00:00Z"), story("mich", "headline", "2026-09-26T12:00:00Z")];
+    const iowa = [story("recap", "recap", "2026-09-27T03:00:00Z"), story("iowa-preview", "preview", "2026-09-27T20:00:00Z")];
+    expect(toppedUp(flood.slice(0, 2), [michigan, iowa]).map((entry) => entry.id)).toEqual([
+      "recap",
+      "mich",
+      "iowa-preview",
+      "p2",
+      "p1",
+    ]);
+  });
+});
+
+describe("a player's News tab (E26)", () => {
+  it("reads the athlete overview's own list, less the video", () => {
+    const dto = overviewJson as EspnAthleteOverviewNews;
+    const stories = playerFeed(dto, "nba");
+    // Brunson's 13, 5 of them video.
+    expect(dto.news).toHaveLength(13);
+    expect(stories).toHaveLength(8);
+    const times = stories.map((story) => story.published ?? "");
+    expect([...times].sort().reverse()).toEqual(times);
+  });
+});
+
+describe("Search's News scope (E26)", () => {
+  it("reads the article group beside the people", () => {
+    // "knicks" on 2026-09-27: ten articles, one a New York story filed
+    // under the NFL. Clips and replays are video and never map.
+    const stories = transformStorySearch(searchJson as EspnSearchResponse);
+    expect(stories).toHaveLength(10);
+    expect(stories[0]).toMatchObject({
+      id: "50039929",
+      kind: "headline",
+      league: "nba",
+      attribution: "AP",
+    });
+    expect(stories.some((story) => story.league === "nfl")).toBe(true);
+    expect(stories.every((story) => story.published)).toBe(true);
+  });
+
+  it("drops leagues the app doesn't cover", () => {
+    expect(leagueForStoryLink("https://www.espn.com/college-football/story/_/id/1/x")).toBe("cfb");
+    expect(leagueForStoryLink("https://www.espn.com/soccer/story/_/id/1/x")).toBeUndefined();
+    expect(leagueForStoryLink("not a url")).toBeUndefined();
+    // AP's recaps and previews use ESPN's older paths.
+    const recap = "http://www.espn.com/ncf/recap?gameId=401858463";
+    expect(leagueForStoryLink(recap)).toBe("cfb");
+    expect(gameIdForStoryLink(recap)).toBe("401858463");
   });
 });

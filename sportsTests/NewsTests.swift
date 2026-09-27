@@ -110,6 +110,73 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(!story(["17"]).isFocused(on: "18"))
     }
 
+    // MARK: - The News tab (E26)
+
+    @Test func aLeagueFeedPutsPreviewsLast() throws {
+        // ESPN's college-football feed on 2026-09-27 was 50 AP previews
+        // published within four minutes. Newer isn't enough to lead.
+        let json = """
+        {"articles": [
+          {"id": 1, "type": "Preview", "headline": "Next week", "published": "2026-09-27T19:47:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/1"}}}},
+          {"id": 2, "type": "Story", "headline": "Older story", "published": "2026-09-27T12:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/2"}}}},
+          {"id": 3, "type": "Media", "headline": "A video", "published": "2026-09-27T20:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/3"}}}},
+          {"id": 4, "type": "HeadlineNews", "headline": "Newest news", "published": "2026-09-27T18:00:00Z",
+           "links": {"api": {"self": {"href": "https://content.core.api.espn.com/v1/sports/news/4"}}}}
+        ]}
+        """
+        let dto = try JSONDecoder().decode(NewsFeedDTO.self, from: Data(json.utf8))
+        let stories = NewsMapper.leagueFeed(from: dto, league: .collegeFootball)
+        #expect(stories.map(\.id) == ["4", "2", "1"])
+    }
+
+    @Test func forYouMergesEachStoryOnceNewestFirst() {
+        func story(_ id: String, _ published: String) -> NewsStory {
+            NewsStory(id: id, kind: .recap, league: .nba, headline: id, dek: nil,
+                      attribution: nil, published: ISO8601DateFormatter().date(from: published),
+                      gameId: nil, teams: [])
+        }
+        // A recap tags both teams, and both are followed.
+        let knicks = [story("recap", "2026-09-27T03:00:00Z"), story("knicks", "2026-09-26T12:00:00Z")]
+        let nets = [story("nets", "2026-09-27T12:00:00Z"), story("recap", "2026-09-27T03:00:00Z")]
+        #expect(NewsMapper.forYou([knicks, nets]).map(\.id) == ["nets", "recap", "knicks"])
+    }
+
+    @Test func aPreviewFloodIsToppedUpWithTheRankedTeams() {
+        func story(_ id: String, _ kind: NewsStory.Kind, _ published: String) -> NewsStory {
+            NewsStory(id: id, kind: kind, league: .collegeFootball, headline: id, dek: nil,
+                      attribution: nil, published: ISO8601DateFormatter().date(from: published),
+                      gameId: nil, teams: [])
+        }
+        // The 2026-09-27 feed: nothing but next week's previews.
+        let flood = (1...12).map { story("p\($0)", .preview, "2026-09-27T19:4\($0 % 10):00Z") }
+        #expect(NewsMapper.isFlooded(flood))
+        #expect(!NewsMapper.isFlooded((1...10).map { story("s\($0)", .story, "2026-09-27T12:00:00Z") }))
+
+        // Two ranked teams' feeds, one recap shared between them.
+        let michigan = [story("recap", .recap, "2026-09-27T03:00:00Z"),
+                        story("mich", .headline, "2026-09-26T12:00:00Z")]
+        let iowa = [story("recap", .recap, "2026-09-27T03:00:00Z"),
+                    story("iowa-preview", .preview, "2026-09-27T20:00:00Z")]
+        let page = NewsMapper.toppedUp(Array(flood.prefix(2)), with: [michigan, iowa])
+        #expect(page.map(\.id) == ["recap", "mich", "iowa-preview", "p2", "p1"])
+    }
+
+    @Test func aPlayersFeedIsTheOverviewsOwnList() throws {
+        let dto = try JSONDecoder().decode(AthleteOverviewNewsDTO.self,
+                                           from: fixtureData("nba-athlete-overview"))
+        let stories = NewsMapper.playerFeed(from: dto, league: .nba)
+        // Brunson's 13, less the video.
+        #expect(dto.news?.elements.count == 13)
+        #expect(!stories.isEmpty && stories.count < 13)
+        #expect(stories.allSatisfy { $0.bodyURL != nil })
+        #expect(zip(stories, stories.dropFirst()).allSatisfy {
+            ($0.published ?? .distantPast) >= ($1.published ?? .distantPast)
+        })
+    }
+
     // MARK: - The reader (N4)
 
     @Test func readsTheContentAPIsParagraphs() throws {
@@ -154,5 +221,36 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(try relative("2026-09-27T03:00:00Z") == "Yesterday")
         #expect(try relative("2026-09-24T12:00:00Z") == "Sep 24")
         #expect(try relative("2025-11-05T12:00:00Z") == "Nov 5, 2025")
+    }
+
+    // MARK: - Search's News scope (E26)
+
+    @Test func searchReadsTheArticleGroup() throws {
+        let dto = try JSONDecoder().decode(SearchResponseDTO.self, from: fixtureData("search-knicks"))
+        let stories = AthleteSearchClient.stories(in: dto)
+        // "knicks" on 2026-09-27: ten articles, one a New York story filed
+        // under the NFL. Clips and replays are video and never map.
+        #expect(stories.count == 10)
+        #expect(stories.first?.id == "50039929")
+        #expect(stories.first?.kind == .headline)
+        #expect(stories.first?.league == .nba)
+        #expect(stories.first?.attribution == "AP")
+        #expect(stories.first?.published != nil)
+        #expect(stories.first?.bodyURL?.absoluteString
+                == "https://content.core.api.espn.com/v1/sports/news/50039929")
+        #expect(stories.contains { $0.league == .nfl })
+        #expect(AthleteSearchClient.athletes(in: dto).isEmpty)
+    }
+
+    @Test func searchDropsLeaguesTheAppDoesNotCover() {
+        #expect(NewsMapper.league(fromStoryLink: "https://www.espn.com/college-football/story/_/id/1/x") == .collegeFootball)
+        #expect(NewsMapper.league(fromStoryLink: "https://www.espn.com/soccer/story/_/id/1/x") == nil)
+        #expect(NewsMapper.league(fromStoryLink: nil) == nil)
+        // AP's recaps and previews use ESPN's older paths.
+        let recap = "http://www.espn.com/ncf/recap?gameId=401858463"
+        #expect(NewsMapper.league(fromStoryLink: recap) == .collegeFootball)
+        #expect(NewsMapper.gameId(fromStoryLink: recap) == "401858463")
+        #expect(NewsStory.Kind(espnType: "headlinenews") == .headline)
+        #expect(NewsStory.Kind(espnType: "media") == nil)
     }
 }

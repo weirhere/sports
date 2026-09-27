@@ -49,6 +49,13 @@ export interface EspnNewsFeed {
   articles?: EspnNewsArticle[];
 }
 
+/** The athlete overview's `news` block — ESPN's own list of a player's
+ *  stories, the one per-player source it publishes (`/news?athlete=` is
+ *  ignored and answers with the league feed). */
+export interface EspnAthleteOverviewNews {
+  news?: EspnNewsArticle[];
+}
+
 /** The content API's single story. */
 export interface EspnNewsHeadlines {
   headlines?: EspnNewsArticle[];
@@ -63,6 +70,16 @@ const SPECS: Record<League, string> = {
 
 export function teamNewsUrl(league: League, teamId: string): string {
   return `https://site.web.api.espn.com/apis/site/v2/sports/${SPECS[league]}/news?team=${teamId}&limit=25`;
+}
+
+/** A league's own feed, for the News tab's league pages (E26). */
+export function leagueNewsUrl(league: League): string {
+  return `https://site.web.api.espn.com/apis/site/v2/sports/${SPECS[league]}/news?limit=50`;
+}
+
+/** A player's stories, on the athlete endpoints' host (E26). */
+export function playerNewsUrl(league: League, athleteId: string): string {
+  return `https://site.web.api.espn.com/apis/common/v3/sports/${SPECS[league]}/athletes/${athleteId}/overview`;
 }
 
 export function storyUrl(storyId: string): string {
@@ -122,4 +139,75 @@ export function teamFeed(dto: EspnNewsFeed, teamId: string, league: League): New
     .filter((story): story is NewsStory => story !== undefined && isFocused(story, teamId))
     .map((story) => ({ ...story, body: undefined }))
     .sort((a, b) => (b.published ?? "").localeCompare(a.published ?? ""));
+}
+
+function newestFirst(a: NewsStory, b: NewsStory): number {
+  return (b.published ?? "").localeCompare(a.published ?? "");
+}
+
+/**
+ * A league's feed (E26): the types the app shows, newest first, and
+ * **previews last**. ESPN's college-football feed floods with AP's previews
+ * for the next slate — on 2026-09-27 all 50 items were previews published
+ * within four minutes — and a page that leads with 50 of them buries every
+ * other story. Demoted rather than dropped: on a quiet day they're what
+ * there is.
+ */
+export function leagueFeed(dto: EspnNewsFeed, league: League): NewsStory[] {
+  return (dto.articles ?? [])
+    .map((article) => newsStory(article, league))
+    .filter((story): story is NewsStory => story !== undefined)
+    .map((story) => ({ ...story, body: undefined }))
+    .sort(previewsLast);
+}
+
+/** The fewest real stories a league page shows before it asks for more;
+ *  below it the feed is a preview flood rather than a news day. */
+export const FLOOD_FLOOR = 10;
+
+/** Whether a league page is drowning in previews. */
+export function isFlooded(stories: NewsStory[]): boolean {
+  return stories.filter((story) => story.kind !== "preview").length < FLOOD_FLOOR;
+}
+
+function previewsLast(a: NewsStory, b: NewsStory): number {
+  const aPreview = a.kind === "preview";
+  const bPreview = b.kind === "preview";
+  if (aPreview !== bPreview) return aPreview ? 1 : -1;
+  return newestFirst(a, b);
+}
+
+/** A flooded league page topped up with the ranked teams' own stories
+ *  (E26): each story once, newest first, previews still last. */
+export function toppedUp(feed: NewsStory[], teamFeeds: NewsStory[][]): NewsStory[] {
+  const seen = new Set<string>();
+  return [feed, ...teamFeeds]
+    .flat()
+    .filter((story) => (seen.has(story.id) ? false : (seen.add(story.id), true)))
+    .sort(previewsLast);
+}
+
+/**
+ * For you (E26): every followed team's own stories in one list, each story
+ * once — a recap tags both teams, and a user may follow both — newest
+ * first. Follows carry no order of their own, so time is the only honest
+ * ranking.
+ */
+export function forYou(feeds: NewsStory[][]): NewsStory[] {
+  const seen = new Set<string>();
+  return feeds
+    .flat()
+    .filter((story) => (seen.has(story.id) ? false : (seen.add(story.id), true)))
+    .sort(newestFirst);
+}
+
+/** A player's feed (E26): the types the app shows, each once, newest first.
+ *  ESPN picked these for the player, so no team filter applies. */
+export function playerFeed(dto: EspnAthleteOverviewNews, league: League): NewsStory[] {
+  return forYou([
+    (dto.news ?? [])
+      .map((article) => newsStory(article, league))
+      .filter((story): story is NewsStory => story !== undefined)
+      .map((story) => ({ ...story, body: undefined })),
+  ]);
 }

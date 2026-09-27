@@ -2,8 +2,10 @@ import type { Game, GameDetail, Scoreboard } from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
-import type { League } from "./leagues";
+import { LEAGUES, type League } from "./leagues";
 import type { NewsStory } from "./news";
+import { parseFollowKey, type TeamRef } from "./refs";
+import { forYou, toppedUp } from "./espn/news";
 import { dayId } from "./day";
 
 const BASE = "/api";
@@ -147,6 +149,63 @@ export async function getTeamTrophies(
  */
 export async function getTeamNews(league: League, teamId: string): Promise<NewsStory[]> {
   return fetchJson(`${BASE}/team/${teamId}/news?league=${league}`);
+}
+
+/**
+ * Several teams' own stories as one list (E26): each story once, newest
+ * first — the News tab's For you, and a conference's members. Some feeds
+ * failing makes a thinner list; all of them failing rejects.
+ */
+export async function getTeamsNews(teams: TeamRef[]): Promise<NewsStory[]> {
+  if (teams.length === 0) return [];
+  const results = await Promise.allSettled(
+    teams.map((ref) => getTeamNews(ref.league, ref.teamId))
+  );
+  const feeds = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
+  if (feeds.length === 0) throw new Error("No team feed answered");
+  return forYou(feeds);
+}
+
+/** For you asks each followed team's own feed; capped so a long follow list
+ *  doesn't open the page onto forty requests (iOS `forYouCap`). */
+export const FOR_YOU_CAP = 20;
+
+/** For you (E26): the followed teams' own feeds, merged — the News tab's
+ *  first page and the Teams tab's News. */
+export function getFollowedNews(keys: readonly string[]): Promise<NewsStory[]> {
+  const follows = [...keys]
+    .sort()
+    .map(parseFollowKey)
+    .filter((ref) => ref !== undefined)
+    .slice(0, FOR_YOU_CAP);
+  return getTeamsNews(follows);
+}
+
+/** A player's stories (E26), newest first. Requested when the player
+ *  page's News tab first opens. */
+export async function getPlayerNews(league: League, athleteId: string): Promise<NewsStory[]> {
+  return fetchJson(`${BASE}/player/${athleteId}/news?league=${league}`);
+}
+
+/** A league's stories for the News tab (E26), newest first, previews last. */
+export async function getLeagueNews(league: League): Promise<NewsStory[]> {
+  return fetchJson(`${BASE}/news?league=${league}`);
+}
+
+/**
+ * Every league's page as one (E26), for the Leagues tab's News: each story
+ * once, newest first, previews last. Some leagues failing makes a thinner
+ * list; all of them failing rejects.
+ */
+export async function getAllLeaguesNews(): Promise<NewsStory[]> {
+  const results = await Promise.allSettled(LEAGUES.map((league) => getLeagueNews(league)));
+  const pages = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => (result as PromiseFulfilledResult<NewsStory[]>).value);
+  if (pages.length === 0) throw new Error("No league news loaded");
+  return toppedUp([], pages);
 }
 
 /**

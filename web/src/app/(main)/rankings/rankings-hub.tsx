@@ -55,6 +55,10 @@ import {
 import { FollowedTablesList } from "@/components/followed-tables-list";
 import { TrophyMark } from "@/components/theme/trophy-mark";
 import { PageHeader } from "@/components/page-header";
+import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getAllLeaguesNews } from "@/lib/api";
 import { SearchField } from "@/components/search-field";
 import { filterFollowed, filterHubGroups, hubQuery } from "@/lib/hub-filter";
 import { cn } from "@/lib/utils";
@@ -76,6 +80,13 @@ export type HubRow =
   | { kind: "poll"; league: League; polls: Poll[] }
   | { kind: "table"; table: ConferenceStandingsGroup };
 
+/** Leagues, then News (Andy, 2026-09-27, E26): the stories from every
+ *  league this tab lists, one tap from their tables. */
+const TABS: HeroTab[] = [
+  { id: "leagues", label: "Leagues" },
+  { id: "news", label: "News" },
+];
+
 export function LeaguesHub({
   polls,
   standings,
@@ -95,6 +106,16 @@ export function LeaguesHub({
   // reload is a fresh hub.
   const [query, setQuery] = useState("");
   const isFiltering = hubQuery(query).length > 0;
+  const [tab, setTab] = useState("leagues");
+  // Every league's feed, fetched when the tab first opens and kept after.
+  const [newsRequested, setNewsRequested] = useState(false);
+  const news = useOnDemand(newsRequested ? "all-leagues" : undefined, () =>
+    getAllLeaguesNews()
+  );
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "news") setNewsRequested(true);
+  };
 
   /**
    * Divisions folded into their conference: the Sun Belt, not
@@ -259,13 +280,42 @@ export function LeaguesHub({
     setIsEditingFollowing(false);
   }
 
+  // The News tab: every league's stories in one list. Built before the
+  // tables' own empty state so it still works when they didn't load.
+  const newsPane =
+    news.state.status === "failed" ? (
+      <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+        <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+        <button
+          type="button"
+          onClick={news.reload}
+          className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+        >
+          Retry
+        </button>
+      </section>
+    ) : news.state.status === "loading" ? (
+      <StoryListCardSkeleton />
+    ) : news.state.value.length > 0 ? (
+      <StoryListCard stories={news.state.value} />
+    ) : (
+      <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+        No stories right now.
+      </section>
+    );
+
   if (leagues.length === 0) {
     return (
       <>
         <PageHeader title="Leagues" />
-        <p className="py-20 text-center type-team-name text-text-secondary">
-          No tables right now
-        </p>
+        <HeroTabBar tabs={TABS} selected={tab} onSelect={selectTab} />
+        {tab === "news" ? (
+          newsPane
+        ) : (
+          <p className="py-20 text-center type-team-name text-text-secondary">
+            No tables right now
+          </p>
+        )}
       </>
     );
   }
@@ -274,88 +324,93 @@ export function LeaguesHub({
     <>
       {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
       <PageHeader title="Leagues" />
-      <div className="flex flex-col gap-3">
-        {/* Under the title, above everything it filters (iOS, 2026-09-21).
-            At the head of the list, not its foot: it narrows a list you are
-            already reading, where the Search tab's field is that screen's
-            whole purpose. */}
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Find a league"
-        />
-        {visibleFollowed.length > 0 && (
-          <>
-            <SectionHeading
-              title="Following"
-              trailing={
-                // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
-                // the heading, "Edit" until pressed and "Done" while
-                // editing. Hidden while a search narrows the list.
-                !isFiltering && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingFollowing((editing) => !editing)}
-                    aria-pressed={isEditingFollowing}
-                    className={cn(
-                      "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
-                      isEditingFollowing
-                        ? "font-semibold text-text-primary"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {isEditingFollowing ? "Done" : "Edit"}
-                  </button>
-                )
-              }
-            />
-            <FollowedTablesList
-              tables={visibleFollowed}
-              allTables={followed}
-              isEditing={isEditingFollowing}
-              onReorder={uiState.setTableOrder}
-              onUnfollow={(table) =>
-                table.kind === "poll"
-                  ? toggleFavoritePoll(table.league)
-                  : toggleFavoriteConference(conferenceToken(table.ref))
-              }
-            />
-          </>
-        )}
-
-        {/* The complete list. Followed rows repeat inside their league —
-            sections stay complete, never deduplicated. */}
-        {/* Names what's below rather than repeating the tab (iOS,
-            2026-09-21): every table the app has — the four leagues and
-            their conferences. Divisions are read inside their conference's
-            page (2026-09-26). */}
-        {visibleFollowed.length > 0 && visibleGroups.length > 0 && (
-          <SectionHeading title="All leagues and conferences" />
-        )}
-        {visibleGroups.map(({ league, rows }) => (
-          <LeagueAccordion
-            key={league}
-            league={league}
-            rows={rows}
-            // A search opens what it matched: a filtered accordion that
-            // stayed shut would hide the thing you just asked for behind
-            // one more tap ("relevantly expanded", iOS 2026-09-21). A
-            // render-time override, never a write, so clearing the field
-            // hands the hub back exactly as it was.
-            isExpanded={
-              isFiltering || !uiState.isCollapsed(`league-${league}`)
-            }
-            onToggle={() => uiState.toggleSection(`league-${league}`)}
+      <HeroTabBar tabs={TABS} selected={tab} onSelect={selectTab} />
+      {tab === "news" ? (
+        newsPane
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Under the title, above everything it filters (iOS, 2026-09-21).
+              At the head of the list, not its foot: it narrows a list you are
+              already reading, where the Search tab's field is that screen's
+              whole purpose. */}
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Find a league"
           />
-        ))}
-        {isFiltering &&
-          visibleGroups.length === 0 &&
-          visibleFollowed.length === 0 && (
-            <p className="py-20 text-center type-team-name text-text-secondary">
-              No matches
-            </p>
+          {visibleFollowed.length > 0 && (
+            <>
+              <SectionHeading
+                title="Following"
+                trailing={
+                  // FotMob's Leagues link (iOS, 2026-09-25): right-aligned on
+                  // the heading, "Edit" until pressed and "Done" while
+                  // editing. Hidden while a search narrows the list.
+                  !isFiltering && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFollowing((editing) => !editing)}
+                      aria-pressed={isEditingFollowing}
+                      className={cn(
+                        "-my-2 min-h-11 min-w-11 px-1 text-right type-team-name",
+                        isEditingFollowing
+                          ? "font-semibold text-text-primary"
+                          : "text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      {isEditingFollowing ? "Done" : "Edit"}
+                    </button>
+                  )
+                }
+              />
+              <FollowedTablesList
+                tables={visibleFollowed}
+                allTables={followed}
+                isEditing={isEditingFollowing}
+                onReorder={uiState.setTableOrder}
+                onUnfollow={(table) =>
+                  table.kind === "poll"
+                    ? toggleFavoritePoll(table.league)
+                    : toggleFavoriteConference(conferenceToken(table.ref))
+                }
+              />
+            </>
           )}
-      </div>
+
+          {/* The complete list. Followed rows repeat inside their league —
+              sections stay complete, never deduplicated. */}
+          {/* Names what's below rather than repeating the tab (iOS,
+              2026-09-21): every table the app has — the four leagues and
+              their conferences. Divisions are read inside their
+              conference's page (2026-09-26). */}
+          {visibleFollowed.length > 0 && visibleGroups.length > 0 && (
+            <SectionHeading title="All leagues and conferences" />
+          )}
+          {visibleGroups.map(({ league, rows }) => (
+            <LeagueAccordion
+              key={league}
+              league={league}
+              rows={rows}
+              // A search opens what it matched: a filtered accordion that
+              // stayed shut would hide the thing you just asked for behind
+              // one more tap ("relevantly expanded", iOS 2026-09-21). A
+              // render-time override, never a write, so clearing the field
+              // hands the hub back exactly as it was.
+              isExpanded={
+                isFiltering || !uiState.isCollapsed(`league-${league}`)
+              }
+              onToggle={() => uiState.toggleSection(`league-${league}`)}
+            />
+          ))}
+          {isFiltering &&
+            visibleGroups.length === 0 &&
+            visibleFollowed.length === 0 && (
+              <p className="py-20 text-center type-team-name text-text-secondary">
+                No matches
+              </p>
+            )}
+        </div>
+      )}
     </>
   );
 }

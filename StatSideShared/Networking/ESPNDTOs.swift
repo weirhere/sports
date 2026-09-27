@@ -522,6 +522,14 @@ nonisolated struct NewsFeedDTO: Decodable {
     let articles: LossyArray<NewsArticleDTO>?
 }
 
+/// The athlete overview's `news` block: ESPN's own list of a player's
+/// stories, the one per-player source it publishes (`/news?athlete=` is
+/// ignored). Only `news` is decoded; the stats and game log it also
+/// carries come from their own endpoints.
+nonisolated struct AthleteOverviewNewsDTO: Decodable {
+    let news: LossyArray<NewsArticleDTO>?
+}
+
 /// The content API's single story, the body a feed item opens to.
 nonisolated struct NewsHeadlinesDTO: Decodable {
     let headlines: LossyArray<NewsArticleDTO>?

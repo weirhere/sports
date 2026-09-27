@@ -28,6 +28,8 @@ Flows: [News](https://mobbin.com/flows/6b380a74-8f75-4159-af29-7aad2dc57d07) · 
 ## Where news lives
 
 ### N1 · Don't take · No News tab. News appears only attached to a game or a team.
+
+*Superseded 2026-09-27 (E26): Andy added a News tab, second in the bottom bar, with For you and a page per league. Stories still attach to games and teams too.*
 **From FotMob:** R1
 
 FotMob gives News the 2nd slot in its tab bar. StatSide's charter keeps scores first, and the Scores sort order is the product. Attaching news to entities gets most of the value without a destination competing with Scores.
@@ -74,7 +76,7 @@ Every FotMob news surface leans on full-color photography. The color budget has 
 ### N9 · Adapt · Team pages get a News tab, last in the tab row, filtered to stories that are actually about the team.
 **From FotMob:** R9
 
-FotMob puts News 2nd on a team page; StatSide puts it last, after the pages about scores. Source: `/news?team={id}&limit=25`, fetched when the tab is first opened and cached for the session (the Player Games tab pattern).
+FotMob puts News 2nd on a team page; StatSide puts it last, after the pages about scores. *(Superseded 2026-09-27, E26: News is second on the team page too, after Overview.)* Source: `/news?team={id}&limit=25`, fetched when the tab is first opened and cached for the session (the Player Games tab pattern).
 
 ESPN's `team=` filter is loose: every result is tagged with the team, but most are league roundups (Michigan's feed led with SP+ rankings for all 138 FBS teams). Keep only stories tagging **2 teams or fewer**. Probe on 2026-09-27: Michigan kept 6 of 25, the Knicks 11 of 25. Empty state: *"No Michigan stories right now."*
 
@@ -88,6 +90,8 @@ FotMob mixes YouTube highlights into its lists. ESPN's `Media` items link out to
 
 FotMob runs Related news under both. ESPN's summary does carry a `news.articles` block, but it's the league feed with no relation to the game: the CFP final fixture (Jan 20) carries a July story about Tennessee's QBs. Labeling it "related" would be false.
 
+*Updated 2026-09-27 (E26):* the game page now has a News tab, but it reads the two teams' own feeds, each filtered to stories about its team, never the summary's `news.articles`. The refusal above stands for that block.
+
 ## Not taking
 
 ### N12 · Don't take · No personalized feed and no news filter sheet.
@@ -98,7 +102,7 @@ Follows from N1. If a feed ever lands, FotMob's rule is the one to take: rank by
 ### N13 · Don't take · No news on player pages.
 **From FotMob:** R10
 
-FotMob puts a News card at the foot of the player Profile. BACKLOG already answers this one: "No player news, per the charter."
+FotMob puts a News card at the foot of the player Profile. BACKLOG already answers this one: "No player news, per the charter." *(Superseded 2026-09-27, E26: the player page has a News tab, second after Profile.)*
 
 ### N14 · Don't take · No generated summaries.
 **From FotMob:** R11
@@ -126,4 +130,4 @@ FotMob's Transfer Center puts structured from-club → to-club cards above prose
 - **Host.** The team feed uses `site.web.api.espn.com`. On `site.api` the same path answers 403 to a browser or empty User-Agent; `site.web.api` answers all of them. The reader's body comes from `content.core.api.espn.com/v1/sports/news/{id}`, which the feed links as `links.api.self`.
 - **Type.** No new tokens. Headline `heroTitle`, paragraphs `teamName`, subheads and row headlines `teamNameEmphasis`, meta `meta`. Cards are `CardHeader` + `cardSurface()`; the game row is `GameRow` in `NextGameCard`'s recipe; follow rows are `TeamFollowRow(opensTeam: true)`.
 - **Web.** `web/src/lib/news.ts` and `web/src/lib/espn/news.ts` port the model, parser and mapper; `StoryRow` and `StoryMeta` in `web/src/components/`; the reader is `/story/{league}/{id}`, which rebuilds a story from the content API by id, so its score row always links. Tests: `web/src/lib/news.test.ts`, over the same fixtures.
-- **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `TeamNewsList`, `StoryDestination`. Tests: `sportsTests/NewsTests.swift`.
+- **Code.** `NewsStory`, `StoryText`, `NewsTimestamp` (StatSideShared/Models), `NewsClient` + `NewsMapper` (StatSideShared/Networking), and `sports/Features/News/`: `StoryRow`, `StoryReader`, `StoryBodyCard`, `StoryTeamsCard`, `StoryListCard`, `StoryDestination`, and the News tab's `NewsScreen` with `NewsFeedStore` (E26). Tests: `sportsTests/NewsTests.swift`.

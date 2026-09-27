@@ -7,6 +7,10 @@
 // for, and finding one team by name is what search is for; what this tab is
 // for is the handful of teams that are yours (iOS, 2026-09-05). Adding one is
 // a sheet away.
+//
+// **Teams · News** (Andy, 2026-09-27, E26): the second tab is the stories
+// about the teams the first one lists, the News tab's For you over the same
+// follows, fetched when it first opens.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -14,6 +18,10 @@ import { ChevronRight, Plus } from "lucide-react";
 import { FollowCapsuleButton } from "@/components/follow-capsule";
 import { AddTeamsSheet } from "@/components/add-teams-sheet";
 import { PageHeader } from "@/components/page-header";
+import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getFollowedNews } from "@/lib/api";
 import { TeamLogo } from "@/components/team-logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
@@ -24,9 +32,23 @@ import { teamPath } from "@/lib/routes";
 import { teamFullName, teamSpokenLabel, teamSubtitle } from "@/lib/team-name";
 import type { Team } from "@/lib/types";
 
+const TABS: HeroTab[] = [
+  { id: "teams", label: "Teams" },
+  { id: "news", label: "News" },
+];
+
 export function TeamsList() {
-  const { favorites } = useFavoritesContext();
+  const { favorites, isLoaded } = useFavoritesContext();
   const [isAdding, setIsAdding] = useState(false);
+  const [tab, setTab] = useState("teams");
+  const keys = [...favorites].sort();
+  // Undefined until the tab opens and the stored follows have loaded, so it
+  // never answers "no teams" to someone who has some; a follow added or
+  // dropped rebuilds it.
+  const news = useOnDemand(
+    tab === "news" && isLoaded ? `teams-news:${keys.join(",")}` : undefined,
+    () => getFollowedNews(keys)
+  );
 
   // The follow list needs only the leagues it actually holds; the sheet
   // needs all four, and only once it opens — so a college-football-only user
@@ -76,8 +98,32 @@ export function TeamsList() {
           </button>
         }
       />
+      <HeroTabBar tabs={TABS} selected={tab} onSelect={setTab} />
       <div className="flex flex-col gap-2">
-        {loading ? (
+        {tab === "news" ? (
+          news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <StoryListCardSkeleton />
+          ) : news.state.value.length > 0 ? (
+            <StoryListCard stories={news.state.value} />
+          ) : (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              {keys.length === 0
+                ? "Follow teams and their stories collect here."
+                : "No stories about your teams right now."}
+            </section>
+          )
+        ) : loading ? (
           [0, 1, 2].map((row) => (
             <Skeleton key={row} className="h-[72px] w-full rounded-[10px]" />
           ))
@@ -94,31 +140,36 @@ export function TeamsList() {
           ))
         )}
 
-        {/* The second door to the sheet, and the one that reads as an
-            invitation. */}
-        <button
-          type="button"
-          onClick={() => setIsAdding(true)}
-          aria-label="Add teams"
-          className="card-surface flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-bg-header"
-        >
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-elevated"
-          >
-            <Plus className="h-4 w-4 text-text-primary" />
-          </span>
-          <span
-            aria-hidden="true"
-            className="type-team-name-em text-text-primary"
-          >
-            Add teams
-          </span>
-          <ChevronRight
-            aria-hidden="true"
-            className="ml-auto h-3 w-3 shrink-0 text-text-secondary"
-          />
-        </button>
+        {/* On News, only while there's nobody followed to read about. */}
+        {(tab === "teams" || keys.length === 0) && (
+          <>
+            {/* The second door to the sheet, and the one that reads as an
+                invitation. */}
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              aria-label="Add teams"
+              className="card-surface flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-bg-header"
+            >
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-elevated"
+              >
+                <Plus className="h-4 w-4 text-text-primary" />
+              </span>
+              <span
+                aria-hidden="true"
+                className="type-team-name-em text-text-primary"
+              >
+                Add teams
+              </span>
+              <ChevronRight
+                aria-hidden="true"
+                className="ml-auto h-3 w-3 shrink-0 text-text-secondary"
+              />
+            </button>
+          </>
+        )}
 
         <AddTeamsSheet
           open={isAdding}

@@ -873,3 +873,13 @@ sibling below it.
 | 2026-09-27 | Web story reader at `/story/{league}/{id}`, times drawn in the browser's zone | **shipped** — web-only; iOS has no URL to rebuild from |
 | 2026-09-27 | Team page tab order: Trades ahead of Roster | **pending** — rides the web's Trades tab, which doesn't exist yet |
 | 2026-09-27 | Gamecast field: every spot measured against the team that has the ball (`end.team`), not the drive's; after a change of hands, no trail or arrow; a start of 0 is not a snap | **shipped** — the web took it first, in `transformSituation` with the Gamecast card (#239) |
+| 2026-09-27 | News tab second in the bottom bar: For you (followed teams' feeds, newest first) and a page per league (previews last) | **shipped** — `/news`, second in both navs; For you through `/api/team/{id}/news`, leagues through `/api/news` |
+| 2026-09-27 | Team page News tab second, after Overview | **shipped** — `TABS` in `team-view.tsx` |
+| 2026-09-27 | Flooded league news pages topped up with the AP Top 10's own stories | **shipped** — in `leagueNews`, behind `/api/news` |
+| 2026-09-27 | Conference page News tab after Games: members' feeds merged, league pages the league feed | **shipped** — `conference-view.tsx`, through `getTeamsNews` / `getLeagueNews` |
+| 2026-09-27 | Top 25 (college football's league page) gains a News tab after Games: the NCAAF feed with the flood top-up | **shipped** — `poll-view.tsx`, through `getLeagueNews` |
+| 2026-09-27 | Player page News tab, second after Profile: the athlete overview's own list | **shipped** — `player-view.tsx`, through `/api/player/{id}/news` |
+| 2026-09-27 | Game page News tab, second after Summary: the two teams' feeds plus the game's own story | **shipped** — `game-detail-view.tsx`, through `getTeamsNews` |
+| 2026-09-27 | Search's News scope, the last pill: the article group of the same ESPN search answer | **shipped** — `search-view.tsx`, through `/api/search/athletes` (now `{ athletes, stories }`) |
+| 2026-09-27 | Teams tab gains Teams · News: For you's followed-team stories | **shipped** — `teams-list.tsx`, through a shared `getFollowedNews` |
+| 2026-09-27 | Leagues tab gains Leagues · News: every league's feed merged, previews last | **shipped** — `rankings-hub.tsx`, through `getAllLeaguesNews` |

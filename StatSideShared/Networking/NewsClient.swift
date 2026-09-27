@@ -35,6 +35,33 @@ nonisolated struct NewsClient {
         return NewsMapper.teamFeed(from: dto, teamId: teamId, league: league)
     }
 
+    /// A league's own feed for the News tab's league pages (E26), newest
+    /// first with previews last. Nil when the request failed.
+    @concurrent
+    func leagueNews(league: League) async -> [NewsStory]? {
+        let string = "https://site.web.api.espn.com/apis/site/v2/sports/"
+            + "\(league.sportSegment)/\(league.pathSegment)/news?limit=50"
+        guard let url = URL(string: string),
+              let (data, _) = try? await session.data(from: url),
+              let dto = try? JSONDecoder().decode(NewsFeedDTO.self, from: data)
+        else { return nil }
+        return NewsMapper.leagueFeed(from: dto, league: league)
+    }
+
+    /// A player's stories, newest first (E26). From the athlete overview on
+    /// `site.web.api`, the stats clients' host; `/news?athlete=` answers
+    /// with the league feed. Nil when the request failed.
+    @concurrent
+    func playerNews(athleteId: String, league: League) async -> [NewsStory]? {
+        let string = "https://site.web.api.espn.com/apis/common/v3/sports/"
+            + "\(league.sportSegment)/\(league.pathSegment)/athletes/\(athleteId)/overview"
+        guard let url = URL(string: string),
+              let (data, _) = try? await session.data(from: url),
+              let dto = try? JSONDecoder().decode(AthleteOverviewNewsDTO.self, from: data)
+        else { return nil }
+        return NewsMapper.playerFeed(from: dto, league: league)
+    }
+
     /// A feed item's text, and the attribution the feed didn't carry — the
     /// feed has bylines but no `source`, so an AP story lists as nobody's
     /// and reads as AP's once opened. Nil when the request failed or the
@@ -98,6 +125,62 @@ nonisolated enum NewsMapper {
         (dto.articles?.elements ?? [])
             .compactMap { story(from: $0, league: league) }
             .filter { $0.isFocused(on: teamId) }
+            .sorted { ($0.published ?? .distantPast) > ($1.published ?? .distantPast) }
+    }
+
+    /// A league's feed (E26): the types the app shows, newest first, and
+    /// **previews last**. ESPN's college-football feed floods with AP's
+    /// previews for the next slate — on 2026-09-27 all 50 items were
+    /// previews published within four minutes of each other — and a tab
+    /// that leads with 50 of them buries every other story. Demoted rather
+    /// than dropped: on a quiet day they're what there is.
+    static func leagueFeed(from dto: NewsFeedDTO, league: League) -> [NewsStory] {
+        (dto.articles?.elements ?? [])
+            .compactMap { story(from: $0, league: league) }
+            .sorted { lhs, rhs in
+                let lhsPreview = lhs.kind == .preview, rhsPreview = rhs.kind == .preview
+                if lhsPreview != rhsPreview { return rhsPreview }
+                return (lhs.published ?? .distantPast) > (rhs.published ?? .distantPast)
+            }
+    }
+
+    /// A player's feed (E26): the types the app shows, each once, newest
+    /// first. ESPN picked these for the player, so no team filter applies.
+    static func playerFeed(from dto: AthleteOverviewNewsDTO, league: League) -> [NewsStory] {
+        forYou([(dto.news?.elements ?? []).compactMap { story(from: $0, league: league) }])
+    }
+
+    /// The fewest real stories a league page can show before it asks for
+    /// more. Below it, the feed is a preview flood rather than a news day.
+    static let floodFloor = 10
+
+    /// Whether a league page is drowning in previews: fewer than
+    /// `floodFloor` stories that aren't one.
+    static func isFlooded(_ stories: [NewsStory]) -> Bool {
+        stories.filter { $0.kind != .preview }.count < floodFloor
+    }
+
+    /// A flooded league page, topped up with the ranked teams' own stories
+    /// (E26). Each story once, newest first, previews still last.
+    static func toppedUp(_ feed: [NewsStory], with teamFeeds: [[NewsStory]]) -> [NewsStory] {
+        var seen: Set<String> = []
+        return ([feed] + teamFeeds).joined()
+            .filter { seen.insert($0.id).inserted }
+            .sorted { lhs, rhs in
+                let lhsPreview = lhs.kind == .preview, rhsPreview = rhs.kind == .preview
+                if lhsPreview != rhsPreview { return rhsPreview }
+                return (lhs.published ?? .distantPast) > (rhs.published ?? .distantPast)
+            }
+    }
+
+    /// For you (E26): every followed team's own stories in one list, each
+    /// story once — a recap tags both teams, and a user may follow both —
+    /// newest first. Follows carry no order of their own (the Teams tab
+    /// lists them alphabetically), so time is the only honest ranking.
+    static func forYou(_ feeds: [[NewsStory]]) -> [NewsStory] {
+        var seen: Set<String> = []
+        return feeds.joined()
+            .filter { seen.insert($0.id).inserted }
             .sorted { ($0.published ?? .distantPast) > ($1.published ?? .distantPast) }
     }
 

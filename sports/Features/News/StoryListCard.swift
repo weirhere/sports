@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The team page's News tab (N9): the team's own stories, newest first, in
-/// one card of `StoryRow`s with the roster's inset dividers.
+/// A list of stories in one card of `StoryRow`s with the roster's inset
+/// dividers — the team page's News tab (N9) and the News tab's feeds (E26).
 ///
-/// `gameFor` hands each row the game its story is about when the page's
-/// schedule has it, so the reader's score row can open that game (N5).
-struct TeamNewsList: View {
+/// `gameFor` hands each row the game its story is about where the page has
+/// it, so the reader's score row can open that game (N5).
+struct StoryListCard: View {
     let stories: [NewsStory]
-    let gameFor: (NewsStory) -> Game?
+    var gameFor: (NewsStory) -> Game? = { _ in nil }
 
     var body: some View {
         VStack(spacing: 0) {
