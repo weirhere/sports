@@ -144,6 +144,26 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(NewsMapper.forYou([knicks, nets]).map(\.id) == ["nets", "recap", "knicks"])
     }
 
+    @Test func aPreviewFloodIsToppedUpWithTheRankedTeams() {
+        func story(_ id: String, _ kind: NewsStory.Kind, _ published: String) -> NewsStory {
+            NewsStory(id: id, kind: kind, league: .collegeFootball, headline: id, dek: nil,
+                      attribution: nil, published: ISO8601DateFormatter().date(from: published),
+                      gameId: nil, teams: [])
+        }
+        // The 2026-09-27 feed: nothing but next week's previews.
+        let flood = (1...12).map { story("p\($0)", .preview, "2026-09-27T19:4\($0 % 10):00Z") }
+        #expect(NewsMapper.isFlooded(flood))
+        #expect(!NewsMapper.isFlooded((1...10).map { story("s\($0)", .story, "2026-09-27T12:00:00Z") }))
+
+        // Two ranked teams' feeds, one recap shared between them.
+        let michigan = [story("recap", .recap, "2026-09-27T03:00:00Z"),
+                        story("mich", .headline, "2026-09-26T12:00:00Z")]
+        let iowa = [story("recap", .recap, "2026-09-27T03:00:00Z"),
+                    story("iowa-preview", .preview, "2026-09-27T20:00:00Z")]
+        let page = NewsMapper.toppedUp(Array(flood.prefix(2)), with: [michigan, iowa])
+        #expect(page.map(\.id) == ["recap", "mich", "iowa-preview", "p2", "p1"])
+    }
+
     // MARK: - The reader (N4)
 
     @Test func readsTheContentAPIsParagraphs() throws {

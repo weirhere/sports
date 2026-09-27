@@ -76,7 +76,7 @@ Every FotMob news surface leans on full-color photography. The color budget has 
 ### N9 · Adapt · Team pages get a News tab, last in the tab row, filtered to stories that are actually about the team.
 **From FotMob:** R9
 
-FotMob puts News 2nd on a team page; StatSide puts it last, after the pages about scores. Source: `/news?team={id}&limit=25`, fetched when the tab is first opened and cached for the session (the Player Games tab pattern).
+FotMob puts News 2nd on a team page; StatSide puts it last, after the pages about scores. *(Superseded 2026-09-27, E26: News is second on the team page too, after Overview.)* Source: `/news?team={id}&limit=25`, fetched when the tab is first opened and cached for the session (the Player Games tab pattern).
 
 ESPN's `team=` filter is loose: every result is tagged with the team, but most are league roundups (Michigan's feed led with SP+ rankings for all 138 FBS teams). Keep only stories tagging **2 teams or fewer**. Probe on 2026-09-27: Michigan kept 6 of 25, the Knicks 11 of 25. Empty state: *"No Michigan stories right now."*
 

@@ -58,7 +58,7 @@ import { SeasonStatsCard } from "./season-stats-card";
 import { TeamLeadersCard } from "./team-leaders-card";
 import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 
-// Ordered — the ordinal is the tab walk (Overview → Games → Stats →
+// Ordered — the ordinal is the tab walk (Overview → News → Games → Stats →
 // Standings → Roster → Trophies). Standings is conference-gated, so the row
 // is assembled rather than sliced. Stats sits after Games (iOS, 2026-09-24):
 // the row scrolls, so a sixth tab costs no cramming.
@@ -73,16 +73,16 @@ import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 // season alone would hide the tab on a team that won its conference last
 // December. So the row is stable and the empty state does the talking.
 //
-// News is last (iOS E25, docs/news.md N9): the page is about the team's
-// games first. FotMob puts it second.
+// News is second, after Overview (iOS E26, 2026-09-27): FotMob's order,
+// replacing docs/news.md N9's "last".
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
+  { id: "news", label: "News" },
   { id: "games", label: "Games" },
   { id: "stats", label: "Stats" },
   { id: "standings", label: "Standings" },
   { id: "roster", label: "Roster" },
   { id: "trophies", label: "Trophies" },
-  { id: "news", label: "News" },
 ];
 
 interface TeamViewProps {

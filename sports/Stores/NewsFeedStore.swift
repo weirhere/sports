@@ -60,7 +60,7 @@ final class NewsFeedStore {
         let client = NewsClient()
         let result: [NewsStory]?
         if let league = feed.league {
-            result = await client.leagueNews(league: league)
+            result = await Self.leagueNews(league, client: client)
         } else {
             result = await Self.forYou(followedKeys: followedKeys, client: client)
         }
@@ -73,6 +73,33 @@ final class NewsFeedStore {
         } else {
             states[feed] = .failed
         }
+    }
+
+    /// How many of the poll's teams top up a flooded page. Ten is a
+    /// Saturday's headline programs, at ten requests, only on a flood day.
+    static let topUpCount = 10
+
+    /// A league's page. College football's feed can be nothing but AP's
+    /// previews for the next slate — all 50 items on 2026-09-27, ESPN's
+    /// every filter parameter ignored — so a flooded page is topped up
+    /// with the AP Top 10's own stories. Leagues with no poll, and a poll
+    /// that won't load, keep the feed as it came.
+    private static func leagueNews(_ league: League, client: NewsClient) async -> [NewsStory]? {
+        guard let feed = await client.leagueNews(league: league) else { return nil }
+        guard NewsMapper.isFlooded(feed),
+              let polls = try? await DataProvider.makeClient(league: league).rankings(year: nil),
+              let poll = polls.first(where: { $0.type == "ap" }) ?? polls.first
+        else { return feed }
+        let teams = poll.ranks.sorted { $0.current < $1.current }.prefix(topUpCount).map(\.team.id)
+        let teamFeeds = await withTaskGroup(of: [NewsStory]?.self) { group in
+            for teamId in teams {
+                group.addTask { await client.teamNews(teamId: teamId, league: league) }
+            }
+            var collected: [[NewsStory]] = []
+            for await teamFeed in group { if let teamFeed { collected.append(teamFeed) } }
+            return collected
+        }
+        return NewsMapper.toppedUp(feed, with: teamFeeds)
     }
 
     /// Every followed team's own feed, merged. Some feeds failing makes a

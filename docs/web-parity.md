@@ -873,3 +873,5 @@ sibling below it.
 | 2026-09-27 | Web story reader at `/story/{league}/{id}`, times drawn in the browser's zone | **shipped** — web-only; iOS has no URL to rebuild from |
 | 2026-09-27 | Team page tab order: Trades ahead of Roster | **pending** — rides the web's Trades tab, which doesn't exist yet |
 | 2026-09-27 | News tab second in the bottom bar: For you (followed teams' feeds, newest first) and a page per league (previews last) | **shipped** — `/news`, second in both navs; For you through `/api/team/{id}/news`, leagues through `/api/news` |
+| 2026-09-27 | Team page News tab second, after Overview | **shipped** — `TABS` in `team-view.tsx` |
+| 2026-09-27 | Flooded league news pages topped up with the AP Top 10's own stories | **shipped** — in `leagueNews`, behind `/api/news` |

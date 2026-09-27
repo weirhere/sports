@@ -531,7 +531,8 @@ The pattern brief is `docs/news.md`: 16 decisions from FotMob's news screens on 
 Andy, 2026-09-27, from FotMob's News screen on Mobbin: "a News bottom nav item to be an aggregated source for all News across all leagues." It reverses `docs/news.md` N1 on purpose; the rest of the brief stands.
 
 - [x] **P1** **News, second in the bottom bar, on iOS and web.** For you (followed teams' own feeds, merged newest first, capped at 20 follows) and a page per league (`/news?limit=50`, previews last). iOS `NewsScreen` + `NewsFeedStore`; web `/news`. *(Shipped 2026-09-27.)*
-- [ ] **P2** **A better college-football league page.** ESPN's feed can be nothing but next week's AP previews (all 50 items on 2026-09-27). Candidates: the Top 25's team feeds merged, or a second request past the previews. Needs a probe before a choice.
+- [x] **P2** **A better college-football league page.** ESPN's feed can be nothing but next week's AP previews (all 50 items on 2026-09-27). *(Shipped 2026-09-27: a page with fewer than 10 non-preview stories is topped up with the AP Top 10's own feeds. Probed first: ESPN ignores every filter parameter on `/news`, and `now.core` ignores its league filter.)*
+- [x] **P2** **News second on the team page**, after Overview and before Games (Andy, 2026-09-27), superseding N9's "last". *(Shipped 2026-09-27, iOS and web.)*
 - [ ] **P3** **Follow order.** FotMob ranks For you by the order of your favorites; ours are a set. If the Teams tab ever gains drag-to-order (the tables hub has it), For you should follow it.
 
 ## Icebox (deliberately not now)

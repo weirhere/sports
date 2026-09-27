@@ -8,7 +8,9 @@ import feedJson from "./espn/__fixtures__/nba-team-news.json";
 import storyJson from "./espn/__fixtures__/nba-news-story.json";
 import {
   forYou,
+  isFlooded,
   leagueFeed,
+  toppedUp,
   newsStory,
   storyUrl,
   teamFeed,
@@ -188,5 +190,39 @@ describe("the News tab (E26)", () => {
     const knicks = [story("recap", "2026-09-27T03:00:00Z"), story("knicks", "2026-09-26T12:00:00Z")];
     const nets = [story("nets", "2026-09-27T12:00:00Z"), story("recap", "2026-09-27T03:00:00Z")];
     expect(forYou([knicks, nets]).map((entry) => entry.id)).toEqual(["nets", "recap", "knicks"]);
+  });
+});
+
+describe("the preview flood (E26)", () => {
+  const story = (id: string, kind: NewsStory["kind"], published: string): NewsStory => ({
+    id,
+    kind,
+    league: "cfb",
+    headline: id,
+    published,
+    teams: [],
+  });
+  // The 2026-09-27 feed: nothing but next week's previews.
+  const flood = Array.from({ length: 12 }, (_, i) =>
+    story(`p${i + 1}`, "preview", `2026-09-27T19:4${(i + 1) % 10}:00Z`)
+  );
+
+  it("knows a flood from a news day", () => {
+    expect(isFlooded(flood)).toBe(true);
+    expect(
+      isFlooded(Array.from({ length: 10 }, (_, i) => story(`s${i}`, "story", "2026-09-27T12:00:00Z")))
+    ).toBe(false);
+  });
+
+  it("tops a flood up with the ranked teams, previews still last", () => {
+    const michigan = [story("recap", "recap", "2026-09-27T03:00:00Z"), story("mich", "headline", "2026-09-26T12:00:00Z")];
+    const iowa = [story("recap", "recap", "2026-09-27T03:00:00Z"), story("iowa-preview", "preview", "2026-09-27T20:00:00Z")];
+    expect(toppedUp(flood.slice(0, 2), [michigan, iowa]).map((entry) => entry.id)).toEqual([
+      "recap",
+      "mich",
+      "iowa-preview",
+      "p2",
+      "p1",
+    ]);
   });
 });

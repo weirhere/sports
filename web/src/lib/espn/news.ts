@@ -146,12 +146,33 @@ export function leagueFeed(dto: EspnNewsFeed, league: League): NewsStory[] {
     .map((article) => newsStory(article, league))
     .filter((story): story is NewsStory => story !== undefined)
     .map((story) => ({ ...story, body: undefined }))
-    .sort((a, b) => {
-      const aPreview = a.kind === "preview";
-      const bPreview = b.kind === "preview";
-      if (aPreview !== bPreview) return aPreview ? 1 : -1;
-      return newestFirst(a, b);
-    });
+    .sort(previewsLast);
+}
+
+/** The fewest real stories a league page shows before it asks for more;
+ *  below it the feed is a preview flood rather than a news day. */
+export const FLOOD_FLOOR = 10;
+
+/** Whether a league page is drowning in previews. */
+export function isFlooded(stories: NewsStory[]): boolean {
+  return stories.filter((story) => story.kind !== "preview").length < FLOOD_FLOOR;
+}
+
+function previewsLast(a: NewsStory, b: NewsStory): number {
+  const aPreview = a.kind === "preview";
+  const bPreview = b.kind === "preview";
+  if (aPreview !== bPreview) return aPreview ? 1 : -1;
+  return newestFirst(a, b);
+}
+
+/** A flooded league page topped up with the ranked teams' own stories
+ *  (E26): each story once, newest first, previews still last. */
+export function toppedUp(feed: NewsStory[], teamFeeds: NewsStory[][]): NewsStory[] {
+  const seen = new Set<string>();
+  return [feed, ...teamFeeds]
+    .flat()
+    .filter((story) => (seen.has(story.id) ? false : (seen.add(story.id), true)))
+    .sort(previewsLast);
 }
 
 /**

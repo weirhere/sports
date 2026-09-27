@@ -130,6 +130,29 @@ nonisolated enum NewsMapper {
             }
     }
 
+    /// The fewest real stories a league page can show before it asks for
+    /// more. Below it, the feed is a preview flood rather than a news day.
+    static let floodFloor = 10
+
+    /// Whether a league page is drowning in previews: fewer than
+    /// `floodFloor` stories that aren't one.
+    static func isFlooded(_ stories: [NewsStory]) -> Bool {
+        stories.filter { $0.kind != .preview }.count < floodFloor
+    }
+
+    /// A flooded league page, topped up with the ranked teams' own stories
+    /// (E26). Each story once, newest first, previews still last.
+    static func toppedUp(_ feed: [NewsStory], with teamFeeds: [[NewsStory]]) -> [NewsStory] {
+        var seen: Set<String> = []
+        return ([feed] + teamFeeds).joined()
+            .filter { seen.insert($0.id).inserted }
+            .sorted { lhs, rhs in
+                let lhsPreview = lhs.kind == .preview, rhsPreview = rhs.kind == .preview
+                if lhsPreview != rhsPreview { return rhsPreview }
+                return (lhs.published ?? .distantPast) > (rhs.published ?? .distantPast)
+            }
+    }
+
     /// For you (E26): every followed team's own stories in one list, each
     /// story once — a recap tags both teams, and a user may follow both —
     /// newest first. Follows carry no order of their own (the Teams tab
