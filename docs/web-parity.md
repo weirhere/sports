@@ -864,6 +864,7 @@ sibling below it.
 | 2026-09-27 | Collapsing entity-page header: expanded on landing (Games lands on this week), collapses on scroll down, stays expanded scrolling up through earlier weeks; other tabs snap to top | **pending** — the web's hero is plain page content |
 | 2026-09-27 | Top 25 hero mark is the trophy, not the league's football | **pending** — `poll-view.tsx`'s hero mark |
 | 2026-09-27 | Every push is by value, so a team page reached from the poll opens its conference and league badges instead of reloading | n/a — a SwiftUI navigation-stack fix; the web's badges are plain links |
+| 2026-09-27 | Trades tab on pro team and league pages: ESPN's transaction sentences verbatim, day cards, "Signings & trades" / "All", this year then last year behind "Show older" | **pending** — the web has no team or league tab for it yet |
 | 2026-09-27 | News attached to games and teams; no News tab, feed or player news (`docs/news.md`) | **pending** — the web has no story surfaces |
 | 2026-09-27 | A final's page leads with its recap; a pre-game page shows its preview after Game info | **pending** — the web game page's summary tab |
 | 2026-09-27 | Stories open in an in-app reader, text-only, ending in follow rows for the tagged teams | **pending** — a `/story/{league}/{id}` route |

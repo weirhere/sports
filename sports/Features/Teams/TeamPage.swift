@@ -21,7 +21,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, stats, standings, roster, trophies, news
+        case overview, games, stats, standings, roster, trades, trophies, news
 
         var title: String {
             switch self {
@@ -30,6 +30,7 @@ struct TeamPage: View {
             case .stats: "Stats"
             case .standings: "Standings"
             case .roster: "Roster"
+            case .trades: "Trades"
             case .trophies: "Trophies"
             case .news: "News"
             }
@@ -118,6 +119,17 @@ struct TeamPage: View {
     @State private var newsTeamKey: String?
     @State private var newsLoading = false
     @State private var newsFailed = false
+
+    /// The Trades tab's wire (2026-09-27), made on the tab's first visit and
+    /// keyed to the team like the stats — a reused page can't show the last
+    /// team's moves.
+    @State private var tradesFeed: RosterMovesFeed?
+    /// "Signings & trades" or "All". Session-scoped like the standings scope.
+    @State private var tradesFilter: RosterMove.Filter = .signingsAndTrades
+
+    private var currentTradesFeed: RosterMovesFeed? {
+        tradesFeed?.team?.followKey == team.followKey ? tradesFeed : nil
+    }
 
     private var currentTeamStats: TeamStatsModel? {
         teamStats?.team.followKey == team.followKey ? teamStats : nil
@@ -293,6 +305,7 @@ struct TeamPage: View {
                         case .stats: statsContent
                         case .standings: standingsContent
                         case .roster: rosterContent
+                        case .trades: tradesContent
                         case .trophies: trophiesContent
                         case .news: newsContent
                         }
@@ -453,7 +466,14 @@ struct TeamPage: View {
                 // nothing else, so there is no other level to read it at.
                 // Season leads so it holds the same spot on Games and
                 // Standings, and the scope chip is the one that comes and goes.
-                if showsSeasonChip || showsScopeChip {
+                if tab == .trades {
+                    // The Trades tab's own control, and no season beside
+                    // it — see `TradesFilterRow`.
+                    TradesFilterRow(selection: tradesFilter,
+                                    onSelect: { value in withAnimation(.default) { tradesFilter = value } })
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.top, Spacing.sm)
+                } else if showsSeasonChip || showsScopeChip {
                     HStack(spacing: Spacing.sm) {
                         seasonChip
                         if showsScopeChip {
@@ -596,6 +616,7 @@ struct TeamPage: View {
         if showsRosterTab { tabs.append(.stats) }
         if showsStandingsTab { tabs.append(.standings) }
         if showsRosterTab { tabs.append(.roster) }
+        if showsTradesTab { tabs.append(.trades) }
         tabs.append(.trophies)
         // Last: the page is about the team's games first (N9). ESPN-gated
         // like the roster, so the fixture-backed UI suites never reach the
@@ -608,6 +629,14 @@ struct TeamPage: View {
     /// league; CFBD and the UI-test fixture don't, and an empty pane behind a
     /// permanent tab is worse than no tab.
     private var showsRosterTab: Bool { client.providesRoster }
+
+    /// The pro leagues' wire, from ESPN. College football has none — ESPN
+    /// answers `count: 0` and has no transfer portal — and CFBD and the
+    /// UI-test fixture have no endpoint at all, so the roster's backend gate
+    /// covers them.
+    private var showsTradesTab: Bool {
+        pageLeague != .collegeFootball && client.providesRoster
+    }
 
     /// The tab one step along the row — the *visible* row, not the enum's.
     /// Standings is conference-gated, so a hidden tab sits in the middle of
@@ -1067,6 +1096,21 @@ struct TeamPage: View {
         } else {
             newsFailed = true
         }
+    }
+
+    /// The team's moves, without its mark on every row: the header above
+    /// already says whose they are.
+    private var tradesContent: some View {
+        TradesPane(feed: currentTradesFeed, filter: tradesFilter, showsTeamLogos: false,
+                   onShowAll: { withAnimation(.default) { tradesFilter = .all } })
+            // First visit fetches; a reused page for another team starts a
+            // new feed rather than keeping the last one's.
+            .task(id: team.followKey) { await loadTrades() }
+    }
+
+    private func loadTrades() async {
+        if currentTradesFeed == nil { tradesFeed = RosterMovesFeed(league: pageLeague, team: team) }
+        await currentTradesFeed?.loadFirst()
     }
 
     // MARK: - Season stats

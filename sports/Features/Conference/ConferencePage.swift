@@ -13,13 +13,14 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, postseason
+        case standings, games, postseason, trades
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
             case .postseason: "Postseason"
+            case .trades: "Trades"
             }
         }
     }
@@ -65,6 +66,12 @@ struct ConferencePage: View {
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
     @State private var tab: Tab
+    /// The Trades tab's wire (2026-09-27), made on the tab's first visit.
+    /// A page is one destination for its life, so unlike TeamPage's there
+    /// is no other league it could be left holding.
+    @State private var tradesFeed: RosterMovesFeed?
+    /// "Signings & trades" or "All". Session-scoped like the team filter.
+    @State private var tradesFilter: RosterMove.Filter = .signingsAndTrades
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -325,6 +332,7 @@ struct ConferencePage: View {
                     case .standings: standingsCard
                     case .games: gamesSection(scrollInset: headerHeight)
                     case .postseason: postseasonSection
+                    case .trades: tradesSection
                     }
                 }
                 // geometryGroup pins row logos to the sliding pane —
@@ -349,7 +357,7 @@ struct ConferencePage: View {
                             let dx = value.translation.width
                             guard abs(dx) > 50,
                                   abs(dx) > abs(value.translation.height) * 1.5,
-                                  let target = Tab(rawValue: tab.rawValue + (dx < 0 ? 1 : -1))
+                                  let target = neighbour(of: tab, step: dx < 0 ? 1 : -1)
                             else { return }
                             select(tab: target)
                         }
@@ -486,9 +494,19 @@ struct ConferencePage: View {
                 // whatever the text size does to it.
                 .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                controlRow(for: tab)
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.sm)
+                Group {
+                    if tab == .trades {
+                        // No season chip on this tab — see `TradesFilterRow`.
+                        TradesFilterRow(selection: tradesFilter,
+                                        onSelect: { value in
+                                            withAnimation(.default) { tradesFilter = value }
+                                        })
+                    } else {
+                        controlRow(for: tab)
+                    }
+                }
+                .padding(.horizontal, Spacing.sm)
+                .padding(.top, Spacing.sm)
                 // The gap that used to be the pane's own top padding, so
                 // pinned cards never touch the row above.
                 Color.clear.frame(height: Spacing.sm)
@@ -517,7 +535,30 @@ struct ConferencePage: View {
     /// measurement was of an *unscoped* request, and `groups=` narrows the
     /// slate in every league we cover.
     private var availableTabs: [Tab] {
-        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        var tabs: [Tab] = postseasonRounds.isEmpty
+            ? [.standings, .games] : [.standings, .games, .postseason]
+        if showsTradesTab { tabs.append(.trades) }
+        return tabs
+    }
+
+    /// Trades on a pro league's whole-league page only (the brief's D5): the
+    /// wire is the league's, and a conference or division page would be a
+    /// filtered copy of it. College football's wire is empty — ESPN has no
+    /// transfer portal — so its pages never offer the tab.
+    private var showsTradesTab: Bool {
+        destination.league != .collegeFootball
+            && destination.conferenceId == Conference.leagueWideId(in: destination.league)
+            && client.providesRoster
+    }
+
+    /// The tab one step along the *visible* row. Postseason comes and goes
+    /// with the season, so walking raw values from Games would swipe onto a
+    /// tab that isn't there — TeamPage's rule.
+    private func neighbour(of tab: Tab, step: Int) -> Tab? {
+        guard let index = availableTabs.firstIndex(of: tab) else { return nil }
+        let target = index + step
+        guard availableTabs.indices.contains(target) else { return nil }
+        return availableTabs[target]
     }
 
     /// The postseason is already in hand: the Games tab fetches the whole
@@ -613,6 +654,20 @@ struct ConferencePage: View {
         Task { @MainActor in
             withAnimation(.default) { tab = value }
         }
+    }
+
+    // MARK: - Trades
+
+    /// The whole league's wire, each row wearing its team's mark.
+    private var tradesSection: some View {
+        TradesPane(feed: tradesFeed, filter: tradesFilter,
+                   onShowAll: { withAnimation(.default) { tradesFilter = .all } })
+            .task { await loadTrades() }
+    }
+
+    private func loadTrades() async {
+        if tradesFeed == nil { tradesFeed = RosterMovesFeed(league: destination.league, team: nil) }
+        await tradesFeed?.loadFirst()
     }
 
     // MARK: - Games

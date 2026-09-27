@@ -1,6 +1,6 @@
 # News: a pattern brief
 
-**Status:** **accepted and built, 2026-09-27.** Written as a proposal the same day; Andy's call was to build it with this brief as the source of truth. It un-ices part of BACKLOG's Icebox line *"News content (may be never; scores-first is the identity)"* and nothing more. Backlog: E24. The decisions are rows in [`decisions.md`](decisions.md) and [`web-parity.md`](web-parity.md).
+**Status:** **accepted and built, 2026-09-27.** Written as a proposal the same day; Andy's call was to build it with this brief as the source of truth. It un-ices part of BACKLOG's Icebox line *"News content (may be never; scores-first is the identity)"* and nothing more. Backlog: E25. The decisions are rows in [`decisions.md`](decisions.md) and [`web-parity.md`](web-parity.md).
 
 News attaches to games and teams, reads natively, and ends in a follow. There's no News tab, no photos, and nothing labeled "related" that isn't. 16 decisions follow, each traced to the FotMob screen it came from.
 
@@ -113,11 +113,11 @@ FotMob ships News and Trending widgets. StatSide's widget is scores; a headline 
 ### N16 · Park · A Transfers-style module for recruiting commitments and pro trades.
 **From FotMob:** R2
 
-FotMob's Transfer Center puts structured from-club → to-club cards above prose. The shape fits college commitments and NFL/NBA/NHL trades. No ESPN source has been probed, so it stays parked.
+FotMob's Transfer Center puts structured from-club → to-club cards above prose. The shape fits college commitments and NFL/NBA/NHL trades. No ESPN source has been probed, so it stays parked. *(2026-09-27: the pro half shipped as a Trades tab on pro team and league pages, BACKLOG E24, #234. It prints ESPN's transaction sentences, since `/transactions` carries no from/to or fee for cards like FotMob's. College commitments stay parked: ESPN has no feed.)*
 
 ## Open for Andy
 
-- **N8, photos.** Built text-only, as recommended. Photos would be the budget's 6th exception, and every news surface would then carry uncontrolled color. Parked as an E24 P3.
+- **N8, photos.** Built text-only, as recommended. Photos would be the budget's 6th exception, and every news surface would then carry uncontrolled color. Parked as an E25 P3.
 - ~~**N3, preview probe.**~~ Resolved 2026-09-27, above.
 - **N9, NFL team feed.** The Vikings request timed out during the probe, so the 2-team filter's hit rate is unverified for the NFL.
 
