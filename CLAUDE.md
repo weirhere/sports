@@ -29,7 +29,7 @@ The target user checks scores 20+ times a fall weekend and is tired of ad-stuffe
   1. Logos — team and conference — render in full color (grayscale logos would make Michigan and Iowa look like the same team).
   2. The live indicator (a small pulsing dot + live score emphasis) may use a single red accent.
   3. Rankings movement indicators: green up, red down (the same red as the live accent — the app carries exactly one red). Arrows carry the meaning too; color is never the only signal.
-  4. The Gamecast field on the live drive card renders as a field: turf green, each team's own color in its end zone, and the broadcast's yellow line to gain. `FieldColors` holds it and only `DriveField` draws it; the card around it stays monochrome. *(Added 2026-09-27.)*
+  4. The Gamecast surface on the live card renders as the place it pictures: football's field in turf green with each team's own color in its end zone and the broadcast's yellow line to gain; basketball's court in maple; hockey's rink as white ice, its red lines in the app's one red and its blue lines in gray. Shot marks on the court and rink wear their team's color. `SurfaceColors` holds it and only `DriveField`, `CourtSurface`, `RinkSurface` and `ShotMarksLayer` draw it; the card around it stays monochrome, and it is only ever drawn while a game is live. *(Added 2026-09-27 for the field; widened the same day from "field" to "surface" for the NBA and NHL cards.)*
 - **Live state spends the visual budget:** heavier type weight on live scores, pulsing dot, possession indicator. Pre-game and final rows stay quiet.
 - **Typography:** system font (SF Pro). Weight and size create hierarchy, not color. Scores use monospaced digits (`.monospacedDigit()`) so they don't jitter as clocks tick.
 - **Density target:** FotMob-level. A game row is one compact line: logo, team, record, score/time, network. No cards-with-shadows padding inflation.
@@ -100,7 +100,7 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 
 ## Decisions log
 
-**Lives in [`docs/decisions.md`](docs/decisions.md)** — 211 rows, oldest first. Moved
+**Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
 out of this file on 2026-09-13, when it passed the 150k-character context limit and the
 log was 92% of it.
 

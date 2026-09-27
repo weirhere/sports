@@ -216,6 +216,21 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Yards to a first down once the play ended — the field's line to
     /// gain. Goal to go when it reaches the end zone.
     var nextDistance: Int? = nil
+    /// Where a basketball or hockey play happened, in ESPN's feet. Nil in
+    /// football and on a play ESPN gave no usable spot.
+    var coordinate: PlayCoordinate? = nil
+    /// ESPN's flag for a shot attempt, free throws included.
+    var isShootingPlay: Bool = false
+    /// Hockey's manpower, ESPN's abbreviation: "even-strength",
+    /// "power-play", "short-handed", "empty-net".
+    var strength: String? = nil
+}
+
+/// A spot in ESPN's own coordinate space, feet. What each axis means is
+/// the league's — see `ShotMap`.
+nonisolated struct PlayCoordinate: Hashable, Sendable {
+    let x: Double
+    let y: Double
 }
 
 /// Which side of the matchup a scoring play's points belong to. Read off

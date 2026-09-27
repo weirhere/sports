@@ -86,6 +86,47 @@ final class WinterLeagueRenderTests: XCTestCase {
         }
     }
 
+    /// The court and rink Gamecast (2026-09-27), from the finals cut off
+    /// mid-game, since no live game exists to point a camera at. The card
+    /// itself doesn't gate on live; the screen does.
+    func testRenderGamecastCards() throws {
+        var nba = try summary("nba-summary", league: .nba)
+        nba.plays = nba.plays.filter { ($0.period ?? 0) <= 2 }
+        var nhl = try summary("nhl-summary", league: .nhl)
+        let second = nhl.plays.filter { $0.period == 2 }
+        nhl.plays = nhl.plays.filter { ($0.period ?? 0) < 2 } + second.prefix(second.count * 3 / 5)
+
+        // Football's card after the refactor, from a real drive: the
+        // final's last drive with plays, promoted to the current one.
+        var football = try summary("summary-final-live", league: .collegeFootball)
+        football.currentDrive = football.drives.last { drive in
+            drive.plays.count > 2 && drive.plays.last?.yardsToEndzone != nil
+        }
+        let situation = try XCTUnwrap(football.situation)
+        try render(name: "cfb-gamecast-light", width: 393) {
+            captioned("CFB — GAMECAST") {
+                LiveSituationCard(summary: football, situation: situation)
+            }
+        }
+
+        for (name, game, league, shootout) in [("nba", nba, League.nba, false),
+                                               ("nhl", nhl, .nhl, true)] {
+            let map = try XCTUnwrap(ShotMap.current(plays: game.plays, league: league,
+                                                    awayId: game.away?.team.id,
+                                                    allowsShootout: shootout))
+            let content = try XCTUnwrap(GamecastContent.shotMap(summary: game, league: league,
+                                                                allowsShootout: shootout))
+            for scheme in [ColorScheme.light, .dark] {
+                try render(name: "\(name)-gamecast-\(scheme == .dark ? "dark" : "light")", width: 393) {
+                    captioned("\(name.uppercased()) — GAMECAST") {
+                        LiveSituationCard(summary: game, content: content, map: map)
+                    }
+                    .environment(\.colorScheme, scheme)
+                }
+            }
+        }
+    }
+
     /// A throwaway suite, so rendering never touches real follows.
     private static let scratchDefaults: UserDefaults = {
         UserDefaults(suiteName: "test.winterrender.\(UUID().uuidString)") ?? .standard
