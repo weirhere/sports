@@ -73,6 +73,27 @@ nonisolated enum GameHeaderState {
         if case .live = status(game, summary) { return true }
         return false
     }
+
+    /// Who has the ball, live games only. The summary's status carries no
+    /// possession (only the scoreboard's does), so once a summary has
+    /// arrived the answer is its current drive — polled every second —
+    /// and nil between drives rather than falling back to the pushed row,
+    /// which froze at push and would hand the ball to the wrong team a
+    /// possession later. Before the summary lands the row is all there is.
+    /// A summary whose own status does name the holder (the fixture
+    /// backend's) is taken at its word as the second answer.
+    static func possessionTeamId(_ game: Game, _ summary: GameSummary?) -> String? {
+        guard isLive(game, summary) else { return nil }
+        if let summary {
+            return summary.situation?.possessionTeamId ?? possession(in: summary.status)
+        }
+        return possession(in: game.status)
+    }
+
+    private static func possession(in status: GameStatus?) -> String? {
+        guard case .live(_, _, _, _, let teamId) = status else { return nil }
+        return teamId
+    }
 }
 
 /// The share payload: a PNG of the matchup card, with the status-shaped

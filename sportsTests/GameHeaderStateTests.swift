@@ -149,3 +149,51 @@ private let liveQ3 = GameStatus.live(displayClock: "5:24", period: 3, detail: ni
                                         summary(status: .pre(detail: nil))) == nil)
     }
 }
+
+private func liveDrive(teamId: String?) -> Drive {
+    Drive(id: "d", teamId: teamId, result: nil, isScore: false, summary: nil, period: 3,
+          plays: [Play(id: "p", text: nil, downDistanceText: nil, nextDownDistanceText: nil,
+                       possessionText: nil, yardsToEndzone: nil, clock: nil, period: 3,
+                       typeText: nil, isScoringPlay: false, awayScore: nil, homeScore: nil)])
+}
+
+private func liveSummary(currentDrive: Drive?) -> GameSummary {
+    // The summary's status carries no possession, exactly as ESPNMapper
+    // builds it — the drive is the only place the ball is.
+    GameSummary(home: nil, away: nil, status: liveQ3, scoringPlays: [],
+                drives: [], currentDrive: currentDrive, teamStats: [], leaders: [],
+                venue: nil, attendance: nil)
+}
+
+private func liveWithBall(_ teamId: String?) -> GameStatus {
+    .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: teamId)
+}
+
+/// The header's possession mark. The trap it guards: the pushed row
+/// freezes at push, so once the summary is polling, a stale scoreboard
+/// possession must never hand the ball to the team that had it a drive ago.
+@Suite struct GameHeaderPossessionTests {
+    @Test func theRowAnswersUntilTheSummaryLands() {
+        #expect(GameHeaderState.possessionTeamId(game(status: liveWithBall("Georgia")), nil) == "Georgia")
+    }
+
+    @Test func theSummarysDriveWinsOverThePushedRow() {
+        let possession = GameHeaderState.possessionTeamId(
+            game(status: liveWithBall("Georgia")),
+            liveSummary(currentDrive: liveDrive(teamId: "Tennessee")))
+        #expect(possession == "Tennessee")
+    }
+
+    @Test func betweenDrivesNobodyHasTheBall() {
+        // No current drive: nil, not the row's frozen answer.
+        let possession = GameHeaderState.possessionTeamId(
+            game(status: liveWithBall("Georgia")), liveSummary(currentDrive: nil))
+        #expect(possession == nil)
+    }
+
+    @Test func onlyALiveGameHasAPossession() {
+        let final = summary(status: .final(detail: "Final"))
+        #expect(GameHeaderState.possessionTeamId(game(status: liveWithBall("Georgia")), final) == nil)
+        #expect(GameHeaderState.possessionTeamId(game(status: .pre(detail: nil)), nil) == nil)
+    }
+}

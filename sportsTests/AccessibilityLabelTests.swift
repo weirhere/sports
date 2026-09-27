@@ -205,6 +205,15 @@ private func game(status: GameStatus,
         #expect(screen.sideAccessibilityLabel((tennessee, 17, nil, nil)) == "Tennessee 17")
     }
 
+    @Test func theSideWithTheBallSaysSo() {
+        let screen = GameDetailScreen(game: game(
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing,
+                          possessionTeamId: georgia.id),
+            homeScore: 17, awayScore: 24))
+        #expect(screen.sideAccessibilityLabel((georgia, 24, nil, nil)) == "Georgia 24, has the ball")
+        #expect(screen.sideAccessibilityLabel((tennessee, 17, nil, nil)) == "Tennessee 17")
+    }
+
     @Test func preGameSideSuppressesTheScore() {
         let screen = GameDetailScreen(game: game(status: .pre(detail: nil)))
         #expect(screen.sideAccessibilityLabel((georgia, nil, "5-0", nil)) == "Georgia")

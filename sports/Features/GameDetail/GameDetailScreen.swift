@@ -478,6 +478,12 @@ struct GameDetailScreen: View {
                         .font(.metaEmphasis)
                         .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
                         .multilineTextAlignment(.center)
+                        // With no score and no kickoff ("Postponed") the
+                        // status is all the middle has, and it centers on
+                        // the logos rather than hanging off the top of the
+                        // row. A frame rather than a padding so it stays
+                        // centered at every text size.
+                        .frame(minHeight: hasScoreLine(away, home) ? nil : Self.logoSize)
                 }
                 // Live is the one state with no other network surface —
                 // pre-game has the info card, finals have nothing left to
@@ -525,13 +531,26 @@ struct GameDetailScreen: View {
         GameHeaderState.competitor(fallback, side)
     }
 
+    private static let logoSize: CGFloat = 44
+
+    private func hasScoreLine(_ away: (team: Team, score: Int?, record: String?, winner: Bool?),
+                              _ home: (team: Team, score: Int?, record: String?, winner: Bool?)) -> Bool {
+        showsScores && away.score != nil && home.score != nil
+    }
+
+    private var possessionTeamId: String? { GameHeaderState.possessionTeamId(game, summary) }
+
+    private func hasPossession(_ team: Team) -> Bool {
+        possessionTeamId != nil && possessionTeamId == team.id
+    }
+
     private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
         // Value-based so the push lands in the Scores stack's NavigationPath;
         // ScoresScreen owns the matching Team destination.
         NavigationLink(value: side.team) {
             VStack(spacing: Spacing.xs) {
                 LogoImage(url: side.team.logoURL)
-                    .frame(width: 44, height: 44)
+                    .frame(width: Self.logoSize, height: Self.logoSize)
                 Text(side.team.location)
                     .font(side.winner == true ? .teamNameEmphasis : .teamName)
                     .foregroundStyle(.textPrimary)
@@ -539,6 +558,19 @@ struct GameDetailScreen: View {
                     // Reserved so a wrapping name ("Arkansas-Pine Bluff")
                     // doesn't push its record below the other side's.
                     .lineLimit(2, reservesSpace: true)
+                    // The scoreboard row's possession mark, at the header's
+                    // scale. An overlay hung off the name's trailing edge
+                    // rather than an HStack sibling, so the name stays
+                    // centered under its logo and the two sides still
+                    // mirror each other.
+                    .overlay(alignment: Alignment(horizontal: .trailing, vertical: .firstTextBaseline)) {
+                        if hasPossession(side.team) {
+                            Image(systemName: gameLeague.fallbackGlyph)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.textSecondary)
+                                .alignmentGuide(.trailing) { $0[.leading] - Spacing.sm }
+                        }
+                    }
                 if let record = side.record {
                     Text(record)
                         .font(.meta)
@@ -555,8 +587,9 @@ struct GameDetailScreen: View {
 
     /// Internal for AccessibilityLabelTests.
     func sideAccessibilityLabel(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
-        guard showsScores, let score = side.score else { return side.team.location }
-        return "\(side.team.location) \(score)"
+        let ball = hasPossession(side.team) ? ", has the ball" : ""
+        guard showsScores, let score = side.score else { return side.team.location + ball }
+        return "\(side.team.location) \(score)\(ball)"
     }
 
     private var showsScores: Bool { GameHeaderState.showsScores(game, summary) }

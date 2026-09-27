@@ -851,3 +851,4 @@ sibling below it.
 | 2026-09-26 | Scores lists every league and conference below Hide all: pro leagues then their conferences A–Z ("NFL - AFC", league mark on every pro header), NCAAF's Top 25/FBS/FCS then every conference A–Z; FCS always fetched | **pending**: the web's stack is still one section per pro league and FBS conferences in tier order |
 | 2026-09-26 | A visitor in a conference section wears its own conference after its name ("Carolina NFC") | **pending**: the web's row has no section context yet |
 | 2026-09-26 | No division pages: conference pages open on their divisions stacked, the hub lists conferences, division follows migrate to their conference | **pending**: the web hub and conference view still list and link divisions |
+| 2026-09-26 | Game header: possession mark after the holder's name (from the summary's current drive); a no-score, no-kickoff status centers on the logos | **pending**: the web header shows neither |
