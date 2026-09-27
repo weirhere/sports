@@ -18,7 +18,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDown, Star } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   conferenceLogoUrl,
@@ -59,6 +59,7 @@ import { PageHeader } from "@/components/page-header";
 import { SearchField } from "@/components/search-field";
 import { filterFollowed, filterHubGroups, hubQuery } from "@/lib/hub-filter";
 import { cn } from "@/lib/utils";
+import { FollowCapsuleButton } from "@/components/follow-capsule";
 
 interface LeaguesHubProps {
   /** The polls, filtered and in picker order (AP first when present). */
@@ -422,7 +423,9 @@ function LeagueAccordion({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "ml-auto h-4 w-4 text-text-secondary transition-transform",
+            // Inset over the rows' follow capsules' round ends (iOS,
+            // 2026-09-27), rather than past their edge.
+            "ml-auto mr-2 h-4 w-4 text-text-secondary transition-transform",
             isExpanded && "rotate-180"
           )}
         />
@@ -475,7 +478,7 @@ export function Top25Row({ league }: { league: League }) {
   const followed = isFavoritePoll(league);
 
   return (
-    <div className="flex min-h-12 items-center gap-3 pr-2">
+    <div className="flex min-h-12 items-center gap-3 pr-4">
       <Link
         href="/rankings/poll"
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
@@ -489,7 +492,7 @@ export function Top25Row({ league }: { league: League }) {
           Top 25
         </span>
       </Link>
-      <FollowStar
+      <FollowCapsuleButton
         followed={followed}
         name="Top 25"
         onToggle={() => toggleFavoritePoll(league)}
@@ -499,8 +502,8 @@ export function Top25Row({ league }: { league: League }) {
 }
 
 /**
- * One table: mark, name, follow star. The row navigates to that table's
- * page; the star doesn't.
+ * One table: mark, name, follow button. The row navigates to that
+ * table's page; the button doesn't.
  *
  * No leader teaser (iOS, 2026-09-21). The accordion is a way *into* a
  * league's tables, and a leader beside every row is a column of numbers
@@ -514,7 +517,7 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const followed = token !== undefined && isFavoriteConference(token);
 
   return (
-    <div className="flex min-h-12 items-center gap-3 pr-2">
+    <div className="flex min-h-12 items-center gap-3 pr-4">
       <Link
         href={ref ? conferencePath(ref) : "#"}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
@@ -529,7 +532,7 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
         </span>
       </Link>
       {token !== undefined && isFollowable(table) && (
-        <FollowStar
+        <FollowCapsuleButton
           followed={followed}
           name={table.name}
           onToggle={() => toggleFavoriteConference(token)}
@@ -539,27 +542,3 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   );
 }
 
-export function FollowStar({
-  followed,
-  name,
-  onToggle,
-}: {
-  followed: boolean;
-  name: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={followed ? `Unfollow ${name}` : `Follow ${name}`}
-      aria-pressed={followed}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-text-primary"
-    >
-      <Star
-        aria-hidden="true"
-        className={cn("h-4 w-4", followed && "fill-current text-text-primary")}
-      />
-    </button>
-  );
-}

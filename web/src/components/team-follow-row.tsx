@@ -13,7 +13,7 @@
 // line rather than truncating: a browser column can be narrower than a
 // phone's, and an ellipsis mid-name is the worse answer.
 
-import { Star } from "lucide-react";
+import { FollowCapsule } from "@/components/follow-capsule";
 import { TeamLogo } from "@/components/team-logo";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { followKey } from "@/lib/refs";
@@ -74,13 +74,9 @@ export function TeamFollowRow({
           {shortName(leagueTag)}
         </span>
       )}
-      <Star
-        aria-hidden="true"
-        className={cn(
-          "h-5 w-5 shrink-0 text-text-primary",
-          followed && "fill-current"
-        )}
-      />
+      {/* Drawn, not a button of its own: the whole row is the toggle,
+          so the capsule only says which way it's set. */}
+      <FollowCapsule followed={followed} />
     </button>
   );
 }
