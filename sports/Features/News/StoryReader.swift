@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// A story, read in the app (N4). FotMob's article order (N5): headline,
-/// who wrote it and exactly when, the dek, the game's own score row, then
-/// the text, and it ends in the teams it's about (N6).
+/// A story, read in the app (N4). FotMob's article order (N5): the photo
+/// edge to edge where ESPN sent one (2026-09-27, Mobbin flow `c834c5a9`),
+/// the headline, who wrote it and exactly when, the dek, the game's own
+/// score row, then the text, and it ends in the teams it's about (N6).
 ///
 /// The header sits on the card surface like the game page's and the entity
 /// pages', and everything under it is cards on the recessed one.
@@ -71,6 +72,18 @@ struct StoryReader: View {
     }
 
     private var header: some View {
+        VStack(spacing: 0) {
+            if story.imageURL != nil {
+                StoryPhoto(url: story.imageURL)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+            }
+            headerText
+        }
+        .background(Color.bgCard)
+    }
+
+    private var headerText: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text(story.headline)
                 .font(.heroTitle)

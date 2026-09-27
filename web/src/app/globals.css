@@ -250,6 +250,13 @@
   font-size: 24px;
   font-weight: 800;
 }
+/* A featured story's headline under its photo (iOS `storyFeatured`,
+   2026-09-27): a step past a row's 15, short of the hero's 24. */
+@utility type-story-featured {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+}
 @utility type-row-name {
   font-size: 13px;
   font-weight: 500;

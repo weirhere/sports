@@ -114,8 +114,24 @@ nonisolated enum NewsMapper {
             gameId: (dto.gameId?.value ?? eventId).map(String.init),
             teams: teams,
             body: body,
-            bodyURL: body == nil ? bodyURL : nil
+            bodyURL: body == nil ? bodyURL : nil,
+            imageURL: imageURL(from: dto.images?.elements ?? [])
         )
+    }
+
+    /// The story's lead photo: its `header`, else the first that isn't a
+    /// video's still, else whatever there is. ESPN's generated matchup
+    /// cards (`/stitcher/`) aren't photos, and on 2026-09-27 every one an
+    /// AP recap or preview carried answered 404.
+    static func imageURL(from images: [NewsImageDTO]) -> URL? {
+        let usable = images.filter { image in
+            guard let url = image.url.flatMap(URL.init(string:)) else { return false }
+            return !url.path.hasPrefix("/stitcher/")
+        }
+        let pick = usable.first { $0.type == "header" }
+            ?? usable.first { $0.type != "Media" }
+            ?? usable.first
+        return pick?.url.flatMap(URL.init(string:))
     }
 
     /// The team's feed after both filters: types the app shows, and stories

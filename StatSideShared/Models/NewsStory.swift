@@ -1,8 +1,9 @@
 import Foundation
 
-/// One story, as the News surfaces carry it (docs/news.md). Text only: ESPN
-/// ships a photo with every one and none is decoded, because press
-/// photography isn't in the color budget (N8).
+/// One story, as the News surfaces carry it (docs/news.md). Its photo is
+/// the color budget's sixth exception (Andy, 2026-09-27), superseding N8's
+/// text-only rule: full color, and only inside story cards, rows and the
+/// reader's hero.
 ///
 /// A story arrives two ways. The game summary's `article` comes whole, body
 /// included, inside a request the game page already makes. A team feed's
@@ -55,6 +56,8 @@ nonisolated struct NewsStory: Identifiable, Hashable, Sendable {
     var body: [StoryBlock]? = nil
     /// Where the body comes from when it didn't ride along.
     var bodyURL: URL? = nil
+    /// The story's lead photo. Nil draws the row without one.
+    var imageURL: URL? = nil
 }
 
 /// One block of a story's text, after the HTML is gone.

@@ -1,5 +1,6 @@
 // A story, read on StatSide (iOS `StoryReader`, E25, docs/news.md N4 to N7):
-// headline, who wrote it and exactly when, the dek, the game's own score
+// the photo edge to edge where ESPN sent one (2026-09-27, FotMob's article
+// detail), the headline, who wrote it and exactly when, the dek, the game's own score
 // row, the text, then the teams it's about.
 //
 // **One divergence from iOS, and it is the URL.** The app carries a story
@@ -9,6 +10,7 @@
 // team feed's stories — and the score row is always a link, since a reader
 // who arrived from a link has no game page behind them to go back to.
 
+import { StoryPhoto } from "@/components/story-photo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -73,11 +75,21 @@ export default async function StoryPage({ params }: PageProps) {
   return (
     <article className="mx-auto flex w-full max-w-[38rem] flex-col gap-2">
       {/* The header sits on the card surface like the game page's. */}
-      <header className="card-surface flex flex-col gap-2 px-4 py-5">
-        <p className="type-meta-em text-text-secondary">{storyKindTitle(story.kind)}</p>
-        <h1 className="type-hero-title text-text-primary">{story.headline}</h1>
-        <StoryMeta story={story} time="exact" />
-        {story.dek && <p className="type-team-name text-text-secondary">{story.dek}</p>}
+      <header className="card-surface flex flex-col">
+        {story.imageUrl && (
+          <StoryPhoto
+            url={story.imageUrl}
+            sizes="(min-width: 640px) 608px, 100vw"
+            priority
+            className="aspect-video w-full"
+          />
+        )}
+        <div className="flex flex-col gap-2 px-4 py-5">
+          <p className="type-meta-em text-text-secondary">{storyKindTitle(story.kind)}</p>
+          <h1 className="type-hero-title text-text-primary">{story.headline}</h1>
+          <StoryMeta story={story} time="exact" />
+          {story.dek && <p className="type-team-name text-text-secondary">{story.dek}</p>}
+        </div>
       </header>
 
       {/* `NextGameCard`'s recipe: a header over the matchup row itself. */}

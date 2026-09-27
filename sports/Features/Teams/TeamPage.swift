@@ -63,6 +63,14 @@ struct TeamPage: View {
     @State private var initialFailed = false
 
     @State private var tab: Tab = .overview
+
+    /// `opensNews` lands on the News tab: a For you team section's "See
+    /// more" (2026-09-27). News only exists on ESPN's provider, and so
+    /// does every story that could lead here.
+    init(team: Team, opensNews: Bool = false) {
+        self.team = team
+        _tab = State(initialValue: opensNews ? .news : .overview)
+    }
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the team name.
     @State private var showsInlineTitle = false
@@ -1047,8 +1055,8 @@ struct TeamPage: View {
 
     // MARK: - News
 
-    /// The team's own stories (N9) — FotMob's team News tab, last in the
-    /// row rather than second, and without the photos (N8).
+    /// The team's own stories (N9) — FotMob's team News tab, second in the
+    /// row (E26), each row with its photo (2026-09-27).
     private var newsContent: some View {
         VStack(spacing: Spacing.sm) {
             if let stories = currentNews, !stories.isEmpty {

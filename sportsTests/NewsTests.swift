@@ -253,4 +253,35 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(NewsStory.Kind(espnType: "headlinenews") == .headline)
         #expect(NewsStory.Kind(espnType: "media") == nil)
     }
+
+    // MARK: - Photos (2026-09-27)
+
+    @Test func aStoryLeadsWithItsHeaderPhoto() {
+        let video = NewsImageDTO(type: "Media", url: "https://example.com/still.jpg")
+        let header = NewsImageDTO(type: "header", url: "https://example.com/header.jpg")
+        let plain = NewsImageDTO(type: nil, url: "https://example.com/plain.jpg")
+        #expect(NewsMapper.imageURL(from: [video, plain, header])?.lastPathComponent == "header.jpg")
+        // No header: a photo before a video's still.
+        #expect(NewsMapper.imageURL(from: [video, plain])?.lastPathComponent == "plain.jpg")
+        // Only a still: better than nothing.
+        #expect(NewsMapper.imageURL(from: [video])?.lastPathComponent == "still.jpg")
+        #expect(NewsMapper.imageURL(from: [NewsImageDTO(type: "header", url: nil)]) == nil)
+        #expect(NewsMapper.imageURL(from: []) == nil)
+        // ESPN's generated matchup cards 404; a recap with only one has none.
+        let stitcher = NewsImageDTO(type: "header",
+                                    url: "https://s.espncdn.com/stitcher/sports/football/college-football/events/401858463.png?templateId=espn")
+        #expect(NewsMapper.imageURL(from: [stitcher]) == nil)
+        #expect(NewsMapper.imageURL(from: [stitcher, plain])?.lastPathComponent == "plain.jpg")
+    }
+
+    @Test func aSectionLeadsWithAPhoto() {
+        func story(_ id: String, photo: Bool = false) -> NewsStory {
+            NewsStory(id: id, kind: .story, league: .nba, headline: id, dek: nil,
+                      attribution: nil, published: nil, gameId: nil, teams: [],
+                      imageURL: photo ? URL(string: "https://example.com/\(id).jpg") : nil)
+        }
+        let list = [story("a"), story("b"), story("c", photo: true), story("d"), story("e"), story("f")]
+        #expect(StorySection<Never>.arranged(list).map(\.id) == ["c", "a", "b", "d", "e"])
+        #expect(StorySection<Never>.arranged([story("a"), story("b")]).map(\.id) == ["a", "b"])
+    }
 }

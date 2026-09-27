@@ -73,6 +73,8 @@ interface ConferenceViewProps {
   displayYear: number;
   /** Anchor this team's row — standings pushes from other pages. */
   highlightTeamId?: string;
+  /** Open on News — a News page's "See more" (`?tab=news`). */
+  opensNews?: boolean;
 }
 
 export function ConferenceView({
@@ -83,9 +85,10 @@ export function ConferenceView({
   games,
   displayYear,
   highlightTeamId,
+  opensNews = false,
 }: ConferenceViewProps) {
   const router = useRouter();
-  const [tab, setTab] = useState("standings");
+  const [tab, setTab] = useState(opensNews ? "news" : "standings");
 
   const conferenceRef = useMemo(
     () => ({ league, id: conferenceId }),
@@ -197,7 +200,7 @@ export function ConferenceView({
       .filter((id) => !seen.has(id) && (seen.add(id), true))
       .map((teamId) => ({ league, teamId }));
   }, [allTables, conferenceRef, league]);
-  const [newsRequested, setNewsRequested] = useState(false);
+  const [newsRequested, setNewsRequested] = useState(opensNews);
   const newsKey = !newsRequested
     ? undefined
     : newsFromLeagueFeed

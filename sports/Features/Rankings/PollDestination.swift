@@ -16,4 +16,6 @@ import Foundation
 struct PollDestination: Hashable {
     var league: League = .collegeFootball
     var polls: [Poll] = []
+    /// Open on the News tab: the News page's "See more" (2026-09-27).
+    var opensNews: Bool = false
 }

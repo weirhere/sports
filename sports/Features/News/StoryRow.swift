@@ -1,20 +1,30 @@
 import SwiftUI
 
-/// One story in a list: the headline, then who wrote it and how long ago
-/// (N7). Text only, by decision (N8): the rows every other news app leads
-/// with a photo are the app's type hierarchy here, and the one image is the
-/// chevron `RosterRow` draws for a row with a page behind it.
+/// One story in a list: the photo small at the leading edge, the headline,
+/// then who wrote it and how long ago (N7) — FotMob's row under its lead
+/// card. The thumbnail is the row's "a page is behind this" cue; a story
+/// ESPN sent no photo with falls back to the chevron `RosterRow` draws.
 struct StoryRow: View {
     let story: NewsStory
 
-    private var meta: String? {
+    @ScaledMetric(relativeTo: .subheadline) private var thumbnailWidth: CGFloat = 96
+
+    /// "AP · 2h ago", or nil when ESPN named nobody and dated nothing.
+    static func meta(for story: NewsStory) -> String? {
         let parts = [story.attribution, story.published.map { NewsTimestamp.relative($0) }]
             .compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    private var meta: String? { Self.meta(for: story) }
+
     var body: some View {
         HStack(spacing: Spacing.md) {
+            if story.imageURL != nil {
+                StoryPhoto(url: story.imageURL)
+                    .frame(width: thumbnailWidth, height: thumbnailWidth * 2 / 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(story.headline)
                     .font(.teamNameEmphasis)
@@ -28,11 +38,13 @@ struct StoryRow: View {
                         .lineLimit(1)
                 }
             }
-            Spacer(minLength: Spacing.sm)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.textSecondary)
-                .accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if story.imageURL == nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)

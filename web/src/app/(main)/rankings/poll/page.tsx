@@ -6,6 +6,7 @@
 // Which poll is a filter, not a tab: AP, Coaches and CFP are the same table
 // of the same 25 teams read by different voters.
 
+import { opensNews } from "@/lib/routes";
 import { rankings, seasonGames } from "@/lib/espn";
 import { displayedPolls } from "@/lib/polls";
 import {
@@ -25,7 +26,7 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ year?: string | string[] }>;
+  searchParams: Promise<{ year?: string | string[]; tab?: string | string[] }>;
 }
 
 function parseYear(raw: string | string[] | undefined): number | undefined {
@@ -38,7 +39,8 @@ function parseYear(raw: string | string[] | undefined): number | undefined {
 
 export default async function PollPage({ searchParams }: PageProps) {
   const currentYear = seasonYear(LEAGUE);
-  const year = parseYear((await searchParams).year) ?? currentYear;
+  const query = await searchParams;
+  const year = parseYear(query.year) ?? currentYear;
 
   // The poll and the slate fail independently: a season with no poll still
   // has games, and a slate that missed still leaves a table to read.
@@ -58,6 +60,7 @@ export default async function PollPage({ searchParams }: PageProps) {
       polls={polls}
       games={games}
       displayYear={year}
+      opensNews={opensNews(query.tab)}
     />
   );
 }

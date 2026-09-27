@@ -32,12 +32,33 @@ final class NewsFeedStore {
         case failed
     }
 
+    /// For you, in FotMob's sections (Andy, 2026-09-27): Trending, one
+    /// section per followed team, then Latest.
+    struct ForYouPage {
+        /// The newest real stories across the four leagues — recency, not
+        /// popularity, which ESPN doesn't publish.
+        var trending: [NewsStory]
+        /// Each followed team's own stories, by follow key. A team whose
+        /// feed failed or came back empty isn't here.
+        var teams: [String: [NewsStory]]
+        /// Every league's stories, newest first, previews last.
+        var latest: [NewsStory]
+    }
+
+    /// Trending's size: the featured story and four under it.
+    static let sectionSize = 5
+    /// Latest is full-width photo cards; past this it's a scroll nobody
+    /// finishes.
+    static let latestCap = 30
+
     /// For you asks each followed team's own feed, so it costs a request
     /// per follow. Capped so a user following the whole SEC doesn't open
     /// the tab onto forty requests.
     static let forYouCap = 20
 
     private(set) var states: [Feed: LoadState] = [:]
+    /// For you's sections, built by the same load as its `.forYou` state.
+    private(set) var forYouPage: ForYouPage?
     /// The follows For you was built from: a follow added or dropped since
     /// makes it stale, and the next visit rebuilds it.
     private var forYouKeys: Set<String>?
@@ -61,8 +82,11 @@ final class NewsFeedStore {
         let result: [NewsStory]?
         if let league = feed.league {
             result = await Self.leaguePage(league, client: client)
+        } else if let page = await Self.forYouPage(followedKeys: followedKeys, client: client) {
+            forYouPage = page
+            result = page.latest
         } else {
-            result = await Self.forYou(followedKeys: followedKeys, client: client)
+            result = nil
         }
 
         if let result {
@@ -102,7 +126,7 @@ final class NewsFeedStore {
         return NewsMapper.toppedUp(feed, with: teamFeeds)
     }
 
-    /// Every league's page as one (E26), for the Leagues tab's News: each
+    /// Every league's page as one (E26), for For you's Trending and Latest: each
     /// story once, newest first, previews last. Some leagues failing makes
     /// a thinner list; all of them failing is a failure.
     static func allLeagues(client: NewsClient = NewsClient()) async -> [NewsStory]? {
@@ -118,14 +142,36 @@ final class NewsFeedStore {
         return NewsMapper.toppedUp([], with: pages)
     }
 
-    /// Every followed team's own feed, merged. No follows is an empty
-    /// list, which the screen answers with a way to add some.
-    private static func forYou(followedKeys: Set<String>,
-                               client: NewsClient) async -> [NewsStory]? {
+    /// For you's sections: every league at once (Trending and Latest) and
+    /// each followed team's own feed, side by side. Nil only when all of
+    /// it failed.
+    static func forYouPage(followedKeys: Set<String>,
+                           client: NewsClient = NewsClient()) async -> ForYouPage? {
         let follows = followedKeys.compactMap(FollowKey.init)
             .sorted { $0.rawValue < $1.rawValue }
             .prefix(forYouCap)
-        return await teamsPage(Array(follows), client: client)
+        async let leagues = allLeagues(client: client)
+        let teamFeeds = await withTaskGroup(of: (String, [NewsStory]?).self) { group in
+            for key in follows {
+                group.addTask { (key.rawValue, await client.teamNews(teamId: key.teamId, league: key.league)) }
+            }
+            var collected: [String: [NewsStory]] = [:]
+            var answered = 0
+            for await (key, feed) in group {
+                guard let feed else { continue }
+                answered += 1
+                if !feed.isEmpty { collected[key] = feed }
+            }
+            return (collected, answered)
+        }
+        let all = await leagues
+        guard all != nil || teamFeeds.1 > 0 else { return nil }
+        let latest = all ?? []
+        return ForYouPage(
+            trending: Array(latest.filter { $0.kind != .preview }.prefix(sectionSize)),
+            teams: teamFeeds.0,
+            latest: Array(latest.prefix(latestCap))
+        )
     }
 
     /// Several teams' own feeds as one page: each story once, newest first

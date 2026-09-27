@@ -883,3 +883,6 @@ sibling below it.
 | 2026-09-27 | Search's News scope, the last pill: the article group of the same ESPN search answer | **shipped** — `search-view.tsx`, through `/api/search/athletes` (now `{ athletes, stories }`) |
 | 2026-09-27 | Teams tab gains Teams · News: For you's followed-team stories | **shipped** — `teams-list.tsx`, through a shared `getFollowedNews` |
 | 2026-09-27 | Leagues tab gains Leagues · News: every league's feed merged, previews last | **shipped** — `rankings-hub.tsx`, through `getAllLeaguesNews` |
+| 2026-09-27 | News photos as the sixth color exception: header photo, stitcher cards skipped, photo-led sections | **shipped** — `story-photo.tsx`, `storyImage`, `arrangedStories` |
+| 2026-09-27 | Sectioned News: Trending, per-team sections with See more, Latest cards; league pages as one section; reader hero | **shipped** — `news-view.tsx`, `story-section.tsx`, `featured-story.tsx`, `?tab=news` on team, conference and Top 25 pages |
+| 2026-09-27 | Teams and Leagues tabs lose their News tab rows | **shipped** — `teams-list.tsx`, `rankings-hub.tsx` |

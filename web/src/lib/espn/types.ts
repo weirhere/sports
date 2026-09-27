@@ -714,4 +714,6 @@ export interface EspnSearchContent {
   /** An article's byline, or its wire: "Associated Press", "ESPN". */
   byline?: string | null;
   date?: string | null;
+  /** An article's photos, in the feeds' shape. */
+  images?: { type?: string; url?: string }[] | null;
 }

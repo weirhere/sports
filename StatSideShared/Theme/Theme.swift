@@ -204,6 +204,10 @@ extension Font {
     /// than 17: the hero has no nav title above it, so the name carries the
     /// whole identity weight (same reasoning as the widget masthead).
     static var heroTitle: Font { scaled(24, .heavy, relativeTo: .title2) }
+    /// A featured story's headline under its photo (News, 2026-09-27):
+    /// FotMob's lead-card weight, a step past a row's 15 and short of the
+    /// hero's 24.
+    static var storyFeatured: Font { scaled(19, .bold, relativeTo: .title3) }
     /// The 2240-spec game-row scale (Andy's Figma, 2026-08-25): names and
     /// scores at 13 medium, metadata at 10. Semibold carries the live
     /// emphasis at this scale.

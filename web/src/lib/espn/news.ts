@@ -31,6 +31,12 @@ export interface EspnNewsCategory {
   eventId?: number | string;
 }
 
+/** One of a story's photos. `header` is its lead; `Media` a video's still. */
+export interface EspnNewsImage {
+  type?: string;
+  url?: string;
+}
+
 export interface EspnNewsArticle {
   id?: number | string;
   type?: string;
@@ -42,6 +48,7 @@ export interface EspnNewsArticle {
   story?: string;
   gameId?: number | string;
   categories?: EspnNewsCategory[];
+  images?: EspnNewsImage[];
 }
 
 /** `/news?team=`: headlines only. */
@@ -84,6 +91,24 @@ export function playerNewsUrl(league: League, athleteId: string): string {
 
 export function storyUrl(storyId: string): string {
   return `https://content.core.api.espn.com/v1/sports/news/${storyId}`;
+}
+
+/** The story's lead photo: its `header`, else the first that isn't a
+ *  video's still, else whatever there is (iOS `NewsMapper.imageURL`).
+ *  ESPN's generated matchup cards (`/stitcher/`) aren't photos, and on
+ *  2026-09-27 every one an AP recap or preview carried answered 404. */
+export function storyImage(images: readonly EspnNewsImage[] | undefined): string | undefined {
+  const usable = (images ?? []).filter(
+    (image) =>
+      typeof image.url === "string" &&
+      /^https?:\/\//.test(image.url) &&
+      !/^https?:\/\/[^/]+\/stitcher\//.test(image.url)
+  );
+  const pick =
+    usable.find((image) => image.type === "header") ??
+    usable.find((image) => image.type !== "Media") ??
+    usable[0];
+  return pick?.url;
 }
 
 function idString(value: number | string | undefined): string | undefined {
@@ -129,6 +154,7 @@ export function newsStory(dto: EspnNewsArticle, league: League): NewsStory | und
     gameId: idString(dto.gameId) ?? eventId,
     teams,
     body: body.length > 0 ? body : undefined,
+    imageUrl: storyImage(dto.images),
   };
 }
 
