@@ -31,12 +31,13 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, postseason
+        case standings, games, news, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .news: "News"
             case .postseason: "Postseason"
             }
         }
@@ -68,6 +69,10 @@ struct PollScreen: View {
 
     private var headerGround: Color { headerPaint?.background ?? .bgCard }
     @State private var tab: Tab = .standings
+    /// The News tab's stories (E26): the league's feed, fetched on the
+    /// tab's first visit and held for the page.
+    @State private var news: [NewsStory]?
+    @State private var newsFailed = false
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -133,6 +138,7 @@ struct PollScreen: View {
                 switch tab {
                 case .standings: standingsSection
                 case .games: gamesSection(scrollInset: headerHeight)
+                case .news: newsSection
                 case .postseason: postseasonSection
                 }
             }
@@ -381,9 +387,13 @@ struct PollScreen: View {
                 // pinned header leaves under the bar.
                 .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                controlRow(for: tab)
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.sm)
+                // No control on News: stories are today's, whatever season
+                // the other tabs are showing.
+                if tab != .news {
+                    controlRow(for: tab)
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.top, Spacing.sm)
+                }
                 // The gap that used to be the pane's own top padding.
                 Color.clear.frame(height: Spacing.sm)
             }
@@ -413,9 +423,46 @@ struct PollScreen: View {
                                 teams: filterableTeams,
                                 teamSelection: activeTeamId,
                                 onSelectTeam: { teamFilter = $0 })
-            case .postseason:
+            case .news, .postseason:
                 EmptyView()
             }
+        }
+    }
+
+    // MARK: - News
+
+    /// College football's league page reads the league's own feed, the
+    /// News tab's NCAAF page: previews last, and topped up with the AP Top
+    /// 10's stories on a flood day (E26).
+    private var newsSection: some View {
+        VStack(spacing: Spacing.sm) {
+            if let news, !news.isEmpty {
+                StoryListCard(stories: news)
+            } else if news != nil {
+                StatusMessage(text: "No \(league.shortName) stories right now.")
+                    .cardSurface()
+            } else if newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews() } })
+                    .cardSurface()
+            } else {
+                // A lone spinner gets no card (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .task { if news == nil { await loadNews() } }
+    }
+
+    private func loadNews() async {
+        newsFailed = false
+        if let loaded = await NewsFeedStore.leaguePage(league) {
+            news = loaded
+        } else {
+            newsFailed = true
         }
     }
 
@@ -532,7 +579,8 @@ struct PollScreen: View {
     /// it, because a bowl slate is the division's, not the Top 25's, and a
     /// postseason narrowed to ranked teams would drop most of the bowls.
     private var availableTabs: [Tab] {
-        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        // News after Games (Andy, 2026-09-27, E26).
+        postseasonRounds.isEmpty ? [.standings, .games, .news] : [.standings, .games, .news, .postseason]
     }
 
     private var postseasonRounds: [PostseasonRound] {

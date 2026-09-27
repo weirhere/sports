@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     enum Tab {
-        case scores, tables, teams, search
+        case scores, news, tables, teams, search
     }
 
     @State private var following = FollowingStore()
@@ -50,6 +50,12 @@ struct RootView: View {
         TabView(selection: tabSelection) {
             SwiftUI.Tab("Games", systemImage: "sportscourt.fill", value: Tab.scores) {
                 ScoresScreen()
+            }
+            // Second, after FotMob's Matches · News (Andy, 2026-09-27,
+            // E26): every league's stories in one place. Games stays first,
+            // so Scores is still the screen the app opens on.
+            SwiftUI.Tab("News", systemImage: "newspaper.fill", value: Tab.news) {
+                NewsScreen()
             }
             // "Leagues", not "Rankings" or "Tables" (Andy, 2026-09-09):
             // the NFL has no poll, so half the time "Rankings" would name a

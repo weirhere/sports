@@ -10,6 +10,7 @@ import { GetTheAppPill } from "@/components/get-the-app";
 
 const NAV_LINKS = [
   { href: "/", label: "Games" },
+  { href: "/news", label: "News" },
   { href: "/rankings", label: "Leagues" },
   { href: "/teams", label: "Teams" },
   { href: "/search", label: "Search" },

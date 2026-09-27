@@ -35,8 +35,17 @@ nonisolated struct AthleteSearchClient {
     /// (2026-09-24).
     @concurrent
     func athletes(matching query: String, limit: Int = 10) async throws -> [PlayerIdentity] {
+        try await search(matching: query, limit: limit).athletes
+    }
+
+    /// The people and the stories one query found (E26). The response
+    /// already carries both, so Search's News scope costs no request of
+    /// its own.
+    @concurrent
+    func search(matching query: String, limit: Int = 10) async throws
+        -> (athletes: [PlayerIdentity], stories: [NewsStory]) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
+        guard !trimmed.isEmpty else { return ([], []) }
 
         var components = URLComponents(
             string: "https://site.web.api.espn.com/apis/search/v2")!
@@ -46,18 +55,31 @@ nonisolated struct AthleteSearchClient {
             URLQueryItem(name: "query", value: trimmed),
             URLQueryItem(name: "limit", value: String(limit)),
         ]
-        guard let url = components.url else { return [] }
+        guard let url = components.url else { return ([], []) }
 
         let (data, _) = try await session.data(from: url)
         let payload = try decoder.decode(SearchResponseDTO.self, from: data)
+        return (Self.athletes(in: payload), Self.stories(in: payload))
+    }
 
-        // The response carries articles and clips beside the people. Only
-        // the `player` group is ours, and an unknown group type is skipped
-        // rather than guessed at.
-        return payload.results?
-            .filter { $0.type == "player" }
-            .flatMap { $0.contents ?? [] }
-            .compactMap(PlayerIdentity.init(searchResult:)) ?? []
+    /// The response carries articles and clips beside the people. Only the
+    /// `player` group is people, and an unknown group type is skipped
+    /// rather than guessed at.
+    static func athletes(in payload: SearchResponseDTO) -> [PlayerIdentity] {
+        contents(of: "player", in: payload).compactMap(PlayerIdentity.init(searchResult:))
+    }
+
+    /// The `article` group, in the order ESPN ranked it for the query.
+    /// Clips and replays are video, which N10 keeps out of every list.
+    static func stories(in payload: SearchResponseDTO) -> [NewsStory] {
+        var seen: Set<String> = []
+        return contents(of: "article", in: payload)
+            .compactMap(NewsMapper.story(fromSearchResult:))
+            .filter { seen.insert($0.id).inserted }
+    }
+
+    private static func contents(of type: String, in payload: SearchResponseDTO) -> [SearchContentDTO] {
+        (payload.results ?? []).filter { $0.type == type }.flatMap { $0.contents ?? [] }
     }
 }
 
@@ -88,6 +110,22 @@ nonisolated struct SearchContentDTO: Decodable {
     /// rest, which is why this is filtered rather than trusted.
     let defaultLeagueSlug: String?
     let image: SearchImageDTO?
+    /// An article's story id (`50039929`), the one the content API takes.
+    /// A person's is the GUID above.
+    let id: String?
+    /// An article's ESPN type, lowercased here: `headlinenews`, `story`,
+    /// `recap`, `preview`.
+    let type: String?
+    let link: SearchLinkDTO?
+    /// An article's byline, or its wire: "Associated Press", "ESPN".
+    let byline: String?
+    let date: String?
+}
+
+nonisolated struct SearchLinkDTO: Decodable {
+    /// `https://www.espn.com/nba/story/_/id/…`. The path's first segment is
+    /// the only league an article hit carries.
+    let web: String?
 }
 
 nonisolated struct SearchImageDTO: Decodable {
@@ -227,4 +265,61 @@ nonisolated struct ProfileHeadshotDTO: Decodable {
 nonisolated struct ProfileStatusDTO: Decodable {
     let name: String?
     let type: String?
+}
+
+nonisolated extension NewsMapper {
+    /// A search hit as a story (E26), or nil: an unshown type, no headline,
+    /// or a league the app doesn't cover. Search sends no teams, no dek
+    /// and no text, so the reader asks the content API by id.
+    static func story(fromSearchResult content: SearchContentDTO) -> NewsStory? {
+        guard let kind = NewsStory.Kind(espnType: content.type),
+              let id = content.id, !id.isEmpty, id.allSatisfy(\.isNumber),
+              let headline = content.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !headline.isEmpty,
+              let league = league(fromStoryLink: content.link?.web),
+              let bodyURL = URL(string: "https://content.core.api.espn.com/v1/sports/news/\(id)")
+        else { return nil }
+        return NewsStory(
+            id: id,
+            kind: kind,
+            league: league,
+            headline: StoryText.decodingEntities(headline),
+            dek: nil,
+            // The field is a byline or a wire, and nothing says which.
+            attribution: attribution(byline: nil, source: content.byline),
+            published: searchDate(content.date),
+            gameId: gameId(fromStoryLink: content.link?.web),
+            teams: [],
+            body: nil,
+            bodyURL: bodyURL
+        )
+    }
+
+    /// Search's dates carry milliseconds (`2026-09-27T05:09:02.000+00:00`),
+    /// which the feeds' parser doesn't read.
+    private static func searchDate(_ string: String?) -> Date? {
+        guard let string else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: string) ?? ESPNDate.parse(string)
+    }
+
+    /// `https://www.espn.com/college-football/story/…` → college football.
+    /// AP's recaps and previews link through ESPN's older paths
+    /// (`/ncf/recap?gameId=…`), where college football is `ncf`.
+    static func league(fromStoryLink link: String?) -> League? {
+        guard let link, let url = URL(string: link),
+              let segment = url.pathComponents.dropFirst().first
+        else { return nil }
+        if segment == "ncf" { return .collegeFootball }
+        return League.allCases.first { $0.pathSegment == segment }
+    }
+
+    /// A recap's or preview's game, from that older path's query.
+    static func gameId(fromStoryLink link: String?) -> String? {
+        guard let link else { return nil }
+        return URLComponents(string: link)?.queryItems?
+            .first { $0.name == "gameId" }?.value
+            .flatMap { $0.isEmpty ? nil : $0 }
+    }
 }

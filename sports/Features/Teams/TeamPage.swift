@@ -21,7 +21,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, stats, standings, trades, roster, trophies, news
+        case overview, news, games, stats, standings, trades, roster, trophies
 
         var title: String {
             switch self {
@@ -610,7 +610,12 @@ struct TeamPage: View {
     }
 
     private var visibleTabs: [Tab] {
-        var tabs: [Tab] = [.overview, .games]
+        var tabs: [Tab] = [.overview]
+        // Second, after Overview (Andy, 2026-09-27, E26): FotMob's order,
+        // replacing N9's "last". ESPN-gated like the roster, so the
+        // fixture-backed UI suites never reach the network through it.
+        if showsRosterTab { tabs.append(.news) }
+        tabs.append(.games)
         // ESPN-only, like the roster: the same backend gate, and the pane
         // says so rather than sitting empty when a season has no numbers.
         if showsRosterTab { tabs.append(.stats) }
@@ -620,10 +625,6 @@ struct TeamPage: View {
         if showsTradesTab { tabs.append(.trades) }
         if showsRosterTab { tabs.append(.roster) }
         tabs.append(.trophies)
-        // Last: the page is about the team's games first (N9). ESPN-gated
-        // like the roster, so the fixture-backed UI suites never reach the
-        // network through it.
-        if showsRosterTab { tabs.append(.news) }
         return tabs
     }
 
@@ -1051,7 +1052,7 @@ struct TeamPage: View {
     private var newsContent: some View {
         VStack(spacing: Spacing.sm) {
             if let stories = currentNews, !stories.isEmpty {
-                TeamNewsList(stories: stories, gameFor: scheduledGame(for:))
+                StoryListCard(stories: stories, gameFor: scheduledGame(for:))
             } else if currentNews != nil {
                 StatusMessage(text: "No \(team.location) stories right now.")
                     .cardSurface()

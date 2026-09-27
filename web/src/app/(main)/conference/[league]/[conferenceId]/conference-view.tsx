@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { conferenceLogoUrl } from "@/lib/conferences";
+import { conferenceLogoUrl, isDivisionRoot, leagueWideId } from "@/lib/conferences";
 import { hasWeeks, seasonYear, seasonYears, type League } from "@/lib/leagues";
 import type { ConferenceStandingsGroup, Game, Team } from "@/lib/types";
 import { HeroHeader } from "@/components/hero-header";
@@ -32,16 +32,21 @@ import {
 } from "@/components/slate-control-row";
 import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
 import { PostseasonSection } from "@/components/postseason-section";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getLeagueNews, getTeamsNews } from "@/lib/api";
 import {
   defaultRound,
   postseasonExhibition,
   postseasonRounds,
 } from "@/lib/postseason";
 
-// Ordered — Standings first and the entry default (FotMob's Leagues order).
+// Ordered — Standings first and the entry default (FotMob's Leagues order),
+// News after Games (iOS E26, 2026-09-27).
 const BASE_TABS: HeroTab[] = [
   { id: "standings", label: "Standings" },
   { id: "games", label: "Games" },
+  { id: "news", label: "News" },
 ];
 
 interface ConferenceViewProps {
@@ -170,6 +175,37 @@ export function ConferenceView({
       : BASE_TABS;
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
 
+  // The News tab (iOS E26). ESPN's news feed takes no group, so a
+  // conference or division is its members' own feeds merged — one request
+  // each, on the tab's first open — and a league's own page, or a college
+  // division's root, is the league's feed.
+  const newsFromLeagueFeed =
+    conferenceId === leagueWideId(league) || isDivisionRoot(conferenceId, league);
+  const newsMembers = useMemo(() => {
+    if (!allTables) return [];
+    const seen = new Set<string>();
+    return tablesAtScope(allTables, conferenceRef, "conference")
+      .flatMap((table) => table.entries)
+      .map((entry) => entry.team.id)
+      .filter((id) => !seen.has(id) && (seen.add(id), true))
+      .map((teamId) => ({ league, teamId }));
+  }, [allTables, conferenceRef, league]);
+  const [newsRequested, setNewsRequested] = useState(false);
+  const newsKey = !newsRequested
+    ? undefined
+    : newsFromLeagueFeed
+      ? `league:${league}`
+      : newsMembers.length > 0
+        ? newsMembers.map((ref) => ref.teamId).sort().join(",")
+        : undefined;
+  const news = useOnDemand(newsKey, () =>
+    newsFromLeagueFeed ? getLeagueNews(league) : getTeamsNews(newsMembers)
+  );
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "news") setNewsRequested(true);
+  };
+
   const selectYear = (year: number) => {
     const query = year === seasonYear(league) ? "" : `?year=${year}`;
     router.push(`/conference/${league}/${conferenceId}${query}`);
@@ -224,11 +260,14 @@ export function ConferenceView({
             {/* The season scopes every tab, so it sits beside the page's
                 identity rather than above one pane's cards (iOS,
                 2026-09-05). */}
-            <SeasonMenuChip
-              value={displayYear}
-              years={seasonYears(league)}
-              onSelect={selectYear}
-            />
+            {/* Stories are today's, whatever season the other tabs show. */}
+            {activeTab !== "news" && (
+              <SeasonMenuChip
+                value={displayYear}
+                years={seasonYears(league)}
+                onSelect={selectYear}
+              />
+            )}
             <FollowPill
               league={league}
               id={String(conferenceId)}
@@ -237,9 +276,9 @@ export function ConferenceView({
             />
           </>
         }
-        tabs={<HeroTabBar tabs={tabs} selected={activeTab} onSelect={setTab} />}
+        tabs={<HeroTabBar tabs={tabs} selected={activeTab} onSelect={selectTab} />}
         controls={
-          activeTab === "postseason" ? (
+          activeTab === "postseason" || activeTab === "news" ? (
             // The Postseason tab brings its own control — the round chips,
             // inside the pane where the bracket is. A second row of chrome
             // above them was just noise.
@@ -336,6 +375,28 @@ export function ConferenceView({
             )}
           </>
         )}
+
+        {activeTab === "news" &&
+          (news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <StoryListCardSkeleton />
+          ) : news.state.value.length > 0 ? (
+            <StoryListCard stories={news.state.value} />
+          ) : (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No {name} stories right now.
+            </section>
+          ))}
 
         {activeTab === "postseason" && (
           <PostseasonSection

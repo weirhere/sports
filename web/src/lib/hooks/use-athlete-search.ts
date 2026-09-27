@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import type { SearchAthlete } from "@/lib/types";
+import type { NewsStory } from "@/lib/news";
 
 /** Long enough that typing a name doesn't fire per letter, short enough
  *  that the players are there by the time the eye reaches them. */
@@ -22,16 +23,19 @@ interface Settled {
   /** The query these athletes answer. */
   query: string;
   athletes: SearchAthlete[];
+  /** The stories the same answer carried, for the News scope (E26). */
+  stories: NewsStory[];
 }
 
 export function useAthleteSearch(text: string): {
   athletes: SearchAthlete[];
+  stories: NewsStory[];
   /** True only while the *current* query is unanswered, so a spinner can't
    *  outlive the query that asked for it. */
   isSearching: boolean;
 } {
   const query = text.trim();
-  const [settled, setSettled] = useState<Settled>({ query: "", athletes: [] });
+  const [settled, setSettled] = useState<Settled>({ query: "", athletes: [], stories: [] });
 
   useEffect(() => {
     if (query.length === 0) return;
@@ -41,11 +45,11 @@ export function useAthleteSearch(text: string): {
         signal: controller.signal,
       })
         .then(
-          (res): Promise<{ athletes?: SearchAthlete[] }> =>
+          (res): Promise<{ athletes?: SearchAthlete[]; stories?: NewsStory[] }> =>
             res.ok ? res.json() : Promise.resolve({})
         )
         .then((data) => {
-          setSettled({ query, athletes: data.athletes ?? [] });
+          setSettled({ query, athletes: data.athletes ?? [], stories: data.stories ?? [] });
         })
         .catch((err: unknown) => {
           if (controller.signal.aborted) return;
@@ -53,7 +57,7 @@ export function useAthleteSearch(text: string): {
           // of search still works, and an error banner over a working team
           // list would be the loudest thing on a screen whose job is speed.
           console.warn("Athlete search failed:", err);
-          setSettled({ query, athletes: [] });
+          setSettled({ query, athletes: [], stories: [] });
         });
     }, SEARCH_DEBOUNCE_MS);
     return () => {
@@ -65,6 +69,10 @@ export function useAthleteSearch(text: string): {
   // A cleared field shows no stale people. Otherwise the last answer stays
   // up until the next one lands, as on iOS — the list fills rather than
   // blinking empty on every keystroke.
-  if (query.length === 0) return { athletes: [], isSearching: false };
-  return { athletes: settled.athletes, isSearching: settled.query !== query };
+  if (query.length === 0) return { athletes: [], stories: [], isSearching: false };
+  return {
+    athletes: settled.athletes,
+    stories: settled.stories,
+    isSearching: settled.query !== query,
+  };
 }

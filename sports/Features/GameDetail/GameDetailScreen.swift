@@ -69,6 +69,13 @@ struct GameDetailScreen: View {
     @State private var seriesFailed = false
     @State private var isLoadingSeries = false
 
+    /// The News tab's stories, and the game they were fetched for — the
+    /// series' guard again. Fetched when the tab first opens: two team
+    /// feeds are two requests most visits never need.
+    @State private var news: [NewsStory]?
+    @State private var newsKey: String?
+    @State private var newsFailed = false
+
     /// The summary, but only if it belongs to the game on screen. Every
     /// card on the page reads through here, so a screen handed a new game
     /// falls back to what the pushed row already knows — the header it has
@@ -99,13 +106,16 @@ struct GameDetailScreen: View {
     /// comparison. Summary keeps every card the screen has always had,
     /// minus Drives, which moved into Plays (2026-09-06); Plays sits in
     /// the middle because chronology comes before rosters, and H2H comes
-    /// last because the history comes after the game itself.
+    /// last because the history comes after the game itself. News sits
+    /// second (Andy, 2026-09-27, E26), the entity pages' order: what's
+    /// being written about the matchup, one swipe from the score.
     private enum Tab: Int, HeroTabItem {
-        case summary, plays, boxScore, headToHead
+        case summary, news, plays, boxScore, headToHead
 
         var title: String {
             switch self {
             case .summary: "Summary"
+            case .news: "News"
             case .plays: "Plays"
             case .boxScore: "Box score"
             case .headToHead: "H2H"
@@ -118,6 +128,10 @@ struct GameDetailScreen: View {
     /// no tab row — exactly as they did before either tab existed.
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.summary]
+        // News reads the two teams' feeds, not the summary, so like H2H
+        // it's there from the first frame. ESPN's only: the fixture and
+        // CFBD feeds have no news endpoint to ask.
+        if hasHeadToHead, client.providesRoster { tabs.append(.news) }
         if let summary {
             if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
             if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
@@ -197,7 +211,7 @@ struct GameDetailScreen: View {
                 // flight and — the case that matters — when the summary
                 // failed outright. A page that can't reach one endpoint
                 // shouldn't hide a tab that doesn't use it.
-                if summary != nil || tab == .headToHead {
+                if summary != nil || tab == .headToHead || tab == .news {
                     Group {
                         // A tab whose data went away between polls falls
                         // back rather than rendering an empty pane.
@@ -212,6 +226,8 @@ struct GameDetailScreen: View {
                             if let summary { playsPane(summary) }
                         case .headToHead:
                             headToHeadPane
+                        case .news:
+                            newsPane
                         case .summary:
                             if let summary { summaryCards(summary) }
                         }
@@ -318,6 +334,11 @@ struct GameDetailScreen: View {
         .task(id: "\(game.routeKey):\(tab == .headToHead)") {
             guard tab == .headToHead else { return }
             await loadSeries()
+        }
+        // The News tab's feeds, on the same terms.
+        .task(id: "\(game.routeKey):\(tab == .news)") {
+            guard tab == .news else { return }
+            await loadNews()
         }
         // The live auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
@@ -784,6 +805,48 @@ struct GameDetailScreen: View {
         }
     }
 
+    /// The News tab: both teams' stories in the rows every News tab uses.
+    @ViewBuilder
+    private var newsPane: some View {
+        Group {
+            if newsKey == game.routeKey, let news, !news.isEmpty {
+                StoryListCard(stories: news)
+            } else if newsKey == game.routeKey, news != nil {
+                StatusMessage(text: "No stories about this matchup right now.")
+                    .cardSurface()
+            } else if newsKey == game.routeKey, newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews(force: true) } })
+                    .cardSurface()
+            } else {
+                ProgressView().padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(Spacing.sm)
+    }
+
+    /// The two teams' own feeds, merged, with the game's own recap or
+    /// preview folded in where the summary carries one — the Summary
+    /// tab's card, listed with everything else about the matchup.
+    private func loadNews(force: Bool = false) async {
+        let key = game.routeKey
+        if newsKey == key, news != nil, !force { return }
+        newsKey = key
+        newsFailed = false
+        let teams = [game.away.team.id, game.home.team.id]
+            .map { FollowKey(league: gameLeague, teamId: $0) }
+        let loaded = await NewsFeedStore.teamsPage(teams)
+        guard game.routeKey == key else { return }
+        if let loaded {
+            let own = summary.flatMap {
+                $0.story(forGame: game.id, status: GameHeaderState.status(game, $0))
+            }
+            news = NewsMapper.forYou([own.map { [$0] } ?? [], loaded])
+        } else {
+            newsFailed = true
+        }
+    }
+
     /// One content card: optional bordered header, then the section's own
     /// rows — the same recipe as the team-page cards.
     private func card(title: String? = nil, subtitle: String? = nil,
@@ -821,6 +884,9 @@ struct GameDetailScreen: View {
             loadedSeries = nil
             seriesKey = nil
             seriesFailed = false
+            news = nil
+            newsKey = nil
+            newsFailed = false
             loadedKey = key
         }
         guard loadedSummary == nil || force else { return }

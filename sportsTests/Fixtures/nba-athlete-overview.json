@@ -1,0 +1,683 @@
+{
+ "news": [
+  {
+   "headline": "Host Jalen Brunson gets assist from Knicks on 'SNL' premiere",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50039929"
+     }
+    }
+   },
+   "type": "HeadlineNews",
+   "id": 50039929,
+   "description": "Jalen Brunson had four of his Knicks teammates -- Karl-Anthony Towns, Mikal Bridges, OG Anunoby and Josh Hart -- in the audience for his monologue Saturday night, in his role as host of \"SNL.\"",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "Mikal Bridges",
+     "type": "athlete",
+     "athleteId": 3147657
+    },
+    {
+     "description": "OG Anunoby",
+     "type": "athlete",
+     "athleteId": 3934719
+    },
+    {
+     "description": "Josh Hart",
+     "type": "athlete",
+     "athleteId": 3062679
+    },
+    {
+     "description": "Karl-Anthony Towns",
+     "type": "athlete",
+     "athleteId": 3136195
+    }
+   ],
+   "published": "2026-09-27T05:09:02.000+00:00"
+  },
+  {
+   "headline": "Knicks' Jalen Brunson cleared after offseason wrist surgery",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50028559"
+     }
+    }
+   },
+   "type": "HeadlineNews",
+   "id": 50028559,
+   "description": "Knicks star guard Jalen Brunson is ready for the 2026-27 season after acknowledging that he underwent left wrist surgery.",
+   "categories": [
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "San Antonio Spurs",
+     "type": "team"
+    }
+   ],
+   "published": "2026-09-25T19:38:28.000+00:00"
+  },
+  {
+   "headline": "Perk voices displeasure about Brunson being outside top 5 of ESPN NBA Rank",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/e5b31838-3190-4baf-b67e-7cdf28ef73b2"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50022493"
+     }
+    }
+   },
+   "type": "Media",
+   "id": 50022493,
+   "description": "Perk voices displeasure about Brunson being outside top 5 of ESPN NBA Rank",
+   "categories": [
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "Kendrick Perkins",
+     "type": "athlete",
+     "athleteId": 2018
+    },
+    {
+     "description": "NBA Today",
+     "type": "series"
+    },
+    {
+     "description": "Verts - Exclude Content",
+     "type": "editorialindicator"
+    }
+   ],
+   "published": "2026-09-24T20:00:37.000+00:00"
+  },
+  {
+   "headline": "Jalen Brunson to guest star on 'Law & Order: SVU' episode in November",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49967701"
+     }
+    }
+   },
+   "type": "Story",
+   "id": 49967701,
+   "description": "NBC announced Thursday that Jalen Brunson will appear in the season's fifth episode, which is scheduled to air Nov. 5.",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    }
+   ],
+   "published": "2026-09-17T23:26:10.000+00:00",
+   "byline": "Associated Press"
+  },
+  {
+   "headline": "Jalen Brunson becomes the latest notable athlete to host 'Saturday Night Live'",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/35761216"
+     }
+    }
+   },
+   "type": "Story",
+   "id": 35761216,
+   "description": "There have been 35 athletes to host the sketch comedy staple, including greats such as Peyton Manning, Derek Jeter and LeBron James.",
+   "categories": [
+    {
+     "description": "daily",
+     "type": "topic"
+    },
+    {
+     "description": "culture",
+     "type": "topic"
+    },
+    {
+     "description": "NFL",
+     "type": "league"
+    },
+    {
+     "description": "MLB",
+     "type": "league"
+    },
+    {
+     "description": "Tom Brady",
+     "type": "athlete",
+     "athleteId": 2330
+    },
+    {
+     "description": "New England Patriots",
+     "type": "team"
+    },
+    {
+     "description": "Kansas City Chiefs",
+     "type": "team"
+    },
+    {
+     "description": "Chicago Bulls",
+     "type": "team"
+    },
+    {
+     "description": "Phoenix Suns",
+     "type": "team"
+    },
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Yankees",
+     "type": "team"
+    },
+    {
+     "description": "Ronda Rousey",
+     "type": "athlete",
+     "athleteId": 2563796
+    },
+    {
+     "description": "Indianapolis Colts",
+     "type": "team"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "Jeremy Willis",
+     "type": "contributor"
+    }
+   ],
+   "published": "2026-09-09T18:20:42.000+00:00",
+   "byline": "Jeremy Willis"
+  },
+  {
+   "headline": "NBA champion Jalen Brunson to host 'Saturday Night Live'",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49881898"
+     }
+    }
+   },
+   "type": "HeadlineNews",
+   "id": 49881898,
+   "description": "Newly crowned NBA champion Jalen Brunson of the New York Knicks will host \"Saturday Night Live\" when the new season begins later this month.",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "news",
+     "type": "topic"
+    }
+   ],
+   "published": "2026-09-10T10:04:21.000+00:00"
+  },
+  {
+   "headline": "Picking the NBA moment that defined the 2025-26 season",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49640211"
+     }
+    }
+   },
+   "type": "Story",
+   "id": 49640211,
+   "description": "ESPN analyst Zach Kram examines the moment from last season that could be remembered for years -- if not decades -- to come.",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "San Antonio Spurs",
+     "type": "team"
+    },
+    {
+     "description": "Victor Wembanyama",
+     "type": "athlete",
+     "athleteId": 5104157
+    },
+    {
+     "description": "Bam Adebayo",
+     "type": "athlete",
+     "athleteId": 4066261
+    },
+    {
+     "description": "OG Anunoby",
+     "type": "athlete",
+     "athleteId": 3934719
+    },
+    {
+     "description": "Shai Gilgeous-Alexander",
+     "type": "athlete",
+     "athleteId": 4278073
+    },
+    {
+     "description": "Nikola Jokic",
+     "type": "athlete",
+     "athleteId": 3112335
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "Zach Kram",
+     "type": "contributor"
+    }
+   ],
+   "published": "2026-08-22T04:47:15.000+00:00",
+   "byline": "Zach Kram"
+  },
+  {
+   "headline": "Team USA Olympic stock watch: Which NBA players are rising, falling?",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49463790"
+     }
+    }
+   },
+   "type": "Story",
+   "id": 49463790,
+   "description": "Whose Olympic stock has risen and fallen? Let's analyze 11 players based on their performances over the second half of the 2025-26 season and postseason.",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Scottie Barnes",
+     "type": "athlete",
+     "athleteId": 4433134
+    },
+    {
+     "description": "Toronto Raptors",
+     "type": "team"
+    },
+    {
+     "description": "Jaden McDaniels",
+     "type": "athlete",
+     "athleteId": 4431671
+    },
+    {
+     "description": "Minnesota Timberwolves",
+     "type": "team"
+    },
+    {
+     "description": "Dylan Harper",
+     "type": "athlete",
+     "athleteId": 5037871
+    },
+    {
+     "description": "San Antonio Spurs",
+     "type": "team"
+    },
+    {
+     "description": "Bam Adebayo",
+     "type": "athlete",
+     "athleteId": 4066261
+    },
+    {
+     "description": "Miami Heat",
+     "type": "team"
+    },
+    {
+     "description": "LeBron James",
+     "type": "athlete",
+     "athleteId": 1966
+    },
+    {
+     "description": "Philadelphia 76ers",
+     "type": "team"
+    },
+    {
+     "description": "Chet Holmgren",
+     "type": "athlete",
+     "athleteId": 4433255
+    },
+    {
+     "description": "Jalen Duren",
+     "type": "athlete",
+     "athleteId": 4433621
+    },
+    {
+     "description": "Detroit Pistons",
+     "type": "team"
+    },
+    {
+     "description": "Charlotte Hornets",
+     "type": "team"
+    },
+    {
+     "description": "Kon Knueppel",
+     "type": "athlete",
+     "athleteId": 5061575
+    },
+    {
+     "description": "Donovan Mitchell",
+     "type": "athlete",
+     "athleteId": 3908809
+    },
+    {
+     "description": "Cleveland Cavaliers",
+     "type": "team"
+    },
+    {
+     "description": "Derrick White",
+     "type": "athlete",
+     "athleteId": 3078576
+    },
+    {
+     "description": "daily",
+     "type": "topic"
+    },
+    {
+     "description": "Zach Kram",
+     "type": "contributor"
+    }
+   ],
+   "published": "2026-07-28T14:27:07.000+00:00",
+   "byline": "Zach Kram"
+  },
+  {
+   "headline": "Roman Reigns, Jalen Brunson raise each other's titles to conclude WWE's Saturday Night's Main Event",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/c73c2a3e-95ee-4135-8480-07d8e2078884"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/49396120"
+     }
+    }
+   },
+   "type": "Media",
+   "id": 49396120,
+   "description": "Roman Reigns, Jalen Brunson raise each other's titles to conclude WWE's Saturday Night's Main Event",
+   "categories": [
+    {
+     "description": "WWE",
+     "type": "league"
+    },
+    {
+     "description": "Pro Wrestling",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "League Boost",
+     "type": "editorialindicator"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "NBA",
+     "type": "league"
+    }
+   ],
+   "published": "2026-07-19T06:59:11.000+00:00"
+  },
+  {
+   "headline": "'Oz the Mentalist' pulls off an impressive feat using the ESPY attendees",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/ce4fd35e-dbf9-43be-a0fb-56967e6b9df3"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/49372693"
+     }
+    }
+   },
+   "type": "Media",
+   "id": 49372693,
+   "description": "'Oz the Mentalist' pulls off an impressive feat using the ESPY attendees",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Karl-Anthony Towns",
+     "type": "athlete",
+     "athleteId": 3136195
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "Myles Garrett",
+     "type": "athlete",
+     "athleteId": 3122132
+    },
+    {
+     "description": "Fernando Mendoza",
+     "type": "athlete",
+     "athleteId": 4837248
+    },
+    {
+     "description": "ESPYS",
+     "type": "socialaccount"
+    }
+   ],
+   "published": "2026-07-16T02:15:18.000+00:00"
+  },
+  {
+   "headline": "Jalen Brunson wins ESPY for 'Best Championship Performance'",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/28177e70-3488-4f3b-a53d-02bc496a1ac7"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/49372050"
+     }
+    }
+   },
+   "type": "Media",
+   "id": 49372050,
+   "description": "Jalen Brunson wins ESPY for 'Best Championship Performance'",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "nba highlight",
+     "type": "topic"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "ESPYS",
+     "type": "socialaccount"
+    }
+   ],
+   "published": "2026-07-16T02:04:22.000+00:00"
+  },
+  {
+   "headline": "Jalen Brunson wins 2026 ESPY award for Best NBA Player",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/467e214b-c237-4dc0-abf2-abdc4fcce86c"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/49369033"
+     }
+    }
+   },
+   "type": "Media",
+   "id": 49369033,
+   "description": "Jalen Brunson wins 2026 ESPY award for Best NBA Player",
+   "categories": [
+    {
+     "description": "2 Star Rating",
+     "type": "editorialindicator"
+    },
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Kendrick Perkins",
+     "type": "athlete",
+     "athleteId": 2018
+    },
+    {
+     "description": "NBA Today",
+     "type": "series"
+    },
+    {
+     "description": "Verts - Exclude Content",
+     "type": "editorialindicator"
+    }
+   ],
+   "published": "2026-07-15T20:15:33.000+00:00"
+  },
+  {
+   "headline": "Jersey worn by Jalen Brunson in G1 of NBA Finals sells for $1M-plus",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49311694"
+     }
+    }
+   },
+   "type": "HeadlineNews",
+   "id": 49311694,
+   "description": "A jersey worn by New York Knicks star point guard Jalen Brunson during Game 1 of the 2026 NBA Finals sold at Sotheby's for $1,024,000 after a 70-bid war Wednesday, a record paid for any Brunson collectible.",
+   "categories": [
+    {
+     "description": "NBA",
+     "type": "league"
+    },
+    {
+     "description": "New York Knicks",
+     "type": "team"
+    },
+    {
+     "description": "Jalen Brunson",
+     "type": "athlete",
+     "athleteId": 3934672
+    },
+    {
+     "description": "news",
+     "type": "topic"
+    },
+    {
+     "description": "Dan Hajducky",
+     "type": "contributor"
+    }
+   ],
+   "published": "2026-07-09T04:24:54.000+00:00",
+   "byline": "Dan Hajducky"
+  }
+ ]
+}
