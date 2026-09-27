@@ -5,7 +5,7 @@
 // leaders. Live games poll every 1s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
-// **Summary / Plays / Box score / H2H**, and a tab only exists where its data
+// **Summary / News / Plays / Box score / H2H**, and a tab only exists where its data
 // does: a game ESPN hasn't filled in shows Summary and the series alone. Plays
 // sits in the middle because chronology comes before rosters, and the Drives
 // card lives inside it: leaving it on Summary would print the same rows in two
@@ -16,7 +16,8 @@
 // there is, and "who usually wins this" is the pre-game question. That does
 // mean a pre-kick page now shows a tab row where it deliberately showed none;
 // a row of two real answers is not the chrome-saying-nothing that rule was
-// written against.
+// written against. News (E26) is the same kind of tab: the two teams' own
+// feeds, fetched when it first opens, second like every entity page's.
 //
 // Desktop splits that into two columns: the game itself on the left, and
 // the context that surrounds it — where it's played, who showed up, what
@@ -29,7 +30,9 @@ import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getHeadToHead } from "@/lib/api";
+import { getHeadToHead, getTeamsNews } from "@/lib/api";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { forYou } from "@/lib/espn/news";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
@@ -105,6 +108,7 @@ export function GameDetailView({
   const hasHeadToHead = awayId !== "" && homeId !== "" && awayId !== homeId;
   const tabs: HeroTab[] = [
     { id: "summary", label: "Summary" },
+    ...(hasHeadToHead ? [{ id: "news", label: "News" }] : []),
     ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
     ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
     ...(hasHeadToHead ? [{ id: "h2h", label: "H2H" }] : []),
@@ -118,13 +122,23 @@ export function GameDetailView({
   // Latched on the tap that opens it rather than watched for afterwards: once
   // asked for it stays asked for, so flipping back costs nothing.
   const [seriesRequested, setSeriesRequested] = useState(false);
+  const [newsRequested, setNewsRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "h2h") setSeriesRequested(true);
+    if (id === "news") setNewsRequested(true);
   };
   const series = useOnDemand(
     seriesRequested ? `${game.league}:${game.id}` : undefined,
     () => getHeadToHead(game.league, game.id)
+  );
+  const newsFeed = useOnDemand(
+    newsRequested ? `${game.league}:${game.id}` : undefined,
+    () =>
+      getTeamsNews([
+        { league: game.league, teamId: awayId },
+        { league: game.league, teamId: homeId },
+      ])
   );
   const hasScoringPlays =
     drives.length > 0
@@ -301,6 +315,35 @@ export function GameDetailView({
       {activeTab === "boxScore" && (
         <BoxScoreList boxScore={boxScore} game={game} />
       )}
+
+      {activeTab === "news" &&
+        (newsFeed.state.status === "failed" ? (
+          <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+            <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+            <button
+              type="button"
+              onClick={newsFeed.reload}
+              className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+            >
+              Retry
+            </button>
+          </section>
+        ) : newsFeed.state.status === "loading" ? (
+          <StoryListCardSkeleton />
+        ) : (
+          // The game's own recap or preview folds in with the feeds —
+          // the Summary tab's card, listed with the rest of the matchup.
+          (() => {
+            const stories = forYou([story ? [story] : [], newsFeed.state.value]);
+            return stories.length > 0 ? (
+              <StoryListCard stories={stories} />
+            ) : (
+              <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+                No stories about this matchup right now.
+              </section>
+            );
+          })()
+        ))}
 
       {activeTab === "h2h" && (
         <HeadToHeadPane

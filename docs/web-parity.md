@@ -878,3 +878,4 @@ sibling below it.
 | 2026-09-27 | Conference page News tab after Games: members' feeds merged, league pages the league feed | **shipped** — `conference-view.tsx`, through `getTeamsNews` / `getLeagueNews` |
 | 2026-09-27 | Top 25 (college football's league page) gains a News tab after Games: the NCAAF feed with the flood top-up | **shipped** — `poll-view.tsx`, through `getLeagueNews` |
 | 2026-09-27 | Player page News tab, second after Profile: the athlete overview's own list | **shipped** — `player-view.tsx`, through `/api/player/{id}/news` |
+| 2026-09-27 | Game page News tab, second after Summary: the two teams' feeds plus the game's own story | **shipped** — `game-detail-view.tsx`, through `getTeamsNews` |

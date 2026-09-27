@@ -90,6 +90,8 @@ FotMob mixes YouTube highlights into its lists. ESPN's `Media` items link out to
 
 FotMob runs Related news under both. ESPN's summary does carry a `news.articles` block, but it's the league feed with no relation to the game: the CFP final fixture (Jan 20) carries a July story about Tennessee's QBs. Labeling it "related" would be false.
 
+*Updated 2026-09-27 (E26):* the game page now has a News tab, but it reads the two teams' own feeds, each filtered to stories about its team, never the summary's `news.articles`. The refusal above stands for that block.
+
 ## Not taking
 
 ### N12 · Don't take · No personalized feed and no news filter sheet.

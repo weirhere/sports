@@ -536,6 +536,7 @@ Andy, 2026-09-27, from FotMob's News screen on Mobbin: "a News bottom nav item t
 - [x] **P2** **News on the conference page**, after Games (Andy, 2026-09-27). Members' own feeds merged; a league's page and a college division's root read the league feed. *(Shipped 2026-09-27, iOS and web. ESPN's `/news` ignores `groups=`, so there was no cheaper source.)*
 - [x] **P2** **News on the player page**, second after Profile (Andy, 2026-09-27). The athlete overview's own `news` list, video dropped; `/news?athlete=` is ignored by ESPN. *(Shipped 2026-09-27, iOS and web.)*
 - [x] **P2** **News on the league pages**, after Games (Andy, 2026-09-27): the pro leagues' own pages via the conference tab, and college football's Top 25 with the NCAAF feed. *(Shipped 2026-09-27, iOS and web.)*
+- [x] **P2** **News on the game page**, second after Summary (Andy, 2026-09-27). The two teams' own feeds merged, with the game's recap or preview folded in; N11's league-feed "Related news" stays refused. *(Shipped 2026-09-27, iOS and web.)*
 - [ ] **P3** **Follow order.** FotMob ranks For you by the order of your favorites; ours are a set. If the Teams tab ever gains drag-to-order (the tables hub has it), For you should follow it.
 
 ## Icebox (deliberately not now)
