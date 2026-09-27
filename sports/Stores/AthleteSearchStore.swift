@@ -72,8 +72,9 @@ final class AthleteSearchStore {
         task = Task { [weak self, client] in
             try? await Task.sleep(for: Self.debounce)
             guard !Task.isCancelled else { return }
-            let found = (try? await client.search(matching: trimmed,
-                                                  limit: Self.limit)) ?? ([], [])
+            // Typed: a bare `([], [])` fallback infers an unlabeled tuple.
+            let found: (athletes: [PlayerIdentity], stories: [NewsStory]) =
+                (try? await client.search(matching: trimmed, limit: Self.limit)) ?? ([], [])
             guard !Task.isCancelled else { return }
             guard let self, self.query == trimmed else { return }
             self.stories = found.stories
