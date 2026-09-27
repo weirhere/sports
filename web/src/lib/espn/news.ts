@@ -49,6 +49,13 @@ export interface EspnNewsFeed {
   articles?: EspnNewsArticle[];
 }
 
+/** The athlete overview's `news` block — ESPN's own list of a player's
+ *  stories, the one per-player source it publishes (`/news?athlete=` is
+ *  ignored and answers with the league feed). */
+export interface EspnAthleteOverviewNews {
+  news?: EspnNewsArticle[];
+}
+
 /** The content API's single story. */
 export interface EspnNewsHeadlines {
   headlines?: EspnNewsArticle[];
@@ -68,6 +75,11 @@ export function teamNewsUrl(league: League, teamId: string): string {
 /** A league's own feed, for the News tab's league pages (E26). */
 export function leagueNewsUrl(league: League): string {
   return `https://site.web.api.espn.com/apis/site/v2/sports/${SPECS[league]}/news?limit=50`;
+}
+
+/** A player's stories, on the athlete endpoints' host (E26). */
+export function playerNewsUrl(league: League, athleteId: string): string {
+  return `https://site.web.api.espn.com/apis/common/v3/sports/${SPECS[league]}/athletes/${athleteId}/overview`;
 }
 
 export function storyUrl(storyId: string): string {
@@ -187,4 +199,15 @@ export function forYou(feeds: NewsStory[][]): NewsStory[] {
     .flat()
     .filter((story) => (seen.has(story.id) ? false : (seen.add(story.id), true)))
     .sort(newestFirst);
+}
+
+/** A player's feed (E26): the types the app shows, each once, newest first.
+ *  ESPN picked these for the player, so no team filter applies. */
+export function playerFeed(dto: EspnAthleteOverviewNews, league: League): NewsStory[] {
+  return forYou([
+    (dto.news ?? [])
+      .map((article) => newsStory(article, league))
+      .filter((story): story is NewsStory => story !== undefined)
+      .map((story) => ({ ...story, body: undefined })),
+  ]);
 }

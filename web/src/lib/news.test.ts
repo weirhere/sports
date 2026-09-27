@@ -6,8 +6,11 @@ import { describe, it, expect } from "vitest";
 import summaryJson from "./espn/__fixtures__/nba-summary-article.json";
 import feedJson from "./espn/__fixtures__/nba-team-news.json";
 import storyJson from "./espn/__fixtures__/nba-news-story.json";
+import overviewJson from "./espn/__fixtures__/nba-athlete-overview.json";
 import {
   forYou,
+  playerFeed,
+  type EspnAthleteOverviewNews,
   isFlooded,
   leagueFeed,
   toppedUp,
@@ -224,5 +227,17 @@ describe("the preview flood (E26)", () => {
       "p2",
       "p1",
     ]);
+  });
+});
+
+describe("a player's News tab (E26)", () => {
+  it("reads the athlete overview's own list, less the video", () => {
+    const dto = overviewJson as EspnAthleteOverviewNews;
+    const stories = playerFeed(dto, "nba");
+    // Brunson's 13, 5 of them video.
+    expect(dto.news).toHaveLength(13);
+    expect(stories).toHaveLength(8);
+    const times = stories.map((story) => story.published ?? "");
+    expect([...times].sort().reverse()).toEqual(times);
   });
 });

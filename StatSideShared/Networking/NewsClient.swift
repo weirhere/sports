@@ -48,6 +48,20 @@ nonisolated struct NewsClient {
         return NewsMapper.leagueFeed(from: dto, league: league)
     }
 
+    /// A player's stories, newest first (E26). From the athlete overview on
+    /// `site.web.api`, the stats clients' host; `/news?athlete=` answers
+    /// with the league feed. Nil when the request failed.
+    @concurrent
+    func playerNews(athleteId: String, league: League) async -> [NewsStory]? {
+        let string = "https://site.web.api.espn.com/apis/common/v3/sports/"
+            + "\(league.sportSegment)/\(league.pathSegment)/athletes/\(athleteId)/overview"
+        guard let url = URL(string: string),
+              let (data, _) = try? await session.data(from: url),
+              let dto = try? JSONDecoder().decode(AthleteOverviewNewsDTO.self, from: data)
+        else { return nil }
+        return NewsMapper.playerFeed(from: dto, league: league)
+    }
+
     /// A feed item's text, and the attribution the feed didn't carry — the
     /// feed has bylines but no `source`, so an AP story lists as nobody's
     /// and reads as AP's once opened. Nil when the request failed or the
@@ -128,6 +142,12 @@ nonisolated enum NewsMapper {
                 if lhsPreview != rhsPreview { return rhsPreview }
                 return (lhs.published ?? .distantPast) > (rhs.published ?? .distantPast)
             }
+    }
+
+    /// A player's feed (E26): the types the app shows, each once, newest
+    /// first. ESPN picked these for the player, so no team filter applies.
+    static func playerFeed(from dto: AthleteOverviewNewsDTO, league: League) -> [NewsStory] {
+        forYou([(dto.news?.elements ?? []).compactMap { story(from: $0, league: league) }])
     }
 
     /// The fewest real stories a league page can show before it asks for

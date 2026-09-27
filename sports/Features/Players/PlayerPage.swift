@@ -16,11 +16,15 @@ struct PlayerPage: View {
     let player: PlayerIdentity
 
     enum Tab: Int, CaseIterable, HeroTabItem {
-        case profile, games, stats, career
+        // News second, after Profile (Andy, 2026-09-27, E26) — the team
+        // page's order. Reverses docs/news.md N13 and BACKLOG's "No player
+        // news, per the charter".
+        case profile, news, games, stats, career
 
         var title: String {
             switch self {
             case .profile: "Profile"
+            case .news: "News"
             case .games: "Games"
             case .stats: "Stats"
             case .career: "Career"
@@ -39,6 +43,10 @@ struct PlayerPage: View {
     /// ESPN's season year the Games tab shows; nil until one is picked,
     /// which asks ESPN for its current one.
     @State private var logSeason: Int?
+    /// The News tab's stories: the athlete overview's own list, fetched on
+    /// the tab's first visit and held for the page.
+    @State private var news: [NewsStory]?
+    @State private var newsFailed = false
 
     init(player: PlayerIdentity) {
         self.player = player
@@ -109,6 +117,11 @@ struct PlayerPage: View {
             guard tab == .games else { return }
             await model.loadLog(season: logSeason)
         }
+        // The stories wait for the News tab, like the game log.
+        .task(id: tab == .news) {
+            guard tab == .news, news == nil else { return }
+            await loadNews()
+        }
     }
 
     @ViewBuilder
@@ -117,6 +130,8 @@ struct PlayerPage: View {
         case .profile:
             if let card = currentSeason { card }
             profileCard
+        case .news:
+            newsPane
         case .games:
             gamesPane
         case .stats:
@@ -146,6 +161,34 @@ struct PlayerPage: View {
             }
         } else {
             ProgressView().padding(.vertical, Spacing.xl)
+        }
+    }
+
+    /// ESPN's own list of this player's stories, in the rows every other
+    /// News tab uses.
+    @ViewBuilder
+    private var newsPane: some View {
+        if let news, !news.isEmpty {
+            StoryListCard(stories: news)
+        } else if news != nil {
+            StatusMessage(text: "No \(shown.name) stories right now.")
+                .cardSurface()
+        } else if newsFailed {
+            StatusMessage(text: "Couldn't load the news.",
+                          retry: { Task { await loadNews() } })
+                .cardSurface()
+        } else {
+            ProgressView().padding(.vertical, Spacing.xl)
+        }
+    }
+
+    private func loadNews() async {
+        newsFailed = false
+        if let loaded = await NewsClient().playerNews(athleteId: player.athleteId,
+                                                      league: player.league) {
+            news = loaded
+        } else {
+            newsFailed = true
         }
     }
 

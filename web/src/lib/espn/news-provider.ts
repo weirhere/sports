@@ -6,6 +6,9 @@ import type { League } from "@/lib/leagues";
 import type { NewsStory } from "@/lib/news";
 import {
   isFlooded,
+  playerFeed,
+  playerNewsUrl,
+  type EspnAthleteOverviewNews,
   leagueFeed,
   leagueNewsUrl,
   newsStory,
@@ -61,6 +64,16 @@ export async function leagueNews(league: League): Promise<NewsStory[]> {
 
 /** How many of the poll's teams top up a flooded page (iOS `topUpCount`). */
 const TOP_UP_COUNT = 10;
+
+/** A player's stories (E26), from the athlete overview. Throws when the
+ *  request failed. */
+export async function playerNews(league: League, athleteId: string): Promise<NewsStory[]> {
+  const data = await fetchJson<EspnAthleteOverviewNews>(
+    playerNewsUrl(league, athleteId),
+    REVALIDATE.feed
+  );
+  return playerFeed(data, league);
+}
 
 /** One story with its text, or undefined for an id that isn't a story the
  *  app shows (video, tickets) or has no text. Throws on a failed request. */

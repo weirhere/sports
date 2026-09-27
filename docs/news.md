@@ -100,7 +100,7 @@ Follows from N1. If a feed ever lands, FotMob's rule is the one to take: rank by
 ### N13 · Don't take · No news on player pages.
 **From FotMob:** R10
 
-FotMob puts a News card at the foot of the player Profile. BACKLOG already answers this one: "No player news, per the charter."
+FotMob puts a News card at the foot of the player Profile. BACKLOG already answers this one: "No player news, per the charter." *(Superseded 2026-09-27, E26: the player page has a News tab, second after Profile.)*
 
 ### N14 · Don't take · No generated summaries.
 **From FotMob:** R11

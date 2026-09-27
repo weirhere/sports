@@ -23,7 +23,8 @@ import Link from "next/link";
 import { HeroHeader } from "@/components/hero-header";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { SeasonMenuChip } from "@/components/season-menu-chip";
-import { getPlayerGameLog } from "@/lib/api";
+import { getPlayerGameLog, getPlayerNews } from "@/lib/api";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
 import {
   espnSeason,
@@ -46,6 +47,8 @@ import { ThisSeasonCard } from "./this-season-card";
 
 const TABS: HeroTab[] = [
   { id: "profile", label: "Profile" },
+  // Second, after Profile (iOS E26, 2026-09-27) — the team page's order.
+  { id: "news", label: "News" },
   { id: "games", label: "Games" },
   { id: "stats", label: "Stats" },
   { id: "career", label: "Career" },
@@ -77,10 +80,16 @@ export function PlayerView({
   // current one. Latched on the tap that opens the tab.
   const [gamesRequested, setGamesRequested] = useState(false);
   const [logSeason, setLogSeason] = useState<number | undefined>();
+  const [newsRequested, setNewsRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "games") setGamesRequested(true);
+    if (id === "news") setNewsRequested(true);
   };
+  const news = useOnDemand(
+    newsRequested ? `${league}:${athleteId}` : undefined,
+    () => getPlayerNews(league, athleteId)
+  );
   const log = useOnDemand(
     gamesRequested ? `${league}:${athleteId}:${logSeason ?? "current"}` : undefined,
     () => getPlayerGameLog(league, athleteId, logSeason)
@@ -137,6 +146,27 @@ export function PlayerView({
             )}
           </>
         )}
+        {activeTab === "news" &&
+          (news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <StoryListCardSkeleton />
+          ) : news.state.value.length > 0 ? (
+            <StoryListCard stories={news.state.value} />
+          ) : (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No {player.name} stories right now.
+            </section>
+          ))}
         {activeTab === "games" && (
           <PlayerGamesPane
             league={league}

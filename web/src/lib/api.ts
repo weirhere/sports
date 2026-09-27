@@ -168,6 +168,12 @@ export async function getTeamsNews(teams: TeamRef[]): Promise<NewsStory[]> {
   return forYou(feeds);
 }
 
+/** A player's stories (E26), newest first. Requested when the player
+ *  page's News tab first opens. */
+export async function getPlayerNews(league: League, athleteId: string): Promise<NewsStory[]> {
+  return fetchJson(`${BASE}/player/${athleteId}/news?league=${league}`);
+}
+
 /** A league's stories for the News tab (E26), newest first, previews last. */
 export async function getLeagueNews(league: League): Promise<NewsStory[]> {
   return fetchJson(`${BASE}/news?league=${league}`);

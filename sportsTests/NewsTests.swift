@@ -164,6 +164,19 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(page.map(\.id) == ["recap", "mich", "iowa-preview", "p2", "p1"])
     }
 
+    @Test func aPlayersFeedIsTheOverviewsOwnList() throws {
+        let dto = try JSONDecoder().decode(AthleteOverviewNewsDTO.self,
+                                           from: fixtureData("nba-athlete-overview"))
+        let stories = NewsMapper.playerFeed(from: dto, league: .nba)
+        // Brunson's 13, less the video.
+        #expect(dto.news?.elements.count == 13)
+        #expect(!stories.isEmpty && stories.count < 13)
+        #expect(stories.allSatisfy { $0.bodyURL != nil })
+        #expect(zip(stories, stories.dropFirst()).allSatisfy {
+            ($0.published ?? .distantPast) >= ($1.published ?? .distantPast)
+        })
+    }
+
     // MARK: - The reader (N4)
 
     @Test func readsTheContentAPIsParagraphs() throws {
