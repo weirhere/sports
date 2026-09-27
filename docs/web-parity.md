@@ -865,8 +865,9 @@ sibling below it.
 | 2026-09-27 | Top 25 hero mark is the trophy, not the league's football | **pending** — `poll-view.tsx`'s hero mark |
 | 2026-09-27 | Every push is by value, so a team page reached from the poll opens its conference and league badges instead of reloading | n/a — a SwiftUI navigation-stack fix; the web's badges are plain links |
 | 2026-09-27 | Trades tab on pro team and league pages: ESPN's transaction sentences verbatim, day cards, "Signings & trades" / "All", this year then last year behind "Show older" | **pending** — the web has no team or league tab for it yet |
-| 2026-09-27 | News attached to games and teams; no News tab, feed or player news (`docs/news.md`) | **pending** — the web has no story surfaces |
-| 2026-09-27 | A final's page leads with its recap; a pre-game page shows its preview after Game info | **pending** — the web game page's summary tab |
-| 2026-09-27 | Stories open in an in-app reader, text-only, ending in follow rows for the tagged teams | **pending** — a `/story/{league}/{id}` route |
-| 2026-09-27 | News is text-only, no photos | **pending** — rides the reader and the rows above |
-| 2026-09-27 | Team page News tab, last, filtered to stories tagging the team and at most one other | **pending** — `HeroHeader` tab on the web team page |
+| 2026-09-27 | News attached to games and teams; no News tab, feed or player news (`docs/news.md`) | **shipped** — no News tab on web either; stories hang off the game and team pages |
+| 2026-09-27 | A final's page leads with its recap; a pre-game page shows its preview after Game info | **shipped** — recap leads the left column; preview follows Game info in the rail |
+| 2026-09-27 | Stories open in an in-app reader, text-only, ending in follow rows for the tagged teams | **differs** — `/story/{league}/{id}`: the page rebuilds the story from ESPN's content API by id, so a shared link works, and its score row is always a link (no game page behind a link to go back to) |
+| 2026-09-27 | News is text-only, no photos | **shipped** |
+| 2026-09-27 | Team page News tab, last, filtered to stories tagging the team and at most one other | **shipped** — last in the web row, fetched on first open via `/api/team/{id}/news` |
+| 2026-09-27 | Web story reader at `/story/{league}/{id}`, times drawn in the browser's zone | **shipped** — web-only; iOS has no URL to rebuild from |

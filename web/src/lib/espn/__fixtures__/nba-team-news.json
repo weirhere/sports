@@ -1,0 +1,2750 @@
+{
+ "header": "NBA News",
+ "articles": [
+  {
+   "id": 50039929,
+   "type": "HeadlineNews",
+   "headline": "Host Jalen Brunson gets assist from Knicks on 'SNL' premiere",
+   "description": "Jalen Brunson had four of his Knicks teammates -- Karl-Anthony Towns, Mikal Bridges, OG Anunoby and Josh Hart -- in the audience for his monologue Saturday night, in his role as host of \"SNL.\"",
+   "lastModified": "2026-09-27T05:09:02Z",
+   "published": "2026-09-27T05:09:02Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    },
+    {
+     "type": "athlete",
+     "description": "Mikal Bridges",
+     "athleteId": 3147657
+    },
+    {
+     "type": "athlete",
+     "description": "OG Anunoby",
+     "athleteId": 3934719
+    },
+    {
+     "type": "athlete",
+     "description": "Josh Hart",
+     "athleteId": 3062679
+    },
+    {
+     "type": "athlete",
+     "description": "Karl-Anthony Towns",
+     "athleteId": 3136195
+    }
+   ],
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50039929"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 48957095,
+   "type": "Story",
+   "headline": "2026 NBA free agency: Grades for offseason signings, extensions",
+   "description": "We're grading the biggest free agent signings and extensions, including Steph's new two-year deal.",
+   "lastModified": "2026-09-26T16:55:13Z",
+   "published": "2026-09-26T16:55:13Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "topic",
+     "description": "nba free agency"
+    },
+    {
+     "type": "topic",
+     "description": "nba trade deadline"
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "athlete",
+     "description": "Trae Young",
+     "athleteId": 4277905
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "athlete",
+     "description": "Austin Reaves",
+     "athleteId": 4066457
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "athlete",
+     "description": "Mark Williams",
+     "athleteId": 4701232
+    },
+    {
+     "type": "athlete",
+     "description": "CJ McCollum",
+     "athleteId": 2490149
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "athlete",
+     "description": "Coby White",
+     "athleteId": 4395651
+    },
+    {
+     "type": "athlete",
+     "description": "Al Horford",
+     "athleteId": 3213
+    },
+    {
+     "type": "athlete",
+     "description": "Jose Alvarado",
+     "athleteId": 4277869
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "athlete",
+     "description": "Andrew Wiggins",
+     "athleteId": 3059319
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "athlete",
+     "description": "Julian Champagnie",
+     "athleteId": 4592479
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "athlete",
+     "description": "Jusuf Nurkic",
+     "athleteId": 3102530
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "athlete",
+     "description": "Ousmane Dieng",
+     "athleteId": 4997526
+    },
+    {
+     "type": "athlete",
+     "description": "Tim Hardaway Jr",
+     "athleteId": 2528210
+    },
+    {
+     "type": "athlete",
+     "description": "Keon Ellis",
+     "athleteId": 4702177
+    },
+    {
+     "type": "athlete",
+     "description": "Luke Kennard",
+     "athleteId": 3913174
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "athlete",
+     "description": "Dean Wade",
+     "athleteId": 3912848
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "athlete",
+     "description": "Marcus Smart",
+     "athleteId": 2990992
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "athlete",
+     "description": "Norman Powell",
+     "athleteId": 2595516
+    },
+    {
+     "type": "athlete",
+     "description": "Sandro Mamukelashvili",
+     "athleteId": 4278580
+    },
+    {
+     "type": "athlete",
+     "description": "Quentin Grimes",
+     "athleteId": 4397014
+    },
+    {
+     "type": "athlete",
+     "description": "Collin Sexton",
+     "athleteId": 4277811
+    },
+    {
+     "type": "athlete",
+     "description": "De'Anthony Melton",
+     "athleteId": 4066436
+    },
+    {
+     "type": "athlete",
+     "description": "Mitchell Robinson",
+     "athleteId": 4351852
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "athlete",
+     "description": "Anfernee Simons",
+     "athleteId": 4351851
+    },
+    {
+     "type": "athlete",
+     "description": "Tari Eason",
+     "athleteId": 4433192
+    },
+    {
+     "type": "athlete",
+     "description": "Victor Wembanyama",
+     "athleteId": 5104157
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "athlete",
+     "description": "Naji Marshall",
+     "athleteId": 4278594
+    },
+    {
+     "type": "athlete",
+     "description": "James Harden",
+     "athleteId": 3992
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "athlete",
+     "description": "Klay Thompson",
+     "athleteId": 6475
+    },
+    {
+     "type": "athlete",
+     "description": "DeMar DeRozan",
+     "athleteId": 3978
+    },
+    {
+     "type": "athlete",
+     "description": "Bennedict Mathurin",
+     "athleteId": 4683634
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "athlete",
+     "description": "Jonathan Kuminga",
+     "athleteId": 4433247
+    },
+    {
+     "type": "athlete",
+     "description": "Amen Thompson",
+     "athleteId": 4684740
+    },
+    {
+     "type": "athlete",
+     "description": "Saddiq Bey",
+     "athleteId": 4397136
+    },
+    {
+     "type": "athlete",
+     "description": "Pelle Larsson",
+     "athleteId": 4601025
+    },
+    {
+     "type": "athlete",
+     "description": "Kawhi Leonard",
+     "athleteId": 6450
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "contributor",
+     "description": "Zach Kram"
+    }
+   ],
+   "byline": "Zach Kram",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/48957095"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50028559,
+   "type": "HeadlineNews",
+   "headline": "Knicks' Jalen Brunson cleared after offseason wrist surgery",
+   "description": "Knicks star guard Jalen Brunson is ready for the 2026-27 season after acknowledging that he underwent left wrist surgery.",
+   "lastModified": "2026-09-25T19:38:28Z",
+   "published": "2026-09-25T19:38:28Z",
+   "categories": [
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    }
+   ],
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50028559"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50022448,
+   "type": "Story",
+   "headline": "NBA Rank 2026: League execs examine top 100 countdown, race for No. 1",
+   "description": "ESPN's NBA Rank 2026 countdown is in the books, but debates are just beginning -- on social media and around the league.",
+   "lastModified": "2026-09-25T14:57:35Z",
+   "published": "2026-09-25T14:57:35Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "contributor",
+     "description": "Ben Golliver"
+    }
+   ],
+   "byline": "Ben Golliver",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50022448"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50022493,
+   "type": "Media",
+   "headline": "Perk voices displeasure about Brunson being outside top 5 of ESPN NBA Rank",
+   "description": "Perk voices displeasure about Brunson being outside top 5 of ESPN NBA Rank",
+   "lastModified": "2026-09-24T20:00:37Z",
+   "published": "2026-09-24T20:00:37Z",
+   "categories": [
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "athlete",
+     "description": "Kendrick Perkins",
+     "athleteId": 2018
+    },
+    {
+     "type": "series",
+     "description": "NBA Today"
+    },
+    {
+     "type": "editorialindicator",
+     "description": "Verts - Exclude Content"
+    }
+   ],
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/e5b31838-3190-4baf-b67e-7cdf28ef73b2"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50022493"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50020500,
+   "type": "Media",
+   "headline": "Why Stephen A. is worried about KAT, Knicks extension talks",
+   "description": "Why Stephen A. is worried about KAT, Knicks extension talks",
+   "lastModified": "2026-09-24T14:58:10Z",
+   "published": "2026-09-24T14:58:10Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "athlete",
+     "description": "Karl-Anthony Towns",
+     "athleteId": 3136195
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "contributor",
+     "description": "Stephen A. Smith"
+    },
+    {
+     "type": "series",
+     "description": "First Take"
+    },
+    {
+     "type": "editorialindicator",
+     "description": "Verts - Exclude Content"
+    }
+   ],
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/bb0102d3-bb8b-41d6-a82e-8e95e4ba00dd"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50020500"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50015167,
+   "type": "Story",
+   "headline": "NBA Rank 2026: The new top 10 features a razor-thin race for No. 1",
+   "description": "Our countdown of the NBA's top 100 players hits its grand finale.",
+   "lastModified": "2026-09-24T20:06:19Z",
+   "published": "2026-09-24T20:06:19Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50015167"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50014879,
+   "type": "Media",
+   "headline": "Why Windy believes KAT-Knicks extension will get done, with one caveat",
+   "description": "Why Windy believes KAT-Knicks extension will get done, with one caveat",
+   "lastModified": "2026-09-23T19:35:32Z",
+   "published": "2026-09-23T19:35:32Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "athlete",
+     "description": "Karl-Anthony Towns",
+     "athleteId": 3136195
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "editorialindicator",
+     "description": "Verts - Exclude Content"
+    },
+    {
+     "type": "contributor",
+     "description": "Brian Windhorst"
+    }
+   ],
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/37ec6f92-8e45-45f7-828b-540b1dab2cda"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50014879"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50014705,
+   "type": "HeadlineNews",
+   "headline": "Sources: Extension talks stall between Knicks, Karl-Anthony Towns",
+   "description": "Extension talks have stagnated between the Knicks and Karl-Anthony Towns, and an agreement is considered unlikely as the team begins camp, sources told ESPN.",
+   "lastModified": "2026-09-23T21:18:51Z",
+   "published": "2026-09-23T21:18:51Z",
+   "categories": [
+    {
+     "type": "athlete",
+     "description": "Karl-Anthony Towns",
+     "athleteId": 3136195
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "topic",
+     "description": "news"
+    },
+    {
+     "type": "contributor",
+     "description": "Shams Charania"
+    },
+    {
+     "type": "contributor",
+     "description": "Vincent Goodwill"
+    }
+   ],
+   "byline": "Shams Charania and Vincent Goodwill",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50014705"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50006617,
+   "type": "Story",
+   "headline": "NBA Rank 2026, players Nos. 50-11: Where LeBron, Steph, KD check in",
+   "description": "Our countdown of the NBA's top 100 players continues. See which stars just missed a spot in the top 10 -- and where three legends land.",
+   "lastModified": "2026-09-24T13:52:31Z",
+   "published": "2026-09-24T13:52:31Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50006617"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 50001310,
+   "type": "Story",
+   "headline": "NBA Rank 2026: Snubs, surprises and reaction from insiders",
+   "description": "Were LeBron, Steph and KD ranked correctly? NBA insiders break down the biggest snubs, surprises and predictions.",
+   "lastModified": "2026-09-23T19:06:57Z",
+   "published": "2026-09-23T19:06:57Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "athlete",
+     "description": "LeBron James",
+     "athleteId": 1966
+    },
+    {
+     "type": "athlete",
+     "description": "Scottie Barnes",
+     "athleteId": 4433134
+    },
+    {
+     "type": "athlete",
+     "description": "Tyrese Haliburton",
+     "athleteId": 4396993
+    },
+    {
+     "type": "athlete",
+     "description": "Walker Kessler",
+     "athleteId": 4433136
+    },
+    {
+     "type": "athlete",
+     "description": "Stephon Castle",
+     "athleteId": 4845367
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Williams",
+     "athleteId": 4593803
+    },
+    {
+     "type": "athlete",
+     "description": "Yaxel Lendeborg",
+     "athleteId": 5175737
+    },
+    {
+     "type": "athlete",
+     "description": "Ausar Thompson",
+     "athleteId": 4684742
+    },
+    {
+     "type": "athlete",
+     "description": "Cooper Flagg",
+     "athleteId": 5041939
+    },
+    {
+     "type": "athlete",
+     "description": "Nikola Jokic",
+     "athleteId": 3112335
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA Insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50001310"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49965238,
+   "type": "Story",
+   "headline": "NBA Rank 2026, players Nos. 100-51: Four rookies make their debuts",
+   "description": "We're revealing our top 100 players in the league for the 2026-27 season. Which players broke into Nos. 100 to 51? Which stars fell?",
+   "lastModified": "2026-09-23T20:04:07Z",
+   "published": "2026-09-23T20:04:07Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "athlete",
+     "description": "Draymond Green",
+     "athleteId": 6589
+    },
+    {
+     "type": "athlete",
+     "description": "Fred VanVleet",
+     "athleteId": 2991230
+    },
+    {
+     "type": "athlete",
+     "description": "Alex Caruso",
+     "athleteId": 2991350
+    },
+    {
+     "type": "athlete",
+     "description": "Paul George",
+     "athleteId": 4251
+    },
+    {
+     "type": "athlete",
+     "description": "Isaiah Hartenstein",
+     "athleteId": 4222252
+    },
+    {
+     "type": "athlete",
+     "description": "Trey Murphy III",
+     "athleteId": 4397688
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Suggs",
+     "athleteId": 4432165
+    },
+    {
+     "type": "athlete",
+     "description": "Zion Williamson",
+     "athleteId": 4395628
+    },
+    {
+     "type": "athlete",
+     "description": "Luguentz Dort",
+     "athleteId": 4397020
+    },
+    {
+     "type": "athlete",
+     "description": "Jaden McDaniels",
+     "athleteId": 4431671
+    },
+    {
+     "type": "athlete",
+     "description": "Brandon Ingram",
+     "athleteId": 3913176
+    },
+    {
+     "type": "athlete",
+     "description": "DeMar DeRozan",
+     "athleteId": 3978
+    },
+    {
+     "type": "athlete",
+     "description": "Norman Powell",
+     "athleteId": 2595516
+    },
+    {
+     "type": "athlete",
+     "description": "Naz Reid",
+     "athleteId": 4396971
+    },
+    {
+     "type": "athlete",
+     "description": "Jrue Holiday",
+     "athleteId": 3995
+    },
+    {
+     "type": "athlete",
+     "description": "Nickeil Alexander-Walker",
+     "athleteId": 4278039
+    },
+    {
+     "type": "athlete",
+     "description": "Walker Kessler",
+     "athleteId": 4433136
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49965238"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49956884,
+   "type": "Story",
+   "headline": "The stat that could swing every NBA team's 2026-27 season",
+   "description": "Let's dive into the trends, storylines and statistical nuggets that could define the NBA season.",
+   "lastModified": "2026-09-21T16:46:33Z",
+   "published": "2026-09-21T16:46:33Z",
+   "categories": [
+    {
+     "type": "topic",
+     "description": "daily"
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "topic",
+     "description": "nba free agency"
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "contributor",
+     "description": "Zach Kram"
+    }
+   ],
+   "byline": "Zach Kram",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49956884"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49956980,
+   "type": "Story",
+   "headline": "New York Knicks offseason recap, early 2026-27 season preview",
+   "description": "The Knicks snapped their 53-year title drought in 2026. What's next for the historic franchise during the 2026-27 season?",
+   "lastModified": "2026-09-18T11:29:46Z",
+   "published": "2026-09-18T11:29:46Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA Insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49956980"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49967767,
+   "type": "HeadlineNews",
+   "headline": "Michael Sweetney, who played for Hoyas, Knicks, Bulls, dies at 43",
+   "description": "Michael Sweetney, who played four seasons in the NBA with the Knicks and Bulls after a standout college career at Georgetown, has died. He was 43.",
+   "lastModified": "2026-09-19T11:44:31Z",
+   "published": "2026-09-19T11:44:31Z",
+   "categories": [
+    {
+     "type": "topic",
+     "description": "news"
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "league",
+     "description": "NCAA Men's Basketball",
+     "leagueId": 41
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Georgetown Hoyas",
+     "teamId": 46
+    },
+    {
+     "type": "team",
+     "description": "Georgetown University",
+     "teamId": 46
+    },
+    {
+     "type": "athlete",
+     "description": "Michael Sweetney",
+     "athleteId": 2175
+    }
+   ],
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49967767"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49967701,
+   "type": "Story",
+   "headline": "Jalen Brunson to guest star on 'Law & Order: SVU' episode in November",
+   "description": "NBC announced Thursday that Jalen Brunson will appear in the season's fifth episode, which is scheduled to air Nov. 5.",
+   "lastModified": "2026-09-17T23:26:10Z",
+   "published": "2026-09-17T23:26:10Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    }
+   ],
+   "byline": "Associated Press",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49967701"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49966211,
+   "type": "HeadlineNews",
+   "headline": "Knicks pause ticket sales after error leads to higher prices",
+   "description": "The Knicks said they are pausing ticket sales after an error caused them to be listed for amounts that were too high.",
+   "lastModified": "2026-09-17T19:23:48Z",
+   "published": "2026-09-17T19:23:48Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "topic",
+     "description": "news"
+    }
+   ],
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49966211"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49894769,
+   "type": "Story",
+   "headline": "NBA Future Power Rankings: Three-year outlooks for all 30 teams",
+   "description": "How does your team look in 2026-27? What about in 2029? NBA insiders unveil the latest rankings, based on five key metrics.",
+   "lastModified": "2026-09-17T20:23:35Z",
+   "published": "2026-09-17T20:23:35Z",
+   "categories": [
+    {
+     "type": "topic",
+     "description": "daily"
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "contributor",
+     "description": "NBA Insiders"
+    }
+   ],
+   "byline": "NBA insiders",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49894769"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49953279,
+   "type": "HeadlineNews",
+   "headline": "Knicks agree to deal with veteran free agent John Konchar",
+   "description": "John Konchar agreed to a one-year deal with the New York Knicks, agent George S. Langberg of GSL Sports Group told ESPN on Tuesday night.",
+   "lastModified": "2026-09-16T11:12:47Z",
+   "published": "2026-09-16T11:12:47Z",
+   "categories": [
+    {
+     "type": "topic",
+     "description": "news"
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "athlete",
+     "description": "John Konchar",
+     "athleteId": 3134932
+    },
+    {
+     "type": "athlete",
+     "description": "Drew Eubanks",
+     "athleteId": 3914285
+    },
+    {
+     "type": "contributor",
+     "description": "Shams Charania"
+    }
+   ],
+   "byline": "Shams Charania",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49953279"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49894591,
+   "type": "Story",
+   "headline": "NBA intel: What to expect at next week's owners' meetings",
+   "description": "The next steps in the Clippers investigation, league expansion and NBA Europe could all be decided next week.",
+   "lastModified": "2026-09-14T12:37:19Z",
+   "published": "2026-09-14T12:37:19Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "contributor",
+     "description": "Brian Windhorst"
+    }
+   ],
+   "byline": "Brian Windhorst",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49894591"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49885469,
+   "type": "Story",
+   "headline": "NBA, Nike announces new 'Specter' uniforms for league's oldest teams",
+   "description": "Each of the uniforms include details inspired by the franchises' history, city heritage and fan culture.",
+   "lastModified": "2026-09-10T20:06:12Z",
+   "published": "2026-09-10T20:06:12Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "contributor",
+     "description": "Anthony Gharib"
+    }
+   ],
+   "byline": "Anthony Gharib",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49885469"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 35761216,
+   "type": "Story",
+   "headline": "Jalen Brunson becomes the latest notable athlete to host 'Saturday Night Live'",
+   "description": "There have been 35 athletes to host the sketch comedy staple, including greats such as Peyton Manning, Derek Jeter and LeBron James.",
+   "lastModified": "2026-09-09T18:20:42Z",
+   "published": "2026-09-09T18:20:42Z",
+   "categories": [
+    {
+     "type": "topic",
+     "description": "daily"
+    },
+    {
+     "type": "topic",
+     "description": "culture"
+    },
+    {
+     "type": "league",
+     "description": "NFL",
+     "leagueId": 28
+    },
+    {
+     "type": "league",
+     "description": "MLB",
+     "leagueId": 10
+    },
+    {
+     "type": "athlete",
+     "description": "Tom Brady",
+     "athleteId": 2330
+    },
+    {
+     "type": "team",
+     "description": "New England Patriots",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Kansas City Chiefs",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Yankees",
+     "teamId": 10
+    },
+    {
+     "type": "athlete",
+     "description": "Ronda Rousey",
+     "athleteId": 2563796
+    },
+    {
+     "type": "team",
+     "description": "Indianapolis Colts",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    },
+    {
+     "type": "contributor",
+     "description": "Jeremy Willis"
+    }
+   ],
+   "byline": "Jeremy Willis",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/35761216"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49881898,
+   "type": "HeadlineNews",
+   "headline": "NBA champion Jalen Brunson to host 'Saturday Night Live'",
+   "description": "Newly crowned NBA champion Jalen Brunson of the New York Knicks will host \"Saturday Night Live\" when the new season begins later this month.",
+   "lastModified": "2026-09-10T10:04:21Z",
+   "published": "2026-09-10T10:04:21Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "athlete",
+     "description": "Jalen Brunson",
+     "athleteId": 3934672
+    },
+    {
+     "type": "topic",
+     "description": "news"
+    }
+   ],
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49881898"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49869446,
+   "type": "Story",
+   "headline": "NBA preview 2026-27: Zach Kram tiers all 30 teams",
+   "description": "Six weeks from NBA opening night, Zach Kram is tiering all 30 teams. Which franchises look like Finals contenders?",
+   "lastModified": "2026-09-09T12:55:29Z",
+   "published": "2026-09-09T12:55:29Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Atlanta Hawks",
+     "teamId": 1
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Brooklyn Nets",
+     "teamId": 17
+    },
+    {
+     "type": "team",
+     "description": "Charlotte Hornets",
+     "teamId": 30
+    },
+    {
+     "type": "team",
+     "description": "Chicago Bulls",
+     "teamId": 4
+    },
+    {
+     "type": "team",
+     "description": "Cleveland Cavaliers",
+     "teamId": 5
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Detroit Pistons",
+     "teamId": 8
+    },
+    {
+     "type": "team",
+     "description": "Golden State Warriors",
+     "teamId": 9
+    },
+    {
+     "type": "team",
+     "description": "Houston Rockets",
+     "teamId": 10
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "LA Clippers",
+     "teamId": 12
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "team",
+     "description": "Memphis Grizzlies",
+     "teamId": 29
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Milwaukee Bucks",
+     "teamId": 15
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "New Orleans Pelicans",
+     "teamId": 3
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Orlando Magic",
+     "teamId": 19
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "team",
+     "description": "Phoenix Suns",
+     "teamId": 21
+    },
+    {
+     "type": "team",
+     "description": "Portland Trail Blazers",
+     "teamId": 22
+    },
+    {
+     "type": "team",
+     "description": "Sacramento Kings",
+     "teamId": 23
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "team",
+     "description": "Toronto Raptors",
+     "teamId": 28
+    },
+    {
+     "type": "team",
+     "description": "Utah Jazz",
+     "teamId": 26
+    },
+    {
+     "type": "team",
+     "description": "Washington Wizards",
+     "teamId": 27
+    },
+    {
+     "type": "contributor",
+     "description": "Zach Kram"
+    }
+   ],
+   "byline": "Zach Kram",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49869446"
+     }
+    }
+   },
+   "premium": false
+  },
+  {
+   "id": 49784053,
+   "type": "Story",
+   "headline": "Ranking the top 10 NBA rivalries to watch in 2026-27 season",
+   "description": "A competitive postseason and buzzy offseason have elevated some of the league's feistiest conflicts.",
+   "lastModified": "2026-09-02T12:06:33Z",
+   "published": "2026-09-02T12:06:33Z",
+   "categories": [
+    {
+     "type": "league",
+     "description": "NBA",
+     "leagueId": 46
+    },
+    {
+     "type": "team",
+     "description": "Oklahoma City Thunder",
+     "teamId": 25
+    },
+    {
+     "type": "team",
+     "description": "Indiana Pacers",
+     "teamId": 11
+    },
+    {
+     "type": "team",
+     "description": "New York Knicks",
+     "teamId": 18
+    },
+    {
+     "type": "team",
+     "description": "San Antonio Spurs",
+     "teamId": 24
+    },
+    {
+     "type": "athlete",
+     "description": "LeBron James",
+     "athleteId": 1966
+    },
+    {
+     "type": "athlete",
+     "description": "Stephen Curry",
+     "athleteId": 3975
+    },
+    {
+     "type": "team",
+     "description": "Dallas Mavericks",
+     "teamId": 6
+    },
+    {
+     "type": "team",
+     "description": "Los Angeles Lakers",
+     "teamId": 13
+    },
+    {
+     "type": "athlete",
+     "description": "Victor Wembanyama",
+     "athleteId": 5104157
+    },
+    {
+     "type": "athlete",
+     "description": "Nikola Jokic",
+     "athleteId": 3112335
+    },
+    {
+     "type": "team",
+     "description": "Miami Heat",
+     "teamId": 14
+    },
+    {
+     "type": "team",
+     "description": "Boston Celtics",
+     "teamId": 2
+    },
+    {
+     "type": "team",
+     "description": "Denver Nuggets",
+     "teamId": 7
+    },
+    {
+     "type": "team",
+     "description": "Minnesota Timberwolves",
+     "teamId": 16
+    },
+    {
+     "type": "team",
+     "description": "Philadelphia 76ers",
+     "teamId": 20
+    },
+    {
+     "type": "contributor",
+     "description": "Zach Kram"
+    }
+   ],
+   "byline": "Zach Kram",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49784053"
+     }
+    }
+   },
+   "premium": false
+  }
+ ]
+}

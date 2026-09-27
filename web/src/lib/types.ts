@@ -3,6 +3,7 @@
 
 import type { LivePhase } from "./format";
 import type { League } from "./leagues";
+import type { NewsStory } from "./news";
 import type { WeekSlot } from "./season";
 
 export type GameStatus =
@@ -456,6 +457,9 @@ export interface GameDetail {
    * where the block is missing, and the page falls back to the fetch.
    */
   matchupStandings?: ConferenceStandingsGroup[];
+  /** The game's own story, text included — the recap once final, the
+   *  preview before kickoff (iOS E25, docs/news.md N2 and N3). */
+  article?: NewsStory;
 }
 
 /**
