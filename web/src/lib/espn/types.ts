@@ -447,6 +447,12 @@ export interface EspnPlay {
   team?: { id?: string };
   start?: EspnPlaySpot;
   end?: EspnPlaySpot;
+  /** Basketball and hockey only. A play with no spot ships -214748340 on
+   *  both axes rather than leaving the field out. */
+  coordinate?: { x?: number; y?: number };
+  shootingPlay?: boolean;
+  /** Hockey's manpower: `abbreviation` is "power-play", "even-strength"… */
+  strength?: { text?: string; abbreviation?: string };
 }
 
 export interface EspnPlaySpot {
@@ -457,6 +463,8 @@ export interface EspnPlaySpot {
   shortDownDistanceText?: string;
   possessionText?: string;
   yardsToEndzone?: number;
+  /** Whose ball it was at this end of the play. */
+  team?: { id?: string };
 }
 
 export interface EspnBoxscoreTeam {
