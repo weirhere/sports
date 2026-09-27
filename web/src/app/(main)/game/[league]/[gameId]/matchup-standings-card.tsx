@@ -5,6 +5,7 @@
 // conference table.
 
 import Link from "next/link";
+import { parentOf } from "@/lib/conferences";
 import { conferencePath } from "@/lib/routes";
 import type {
   ConferenceStanding,
@@ -147,8 +148,12 @@ function StandingRow({ slot }: { slot: Slot }) {
   return (
     <Link
       // League-qualified: group 8 is the SEC here and the AFC in the NFL,
-      // so a bare `/conference/8` is two different tables.
-      href={conferencePath({ league: group.league, id: Number(group.id) })}
+      // so a bare `/conference/8` is two different tables. A division
+      // opens its conference, since divisions have no pages (2026-09-26).
+      href={conferencePath({
+        league: group.league,
+        id: parentOf(Number(group.id), group.league) ?? Number(group.id),
+      })}
       aria-label={spokenSummary(slot)}
       className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-bg-header"
     >

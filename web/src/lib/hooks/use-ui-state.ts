@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { isSameDay } from "@/lib/day";
 import { isValidScoreFilterToken } from "@/lib/game-sections";
+import { foldDivisionTokens } from "@/lib/favorites-migration";
 
 const STORAGE_KEY = "statside.ui.v1";
 
@@ -73,8 +74,13 @@ function sanitize(raw: unknown): StoredUIState {
     isValidScoreFilterToken(record.scoreFilter)
       ? record.scoreFilter
       : null;
+  // Division tokens fold into their conference's, as the follows themselves
+  // do (2026-09-26): a dragged Atlantic keeps its place as the East.
   const tableOrder = Array.isArray(record.tableOrder)
-    ? record.tableOrder.filter((id): id is string => typeof id === "string")
+    ? foldDivisionTokens(
+        record.tableOrder.filter((id): id is string => typeof id === "string"),
+        "conf-"
+      )
     : [];
   const liveOnly = record.liveOnly === true;
   return {

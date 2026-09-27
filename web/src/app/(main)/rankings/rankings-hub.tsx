@@ -7,9 +7,9 @@
 // the Top 25 row — the poll one tap down, so the conferences aren't buried
 // under 25 rank rows — then FBS's eleven conferences and FCS's fourteen,
 // in one card. The pro leagues have no poll at all, so they lead with their
-// own whole-league table and then list **divisions**: a division is the
-// race a team is actually in, where a conference is a seeding pool for a
-// bracket (iOS, 2026-09-09).
+// own whole-league table and then list their **conferences** (iOS,
+// 2026-09-26, reversing 2026-09-09's divisions): a division has no page of
+// its own, and is read stacked inside its conference's.
 //
 // FCS is inside College Football's card, not beside it: the accordions are
 // leagues, and FCS is a division of one, so a card of its own read as a
@@ -27,7 +27,6 @@ import {
   collegeDivision,
 } from "@/lib/conferences";
 import {
-  divisionsIn,
   findTable,
   foldingDivisions,
   followableTables,
@@ -68,7 +67,8 @@ import { FollowCapsuleButton } from "@/components/follow-capsule";
 interface LeaguesHubProps {
   /** The polls, filtered and in picker order (AP first when present). */
   polls: Poll[];
-  /** Each league's tables — divisional for the pro leagues. */
+  /** Each league's tables — divisional for the pro leagues, folded back up
+   * into conferences here. */
   standings: Record<League, ConferenceStandingsGroup[]>;
   /** College football's other division, fetched and failing separately. */
   fcsStandings: ConferenceStandingsGroup[];
@@ -176,7 +176,9 @@ export function LeaguesHub({
 
   /**
    * What a league's accordion holds, league-wide row first: the whole thing
-   * above its parts.
+   * above its parts. The parts are conferences in every league (iOS,
+   * 2026-09-26): the fold in `conferencesIn` is what turns the pro leagues'
+   * divisional fetch back into them.
    */
   const tablesIn = useMemo(() => {
     const cache = {} as Record<League, ConferenceStandingsGroup[]>;
@@ -188,11 +190,11 @@ export function LeaguesHub({
       const wide = leagueTable(conferencesIn[league], league);
       cache[league] = [
         ...(wide ? [wide] : []),
-        ...divisionsIn(standings[league] ?? [], league),
+        ...conferencesIn[league],
       ];
     }
     return cache;
-  }, [collegeTables, conferencesIn, standings]);
+  }, [collegeTables, conferencesIn]);
 
   const rowsIn = useMemo(() => {
     const cache = {} as Record<League, HubRow[]>;
@@ -213,10 +215,9 @@ export function LeaguesHub({
   }, [polls, tablesIn]);
 
   /**
-   * Every table someone could be following, including the conference rows
-   * the accordion no longer lists. A conference follow made before the hub
-   * showed divisions still has a card in Following and still hoists its
-   * section on Scores.
+   * Every table someone could be following. Since divisions left
+   * (2026-09-26) that's what the accordions list, plus college football's
+   * conferences, which its FBS/FCS roots don't repeat.
    */
   const loadedTables = useMemo(
     () =>
@@ -379,10 +380,11 @@ export function LeaguesHub({
           {/* The complete list. Followed rows repeat inside their league —
               sections stay complete, never deduplicated. */}
           {/* Names what's below rather than repeating the tab (iOS,
-              2026-09-21): every table the app has — the four leagues, their
-              conferences, and the divisions inside those. */}
+              2026-09-21): every table the app has — the four leagues and
+              their conferences. Divisions are read inside their
+              conference's page (2026-09-26). */}
           {visibleFollowed.length > 0 && visibleGroups.length > 0 && (
-            <SectionHeading title="All leagues, conferences, divisions" />
+            <SectionHeading title="All leagues and conferences" />
           )}
           {visibleGroups.map(({ league, rows }) => (
             <LeagueAccordion

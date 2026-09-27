@@ -64,7 +64,9 @@ import { followKey } from "@/lib/refs";
  *
  * It was college football's eleven conferences alone until 2026-09-09 — so
  * a search for "AFC East" or "Pacific" found nothing at all, in an app that
- * has shown four leagues since 2.0.
+ * has shown four leagues since 2.0. *
+ * Divisions stay findable after they stopped being pages (2026-09-26); their
+ * rows open the conference that stacks them.
  */
 const CONFERENCE_CORPUS: ConferenceRef[] = LEAGUES.flatMap((league) => {
   const ids = new Set<number>(topLevelIds(league));

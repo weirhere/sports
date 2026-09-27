@@ -7,8 +7,17 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { conferenceLogoUrl, isDivisionRoot, leagueWideId } from "@/lib/conferences";
+import { ChevronRight } from "lucide-react";
+import {
+  conferenceLogoUrl,
+  conferenceName,
+  isDivisionRoot,
+  leagueWideId,
+  rootAbove,
+} from "@/lib/conferences";
+import { conferencePath } from "@/lib/routes";
 import { hasWeeks, seasonYear, seasonYears, type League } from "@/lib/leagues";
 import type { ConferenceStandingsGroup, Game, Team } from "@/lib/types";
 import { HeroHeader } from "@/components/hero-header";
@@ -141,13 +150,11 @@ export function ConferenceView({
     [games, activeTeam?.id]
   );
 
-  // The hero count sums every division, however the tables are sliced.
-  const teamCount = useMemo(() => {
-    if (!allTables) return 0;
-    const own = tablesAtScope(allTables, conferenceRef, "conference");
-    return own.reduce((total, table) => total + table.entries.length, 0);
-  }, [allTables, conferenceRef]);
   const logoUrl = conferenceLogoUrl(conferenceId, league);
+  // The list this page sits inside (iOS, 2026-09-09): a pro league's whole
+  // table, or the college-football division a conference plays in, so the
+  // SEC can say FBS and get there. The roots themselves have none.
+  const parent = rootAbove(conferenceRef);
 
   // The postseason is already in hand: the Games tab fetches the whole
   // season, so splitting the bracket out costs no request. A tab that would
@@ -248,11 +255,19 @@ export function ConferenceView({
           )
         }
         title={name}
+        // The parent league as a link, and nothing else: no page header
+        // carries a team count (iOS, 2026-09-27). The team page's hero has
+        // had this line, one rung up, since it landed.
         subtitle={
-          teamCount > 0 ? (
-            <span className="type-chip-em text-text-secondary">
-              {teamCount} teams
-            </span>
+          parent ? (
+            <Link
+              href={conferencePath(parent)}
+              className="inline-flex items-center gap-1 type-chip-em text-text-secondary transition-colors hover:text-text-primary"
+            >
+              {conferenceName(parent.id, parent.league)}
+              <ChevronRight aria-hidden="true" className="h-3 w-3" />
+              <span className="sr-only">, view league standings</span>
+            </Link>
           ) : undefined
         }
         trailing={
