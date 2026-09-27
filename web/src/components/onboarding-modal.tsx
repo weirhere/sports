@@ -8,7 +8,7 @@
 // are fixed and the search filter skips the follow boost.
 
 import { useMemo, useState } from "react";
-import { Star } from "lucide-react";
+import { FollowCapsule } from "@/components/follow-capsule";
 import {
   Dialog,
   DialogContent,
@@ -177,13 +177,9 @@ function OnboardingTeamRow({ team }: { team: Team }) {
           {team.name}
         </span>
       )}
-      <Star
-        aria-hidden="true"
-        className={cn(
-          "ml-auto h-4 w-4 shrink-0 text-text-primary",
-          followed && "fill-current"
-        )}
-      />
+      <span className="ml-auto shrink-0">
+        <FollowCapsule followed={followed} />
+      </span>
     </button>
   );
 }
