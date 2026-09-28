@@ -47,7 +47,9 @@ struct CoachProfilePane: View {
     }
 
     private var bioRows: [LabeledValueCard.Row] {
-        var rows: [LabeledValueCard.Row] = []
+        // The role leads, as a player's position does in theirs: ESPN only
+        // lists head coaches, so it's the one row every coach has.
+        var rows: [LabeledValueCard.Row] = [.init(label: "Position", value: "Head coach")]
         if let age = profile.age() { rows.append(.init(label: "Age", value: String(age))) }
         if let place = profile.birthPlace { rows.append(.init(label: "Born", value: place)) }
         if let college = profile.college { rows.append(.init(label: "College", value: college)) }

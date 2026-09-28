@@ -887,3 +887,4 @@ sibling below it.
 | 2026-09-27 | Sectioned News: Trending, per-team sections with See more, Latest cards; league pages as one section; reader hero | **shipped** — `news-view.tsx`, `story-section.tsx`, `featured-story.tsx`, `?tab=news` on team, conference and Top 25 pages |
 | 2026-09-27 | Teams and Leagues tabs lose their News tab rows | **shipped** — `teams-list.tsx`, `rankings-hub.tsx` |
 | 2026-09-27 | Coach pages: Roster's Coach card links to Profile / Career / Games from the core API's coach record | **shipped** — `/coach/[league]/[coachId]`, `lib/coach.ts`, `lib/espn/coach.ts`, `roster-list.tsx`; the schedule route takes a `year` |
+| 2026-09-28 | Coach hero drops "Head coach"; it becomes the Profile card's Position row | **shipped** — `coach-view.tsx`, `coach-profile-pane.tsx` |

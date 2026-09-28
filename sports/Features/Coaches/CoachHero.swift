@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The coach page's hero: the photo (or initials) beside the name, over
-/// "Head coach" and the team as a tappable badge — `PlayerPage`'s hero,
-/// for a coach.
+/// the team as a tappable badge — `PlayerPage`'s hero, for a coach. The
+/// role is a Profile row, the way a player's position is (Andy,
+/// 2026-09-28): the hero says who someone is and who they work for.
 struct CoachHero: View {
     let coach: CoachIdentity
     /// Nil until the career loads, and for most coaches after it: ESPN has
@@ -34,10 +35,6 @@ struct CoachHero: View {
 
     private var metaRow: some View {
         HStack(spacing: Spacing.xs) {
-            Text("Head coach")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-                .accessibilityHidden(true)
             // The app's one team name, `PlayerPage.teamBadgeTitle`'s rule.
             if let team = coach.team, !(team.displayName ?? team.location).isEmpty {
                 NavigationLink(value: team) {
@@ -50,7 +47,8 @@ struct CoachHero: View {
     }
 
     private var spokenSummary: String {
-        var parts = [coach.name, "head coach"]
+        // Name and club, what the hero draws — `PlayerIdentity.spokenSummary`.
+        var parts = [coach.name]
         if let team = coach.team?.displayName { parts.append(team) }
         return parts.joined(separator: ", ")
     }

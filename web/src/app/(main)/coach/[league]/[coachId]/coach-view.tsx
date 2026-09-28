@@ -2,7 +2,9 @@
 
 // One head coach's page — iOS `CoachPage`, `CoachHero` and `CoachHeadshot`
 // (Features/Coaches/, E27): a hero of photo-or-initials, name and team
-// badge, over Profile · Career · Games.
+// badge, over Profile · Career · Games. The role is a Profile row, the way a
+// player's position is (Andy, 2026-09-28), so the hero says only who someone
+// is and who they work for.
 //
 // ESPN has a coach photo for 11 of 32 NFL, 9 of 30 NBA, 5 of 32 NHL and no
 // college head coaches (probed 2026-09-27), and only as a 65px JPEG. So the
@@ -48,17 +50,14 @@ export function CoachView({ league, career }: CoachViewProps) {
   return (
     <div>
       <span className="sr-only">
-        {[profile.name, "head coach", team?.name].filter(Boolean).join(", ")}
+        {[profile.name, team?.name].filter(Boolean).join(", ")}
       </span>
       <HeroHeader
         logo={<Headshot name={profile.name} url={profile.headshotUrl} />}
         title={profile.name}
         subtitle={
-          <div className="flex min-w-0 items-center gap-2">
-            <span aria-hidden="true" className="shrink-0 type-meta text-text-secondary">
-              Head coach
-            </span>
-            {teamId && team && (
+          teamId && team ? (
+            <div className="flex min-w-0">
               <Link
                 href={teamPath({ league, id: teamId })}
                 className="flex min-w-0 shrink items-center gap-1.5 rounded-full bg-bg-elevated py-1 pl-1 pr-2.5 type-chip-em text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary"
@@ -76,8 +75,8 @@ export function CoachView({ league, career }: CoachViewProps) {
                 <span className="truncate">{team.name}</span>
                 <span className="sr-only">, view team page</span>
               </Link>
-            )}
-          </div>
+            </div>
+          ) : undefined
         }
         tabs={<HeroTabBar tabs={TABS} selected={activeTab} onSelect={selectTab} />}
       />

@@ -25,7 +25,9 @@ export function CoachProfilePane({ league, profile }: { league: League; profile:
     value: [recordSummary(record), winPercentText(record)].filter(Boolean).join(" · "),
   }));
 
-  const bioRows: LabeledValueRow[] = [];
+  // The role leads, as a player's position does in theirs: ESPN only lists
+  // head coaches, so it's the one row every coach has.
+  const bioRows: LabeledValueRow[] = [{ label: "Position", value: "Head coach" }];
   const age = coachAge(profile.dateOfBirth);
   if (age !== undefined) bioRows.push({ label: "Age", value: String(age) });
   if (profile.birthPlace) bioRows.push({ label: "Born", value: profile.birthPlace });
