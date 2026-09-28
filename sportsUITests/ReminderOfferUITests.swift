@@ -58,7 +58,7 @@ final class ReminderOfferUITests: XCTestCase {
                       "The follow should leave a card on the Teams tab")
         card.tap()
 
-        let bellOn = app.buttons["Kickoff reminders on"]
+        let bellOn = app.buttons["Notifications on"]
         XCTAssertTrue(bellOn.waitForExistence(timeout: 10),
                       "Granting permission should flip the bell on")
     }
