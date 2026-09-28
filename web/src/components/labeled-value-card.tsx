@@ -1,7 +1,7 @@
 // A card of label/value rows — iOS `LabeledValueCard`, and the treatment the
-// Record card already gives a team, so a fact about a player and the same
-// fact about a team read in one language. The Profile card and every Stats
-// tab card are this.
+// Record card already gives a team, so a fact about a player, a coach and a
+// team read in one language. The player's Profile card and every Stats tab
+// card are this, and so are the coach page's Record and Profile (E27).
 
 import { CardHeader } from "@/components/card-header";
 

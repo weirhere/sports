@@ -249,6 +249,20 @@ export async function getAllLeaguesNews(): Promise<NewsStory[]> {
 }
 
 /**
+ * One team's games for a season on our opening-year axis — the coach page's
+ * Games tab (E27). Requested when the tab first opens.
+ */
+export async function getTeamSeasonSchedule(
+  league: League,
+  teamId: string,
+  year: number
+): Promise<Game[]> {
+  const params = new URLSearchParams({ league, year: String(year) });
+  const body = await fetchJson<{ games: Game[] }>(`${BASE}/team/${teamId}/schedule?${params}`);
+  return body.games;
+}
+
+/**
  * One season of a player's games. `season` is ESPN's own year (the ending
  * year for basketball and hockey); undefined asks for ESPN's current one.
  * Requested when the Games tab first opens — most visits never do.

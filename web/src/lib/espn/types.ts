@@ -668,6 +668,8 @@ export interface EspnRosterPosition {
 }
 
 export interface EspnRosterCoach {
+  /** Joins to the core API's `coaches/{id}` (E27, 2026-09-27). */
+  id?: string | number;
   firstName?: string;
   lastName?: string;
 }
