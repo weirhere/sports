@@ -381,7 +381,7 @@ struct TeamPage: View {
             // season chip lives in the pane's pinned row (2026-09-27), so
             // this row is the same three controls on every tab.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                NotificationBell()
+                NotificationBell(team: team)
                 FollowPill(team: team)
                 shareButton
             }

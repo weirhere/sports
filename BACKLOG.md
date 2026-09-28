@@ -562,6 +562,30 @@ Andy, 2026-09-27, from the Roster tab's Coach card: *"profiles for coaches so we
 - [ ] **P2** **The coach data file and its job.** `coaches.json` in the repo, served from statside.co so a hire doesn't need an App Store release, with a bundled copy for offline. A weekly scheduled job pulls the staff templates, diffs against the file and opens a PR for review. Wikipedia text is CC BY-SA, so a Settings credit line ships with it.
 - [ ] **P2** **College-to-pro crosswalk** in the same file: NFL coach id ↔ college football coach id, for the handful who've held both jobs. Check whether Wikidata already carries ESPN coach ids before hand-keying any (a 2026-09-27 probe hit Wikimedia errors before it could tell).
 
+## E28 — The bell opens a notifications sheet
+
+Andy, 2026-09-28, with a FotMob screenshot (Tottenham's "Set notifications" sheet): *"when the notification bell icon is tapped, a sheet that looks like this could open with settings/controls of what notifications the user wants to receive."* FotMob's sheet is a Live Activities switch, a master switch, then a checklist: Started, Half time, Full time, Goals, Red cards, Missed penalty, News, Transfers, Lineup.
+
+**What the app can actually send today is one thing.** Every notification StatSide fires is a local kickoff reminder scheduled from a team's schedule (`NotificationScheduler`, 2026-08-04). Nothing runs while the app is closed, so "Started", "Full time", scoring plays, lineups, news and trades all need a server watching ESPN and a device-token store, which is path 2 in E12, rejected on economics, and the thing E18's membership question is about. A sheet of nine checkboxes where one works would be lying to the fan. So the honest v1 sheet is small:
+
+| FotMob row | StatSide v1 | Why |
+|---|---|---|
+| Live Activities | **Maybe** | Pinning is per game (E12, 2026-09-10), chosen *over* per-team automatic so a four-league follow set doesn't wall the lock screen. A per-team "pin every game" switch reopens that call. |
+| Notifications enabled | **Yes** | `remindersOn`, the state the bell and Settings already share. |
+| Started / Kickoff | **Yes, as "30 min before kickoff"** | The existing reminder. A lead-time choice (15 / 30 / 60 min) is cheap; a *second* reminder per game costs slots under the 24-pending cap. |
+| Half time, Full time, scoring, lineups | **No** | Needs live push. Rows appear only once a backend exists. |
+| News, Transfers | **No** | Same, plus E24 already iced trade alerts for this reason. |
+
+**The decision it reopens.** 2026-08-04 made the bell app-wide and called per-team granularity icebox material. FotMob's sheet is per team (the crest in its title). The bell lives on TeamPage, so a sheet there reads as *this team's* settings whether or not it is.
+
+- [x] **P0** **Decide the three calls** before any code. *(Decided 2026-09-28, Andy: (1) per team; (2) scoring, news and the rest are wanted; (3) turning Live Activities on for a team pins every game it plays. See `docs/decisions.md`.)*
+- [x] **P1** **`TeamNotificationSheet`, presented from `NotificationBell`.** *(Built 2026-09-28, not yet compiled: the session had no Xcode.)* `TeamAlertStore` holds per-team choices, a per-team mute and the pinning set, keyed by follow key; an untouched team reads kickoff-only, so nothing changes for existing followers. The scheduler is handed only the followed teams whose kickoff row is on. The sheet: Live Activities (gated on `isAvailable` and the iOS setting), Follow button when the team isn't followed, the team's switch (asks permission the first time, as the bell did), then `TeamAlertRow` checks. `ReminderOfferUITests` now looks for "Notifications on". Tests: `TeamAlertStoreTests`, `PinnedTeamGamesTests`.
+- [x] **P1** **A team pins every game.** `LiveActivityController.pinGames(of:)` on scene-active and on sheet changes: live games and kickoffs within 6 hours, one card per game. Dormant until E12's `isAvailable` flips.
+- [ ] **P1** **Build and run it.** Xcode 26.6 build, the unit suite, `ReminderOfferUITests` (uninstall first), and a look at the sheet in light and dark with `alerts.service.enabled` on and off, on all four leagues.
+- [ ] **P1** **The alert service: scoring, start, halftime, final, news.** Needs a decision before code, because it changes what the app is. Regular alerts (unlike Live Activity broadcasts) go to **device tokens**, so the Vercel service would store a token plus each device's per-team choices: the first user data StatSide keeps anywhere, a PRIVACY.md rewrite and a new App Store privacy label. The ESPN side is mostly built: the Live Activity broadcast tick already polls every live game. Two options worth weighing: (a) full token store, alerts work with or without a Live Activity; (b) alerts ride the Live Activity broadcast (`alert` in the channel push), no tokens, but only for games with a card, and a broadcast can't honour per-user choices, so it'd need one channel per game per alert mix. News has no game to ride and needs (a) either way. Flip `TeamAlert.serviceIsAvailable` when it's live.
+- [ ] **P2** **Push-to-start for pinning teams.** Today a pinning team's game only gets its card when the app opens within 6 hours of kickoff. Push-to-start (iOS 17.2+) would card it from the server, but its token is per device, which lands in the same token-store decision as the alert service.
+- [ ] **P3** **Turning a team's pin off ends its cards?** Left alone on purpose for now (the game page's pin is how you end one), but worth a second look once it's on a device.
+
 ## Icebox (deliberately not now)
 
 - ~~Widgets~~ / ~~Live Activities~~ *(widgets de-iceboxed 2026-08-04 → E7; Live Activities de-iceboxed 2026-09-05 → E9 as a decision item, and **decided 2026-09-10 → E12 as a build** — the "no push story without a backend" verdict collapsed three paths into one, and only two of them need a server; the one chosen is path 3, broadcast channels, which needs a service holding no user data)*

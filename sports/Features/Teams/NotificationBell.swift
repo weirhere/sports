@@ -1,12 +1,19 @@
 import SwiftUI
 import UIKit
 
-/// The app-wide kickoff-reminder toggle, living beside the follow pill.
-/// Monochrome and weight-driven like the star; denied state routes to the
-/// system's notification settings (the only path once permission is refused).
+/// The team's notifications, living beside the follow pill. A tap opens
+/// `TeamNotificationSheet` (2026-09-28); before that it toggled the one
+/// app-wide kickoff reminder. The glyph says whether *this* team sends
+/// anything. Monochrome and weight-driven like the star; the denied state
+/// still routes straight to the system's notification settings, the only
+/// path once permission is refused.
 struct NotificationBell: View {
+    let team: Team
+
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
+    @Environment(TeamAlertStore.self) private var teamAlerts
+    @State private var showsSheet = false
 
     var body: some View {
         Button {
@@ -18,16 +25,25 @@ struct NotificationBell: View {
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
         .task { await notifications.refreshAuthorization() }
+        .sheet(isPresented: $showsSheet) {
+            TeamNotificationSheet(team: team)
+        }
+    }
+
+    private var isOn: Bool {
+        notifications.remindersOn
+            && following.isFollowing(team)
+            && teamAlerts.sendsAnything(team.followKey, in: team.league)
     }
 
     private var symbol: String {
         if notifications.isDenied { return "bell.slash" }
-        return notifications.remindersOn ? "bell.fill" : "bell"
+        return isOn ? "bell.fill" : "bell"
     }
 
     private var accessibilityLabel: String {
-        if notifications.isDenied { return "Kickoff reminders off. Opens Settings." }
-        return notifications.remindersOn ? "Kickoff reminders on" : "Kickoff reminders off"
+        if notifications.isDenied { return "Notifications off. Opens Settings." }
+        return isOn ? "Notifications on" : "Notifications off"
     }
 
     private func handleTap() async {
@@ -39,10 +55,6 @@ struct NotificationBell: View {
             }
             return
         }
-        if notifications.remindersOn {
-            await notifications.disable()
-        } else {
-            await notifications.requestAndEnable(followedKeys: following.teamKeys)
-        }
+        showsSheet = true
     }
 }
