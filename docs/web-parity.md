@@ -890,3 +890,4 @@ sibling below it.
 | 2026-09-28 | Coach hero drops "Head coach"; it becomes the Profile card's Position row | **shipped** — `coach-view.tsx`, `coach-profile-pane.tsx` |
 | 2026-09-28 | Bell opens a per-team notifications sheet | **n/a** — local notifications and their permission flow |
 | 2026-09-28 | A team can pin every game to the Lock Screen | **n/a** — Live Activities have no web analog |
+| 2026-09-28 | App Store listing names sports, never leagues (4.1(a) rejection) | **n/a** — App Store metadata; the web has no store listing |

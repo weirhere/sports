@@ -14,13 +14,21 @@ NFL joined — a name that names one league is worse than no fallback.
 
 ## Subtitle (30 chars max) ✏️
 
-`CFB, NFL, NBA and NHL scores` (28)
+`Football, basketball, hockey` (28)
+
+**Changed for the 4.1(a) rejection (2.6.1, 2026-09-28).** The old subtitle,
+`CFB, NFL, NBA and NHL scores`, named three leagues' trademarks in an indexed
+field, and 4.1(a) bars that without the leagues' permission. Sport words
+carry no one's mark, and they're what a fan types when they don't already
+know an app's name. What it costs: the `nfl`, `nba`, `nhl` and `cfb` queries
+no longer hit this field, and nothing else in the listing can carry them now.
+Don't put a league name back in any store field (see § 4.1(a) rejection).
 
 Alternates:
-- `CFB, NFL, NBA, NHL at a glance` (30) — keeps the 1.x promise, but sits
-  exactly on the limit, so any counting difference in ASC rejects it
 - `Four leagues, at a glance` (25) — keeps the promise, names nothing, and
   spends no characters on search
+- `Live scores for your teams` (26) — says what the app does, not what it
+  covers
 
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
 exactly what the app covers. Audited again at 2.5.0 and unchanged, for the
@@ -386,9 +394,13 @@ up, fold the still-true bullets into 1.3.1 and drop that one.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Four leagues, one screen. Follow your college football, NFL, NBA and NHL
-> teams, see what's live, and get a reminder 30 minutes before they play.
-> No ads. (155)
+> Four leagues, one screen. Follow your football, basketball and hockey
+> teams, college and pro, see what's live, and get a reminder 30 minutes
+> before they play. No ads. (166)
+
+**Changed for the 4.1(a) rejection (2.6.1, 2026-09-28).** The previous line
+named the NFL, NBA and NHL. Promotional text is metadata even though it
+changes without review, so it goes league-free with everything else.
 
 Rewritten for 2.2.0: the 2.0 line said "Saturday and Sunday", which is two
 days of a week the app now covers most of. "Before they play" replaces
@@ -422,16 +434,16 @@ leagues ever stop being the thing worth saying first; no review needed.
 
 ## Description (4000 chars max) ✏️
 
-> StatSide is college football, the NFL, the NBA and the NHL, at a glance. One
-> screen answers "what's happening right now" — no ads, no interstitials,
+> StatSide is football, basketball and hockey, college and pro, at a glance.
+> One screen answers "what's happening right now" — no ads, no interstitials,
 > nothing between you and the scores.
 >
 > BUILT FOR GAME DAY, ALL YEAR
 > • Your teams first: follow any team in any of the four leagues and their
 >   games lead the page, together
 > • One day at a time, every league stacked — college football broken down
->   the way you think about it, by conference, and the NFL, the NBA and the
->   NHL each in a section of their own
+>   the way you think about it, by conference, and pro football, basketball
+>   and hockey each in a section of their own
 > • Live games get a pulsing dot, heavier type on the score, and possession
 >   where the sport has it
 > • One tap filters to live games, or to the tight ones: close late, or the
@@ -445,9 +457,9 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • Long-press any game to follow a team or share the score
 >
 > LEAGUES, TABLES AND TEAMS
-> • AP Top 25 and Coaches Poll, with movement arrows
-> • Every FBS conference, the FCS, the AFC and NFC and their divisions, and
->   every NBA and NHL division — each table in its own league's terms
+> • The college football Top 25 polls, with movement arrows
+> • Every college conference, and every pro conference and division — each
+>   table in its own league's terms
 > • Game pages: line score, box score, scoring plays, team stats, leaders,
 >   win probability, the head-to-head series, and the plays themselves —
 >   drives for football, periods for basketball and hockey
@@ -469,8 +481,17 @@ leagues ever stop being the thing worth saying first; no review needed.
 >
 > Free. Fast. Four leagues, done right.
 >
-> StatSide is an independent app and is not affiliated with or endorsed by the
-> NFL, the NBA, the NHL, the NCAA, or any conference, team or school.
+> StatSide is an independent app and is not affiliated with or endorsed by any
+> league, conference, team or school.
+
+**Changed for the 4.1(a) rejection (2.6.1, 2026-09-28), in five places,
+all league names:** the opener, the "every league stacked" bullet (pro
+football, basketball and hockey), the polls bullet (no "AP", no "Coaches
+Poll": both are someone's product name), the tables bullet (every college
+and pro conference and division, where it used to list the FBS, FCS, AFC,
+NFC, NBA and NHL), and the disclaimer. The disclaimer used to name the
+NFL, NBA, NHL and NCAA; it still disclaims every one of them, it just
+doesn't print their marks to do it. Features are untouched.
 
 Audited at 2.6.1 and unchanged. The description never named a refresh rate,
 and Hide all, the day swipe and the switches are refinements of surfaces
@@ -521,7 +542,16 @@ data" paragraph is unchanged, because nothing in this release collects any.
 
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
-`college football,scores,live,standings,top 25,ncaaf,basketball,hockey,box score,playoff,afc,nfc` (95)
+`college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops` (95)
+
+**Changed for the 4.1(a) rejection (2.6.1, 2026-09-28).** Out: `ncaaf`,
+`afc` and `nfc`, which are league and conference marks, and `football`,
+`basketball` and `hockey`, which the new subtitle indexes. In: `pro` and
+`college` on their own (the store combines keyword and subtitle words, so
+`pro` + `football` from the subtitle still matches "pro football"),
+`schedule`, `widget`, `stats`, `rankings` and `hoops`. Keep every league,
+conference and team name out of this field for good: it's the one field a
+reviewer reads as intent, since nobody sees it but them.
 
 Don't repeat words already in the name/subtitle — they're indexed
 automatically. That is why `cfb`, `nfl`, `nba` and `nhl` are *not* here: all
@@ -627,6 +657,65 @@ picture of a Sunday morning. `SCREENSHOT_PREGAME` waives the "must have
 scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
+
+### 4.1(a) rejection (2.6.1, build 21) — league names in the metadata
+
+**Rejected 2026-09-28** under Guideline 4.1(a) (Copycats), reviewed on an
+iPad Air 11-inch (M3): "the metadata includes content that resembles one or
+multiple third-party sports teams and/or leagues without the necessary
+authorization." Apple's remedy is either documentary evidence of rights,
+which StatSide doesn't have, or taking the third-party content out of the
+metadata.
+
+The listing had been naming the leagues since 2.0, in every field Apple
+indexes and in the first frame a browser sees. That's the difference between
+describing what an app covers and trading on someone else's name, and
+4.1(a) is written about the second. So every store field now names **sports**
+(football, basketball, hockey, college and pro) and no league, conference,
+poll or team:
+
+| Field | Was | Now |
+|---|---|---|
+| Subtitle | `CFB, NFL, NBA and NHL scores` | `Football, basketball, hockey` |
+| Keywords | `ncaaf`, `afc`, `nfc` | gone (see § Keywords) |
+| Promotional text | "college football, NFL, NBA and NHL teams" | "football, basketball and hockey teams, college and pro" |
+| Description | opener, two bullets and the disclaimer named them | sport words; disclaimer covers "any league, conference, team or school" |
+| `01-hero` headline | "College football, the NFL, the NBA and the NHL." | "Football, basketball and hockey." |
+| `05-rankings` bullet | "AP Top 25 and Coaches Poll" | "The Top 25 polls" |
+| `08-closer` fine print | named the NFL, NBA, NHL and NCAA | "any league, conference, team or school" |
+
+**What was deliberately left alone, and is the next step if this bounces:**
+
+- **Team logos inside the device screens.** Every slate frame shows real
+  team marks (Georgia's G, Michigan's M, the Buccaneers, and so on), because
+  that's what the app draws. Apple's note says "teams and/or leagues", so
+  logos in screenshots are the likeliest second strike. The fix would be a
+  reshoot with a DEBUG screenshot mode that draws each logo as a monogram
+  disc, and it's bigger than a copy edit: the color budget's first exception
+  exists because logos are how the app reads. Andy's call if Apple asks
+  again.
+- **In-app text visible in the frames.** Section headers ("ACC CFB"), the
+  poll's own title ("2026 AP Poll"), team names. That's the app showing
+  factual data, which is what the screenshots are required to show.
+- **The app name.** `StatSide` names nobody.
+- **App Review notes.** They name the four leagues so a reviewer knows what
+  to look for. They aren't public metadata, and hiding from the reviewer
+  what the app covers would be worse than naming it.
+- **What's New.** 2.6.1's notes name no league. Older versions' notes aren't
+  shown on the store.
+- **`docs/social/`'s thread and Story graphics.** Off-store, and 4.1(a) is
+  about the listing. Same reasoning as the 2.3.7 note on "Free."
+
+**No new build needed.** All of it is metadata, so build 21 stands:
+update the fields, upload `01-hero`, `05-rankings` and `08-closer` from both
+marketing folders, and reply in the Resolution Center (§ 4.1(a) rejection —
+Resolution Center reply).
+
+**Rendered off Linux, like the 2.3.7 fix**, with the Inter variable font from
+`@fontsource-variable/inter` standing in for the Dropbox copy. Both sizes are
+exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
+`docs/social/README.md` § Regenerating before upload if the glyphs need to
+match frames 02–07 exactly.
 
 ### 2.6.1: carried forward a fifth time
 
@@ -963,6 +1052,31 @@ the 4.2.2 reply below: don't argue, say what changed.
 >
 > Happy to make any further adjustment if something else in the set reads as a
 > price reference to you.
+
+## 4.1(a) rejection (build 21) — Resolution Center reply ✏️
+
+Sent in-thread in App Store Connect after updating the fields and the three
+screenshots. Same tone as the replies above: don't argue, say what changed.
+
+> Hello, and thank you for the review.
+>
+> We don't hold licenses from the leagues, so we've taken their names out of
+> the metadata instead:
+>
+> • The subtitle now reads "Football, basketball, hockey", with no league
+>   names.
+> • League and conference names are removed from the keywords.
+> • The description and promotional text describe the sports rather than
+>   naming leagues, and the disclaimer now reads "StatSide is an independent
+>   app and is not affiliated with or endorsed by any league, conference,
+>   team or school."
+> • The first screenshot's headline no longer names any league, and league
+>   and poll names are removed from the other screenshot captions.
+>
+> The binary is unchanged, so build 21 is the build we'd like reviewed.
+>
+> If anything else in the listing still reads as third-party content to you,
+> please point us to it and we'll change it.
 
 ## Copyright
 
