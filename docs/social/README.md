@@ -84,6 +84,16 @@ date; the thread and Story closers keep "Free." because they aren't App Store
 metadata and nothing stops an app naming its price off the store. Don't
 "fix" the divergence by syncing them.
 
+**The App Store frames name no league, either.** 2.6.1 was rejected under
+4.1(a) on 2026-09-28 for league names in the metadata, the hero headline
+("College football, the NFL, the NBA and the NHL.") among them. `as-01-hero`
+now reads "Football, basketball and hockey.", `as-05-rankings` says "The Top
+25 polls" rather than "AP Top 25 and Coaches Poll", and `as-08-closer`'s
+disclaimer covers "any league, conference, team or school" without naming
+one. The thread and Story graphics keep their league names; same reasoning
+as "Free." above. Keep league, conference, poll and team names out of every
+`as-*.html` caption.
+
 
 Each `as-*.html` is its `story-*.html` counterpart plus a trailing `<style>`
 block that overrides the stage and the vertical positions. This is a reflow,

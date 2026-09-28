@@ -113,6 +113,13 @@ them is indexed or read by a reviewer.
 3. Review notes matter more than their length suggests — the 4.2.2 rejection
    on build 5 was likely fed by an opener that described the app as displaying
    publicly available scores. Lead with native functionality.
+4. **No league, conference, poll or team names in any public store field or
+   screenshot caption.** 2.6.1 was rejected under 4.1(a) on 2026-09-28 for
+   naming the NFL, NBA and NHL in the subtitle and the hero frame. Name the
+   sports (football, basketball, hockey, college and pro) instead. This beats
+   step 2's "a field that names a subset is a bug": a field that names a
+   league is the worse bug. Review notes are exempt, since only the reviewer
+   reads them. See `docs/appstore/listing.md` § 4.1(a) rejection.
 
 ## Phase 3 — Verify: tests, scoped and serial
 
