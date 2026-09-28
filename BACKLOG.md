@@ -562,6 +562,26 @@ Andy, 2026-09-27, from the Roster tab's Coach card: *"profiles for coaches so we
 - [ ] **P2** **The coach data file and its job.** `coaches.json` in the repo, served from statside.co so a hire doesn't need an App Store release, with a bundled copy for offline. A weekly scheduled job pulls the staff templates, diffs against the file and opens a PR for review. Wikipedia text is CC BY-SA, so a Settings credit line ships with it.
 - [ ] **P2** **College-to-pro crosswalk** in the same file: NFL coach id ↔ college football coach id, for the handful who've held both jobs. Check whether Wikidata already carries ESPN coach ids before hand-keying any (a 2026-09-27 probe hit Wikimedia errors before it could tell).
 
+## E28 — The bell opens a notifications sheet (scoped, not scheduled)
+
+Andy, 2026-09-28, with a FotMob screenshot (Tottenham's "Set notifications" sheet): *"when the notification bell icon is tapped, a sheet that looks like this could open with settings/controls of what notifications the user wants to receive."* FotMob's sheet is a Live Activities switch, a master switch, then a checklist: Started, Half time, Full time, Goals, Red cards, Missed penalty, News, Transfers, Lineup.
+
+**What the app can actually send today is one thing.** Every notification StatSide fires is a local kickoff reminder scheduled from a team's schedule (`NotificationScheduler`, 2026-08-04). Nothing runs while the app is closed, so "Started", "Full time", scoring plays, lineups, news and trades all need a server watching ESPN and a device-token store, which is path 2 in E12, rejected on economics, and the thing E18's membership question is about. A sheet of nine checkboxes where one works would be lying to the fan. So the honest v1 sheet is small:
+
+| FotMob row | StatSide v1 | Why |
+|---|---|---|
+| Live Activities | **Maybe** | Pinning is per game (E12, 2026-09-10), chosen *over* per-team automatic so a four-league follow set doesn't wall the lock screen. A per-team "pin every game" switch reopens that call. |
+| Notifications enabled | **Yes** | `remindersOn`, the state the bell and Settings already share. |
+| Started / Kickoff | **Yes, as "30 min before kickoff"** | The existing reminder. A lead-time choice (15 / 30 / 60 min) is cheap; a *second* reminder per game costs slots under the 24-pending cap. |
+| Half time, Full time, scoring, lineups | **No** | Needs live push. Rows appear only once a backend exists. |
+| News, Transfers | **No** | Same, plus E24 already iced trade alerts for this reason. |
+
+**The decision it reopens.** 2026-08-04 made the bell app-wide and called per-team granularity icebox material. FotMob's sheet is per team (the crest in its title). The bell lives on TeamPage, so a sheet there reads as *this team's* settings whether or not it is.
+
+- [ ] **P0** **Decide the three calls** before any code: (1) is the sheet app-wide (the bell's current meaning, same state as Settings) or per team (a `FollowKey` → preferences map, with the scheduler filtering by it); (2) does it carry a lead-time choice, and does anything besides kickoff ship before a backend; (3) does a Live Activities row belong in it, and if so is it per team, which reverses E12's per-game choice.
+- [ ] **P1** **`NotificationSheet`, presented from `NotificationBell`**, a `.medium` detent sheet on the Settings screen's surface (`bgRecessed` ground, `bgCard` rows, the same ink/green tint rule): master switch, then the rows (1)–(3) decided. Denied permission keeps today's route to iOS Settings from the bell and shows the same row Settings does inside the sheet. Monochrome check rows, no FotMob green (the budget's green is rank movement and dark-mode switch tracks only). Acceptance: the bell's glyph still tells on/off/denied at a glance; the sheet and Settings' switch stay one state; `ReminderOfferUITests` still passes with the bell now opening a sheet instead of toggling.
+- [ ] **P3** **Live-event rows** (started, final, scoring, close game) once E18 decides what the membership buys. They slot into the same sheet; nothing about the v1 layout should assume the list stays short.
+
 ## Icebox (deliberately not now)
 
 - ~~Widgets~~ / ~~Live Activities~~ *(widgets de-iceboxed 2026-08-04 → E7; Live Activities de-iceboxed 2026-09-05 → E9 as a decision item, and **decided 2026-09-10 → E12 as a build** — the "no push story without a backend" verdict collapsed three paths into one, and only two of them need a server; the one chosen is path 3, broadcast channels, which needs a service holding no user data)*
