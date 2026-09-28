@@ -12,7 +12,7 @@
 // empty state here, since the tab row is always drawn (2026-09-25).
 
 import { categoriesWithLines, type PlayerStats } from "@/lib/player-stats";
-import { LabeledValueCard, type LabeledValueRow } from "./labeled-value-card";
+import { LabeledValueCard, type LabeledValueRow } from "@/components/labeled-value-card";
 
 export function PlayerStatsPane({ stats }: { stats: PlayerStats }) {
   const categories = categoriesWithLines(stats);

@@ -1890,7 +1890,9 @@ function transformRosterCoach(
   // `experience` comes as a bare integer with no unit attached. It reads like
   // seasons as a head coach, but ESPN never says so, and a page that guesses
   // at a number is worse than one that omits it.
-  return name ? { name } : undefined;
+  if (!name) return undefined;
+  const id = first.id === undefined ? undefined : String(first.id);
+  return id ? { id, name } : { name };
 }
 
 /**

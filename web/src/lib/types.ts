@@ -634,6 +634,9 @@ export interface RosterGroup {
 }
 
 export interface RosterCoach {
+  /** ESPN's coach id, the key to the coach's page (E27). A coach without
+   *  one is a name and not a link. */
+  id?: string;
   name: string;
 }
 

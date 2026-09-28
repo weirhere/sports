@@ -90,6 +90,13 @@ describe("transformRoster — grouped payloads", () => {
     });
   });
 
+  it("carries the coach's id for the coach page, as a string either way", () => {
+    expect(transformRoster({ coach: [{ id: "4608671", firstName: "Kalen", lastName: "DeBoer" }] }).coach)
+      .toEqual({ id: "4608671", name: "Kalen DeBoer" });
+    expect(transformRoster({ coach: [{ id: 3024, firstName: "JJ", lastName: "Redick" }] }).coach?.id)
+      .toBe("3024");
+  });
+
   it("passes an unrecognized group code through capitalized", () => {
     const roster = transformRoster({
       athletes: [{ position: "taxiSquad", items: [{ id: "1", displayName: "A" }] }],

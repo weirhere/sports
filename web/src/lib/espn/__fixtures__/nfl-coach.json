@@ -1,0 +1,63 @@
+{
+ "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157?lang=en&region=us",
+ "id": "7157",
+ "uid": "s:20~l:28~co:7157",
+ "firstName": "Todd",
+ "lastName": "Bowles",
+ "dateOfBirth": "1963-11-18T08:00Z",
+ "birthPlace": {
+  "city": "Elizabeth",
+  "state": "New Jersey"
+ },
+ "college": {
+  "$ref": "http://sports.core.api.espn.com/v2/colleges/218?lang=en&region=us"
+ },
+ "headshot": {
+  "href": "https://a.espncdn.com/i/headshots/nfl/coaches/65/7157.jpg",
+  "alt": "Todd Bowles"
+ },
+ "team": {
+  "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/teams/27?lang=en&region=us"
+ },
+ "experience": 9,
+ "careerRecords": [
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157/record/0?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157/record/2?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157/record/3?lang=en&region=us"
+  }
+ ],
+ "coachSeasons": [
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2015/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2016/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2017/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2018/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2022/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2023/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2024/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/coaches/7157?lang=en&region=us"
+  },
+  {
+   "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/coaches/7157?lang=en&region=us"
+  }
+ ]
+}

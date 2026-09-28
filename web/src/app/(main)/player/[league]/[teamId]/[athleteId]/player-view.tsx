@@ -39,7 +39,7 @@ import {
   type PlayerStats,
 } from "@/lib/player-stats";
 import type { RosterPlayer } from "@/lib/types";
-import { LabeledValueCard } from "./labeled-value-card";
+import { LabeledValueCard } from "@/components/labeled-value-card";
 import { PlayerCareerPane } from "./player-career-pane";
 import { PlayerGamesPane } from "./player-games-pane";
 import { PlayerStatsPane } from "./player-stats-pane";

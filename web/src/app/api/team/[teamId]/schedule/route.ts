@@ -1,5 +1,6 @@
-// One team's current season, for the browser — what search asks for when a
-// query matched a team (iOS `TeamScheduleSearchStore`, 2026-09-21).
+// One team's season, for the browser — what search asks for when a query
+// matched a team (iOS `TeamScheduleSearchStore`, 2026-09-21), and, with a
+// `year`, the coach page's Games tab (E27, 2026-09-27).
 //
 // The team page renders its schedule server-side and needs no route; search
 // is a client view whose corpus grows as you type, so it needs one. The
@@ -18,7 +19,8 @@ export async function GET(
   const { teamId } = await params;
   // Team ids collide across leagues (5 is UAB and the Browns), so the league
   // rides the request rather than being guessed from the id.
-  const league = parseLeague(new URL(request.url).searchParams.get("league"));
+  const search = new URL(request.url).searchParams;
+  const league = parseLeague(search.get("league"));
   if (!league) {
     return NextResponse.json({ error: "Unknown league" }, { status: 400 });
   }
@@ -26,8 +28,17 @@ export async function GET(
     return NextResponse.json({ error: "Unknown team" }, { status: 400 });
   }
 
+  // A season on our opening-year axis, for the coach page's Games tab
+  // (E27): the seasons a coach held the job are past ones. Absent, it's the
+  // current season, which is all search ever wants.
+  const yearParam = search.get("year");
+  if (yearParam !== null && !/^\d{4}$/.test(yearParam)) {
+    return NextResponse.json({ error: "Unknown season" }, { status: 400 });
+  }
+  const year = yearParam === null ? undefined : Number(yearParam);
+
   try {
-    const schedule = await teamSchedule(league, teamId);
+    const schedule = await teamSchedule(league, teamId, year);
     // The games alone: search draws rows, not a team page, and the rest of
     // the payload would be bytes the browser throws away.
     return NextResponse.json({ games: schedule.games });

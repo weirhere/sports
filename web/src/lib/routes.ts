@@ -29,6 +29,16 @@ export function teamPath(
   return `/team/${team.league}/${id}${query ? `?${query}` : ""}`;
 }
 
+/**
+ * One head coach's page (E27). The league qualifies the id, which ESPN keys
+ * per league. `teamId` is the team the link was followed from, and names the
+ * hero's badge only where ESPN's person record names no team — a coach in
+ * their first season (Marco Sturm, hired 2025) carries none.
+ */
+export function coachPath(league: League, coachId: string, teamId?: string): string {
+  return `/coach/${league}/${coachId}${teamId ? `?team=${teamId}` : ""}`;
+}
+
 export function conferencePath(
   ref: ConferenceRef | { league: League; id: string | number },
   options?: { year?: number; team?: string; tab?: "news" }
