@@ -20,6 +20,10 @@ final class AppStoreScreenshots: XCTestCase {
     func testCaptureStoreScreenshots() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.appearance", "system",
+                                // Every logo and headshot as a gray disc:
+                                // the listing carries no third party's
+                                // marks (4.1(a), 2026-09-29).
+                                "-screenshot.neutralLogos", "YES",
                                 "-ui.onboardingSeen", "YES",
                                 "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", "",

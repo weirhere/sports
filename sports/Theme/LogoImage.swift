@@ -28,6 +28,20 @@ struct LogoImage: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var image: UIImage?
 
+    /// DEBUG-only: every mark and photo draws as a plain gray disc and
+    /// nothing is fetched, so App Store screenshots carry no team's,
+    /// league's or player's image (`-screenshot.neutralLogos YES`, set by
+    /// `AppStoreScreenshots`). Guideline 4.1(a) rejected 2.6.1 twice for
+    /// third-party content in the metadata (2026-09-28, 2026-09-29). Read
+    /// once: an argument-domain override can't change mid-run.
+    static let isNeutral: Bool = {
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "screenshot.neutralLogos")
+        #else
+        return false
+        #endif
+    }()
+
     private var resolvedURL: URL? {
         colorScheme == .dark ? (url?.darkTeamLogoVariant ?? url) : url
     }
@@ -67,9 +81,11 @@ struct LogoImage: View {
     var body: some View {
         // Resolved once per pass: the dark variant is a string rewrite of
         // the URL, and the body used to derive it three times over.
-        let target = resolvedURL
+        let target = Self.isNeutral ? nil : resolvedURL
         Group {
-            if let image = displayImage(for: target) {
+            if Self.isNeutral {
+                Circle().fill(Color.textSecondary.opacity(0.35))
+            } else if let image = displayImage(for: target) {
                 Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
                     .background {
                         if let ground = outlineAgainst,
