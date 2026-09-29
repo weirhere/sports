@@ -120,6 +120,10 @@ them is indexed or read by a reviewer.
    step 2's "a field that names a subset is a bug": a field that names a
    league is the worse bug. Review notes are exempt, since only the reviewer
    reads them. See `docs/appstore/listing.md` § 4.1(a) rejection.
+   **Screenshots too:** a reshoot must come out of `AppStoreScreenshots`,
+   which draws every logo and headshot as a gray disc
+   (`-screenshot.neutralLogos YES`). The second 4.1(a) rejection, on
+   2026-09-29, was the real logos in the frames.
 
 ## Phase 3 — Verify: tests, scoped and serial
 

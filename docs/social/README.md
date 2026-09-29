@@ -94,6 +94,12 @@ one. The thread and Story graphics keep their league names; same reasoning
 as "Free." above. Keep league, conference, poll and team names out of every
 `as-*.html` caption.
 
+**And the device masters under them show no logos.** A second 4.1(a)
+rejection (2026-09-29) followed the text fix, so `AppStoreScreenshots` now
+launches with `-screenshot.neutralLogos YES`, which draws every team,
+conference and league mark and every headshot as a gray disc. Masters shot
+before that date carry real logos and mustn't go back into an `as-*` frame.
+
 
 Each `as-*.html` is its `story-*.html` counterpart plus a trailing `<style>`
 block that overrides the stage and the vertical positions. This is a reflow,

@@ -658,6 +658,58 @@ scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
 
+### 4.1(a) second rejection (2.6.1, build 21) — the logos in the frames
+
+**Rejected again 2026-09-29**, same guideline, same wording ("the issues we
+previously identified still need your attention"). With every text field
+league-free, what was left was inside the phones: real team logos on every
+slate, rankings, box score and team-page frame, and player headshots on
+the team page. That was the "next step if this bounces" the first rejection
+named, and Andy took it.
+
+**The fix: a DEBUG-only neutral mode.** `-screenshot.neutralLogos YES`
+makes `LogoImage` draw every mark (team, conference, league) and every
+headshot as a plain gray disc, and fetch nothing. Every logo in the app goes
+through `LogoImage`, `ConferenceLogo` and `LogoPin` included, so one flag
+covers all of them. `AppStoreScreenshots` passes it. Release builds can't
+read it. The app itself still shows logos in full color; this is only
+about what the listing shows.
+
+**Reshoot, on the Mac (all eight frames):**
+
+1. Run `AppStoreScreenshots` as in § 2.2.0 (`-parallel-testing-enabled NO`,
+   Dynamic Type `large`, the day and follows env knobs). The logo-cache
+   warm-up note doesn't apply any more: nothing is fetched, so one run is
+   enough.
+2. Second run with `SCREENSHOT_DAY` + `SCREENSHOT_PREGAME` for
+   `08-nfl-sunday`.
+3. Copy the masters into `docs/appstore/screenshots/`, check every logo is a
+   gray disc, then re-render all eight `as-*.html` frames at both sizes per
+   `docs/social/README.md` § Regenerating.
+4. In App Store Connect, **replace every frame in both the 6.5" and 6.9"
+   slots**, and check no other device slot (iPad included, since that's
+   where the review ran) still holds an old set. The first resubmission
+   only needed three frames swapped; this one needs all of them, and a
+   leftover old frame in any slot keeps the rejection alive.
+5. Reply in the Resolution Center (§ 4.1(a) second rejection — Resolution
+   Center reply).
+
+**Still in the frames, on purpose:**
+
+- **Team names** ("Georgia", "Texas State"). They're the data the app
+  exists to show, and a scores screenshot without them isn't a screenshot
+  of this app.
+- **In-app league text** in section headers ("ACC - NCAAF", "NFL - AFC")
+  and the poll's subtitle ("2026 AP Poll"). Same reason.
+- **Team colors** in a light-mode team page's header band. A color isn't a
+  mark.
+
+**If it bounces a third time**, the cheapest next lever is dropping
+`04-week` from the upload: it's the NFL Sunday slate, the frame most made
+of one league's teams, and the day strip it sells is also visible in
+`01-hero`. After that it's fully fictional data through the fixture client,
+which is days of work, not hours.
+
 ### 4.1(a) rejection (2.6.1, build 21) — league names in the metadata
 
 **Rejected 2026-09-28** under Guideline 4.1(a) (Copycats), reviewed on an
@@ -1052,6 +1104,22 @@ the 4.2.2 reply below: don't argue, say what changed.
 >
 > Happy to make any further adjustment if something else in the set reads as a
 > price reference to you.
+
+## 4.1(a) second rejection (build 21) — Resolution Center reply ✏️
+
+Sent in-thread after replacing every screenshot. Same tone: say what changed.
+
+> Hello, and thank you for taking another look.
+>
+> Beyond the text changes in our last submission, we've now replaced every
+> screenshot. No team, conference or league logo appears in any of them:
+> each one is drawn as a plain gray circle, and player photos are removed
+> the same way. The captions name no league, conference, poll or team.
+>
+> The binary is unchanged, so build 21 is the build we'd like reviewed.
+>
+> If a specific item still reads as third-party content to you, we'd be
+> grateful if you could name the field or screenshot, and we'll change it.
 
 ## 4.1(a) rejection (build 21) — Resolution Center reply ✏️
 

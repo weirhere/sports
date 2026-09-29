@@ -891,3 +891,4 @@ sibling below it.
 | 2026-09-28 | Bell opens a per-team notifications sheet | **n/a** — local notifications and their permission flow |
 | 2026-09-28 | A team can pin every game to the Lock Screen | **n/a** — Live Activities have no web analog |
 | 2026-09-28 | App Store listing names sports, never leagues (4.1(a) rejection) | **n/a** — App Store metadata; the web has no store listing |
+| 2026-09-29 | App Store screenshots show no logos or headshots (second 4.1(a) rejection) | **n/a** — App Store screenshots and a DEBUG screenshot flag; the web has no store listing |
