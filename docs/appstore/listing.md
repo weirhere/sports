@@ -658,6 +658,41 @@ scores" assertion and stops after the slate, since everything below it needs
 a played game. Reshoot it once the season is under way and it will carry real
 scores.
 
+### 2.3.3 rejection (2.6.1, build 21): no screenshots of the app in use
+
+**Rejected 2026-09-30** under Guideline 2.3.3 (Accurate Metadata), reviewed
+on an iPad Air (5th generation): "The 6.5-inch iPhone screenshots do not
+show the actual app in use." The 4.1(a) logo issue isn't in this notice, so
+it reads as cleared. What tripped it: the logo-bearing frames came out of
+the 6.5" slot while the gray-disc reshoot waited on the Mac, which left
+frames that aren't the app (`07-quiet` is all type, `08-closer` is the icon
+and fine print).
+
+**The fix: neutralize the existing masters instead of reshooting.**
+`scripts/neutralize-screenshot-logos.py` paints a gray disc over every logo
+in the masters, the same disc `-screenshot.neutralLogos YES` draws, and
+turns the logo smudges under the frosted tab bar gray. Frames 01–06 were
+re-rendered at both sizes from those masters, and the plain
+`screenshots-1284x2778/` set was re-made from them too (widget included).
+The Mac reshoot is no longer blocking; it's still the better long-term
+source, since these masters date from 2.0.
+
+**Upload, 6.5" and 6.9" alike, in this order:** `01-hero`, `02-follow`,
+`03-saturdays`, `04-week`, `05-rankings`, `06-boxscore`. **Leave `07-quiet`
+and `08-closer` off.** Apple wants the majority to show the app, and after
+two different rejections on this version, the safe count of non-app frames
+is zero. Every other slot (other iPhone sizes, any iPad slot) either
+inherits these or gets deleted; check "View All Sizes in Media Manager" for
+leftovers. If Apple bounces the marketing frames themselves, upload the
+plain `screenshots-1284x2778/` set instead: it's nothing but the app.
+
+**The faster path Apple offered.** The notice lists 2.3.3 under "Bug Fix
+Submissions": it can be fixed on the next update, and replying that this
+submission includes bug fixes gets 2.6.1 approved as is, with no
+resubmission. 2.6.1 is a bug-fix release (the frozen live score, the
+pull-to-refresh swipe), so it qualifies. Upload the new frames first either
+way, so the listing is right the moment the version goes live.
+
 ### 4.1(a) second rejection (2.6.1, build 21) — the logos in the frames
 
 **Rejected again 2026-09-29**, same guideline, same wording ("the issues we
@@ -1104,6 +1139,22 @@ the 4.2.2 reply below: don't argue, say what changed.
 >
 > Happy to make any further adjustment if something else in the set reads as a
 > price reference to you.
+
+## 2.3.3 rejection (build 21) — Resolution Center reply ✏️
+
+> Hello, and thanks for the review.
+>
+> Version 2.6.1 is a bug-fix release. It fixes live scores freezing on the
+> Scores list and a gesture conflict when swiping between days, and we'd
+> like it approved now under the bug-fix option.
+>
+> We've also uploaded new 6.5-inch and 6.9-inch screenshots. All six show
+> the app in use: the Scores list, a team page, the day strip, the Top 25
+> table and a game's box score. Team and league logos are drawn as plain
+> gray circles, following the earlier 4.1(a) notes on this version. The
+> text-only frames are gone.
+>
+> Thanks again.
 
 ## 4.1(a) second rejection (build 21) — Resolution Center reply ✏️
 

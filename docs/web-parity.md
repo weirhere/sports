@@ -892,3 +892,4 @@ sibling below it.
 | 2026-09-28 | A team can pin every game to the Lock Screen | **n/a** — Live Activities have no web analog |
 | 2026-09-28 | App Store listing names sports, never leagues (4.1(a) rejection) | **n/a** — App Store metadata; the web has no store listing |
 | 2026-09-29 | App Store screenshots show no logos or headshots (second 4.1(a) rejection) | **n/a** — App Store screenshots and a DEBUG screenshot flag; the web has no store listing |
+| 2026-09-30 | App Store frames neutralized in place; text-only frames off the upload (2.3.3 rejection) | **n/a** — App Store screenshots; the web has no store listing |
