@@ -28,16 +28,26 @@ struct CoachPage: View {
     @State private var career: CoachClient.Career?
     @State private var failed = false
     @State private var tab: Tab = .profile
+    @State private var teamHexLoaded: String?
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The team's color in light mode, as on PlayerPage (2026-10-03).
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamHexLoaded ?? HeaderPaint.teamHex(for: coach.team),
+                    colorScheme: colorScheme)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
-                    CoachHero(coach: coach, headshotURL: career?.profile.headshotURL)
-                    HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 })
+                    CoachHero(coach: coach, headshotURL: career?.profile.headshotURL,
+                              paint: headerPaint)
+                    HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 },
+                               ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
                 }
                 .frame(maxWidth: .infinity)
-                .background(Color.bgCard)
+                .background(headerPaint?.background ?? .bgCard)
 
                 VStack(spacing: Spacing.sm) {
                     content
@@ -47,12 +57,13 @@ struct CoachPage: View {
             }
         }
         // The entity pages' header, as on PlayerPage.
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .task(id: coach.team?.followKey) {
+            teamHexLoaded = await HeaderPaint.loadTeamHex(for: coach.team)
+        }
         // Keyed by coach: a destination reused with its state intact would
         // otherwise keep the last coach's career (2026-09-10's rule).
         .task(id: coach.id) {

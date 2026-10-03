@@ -34,13 +34,17 @@ struct HeaderLinkBadge: View {
     /// The label's ink. `textSecondary` on the monochrome surfaces; a team
     /// header in its own color passes the ink it chose for that color.
     var ink: Color = .textSecondary
+    /// The painted ground under the badge, so the crest gets
+    /// `LogoImage`'s white outline when it would blend in — a player's
+    /// team crest on their team's own color (2026-10-03).
+    var logoOutlineAgainst: String? = nil
 
     @ScaledMetric(relativeTo: .caption) private var logoSize: CGFloat = 14
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
             if let logoURL {
-                LogoImage(url: logoURL)
+                LogoImage(url: logoURL, outlineAgainst: logoOutlineAgainst)
                     .frame(width: logoSize, height: logoSize)
                     .accessibilityHidden(true)
             }

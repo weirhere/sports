@@ -11,6 +11,8 @@ struct CoachHero: View {
     /// head coaches (probed 2026-09-27). So the initials are the design and
     /// the photo is the upgrade.
     let headshotURL: URL?
+    /// The team-color ground in light mode; nil is the `bgCard` header.
+    var paint: HeaderPaint? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: Spacing.lg) {
@@ -19,7 +21,7 @@ struct CoachHero: View {
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(coach.name)
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(paint?.ink ?? .textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
                     .accessibilityLabel(spokenSummary)
@@ -38,7 +40,11 @@ struct CoachHero: View {
             // The app's one team name, `PlayerPage.teamBadgeTitle`'s rule.
             if let team = coach.team, !(team.displayName ?? team.location).isEmpty {
                 NavigationLink(value: team) {
-                    HeaderLinkBadge(title: team.displayName ?? team.location, logoURL: team.logoURL)
+                    HeaderLinkBadge(title: team.displayName ?? team.location,
+                                    fill: paint?.badgeFill ?? .bgRecessed,
+                                    logoURL: team.logoURL,
+                                    ink: paint?.secondaryInk ?? .textSecondary,
+                                    logoOutlineAgainst: paint?.hex)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View team page")

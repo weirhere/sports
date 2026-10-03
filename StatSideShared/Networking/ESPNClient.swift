@@ -772,6 +772,14 @@ actor ESPNClient: ScoresProviding {
         return ESPNMapper.teamSchedule(from: regular, extraEvents: extras, league: league)
     }
 
+    /// ESPN's primary color for one team, or nil. The schedule carries it
+    /// too, but that's three requests for one field; this is one, and it
+    /// is cached like any other non-live request.
+    func teamColorHex(teamId: String) async -> String? {
+        let dto: TeamDetailResponseDTO? = try? await fetch(path: "/teams/\(teamId)", query: [])
+        return dto?.team?.color.flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     nonisolated var providesRoster: Bool { true }
 
     func roster(teamId: String) async throws -> TeamRoster {

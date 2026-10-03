@@ -36,6 +36,7 @@ struct PlayerPage: View {
     /// as `player` so the page paints immediately and fills in behind —
     /// there is never a spinner over facts that are already on screen.
     @Environment(TeamDirectoryStore.self) private var directory
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var filled: PlayerIdentity?
     @State private var model: PlayerStatsModel
@@ -47,6 +48,9 @@ struct PlayerPage: View {
     /// the tab's first visit and held for the page.
     @State private var news: [NewsStory]?
     @State private var newsFailed = false
+    /// The team's color once `/teams/{id}` answers, for a door that didn't
+    /// pass through the team page (search, a box score).
+    @State private var teamHexLoaded: String?
 
     init(player: PlayerIdentity) {
         self.player = player
@@ -56,16 +60,26 @@ struct PlayerPage: View {
 
     private var shown: PlayerIdentity { filled ?? player }
 
+    /// The header in the player's team's color, light mode only (Andy,
+    /// 2026-10-03: "player and coach header background colors should be
+    /// the same color as their teams"). TeamPage's paint, borrowed whole;
+    /// nil keeps the `bgCard` header, as in dark mode.
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamHexLoaded ?? HeaderPaint.teamHex(for: shown.team),
+                    colorScheme: colorScheme)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
                     hero
                     HeroTabBar(tabs: Tab.allCases, selection: tab,
-                               onSelect: { tab = $0 })
+                               onSelect: { tab = $0 },
+                               ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
                 }
                 .frame(maxWidth: .infinity)
-                .background(Color.bgCard)
+                .background(headerPaint?.background ?? .bgCard)
 
                 VStack(spacing: Spacing.sm) {
                     tabContent
@@ -80,12 +94,16 @@ struct PlayerPage: View {
         // the hero sitting on that band rather than bare on the recessed
         // ground. TeamPage and ConferencePage have read this way since
         // 2026-08-31; the player page was the one entity page that didn't.
-        .heroTopBand(Color.bgCard)
+        // In light mode the band is the team's color (2026-10-03).
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // Keyed on the team, which search's athlete fetch can resolve
+        // after the page opens.
+        .task(id: shown.team?.followKey) {
+            teamHexLoaded = await HeaderPaint.loadTeamHex(for: shown.team)
+        }
         // Only when the door left the body facts out. Arriving from a
         // roster, every row is already here and the request would buy
         // nothing — the API rules say be a polite guest (Andy, 2026-09-21).
@@ -253,7 +271,7 @@ struct PlayerPage: View {
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(shown.name)
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
                     .accessibilityLabel(shown.spokenSummary)
@@ -288,7 +306,11 @@ struct PlayerPage: View {
                     // filling the badge with the colour behind it — the
                     // exact failure `HeaderLinkBadge`'s own comment warns
                     // about, in the other direction.
-                    HeaderLinkBadge(title: title, logoURL: shown.teamLogoURL)
+                    HeaderLinkBadge(title: title,
+                                    fill: headerPaint?.badgeFill ?? .bgRecessed,
+                                    logoURL: shown.teamLogoURL,
+                                    ink: headerPaint?.secondaryInk ?? .textSecondary,
+                                    logoOutlineAgainst: headerPaint?.hex)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View team page")
@@ -299,7 +321,7 @@ struct PlayerPage: View {
                     // would read as the club trailing a full stop.
                     .accessibilityHidden(true)
                     .font(.meta)
-                    .foregroundStyle(.textSecondary)
+                    .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
                     .lineLimit(1)
             }
         }
