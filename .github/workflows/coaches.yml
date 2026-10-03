@@ -1,0 +1,59 @@
+# Weekly refresh of the football coaching staffs (E27, 2026-10-03).
+#
+# Runs scripts/build-coaches.py, which reads each NFL team's Wikipedia staff
+# template and each FBS team's season article, and opens a PR when a staff
+# changed. Nothing merges on its own: a hire or a firing is a human's call to
+# ship, and Wikipedia vandalism is a thing. Merging deploys
+# web/public/coaches.json to statside.co/coaches.json, which the app reads on
+# launch, so no App Store release is needed.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" on in
+# Settings > Actions > General, or the PR step fails with a 403.
+name: Coaching staffs
+
+on:
+  schedule:
+    # Tuesdays 14:17 UTC: after the weekend's firings have reached Wikipedia.
+    - cron: "17 14 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build coaches.json
+        run: python3 scripts/build-coaches.py 2> build.log; cat build.log
+      - name: Open a PR if a staff changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- web/public/coaches.json sports/Resources/coaches.json; then
+            echo "No staff changes."
+            exit 0
+          fi
+          branch="coaches/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add web/public/coaches.json sports/Resources/coaches.json
+          git commit -m "Update coaching staffs from Wikipedia"
+          git push -u origin "$branch" --force
+          {
+            echo "Weekly coaching-staff refresh from Wikipedia (\`scripts/build-coaches.py\`)."
+            echo
+            echo "Check the diff for anything that looks like vandalism before merging."
+            echo
+            echo '```'
+            grep -E "miss:|wrote" build.log || true
+            echo '```'
+          } > body.md
+          gh pr create --title "Coaching staffs: $(date -u +%Y-%m-%d)" --body-file body.md --base main --head "$branch"

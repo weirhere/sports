@@ -896,3 +896,9 @@ sibling below it.
 | 2026-09-28 | A team can pin every game to the Lock Screen | **n/a** — Live Activities have no web analog |
 | 2026-09-28 | App Store listing names sports, never leagues (4.1(a) rejection) | **n/a** — App Store metadata; the web has no store listing |
 | 2026-09-29 | App Store screenshots show no logos or headshots (second 4.1(a) rejection) | **n/a** — App Store screenshots and a DEBUG screenshot flag; the web has no store listing |
+| 2026-10-03 | Player and coach headers paint in their team's color in light mode (TeamPage's paint; crest outlined when it blends in) | **pending** — waits on the web's team-page paint (2026-09-27, still pending); player and coach heroes are card-colored |
+| 2026-10-03 | Roster's coach row in the player-row layout with an avatar (photo or initials) and "Head coach" as the meta line | **pending** — `roster-list.tsx`'s coach row is still name and role |
+| 2026-10-03 | Career tables (player and coach) lead with the club's logo and name, season beneath | **pending** — web career tables still show season with the club abbreviation |
+| 2026-10-03 | Player Stats tab season chip (every season with a line, latest default) | **pending** — web Stats tab shows the latest season only |
+| 2026-10-03 | Player and coach pages: collapsing header, pinned tabs, name over club in the bar on scroll | **pending** — web player and coach heroes scroll away with no compact title |
+| 2026-10-03 | Roster Coach card lists coordinators, assistant head coach and QB coach from `coaches.json` (Wikipedia, weekly PR job) | **pending** — the web already serves the file (`web/public/coaches.json`) but `roster-list.tsx` doesn't read it yet |
