@@ -898,3 +898,4 @@ sibling below it.
 | 2026-09-29 | App Store screenshots show no logos or headshots (second 4.1(a) rejection) | **n/a** — App Store screenshots and a DEBUG screenshot flag; the web has no store listing |
 | 2026-10-03 | Player and coach headers paint in their team's color in light mode (TeamPage's paint; crest outlined when it blends in) | **pending** — waits on the web's team-page paint (2026-09-27, still pending); player and coach heroes are card-colored |
 | 2026-10-03 | Roster's coach row in the player-row layout with an avatar (photo or initials) and "Head coach" as the meta line | **pending** — `roster-list.tsx`'s coach row is still name and role |
+| 2026-10-03 | Career tables (player and coach) lead with the club's logo and name, season beneath | **pending** — web career tables still show season with the club abbreviation |

@@ -21,20 +21,27 @@ struct PlayerCareerPane: View {
                     title: category.title,
                     columns: category.labels,
                     spokenColumns: category.displayNames,
-                    rows: category.seasons.map { line in
-                        StatTableCard.Row(id: line.id, title: line.label,
-                                          subtitle: club(line), values: line.values)
-                    },
+                    rows: category.seasons.map(row),
                     footer: category.career.isEmpty ? nil
-                        : StatTableCard.Row(id: "career", title: "Career", values: category.career))
+                        : StatTableCard.Row(id: "career", title: "Career", values: category.career),
+                    leadsWithTeam: true)
             }
         }
     }
 
-    /// "KC" — the directory's abbreviation where the club resolves, which it
-    /// won't for a college player's old school outside the fetched divisions.
-    private func club(_ line: PlayerStats.SeasonLine) -> String? {
-        guard let id = line.teamId else { return nil }
-        return directory.team(matching: TeamRef(id: id, league: league))?.abbreviation
+    /// The club's logo and name over the season, FotMob's career row
+    /// (Andy, 2026-10-03). The name is the short one ("Georgia", "Chiefs")
+    /// so the stats still fit beside it. A club the directory can't
+    /// resolve (a college player's old school outside the fetched
+    /// divisions) keeps the payload's own name and an empty logo disc; a
+    /// line with no club at all is titled by its season alone.
+    private func row(_ line: PlayerStats.SeasonLine) -> StatTableCard.Row {
+        let team = line.teamId.flatMap { directory.team(matching: TeamRef(id: $0, league: league)) }
+        guard let name = team.map({ $0.shortDisplayName ?? $0.location }) ?? line.teamName,
+              !name.isEmpty else {
+            return StatTableCard.Row(id: line.id, title: line.label, values: line.values)
+        }
+        return StatTableCard.Row(id: line.id, title: name, subtitle: line.label,
+                                 values: line.values, logoURL: team?.logoURL)
     }
 }

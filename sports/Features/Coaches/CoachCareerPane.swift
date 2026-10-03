@@ -83,12 +83,16 @@ struct CoachCareerPane: View {
             title: "By season",
             columns: columns,
             spokenColumns: columns.map(spoken),
+            // The player Career tab's row (2026-10-03): logo, club, season
+            // beneath.
             rows: profile.seasons.map { season in
-                StatTableCard.Row(id: season.id, title: league.seasonLabel(season.year),
-                                  subtitle: teams[season.teamId]?.abbreviation,
-                                  values: values(season.record))
+                let team = teams[season.teamId]
+                return StatTableCard.Row(id: season.id, title: team?.name ?? league.seasonLabel(season.year),
+                                         subtitle: team == nil ? nil : league.seasonLabel(season.year),
+                                         values: values(season.record), logoURL: team?.logoURL)
             },
-            footer: total.map { StatTableCard.Row(id: "career", title: "Career", values: values($0)) })
+            footer: total.map { StatTableCard.Row(id: "career", title: "Career", values: values($0)) },
+            leadsWithTeam: true)
     }
 
     private func spoken(_ column: String) -> String {

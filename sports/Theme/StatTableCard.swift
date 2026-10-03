@@ -12,9 +12,12 @@ struct StatTableCard: View {
         let id: String
         /// "2025-26".
         let title: String
-        /// "LAL" — the club, beside the season in quieter ink.
+        /// "LAL" — the club, beside the season in quieter ink. Under
+        /// `leadsWithTeam`, the season, beneath the club's name.
         var subtitle: String?
         let values: [String]
+        /// The club's mark, leading the row under `leadsWithTeam`.
+        var logoURL: URL? = nil
     }
 
     let title: String
@@ -25,9 +28,16 @@ struct StatTableCard: View {
     let rows: [Row]
     /// A closing line in heavier ink — ESPN's career totals.
     var footer: Row?
+    /// FotMob's career rows (Andy, 2026-10-03): the club's logo, its name,
+    /// and the season beneath the name, so a career reads as the clubs it
+    /// passed through rather than a column of years with initials beside
+    /// them. The footer keeps the logo's width blank so "Career" lines up
+    /// with the names.
+    var leadsWithTeam = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption) private var statColumnWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,7 +53,8 @@ struct StatTableCard: View {
 
     private var table: some View {
         ScrollView(.horizontal) {
-            Grid(alignment: .leading, horizontalSpacing: Spacing.sm, verticalSpacing: Spacing.xs) {
+            Grid(alignment: .leading, horizontalSpacing: Spacing.sm,
+                 verticalSpacing: leadsWithTeam ? Spacing.sm : Spacing.xs) {
                 GridRow {
                     Text("")
                     ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
@@ -75,7 +86,45 @@ struct StatTableCard: View {
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
     }
 
+    @ViewBuilder
     private func titleCell(_ row: Row, emphasized: Bool) -> some View {
+        if leadsWithTeam {
+            teamTitleCell(row, emphasized: emphasized)
+        } else {
+            inlineTitleCell(row, emphasized: emphasized)
+        }
+    }
+
+    /// Logo, then the club over the season. The footer has no club, so
+    /// its logo slot is empty space and "Career" sits in the names' column.
+    private func teamTitleCell(_ row: Row, emphasized: Bool) -> some View {
+        HStack(spacing: Spacing.sm) {
+            Group {
+                if emphasized {
+                    Color.clear
+                } else {
+                    LogoImage(url: row.logoURL)
+                }
+            }
+            .frame(width: logoSize, height: logoSize)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.title)
+                    .font(emphasized ? .rowNameEmphasis : .rowName)
+                    .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+                if let subtitle = row.subtitle {
+                    Text(subtitle)
+                        .font(.rowMeta.monospacedDigit())
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .fixedSize()
+    }
+
+    private func inlineTitleCell(_ row: Row, emphasized: Bool) -> some View {
         HStack(spacing: Spacing.xs) {
             Text(row.title)
                 .font(emphasized ? .rowNameEmphasis : .rowName)
