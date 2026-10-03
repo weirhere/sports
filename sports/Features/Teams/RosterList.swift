@@ -21,6 +21,10 @@ struct RosterList: View {
     /// name of the team it was reached through, and a roster belongs to one.
     let team: Team
 
+    /// Optional so a host that never injected it (a preview) draws the
+    /// head coach alone rather than crashing.
+    @Environment(CoachStaffStore.self) private var coachStaff: CoachStaffStore?
+
     var body: some View {
         VStack(spacing: Spacing.sm) {
             if let coach = roster.coach {
@@ -32,22 +36,35 @@ struct RosterList: View {
         }
     }
 
-    /// A link to the coach's page when ESPN sent an id (E27, 2026-09-27),
-    /// the plain row it always was when it didn't.
+    /// The head coach — a link to their page when ESPN sent an id (E27,
+    /// 2026-09-27) — then the coordinators and quarterbacks coach from
+    /// `coaches.json` (2026-10-03), in its order: offense, defense, special
+    /// teams, assistant head coach, quarterbacks.
     private func coachCard(_ coach: RosterCoach) -> some View {
-        VStack(spacing: 0) {
-            CardHeader(title: "Coach")
+        let staff = coachStaff?.staff(for: team) ?? []
+        return VStack(spacing: 0) {
+            CardHeader(title: staff.isEmpty ? "Coach" : "Coaching staff")
             if let id = coach.id {
                 NavigationLink(value: CoachIdentity(coachId: id, name: coach.name,
                                                     league: league, team: team)) {
-                    RosterCoachRow(coach: coach, league: league, isLink: true)
+                    headCoachRow(coach, isLink: true)
                 }
                 .buttonStyle(.plain)
             } else {
-                RosterCoachRow(coach: coach, league: league)
+                headCoachRow(coach, isLink: false)
+            }
+            ForEach(staff, id: \.self) { member in
+                Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
+                RosterCoachRow(name: member.name, role: member.role)
             }
         }
+        .padding(.bottom, staff.isEmpty ? 0 : Spacing.xs)
         .cardSurface()
+    }
+
+    private func headCoachRow(_ coach: RosterCoach, isLink: Bool) -> some View {
+        RosterCoachRow(name: coach.name, role: "Head coach",
+                       headshotURL: coach.headshotURL(in: league), isLink: isLink)
     }
 
     private func groupCard(_ group: RosterGroup) -> some View {

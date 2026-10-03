@@ -1,0 +1,2473 @@
+{
+ "leagues": {
+  "college-football": {
+   "113": {
+    "source": "https://en.wikipedia.org/wiki/UMass_Minutemen_football",
+    "staff": [
+     {
+      "name": "Shane Montgomery",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Keith Dudzinski",
+      "role": "Co-defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Ben Albert",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "12": {
+    "source": "https://en.wikipedia.org/wiki/2026_Arizona_Wildcats_football_team",
+    "staff": [
+     {
+      "name": "Seth Doege",
+      "role": "Offensive coordinator/quarterbacks coach"
+     },
+     {
+      "name": "Danny Gonzales",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Craig Naivar",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "120": {
+    "source": "https://en.wikipedia.org/wiki/2026_Maryland_Terrapins_football_team",
+    "staff": [
+     {
+      "name": "Clint Trickett",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Ted Monachino",
+      "role": "Defensive coordinator/outside linebackers"
+     },
+     {
+      "name": "Aazaar Abdul-Rahim",
+      "role": "Co-defensive coordinator/associate head coach for defense/cornerbacks"
+     },
+     {
+      "name": "Matt Barnes",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "127": {
+    "source": "https://en.wikipedia.org/wiki/2026_Michigan_State_Spartans_football_team",
+    "staff": [
+     {
+      "name": "Nick Sheridan",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Joe Rossi",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Max Bullough",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "LeVar Woods",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "John McNulty",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "130": {
+    "source": "https://en.wikipedia.org/wiki/2026_Michigan_Wolverines_football_team",
+    "staff": [
+     {
+      "name": "Kerry Coombs",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Jim Harding",
+      "role": "Assistant head coach/offensive line"
+     }
+    ]
+   },
+   "135": {
+    "source": "https://en.wikipedia.org/wiki/2026_Minnesota_Golden_Gophers_football_team",
+    "staff": [
+     {
+      "name": "Greg Harbaugh Jr.",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Danny Collins",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Daniel Da Prato",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "142": {
+    "source": "https://en.wikipedia.org/wiki/2026_Missouri_Tigers_football_team",
+    "staff": [
+     {
+      "name": "Chip Lindsey",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Corey Batoon",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Derek Nicholson",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "John Papuchis",
+      "role": "Special teams coordinator/defensive assistant"
+     },
+     {
+      "name": "Al Pogue",
+      "role": "Assistant head coach/cornerbacks"
+     },
+     {
+      "name": "Garrett Riley",
+      "role": "Quarterbacks coach"
+     },
+     {
+      "name": "Brendan Bognar",
+      "role": "Offensive assistant/quarterbacks"
+     }
+    ]
+   },
+   "151": {
+    "source": "https://en.wikipedia.org/wiki/2026_East_Carolina_Pirates_football_team",
+    "staff": [
+     {
+      "name": "Jordan Davis",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Jordon Hankins",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Roy Tesh",
+      "role": "Co-defensive coordinator/defensive line"
+     },
+     {
+      "name": "Ryan Smith",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "153": {
+    "source": "https://en.wikipedia.org/wiki/2026_North_Carolina_Tar_Heels_football_team",
+    "staff": [
+     {
+      "name": "Bobby Petrino",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Stephen Belichick",
+      "role": "Defensive coordinator/linebackers coach"
+     },
+     {
+      "name": "Matt Lombardi",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "158": {
+    "source": "https://en.wikipedia.org/wiki/2026_Nebraska_Cornhuskers_football_team",
+    "staff": [
+     {
+      "name": "Dana Holgorsen",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Glenn Thomas",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Rob Aurich",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Brett Maher",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Phil Snow",
+      "role": "Associate head coach"
+     },
+     {
+      "name": "Jamar Mozee",
+      "role": "Assistant head coach"
+     }
+    ]
+   },
+   "16": {
+    "source": "https://en.wikipedia.org/wiki/2026_Sacramento_State_Hornets_football_team",
+    "staff": [
+     {
+      "name": "Eric Kiesau",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Eric Scott",
+      "role": "Co-offensive coordinator/wide receivers"
+     },
+     {
+      "name": "Kenwick Thompson",
+      "role": "Assistant head coach/co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Milo Austin",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Nick Alaimalo",
+      "role": "Running backs/co-special teams coordinator"
+     },
+     {
+      "name": "Angus McClure",
+      "role": "Associate head coach/offensive line"
+     }
+    ]
+   },
+   "164": {
+    "source": "https://en.wikipedia.org/wiki/2026_Rutgers_Scarlet_Knights_football_team",
+    "staff": [
+     {
+      "name": "Kirk Ciarrocca",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Damiere Shaw",
+      "role": "Associate offensive coordinator/running backs"
+     },
+     {
+      "name": "Travis Johansen",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Eddie Allen",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "183": {
+    "source": "https://en.wikipedia.org/wiki/2026_Syracuse_Orange_football_team",
+    "staff": [
+     {
+      "name": "Jeff Nixon",
+      "role": "Offensive coordinator/running backs"
+     },
+     {
+      "name": "Michael Johnson",
+      "role": "Co-offensive coordinator/tight ends"
+     },
+     {
+      "name": "Vince Kehres",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "John Scott Jr.",
+      "role": "Assistant head coach/co-defensive coordinator/defensive line"
+     },
+     {
+      "name": "Alex Bayer",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Sean Ryan",
+      "role": "Quarterbacks/passing game coordinator"
+     }
+    ]
+   },
+   "189": {
+    "source": "https://en.wikipedia.org/wiki/2026_Bowling_Green_Falcons_football_team",
+    "staff": [
+     {
+      "name": "Greg Nosal",
+      "role": "Offensive coordinator/offensive line"
+     },
+     {
+      "name": "Joe Bowden",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Greg Froelich",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Dewayne Alexander",
+      "role": "Assistant head coach/tight ends"
+     }
+    ]
+   },
+   "194": {
+    "source": "https://en.wikipedia.org/wiki/2026_Ohio_State_Buckeyes_football_team",
+    "staff": [
+     {
+      "name": "Arthur Smith",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Keenan Bailey",
+      "role": "Co-offensive coordinator/tight ends"
+     },
+     {
+      "name": "Matt Patricia",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Tim Walton",
+      "role": "Co-defensive coordinator/assistant head coach/secondary"
+     },
+     {
+      "name": "Robby Discher",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Larry Johnson",
+      "role": "Associate head coach/defensive line"
+     },
+     {
+      "name": "Billy Fessler",
+      "role": "Pass game coordinator/quarterbacks"
+     }
+    ]
+   },
+   "195": {
+    "source": "https://en.wikipedia.org/wiki/2026_Ohio_Bobcats_football_team",
+    "staff": [
+     {
+      "name": "Scott Isphording",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Kurt Mattix",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Blair Cavanaugh",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Lamar Conard",
+      "role": "Assistant head coach/running backs"
+     }
+    ]
+   },
+   "197": {
+    "source": "https://en.wikipedia.org/wiki/2026_Oklahoma_State_Cowboys_football_team",
+    "staff": [
+     {
+      "name": "Sean Brophy",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Skyler Cassity",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Drew Svoboda",
+      "role": "Associate head coach/special teams coordinator/tight ends"
+     }
+    ]
+   },
+   "2": {
+    "source": "https://en.wikipedia.org/wiki/2026_Auburn_Tigers_football_team",
+    "staff": [
+     {
+      "name": "Joel Gordon",
+      "role": "Offensive coordinator/quarterbacks coach"
+     },
+     {
+      "name": "Kodi Burns",
+      "role": "Associate head coach/co-offensive coordinator/wide receivers coach"
+     },
+     {
+      "name": "D. J. Durkin",
+      "role": "Defensive coordinator/inside linebackers coach"
+     },
+     {
+      "name": "Tim Banks",
+      "role": "Co-defensive coordinator/safeties coach"
+     },
+     {
+      "name": "Jacob Bronowski",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "201": {
+    "source": "https://en.wikipedia.org/wiki/Oklahoma_Sooners_football",
+    "staff": [
+     {
+      "name": "Ben Arbuckle",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Todd Bates",
+      "role": "Associate head coach/co–defensive coordinator/run defense/defensive tackles"
+     },
+     {
+      "name": "Doug Deakin",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Kevin Wilson",
+      "role": "Assistant head coach for offense"
+     },
+     {
+      "name": "John Kuceyeski",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "213": {
+    "source": "https://en.wikipedia.org/wiki/2026_Penn_State_Nittany_Lions_football_team",
+    "staff": [
+     {
+      "name": "Taylor Mouser",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "D'Anton Lynn",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Justin Lustig",
+      "role": "Special teams coordinator/outside linebackers/nickels"
+     },
+     {
+      "name": "Terry Smith",
+      "role": "Associate head coach/defensive recruiting coordinator/cornerbacks"
+     },
+     {
+      "name": "Jake Waters",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "2132": {
+    "source": "https://en.wikipedia.org/wiki/2026_Cincinnati_Bearcats_football_team",
+    "staff": [
+     {
+      "name": "Nic Cardwell",
+      "role": "Co-offensive coordinator/offensive line"
+     },
+     {
+      "name": "Pete Thomas",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Nate Woody",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Cortney Braswell",
+      "role": "Co-defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Luke Paschall",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Mark Speir",
+      "role": "Assistant head coach"
+     }
+    ]
+   },
+   "2229": {
+    "source": "https://en.wikipedia.org/wiki/2026_FIU_Panthers_football_team",
+    "staff": [
+     {
+      "name": "Nick Coleman",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Jovan Dewitt",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Kenneth Gilstrap",
+      "role": "Special teams coordinator/safeties"
+     }
+    ]
+   },
+   "228": {
+    "source": "https://en.wikipedia.org/wiki/2026_Clemson_Tigers_football_team",
+    "staff": [
+     {
+      "name": "Matt Luke",
+      "role": "Assistant head coach/co-offensive coordinator/offensive linemen coach"
+     },
+     {
+      "name": "Chad Morris",
+      "role": "Assistant coach/offensive coordinator"
+     },
+     {
+      "name": "Kyle Richardson",
+      "role": "Assistant coach/co-offensive coordinator/tight ends coach"
+     },
+     {
+      "name": "Nick Eason",
+      "role": "Associate head coach/co-defensive coordinator/defensive tackles coach"
+     },
+     {
+      "name": "Tom Allen",
+      "role": "Assistant coach/defensive coordinator/linebackers coach"
+     },
+     {
+      "name": "Mike Reed",
+      "role": "Assistant head coach/cornerbacks coach"
+     }
+    ]
+   },
+   "2294": {
+    "source": "https://en.wikipedia.org/wiki/2026_Iowa_Hawkeyes_football_team",
+    "staff": [
+     {
+      "name": "Tim Lester",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Phil Parker",
+      "role": "Defensive coordinator/secondary"
+     },
+     {
+      "name": "Chris Polizzi",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Seth Wallace",
+      "role": "Assistant head coach/assistant defensive coordinator/linebackers"
+     },
+     {
+      "name": "Billy Vandemerkt",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "23": {
+    "source": "https://en.wikipedia.org/wiki/2026_San_Jose_State_Spartans_football_team",
+    "staff": [
+     {
+      "name": "Craig Stutzmann",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Bojay Filimoeatu",
+      "role": "Defensive coordinator"
+     }
+    ]
+   },
+   "238": {
+    "source": "https://en.wikipedia.org/wiki/2026_Vanderbilt_Commodores_football_team",
+    "staff": [
+     {
+      "name": "Tim Beck",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Steve Gregory",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Nick Lezynski",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Jeff LePak",
+      "role": "Special teams coordinator/halfbacks"
+     },
+     {
+      "name": "Trenton Kirklin",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "239": {
+    "source": "https://en.wikipedia.org/wiki/2026_Baylor_Bears_football_team",
+    "staff": [
+     {
+      "name": "Jake Spavital",
+      "role": "Offensive coordinator and quarterbacks"
+     },
+     {
+      "name": "Joe Klanderman",
+      "role": "Defensive coordinator and safeties"
+     },
+     {
+      "name": "Mark Scott",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Khenon Hall",
+      "role": "Associate head coach and running backs coach"
+     }
+    ]
+   },
+   "2390": {
+    "source": "https://en.wikipedia.org/wiki/2026_Miami_Hurricanes_football_team",
+    "staff": [
+     {
+      "name": "Shannon Dawson",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Corey Hetherman",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Danny Kalter",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Alex Mirabal",
+      "role": "Assistant head coach/offensive line"
+     }
+    ]
+   },
+   "24": {
+    "source": "https://en.wikipedia.org/wiki/2026_Stanford_Cardinal_football_team",
+    "staff": [
+     {
+      "name": "Terry Heffernan",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Kris Richard",
+      "role": "Defensive coordinator/defensive backs"
+     },
+     {
+      "name": "Nate Kaczor",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Brian Lindgren",
+      "role": "Quarterbacks/passing game coordinator"
+     }
+    ]
+   },
+   "2429": {
+    "source": "https://en.wikipedia.org/wiki/2026_Charlotte_49ers_football_team",
+    "staff": [
+     {
+      "name": "Todd Fitch",
+      "role": "Associate head coach/offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Nate Faanes",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Brian Haines",
+      "role": "Assistant head coach, running backs, special teams"
+     }
+    ]
+   },
+   "2439": {
+    "source": "https://en.wikipedia.org/wiki/2026_UNLV_Rebels_football_team",
+    "staff": [
+     {
+      "name": "Corey Dennis",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Paul Guenther",
+      "role": "Associate head coach/defensive coordinator"
+     }
+    ]
+   },
+   "2449": {
+    "source": "https://en.wikipedia.org/wiki/2026_North_Dakota_State_Bison_football_team",
+    "staff": [
+     {
+      "name": "Dan Larson",
+      "role": "Offensive coordinator/tight ends/fullbacks"
+     },
+     {
+      "name": "Grant Olson",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Carlton Littlejohn",
+      "role": "Special teams coordinator/defensive ends"
+     }
+    ]
+   },
+   "245": {
+    "source": "https://en.wikipedia.org/wiki/2026_Texas_A&M_Aggies_football_team",
+    "staff": [
+     {
+      "name": "Holmon Wiggins",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Lyle Hemphill",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Elijah Robinson",
+      "role": "Co-defensive coordinator/defensive linemen"
+     },
+     {
+      "name": "Patrick Dougherty",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Trooper Taylor",
+      "role": "Associate head coach (offense)/running backs"
+     },
+     {
+      "name": "Travis Williams",
+      "role": "Associate head coach (defense)/linebackers"
+     },
+     {
+      "name": "Joey Lynch",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "25": {
+    "source": "https://en.wikipedia.org/wiki/2026_California_Golden_Bears_football_team",
+    "staff": [
+     {
+      "name": "Jordan Somerville",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Ike Hilliard",
+      "role": "Wide receivers/co-offensive coordinator"
+     },
+     {
+      "name": "Michael Hutchings",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Da'Von Brown",
+      "role": "Defensive backs/co-defensive coordinator"
+     },
+     {
+      "name": "Ryan Barry",
+      "role": "Assistant to defensive coordinator"
+     },
+     {
+      "name": "Zach Tinker",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Nick Rolovich",
+      "role": "Associate head coach/quarterbacks"
+     }
+    ]
+   },
+   "2509": {
+    "source": "https://en.wikipedia.org/wiki/2026_Purdue_Boilermakers_football_team",
+    "staff": [
+     {
+      "name": "Josh Henson",
+      "role": "Offensive coordinator/tight ends"
+     },
+     {
+      "name": "Kevin Kane",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "James Shibest",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Cornell Ford",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Darin Hinshaw",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "251": {
+    "source": "https://en.wikipedia.org/wiki/2026_Texas_Longhorns_football_team",
+    "staff": [
+     {
+      "name": "Kyle Flood",
+      "role": "Offensive coordinator/offensive line"
+     },
+     {
+      "name": "A. J. Milwee",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Will Muschamp",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Johnny Nansen",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Jeff Banks",
+      "role": "Special teams coordinator/tight ends"
+     },
+     {
+      "name": "Jabbar Juluke",
+      "role": "Associate head coach (offense)/running backs"
+     },
+     {
+      "name": "Michael Bimonte",
+      "role": "Co-passing game coordinator/assistant quarterbacks"
+     }
+    ]
+   },
+   "252": {
+    "source": "https://en.wikipedia.org/wiki/2026_BYU_Cougars_football_team",
+    "staff": [
+     {
+      "name": "Aaron Roderick",
+      "role": "Offensive coordinator/quarterbacks coach"
+     },
+     {
+      "name": "Kelly Poppinga",
+      "role": "Defensive coordinator/inside linebackers coach"
+     },
+     {
+      "name": "Justin Ena",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Sione Po'uha",
+      "role": "Associate head coach/defensive line coach"
+     }
+    ]
+   },
+   "254": {
+    "source": "https://en.wikipedia.org/wiki/2026_Utah_Utes_football_team",
+    "staff": [
+     {
+      "name": "Kevin McGiven",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Colton Swan",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Sharrieff Shah",
+      "role": "Associate head coach/cornerbacks/special teams coordinator"
+     },
+     {
+      "name": "Mark Atuaia",
+      "role": "Assistant head coach/running backs"
+     }
+    ]
+   },
+   "2567": {
+    "source": "https://en.wikipedia.org/wiki/2026_SMU_Mustangs_football_team",
+    "staff": [
+     {
+      "name": "Rob Likens",
+      "role": "Associate head coach/chief of staff/co-offensive coordinator/wide receivers"
+     },
+     {
+      "name": "Garin Justice",
+      "role": "Assistant head coach/co-offensive coordinator/offensive line"
+     },
+     {
+      "name": "D'Eriq King",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Maurice Crum Jr.",
+      "role": "Co-defensive coordinator/play caller"
+     },
+     {
+      "name": "Rickey Hunley Jr.",
+      "role": "Co-defensive coordinator/secondary"
+     },
+     {
+      "name": "Sam Gregg",
+      "role": "Senior assistant to the defensive coordinator"
+     },
+     {
+      "name": "Casey Horny",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "2579": {
+    "source": "https://en.wikipedia.org/wiki/2026_South_Carolina_Gamecocks_football_team",
+    "staff": [
+     {
+      "name": "Kendal Briles",
+      "role": "Offensive coordinator and quarterbacks coach"
+     },
+     {
+      "name": "Clayton White",
+      "role": "Defensive coordinator and inside linebackers coach"
+     },
+     {
+      "name": "Matthew Smiley",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Stan Drayton",
+      "role": "Associate head coach/running backs coach"
+     }
+    ]
+   },
+   "258": {
+    "source": "https://en.wikipedia.org/wiki/2026_Virginia_Cavaliers_football_team",
+    "staff": [
+     {
+      "name": "Des Kitchings",
+      "role": "Offensive coordinator/tight ends"
+     },
+     {
+      "name": "John Rudzinski",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Keith Gaither",
+      "role": "Special teams coordinator/running backs"
+     },
+     {
+      "name": "Kevin Downing",
+      "role": "Associate head coach/defensive tackles"
+     },
+     {
+      "name": "Taylor Lamb",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "259": {
+    "source": "https://en.wikipedia.org/wiki/2026_Virginia_Tech_Hokies_football_team",
+    "staff": [
+     {
+      "name": "Ty Howle",
+      "role": "Offensive coordinator/tight ends"
+     },
+     {
+      "name": "Brent Pry",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Doug Shearer",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Norval McKenzie",
+      "role": "Assistant head coach/run game coordinator/running backs"
+     },
+     {
+      "name": "Danny O'Brien",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "26": {
+    "source": "https://en.wikipedia.org/wiki/2026_UCLA_Bruins_football_team",
+    "staff": [
+     {
+      "name": "Dean Kennedy",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Colin Hitschler",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Drew Canan",
+      "role": "Special teams coordinator/tight ends"
+     }
+    ]
+   },
+   "2623": {
+    "source": "https://en.wikipedia.org/wiki/2026_Missouri_State_Bears_football_team",
+    "staff": [
+     {
+      "name": "Mark Cala",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Jack Curtis",
+      "role": "Defensive coordinator/safeties"
+     }
+    ]
+   },
+   "2628": {
+    "source": "https://en.wikipedia.org/wiki/2026_TCU_Horned_Frogs_football_team",
+    "staff": [
+     {
+      "name": "Gordon Sammis",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "A. J. Ricker",
+      "role": "Co-offensive coordinator/offensive line"
+     },
+     {
+      "name": "Andy Avalos",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Malcolm Kelly",
+      "role": "Assistant head coach/wide receivers"
+     }
+    ]
+   },
+   "2633": {
+    "source": "https://en.wikipedia.org/wiki/2026_Tennessee_Volunteers_football_team",
+    "staff": [
+     {
+      "name": "Joey Halzle",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Jim Knowles",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Anthony Poindexter",
+      "role": "Co-defensive coordinator/secondary"
+     },
+     {
+      "name": "Evan Crabtree",
+      "role": "Special teams coordinator"
+     }
+    ]
+   },
+   "264": {
+    "source": "https://en.wikipedia.org/wiki/2026_Washington_Huskies_football_team",
+    "staff": [
+     {
+      "name": "Ryan Walters",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Petrilli",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Scottie Graham",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "J. P. Losman",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "2641": {
+    "source": "https://en.wikipedia.org/wiki/2026_Texas_Tech_Red_Raiders_football_team",
+    "staff": [
+     {
+      "name": "Mack Leftwich",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Shiel Wood",
+      "role": "Defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Rob Greene",
+      "role": "Co-defensive coordinator/safeties"
+     },
+     {
+      "name": "Kenny Perry",
+      "role": "Associate head coach/special teams coordinator"
+     },
+     {
+      "name": "Justin Johnson",
+      "role": "Assistant head coach/passing game coordinator/wide receivers"
+     }
+    ]
+   },
+   "2655": {
+    "source": "https://en.wikipedia.org/wiki/2026_Tulane_Green_Wave_football_team",
+    "staff": [
+     {
+      "name": "Russ Callaway",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Tayler Polk",
+      "role": "Defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Nate Fuqua",
+      "role": "Co-defensive coordinator/bandits"
+     },
+     {
+      "name": "Chris Forestier",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Collin D'Angelo",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "275": {
+    "source": "https://en.wikipedia.org/wiki/2026_Wisconsin_Badgers_football_team",
+    "staff": [
+     {
+      "name": "Jeff Grimes",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Mike Tressel",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Bob Ligashesky",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Nate Letton",
+      "role": "Assistant head coach/tight ends"
+     },
+     {
+      "name": "Matt Mitchell",
+      "role": "Associate head coach/outside linebackers"
+     },
+     {
+      "name": "Kenny Guiton",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "2751": {
+    "source": "https://en.wikipedia.org/wiki/2026_Wyoming_Cowboys_football_team",
+    "staff": [
+     {
+      "name": "Aaron Bohl",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Shannon Moore",
+      "role": "Co-special teams coordinator/tight ends/fullbacks"
+     },
+     {
+      "name": "Jason Petrino",
+      "role": "Co-special teams coordinator/safeties"
+     }
+    ]
+   },
+   "278": {
+    "source": "https://en.wikipedia.org/wiki/2026_Fresno_State_Bulldogs_football_team",
+    "staff": [
+     {
+      "name": "Josh Davis",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Nick Benedetto",
+      "role": "Defensive coordinator/associate head coach"
+     },
+     {
+      "name": "Adam Breske",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "John Baxter",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "Jared Taylor",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "30": {
+    "source": "https://en.wikipedia.org/wiki/2026_USC_Trojans_football_team",
+    "staff": [
+     {
+      "name": "Luke Huard",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Dennis Simmons",
+      "role": "Assistant hc/co-offensive coordinator/wide receivers"
+     },
+     {
+      "name": "Gary Patterson",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Mike Ekeler",
+      "role": "Special teams coordinator/linebackers"
+     },
+     {
+      "name": "Ryan Dougherty",
+      "role": "Co-special teams coordinator/specialists coach"
+     }
+    ]
+   },
+   "328": {
+    "source": "https://en.wikipedia.org/wiki/2026_Utah_State_Aggies_football_team",
+    "staff": [
+     {
+      "name": "Robert Anae",
+      "role": "Offensive coordinator/tight ends"
+     },
+     {
+      "name": "Nick Howell",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Shane Hunter",
+      "role": "Special teams coordinator/linebackers"
+     },
+     {
+      "name": "Matt Johns",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "333": {
+    "source": "https://en.wikipedia.org/wiki/2026_Alabama_Crimson_Tide_football_team",
+    "staff": [
+     {
+      "name": "Ryan Grubb",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Kane Wommack",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Maurice Linguist",
+      "role": "Co-defensive coordinator/cornerbacks coach"
+     },
+     {
+      "name": "Jay Nunez",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Robert Gillespie",
+      "role": "Assistant head coach/running backs coach"
+     },
+     {
+      "name": "Freddie Roach",
+      "role": "Associate head coach/defensive line coach"
+     },
+     {
+      "name": "Bryan Ellis",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "344": {
+    "source": "https://en.wikipedia.org/wiki/2026_Mississippi_State_Bulldogs_football_team",
+    "staff": [
+     {
+      "name": "Zach Arnett",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Matt Barnes",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Cliff Odom",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Philip Montgomery",
+      "role": "Associate head coach for offense/wide receivers"
+     },
+     {
+      "name": "Anthony Tucker",
+      "role": "Assistant head coach/pass game coordinator/running backs"
+     },
+     {
+      "name": "Kevin Johns",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "349": {
+    "source": "https://en.wikipedia.org/wiki/2026_Army_Black_Knights_football_team",
+    "staff": [
+     {
+      "name": "Cody Worley",
+      "role": "Offensive coordinator and quarterbacks coach"
+     },
+     {
+      "name": "Daryl Dixon",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Sean Saturnio",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "John Loose",
+      "role": "Assistant head coach and outside linebackers coach"
+     }
+    ]
+   },
+   "356": {
+    "source": "https://en.wikipedia.org/wiki/2026_Illinois_Fighting_Illini_football_team",
+    "staff": [
+     {
+      "name": "Barry Lunney Jr.",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Bobby Hauck",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Hurd",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Artur Sitkowski",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "38": {
+    "source": "https://en.wikipedia.org/wiki/2026_Colorado_Buffaloes_football_team",
+    "staff": [
+     {
+      "name": "Brennan Marion",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Chris Marve",
+      "role": "Defensive coordinator/linebackers"
+     }
+    ]
+   },
+   "5": {
+    "source": "https://en.wikipedia.org/wiki/2026_UAB_Blazers_football_team",
+    "staff": [
+     {
+      "name": "Todd Grantham",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "John Jones",
+      "role": "Special teams coordinator/defensive ends"
+     }
+    ]
+   },
+   "52": {
+    "source": "https://en.wikipedia.org/wiki/2026_Florida_State_Seminoles_football_team",
+    "staff": [
+     {
+      "name": "Tim Harris Jr.",
+      "role": "Offensive coordinator/wide receivers"
+     },
+     {
+      "name": "Tony White",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Adam Scheier",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Odell Haggins",
+      "role": "Associate head coach"
+     },
+     {
+      "name": "Austin Tucker",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "55": {
+    "source": "https://en.wikipedia.org/wiki/2026_Jacksonville_State_Gamecocks_football_team",
+    "staff": [
+     {
+      "name": "Taylor Housewright",
+      "role": "Offensive coordinator/quarterbacks coach"
+     },
+     {
+      "name": "Brian Williams",
+      "role": "Defensive coordinator/safeties coach"
+     },
+     {
+      "name": "Max Thurmond",
+      "role": "Special teams coordinator/running backs coach"
+     }
+    ]
+   },
+   "57": {
+    "source": "https://en.wikipedia.org/wiki/2026_Florida_Gators_football_team",
+    "staff": [
+     {
+      "name": "Buster Faulkner",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Brad White",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Johnathan Galante",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Gerald Chatman",
+      "role": "Assistant head coach/defensive line"
+     },
+     {
+      "name": "Joe Craddock",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "58": {
+    "source": "https://en.wikipedia.org/wiki/2026_South_Florida_Bulls_football_team",
+    "staff": [
+     {
+      "name": "Tim Beck",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Josh Aldridge",
+      "role": "Defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Chad Creamer",
+      "role": "Special teams coordinator/outside linebackers"
+     },
+     {
+      "name": "Mike Hartline",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "61": {
+    "source": "https://en.wikipedia.org/wiki/2026_Georgia_Bulldogs_football_team",
+    "staff": [
+     {
+      "name": "Mike Bobo",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Glenn Schumann",
+      "role": "Defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Travaris Robinson",
+      "role": "Co-defensive coordinator/safeties"
+     },
+     {
+      "name": "Kirk Benedict",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Todd Hartley",
+      "role": "Assistant head coach/tight ends"
+     },
+     {
+      "name": "Donte Williams",
+      "role": "Associate head coach/defensive backs"
+     }
+    ]
+   },
+   "62": {
+    "source": "https://en.wikipedia.org/wiki/2026_Hawaii_Rainbow_Warriors_football_team",
+    "staff": [
+     {
+      "name": "Anthony Arceneaux",
+      "role": "Offensive coordinator/running backs"
+     },
+     {
+      "name": "Dennis Thurman",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Thomas Sheffield",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Chris Brown",
+      "role": "Associate head coach/linebackers"
+     },
+     {
+      "name": "Chad Kapanui",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "68": {
+    "source": "https://en.wikipedia.org/wiki/2026_Boise_State_Broncos_football_team",
+    "staff": [
+     {
+      "name": "Nate Potter",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Zak Hill",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Erik Chinander",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Terrence Brown",
+      "role": "Co-defensive coordinator/defensive backs"
+     },
+     {
+      "name": "Stacy Collins",
+      "role": "Assistant head coach/special teams coordinator/linebackers"
+     }
+    ]
+   },
+   "8": {
+    "source": "https://en.wikipedia.org/wiki/2026_Arkansas_Razorbacks_football_team",
+    "staff": [
+     {
+      "name": "Tim Cramsey",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Ron Roberts",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Deron Wilson",
+      "role": "Co-defensive coordinator/secondary coach"
+     },
+     {
+      "name": "Chad Lunsford",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Mitch Stewart",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "84": {
+    "source": "https://en.wikipedia.org/wiki/2026_Indiana_Hoosiers_football_team",
+    "staff": [
+     {
+      "name": "Mike Shanahan",
+      "role": "Offensive coordinator/wide receivers"
+     },
+     {
+      "name": "Tino Sunseri",
+      "role": "Co-offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Bryant Haines",
+      "role": "Defensive coordinator/linebackers"
+     },
+     {
+      "name": "Grant Cain",
+      "role": "Special teams coordinator/tight ends"
+     }
+    ]
+   },
+   "87": {
+    "source": "https://en.wikipedia.org/wiki/2026_Notre_Dame_Fighting_Irish_football_team",
+    "staff": [
+     {
+      "name": "Mike Denbrock",
+      "role": "Offensive coordinator/tight ends"
+     },
+     {
+      "name": "Chris Ash",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Aaron Henry",
+      "role": "Co-defensive coordinator/defensive backs"
+     },
+     {
+      "name": "Marty Biagi",
+      "role": "Special teams coordinator/assistant defensive backs"
+     },
+     {
+      "name": "Ja'Juan Seider",
+      "role": "Associate head coach/running backs"
+     },
+     {
+      "name": "Gino Guidugli",
+      "role": "Quarterbacks/pass game coordinator"
+     }
+    ]
+   },
+   "96": {
+    "source": "https://en.wikipedia.org/wiki/2026_Kentucky_Wildcats_football_team",
+    "staff": [
+     {
+      "name": "Joe Sloan",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Jay Bateman",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Parker Fleming",
+      "role": "Special teams coordinator/inside wide receivers"
+     },
+     {
+      "name": "Nate Dodson",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "97": {
+    "source": "https://en.wikipedia.org/wiki/2026_Louisville_Cardinals_football_team",
+    "staff": [
+     {
+      "name": "Brian Brohm",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Mark Ivey",
+      "role": "Co-defensive coordinator/defensive line"
+     },
+     {
+      "name": "Steve Ellis",
+      "role": "Co-defensive coordinator/secondary"
+     },
+     {
+      "name": "Karl Maslowski",
+      "role": "Special teams coordinator/assistant linebackers"
+     }
+    ]
+   },
+   "98": {
+    "source": "https://en.wikipedia.org/wiki/2026_Western_Kentucky_Hilltoppers_football_team",
+    "staff": [
+     {
+      "name": "Bodie Reeder",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Joe Bernardi",
+      "role": "Co-offensive coordinator/offensive line"
+     },
+     {
+      "name": "Davis Merritt",
+      "role": "Defensive coordinator/inside linebackers"
+     },
+     {
+      "name": "Andy LaRussa",
+      "role": "Assistant head coach/special teams coordinator"
+     }
+    ]
+   },
+   "99": {
+    "source": "https://en.wikipedia.org/wiki/2026_LSU_Tigers_football_team",
+    "staff": [
+     {
+      "name": "Joe Cox",
+      "role": "Co-offensive coordinator/tight ends"
+     },
+     {
+      "name": "Charlie Weis Jr.",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Blake Baker",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Kiffin",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Joe Houston",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Dane Stevens",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   }
+  },
+  "nfl": {
+   "1": {
+    "source": "https://en.wikipedia.org/wiki/Template:Atlanta_Falcons_staff",
+    "staff": [
+     {
+      "name": "Tommy Rees",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Jeff Ulbrich",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Craig Aukerman",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Alex Van Pelt",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "10": {
+    "source": "https://en.wikipedia.org/wiki/Template:Tennessee_Titans_staff",
+    "staff": [
+     {
+      "name": "Brian Daboll",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Gus Bradley",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "John Fassel",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "Shea Tierney",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "11": {
+    "source": "https://en.wikipedia.org/wiki/Template:Indianapolis_Colts_staff",
+    "staff": [
+     {
+      "name": "Jim Bob Cooter",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Lou Anarumo",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Brian Mason",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Cameron Turner",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "12": {
+    "source": "https://en.wikipedia.org/wiki/Template:Kansas_City_Chiefs_staff",
+    "staff": [
+     {
+      "name": "Eric Bieniemy",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Steve Spagnuolo",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Dave Toub",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "David Girardi",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "13": {
+    "source": "https://en.wikipedia.org/wiki/Template:Las_Vegas_Raiders_staff",
+    "staff": [
+     {
+      "name": "Andrew Janocko",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Rob Leonard",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Joe DeCamillis",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Mike McCoy",
+      "role": "Assistant head coach"
+     },
+     {
+      "name": "Mike Sullivan",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "14": {
+    "source": "https://en.wikipedia.org/wiki/Template:Los_Angeles_Rams_staff",
+    "staff": [
+     {
+      "name": "Nathan Scheelhaase",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Chris Shula",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Ray Ventrone",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Kliff Kingsbury",
+      "role": "Assistant head coach"
+     },
+     {
+      "name": "Dave Ragone",
+      "role": "Associate coordinator/quarterbacks"
+     }
+    ]
+   },
+   "15": {
+    "source": "https://en.wikipedia.org/wiki/Template:Miami_Dolphins_staff",
+    "staff": [
+     {
+      "name": "Bobby Slowik",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Sean Duggan",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Tabor",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Bush Hamdan",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "16": {
+    "source": "https://en.wikipedia.org/wiki/Template:Minnesota_Vikings_staff",
+    "staff": [
+     {
+      "name": "Wes Phillips",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Brian Flores",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Matt Daniels",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Frank Smith",
+      "role": "Assistant head coach"
+     },
+     {
+      "name": "Josh McCown",
+      "role": "Offensive passing game coordinator/quarterbacks"
+     }
+    ]
+   },
+   "17": {
+    "source": "https://en.wikipedia.org/wiki/Template:New_England_Patriots_staff",
+    "staff": [
+     {
+      "name": "Josh McDaniels",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Zak Kuhr",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Jeremy Springer",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Terrell Williams",
+      "role": "Assistant head coach"
+     },
+     {
+      "name": "Ashton Grant",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "18": {
+    "source": "https://en.wikipedia.org/wiki/Template:New_Orleans_Saints_staff",
+    "staff": [
+     {
+      "name": "Doug Nussmeier",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Brandon Staley",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Phil Galiano",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Joel Thomas",
+      "role": "Associate head coach/running backs"
+     },
+     {
+      "name": "Scott Tolzien",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "19": {
+    "source": "https://en.wikipedia.org/wiki/Template:New_York_Giants_staff",
+    "staff": [
+     {
+      "name": "Matt Nagy",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Dennard Wilson",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Horton",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "Brian Callahan",
+      "role": "Quarterbacks/pass game coordinator"
+     }
+    ]
+   },
+   "2": {
+    "source": "https://en.wikipedia.org/wiki/Template:Buffalo_Bills_staff",
+    "staff": [
+     {
+      "name": "Pete Carmichael",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Jim Leonhard",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Jeff Rodgers",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Bo Hardegree",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "20": {
+    "source": "https://en.wikipedia.org/wiki/Template:New_York_Jets_staff",
+    "staff": [
+     {
+      "name": "Frank Reich",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Brian Duker",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Chris Banjo",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Bill Musgrave",
+      "role": "Quarterbacks coach"
+     },
+     {
+      "name": "Thomas Merkle",
+      "role": "Offensive assistant/assistant quarterbacks"
+     }
+    ]
+   },
+   "21": {
+    "source": "https://en.wikipedia.org/wiki/Template:Philadelphia_Eagles_staff",
+    "staff": [
+     {
+      "name": "Sean Mannion",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Vic Fangio",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Michael Clay",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Jemal Singleton",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Clint Hurtt",
+      "role": "Associate head coach/senior defensive assistant/defensive line"
+     },
+     {
+      "name": "Parks Frazier",
+      "role": "Quarterbacks coach"
+     },
+     {
+      "name": "Montgomery VanGorder",
+      "role": "Offensive assistant/assistant quarterbacks"
+     }
+    ]
+   },
+   "22": {
+    "source": "https://en.wikipedia.org/wiki/Template:Arizona_Cardinals_staff",
+    "staff": [
+     {
+      "name": "Nathaniel Hackett",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Nick Rallis",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Michael Ghobrial",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Matt Schaub",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "23": {
+    "source": "https://en.wikipedia.org/wiki/Template:Pittsburgh_Steelers_staff",
+    "staff": [
+     {
+      "name": "Brian Angelichio",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Patrick Graham",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Danny Crossman",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Joe Whitt Jr.",
+      "role": "Assistant head coach/secondary"
+     },
+     {
+      "name": "Tom Arth",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "24": {
+    "source": "https://en.wikipedia.org/wiki/Template:Los_Angeles_Chargers_staff",
+    "staff": [
+     {
+      "name": "Mike McDaniel",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Chris O'Leary",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Shane Day",
+      "role": "Passing game coordinator/quarterbacks"
+     }
+    ]
+   },
+   "25": {
+    "source": "https://en.wikipedia.org/wiki/Template:San_Francisco_49ers_staff",
+    "staff": [
+     {
+      "name": "Klay Kubiak",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Raheem Morris",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Brant Boyer",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Chris Foerster",
+      "role": "Interim head coach/assistant head coach/offensive line"
+     },
+     {
+      "name": "Matt Eberflus",
+      "role": "Assistant head coach/defense"
+     },
+     {
+      "name": "Mick Lombardi",
+      "role": "Quarterbacks coach"
+     },
+     {
+      "name": "Jacob Webster",
+      "role": "Offensive assistant/quarterbacks"
+     }
+    ]
+   },
+   "26": {
+    "source": "https://en.wikipedia.org/wiki/Template:Seattle_Seahawks_staff",
+    "staff": [
+     {
+      "name": "Brian Fleury",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Aden Durde",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Jay Harbaugh",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Leslie Frazier",
+      "role": "Assistant head coach"
+     },
+     {
+      "name": "Jake Peetz",
+      "role": "Passing game coordinator/quarterbacks"
+     },
+     {
+      "name": "Tyson Prince",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "27": {
+    "source": "https://en.wikipedia.org/wiki/Template:Tampa_Bay_Buccaneers_staff",
+    "staff": [
+     {
+      "name": "Zac Robinson",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Danny Smith",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Chandler Whitmer",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "28": {
+    "source": "https://en.wikipedia.org/wiki/Template:Washington_Commanders_staff",
+    "staff": [
+     {
+      "name": "David Blough",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Daronte Jones",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Larry Izzo",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "D. J. Williams",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "29": {
+    "source": "https://en.wikipedia.org/wiki/Template:Carolina_Panthers_staff",
+    "staff": [
+     {
+      "name": "Brad Idzik",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Ejiro Evero",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Tracy Smith",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Harold Goodwin",
+      "role": "Assistant head coach/run game coordinator"
+     },
+     {
+      "name": "Darrell Bevell",
+      "role": "Associate head coach/offensive specialist"
+     },
+     {
+      "name": "Will Harriger",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "3": {
+    "source": "https://en.wikipedia.org/wiki/Template:Chicago_Bears_staff",
+    "staff": [
+     {
+      "name": "Press Taylor",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Dennis Allen",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Richard Hightower",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Antwaan Randle El",
+      "role": "Assistant head coach/wide receivers"
+     },
+     {
+      "name": "J. T. Barrett",
+      "role": "Quarterbacks coach"
+     },
+     {
+      "name": "Robbie Picazo",
+      "role": "Offensive assistant – quarterbacks & tight ends"
+     }
+    ]
+   },
+   "30": {
+    "source": "https://en.wikipedia.org/wiki/Template:Jacksonville_Jaguars_staff",
+    "staff": [
+     {
+      "name": "Grant Udinski",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Anthony Campanile",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Heath Farwell",
+      "role": "Associate head coach/special teams coordinator"
+     },
+     {
+      "name": "Shane Waldron",
+      "role": "Assistant head coach/pass game coordinator"
+     },
+     {
+      "name": "Spencer Whipple",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "33": {
+    "source": "https://en.wikipedia.org/wiki/Template:Baltimore_Ravens_staff",
+    "staff": [
+     {
+      "name": "Declan Doyle",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Anthony Weaver",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Anthony Levine Sr.",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Israel Woolfork",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "34": {
+    "source": "https://en.wikipedia.org/wiki/Template:Houston_Texans_staff",
+    "staff": [
+     {
+      "name": "Nick Caley",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Matt Burke",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Frank Ross",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Danny Barrett",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Jerry Schuplinski",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "4": {
+    "source": "https://en.wikipedia.org/wiki/Template:Cincinnati_Bengals_staff",
+    "staff": [
+     {
+      "name": "Dan Pitcher",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Al Golden",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Darrin Simmons",
+      "role": "Assistant head coach/special teams coordinator"
+     },
+     {
+      "name": "Brad Kragthorpe",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "5": {
+    "source": "https://en.wikipedia.org/wiki/Template:Cleveland_Browns_staff",
+    "staff": [
+     {
+      "name": "Travis Switzer",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Mike Rutenberg",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Byron Storer",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Mike Bajakian",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "6": {
+    "source": "https://en.wikipedia.org/wiki/Template:Dallas_Cowboys_staff",
+    "staff": [
+     {
+      "name": "Klayton Adams",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Christian Parker",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Nick Sorensen",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Steve Shimko",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "7": {
+    "source": "https://en.wikipedia.org/wiki/Template:Denver_Broncos_staff",
+    "staff": [
+     {
+      "name": "Davis Webb",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Vance Joseph",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Darren Rizzi",
+      "role": "Special teams coordinator/assistant head coach"
+     },
+     {
+      "name": "Zach Strief",
+      "role": "Offensive run game coordinator/assistant head coach"
+     },
+     {
+      "name": "Logan Kilgore",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "8": {
+    "source": "https://en.wikipedia.org/wiki/Template:Detroit_Lions_staff",
+    "staff": [
+     {
+      "name": "Drew Petzing",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Kelvin Sheppard",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Dave Fipp",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Scottie Montgomery",
+      "role": "Associate head coach/wide receivers"
+     },
+     {
+      "name": "Jim O'Neil",
+      "role": "Assistant head coach/safeties"
+     },
+     {
+      "name": "Mark Brunell",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "9": {
+    "source": "https://en.wikipedia.org/wiki/Template:Green_Bay_Packers_staff",
+    "staff": [
+     {
+      "name": "Adam Stenavich",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Jonathan Gannon",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Cameron Achord",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Luke Getsy",
+      "role": "Quarterbacks/assistant head coach – offense"
+     },
+     {
+      "name": "DeMarcus Covington",
+      "role": "Outside linebackers/run game coordinator/assistant head coach – defense"
+     }
+    ]
+   }
+  }
+ },
+ "license": "Text from Wikipedia, CC BY-SA 4.0",
+ "updated": "2026-10-03",
+ "version": 1
+}

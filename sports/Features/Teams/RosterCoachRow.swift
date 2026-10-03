@@ -6,9 +6,14 @@ import SwiftUI
 /// avatar"). An empty jersey gutter, the photo or initials in the headshot
 /// column, and the role where a player's facts go. No metric column: a
 /// coach has no class, age or experience on the roster payload.
+///
+/// The coordinators under the head coach use it too (2026-10-03), with no
+/// photo URL and no link: they come from Wikipedia, which has no ESPN id
+/// to fetch a photo or a page with, so they are initials and a role.
 struct RosterCoachRow: View {
-    let coach: RosterCoach
-    let league: League
+    let name: String
+    let role: String
+    var headshotURL: URL? = nil
     var isLink: Bool = false
 
     // `RosterRow`'s metrics, so the avatar sits in the players' photo column.
@@ -18,18 +23,20 @@ struct RosterCoachRow: View {
     var body: some View {
         HStack(spacing: Spacing.md) {
             Color.clear.frame(width: jerseyWidth, height: 1)
-            CoachHeadshot(name: coach.name, url: coach.headshotURL(in: league),
-                          size: headshotSize)
+            CoachHeadshot(name: name, url: headshotURL, size: headshotSize)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(coach.name)
+                Text(name)
                     .font(.teamName)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(1)
-                Text("Head coach")
+                // Two lines: Wikipedia's roles run long ("Associate head
+                // coach/co-defensive coordinator/defensive tackles"), and
+                // the half that would truncate is often the position.
+                Text(role)
                     .font(.meta)
                     .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
             .layoutPriority(1)
             Spacer(minLength: Spacing.sm)

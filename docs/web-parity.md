@@ -901,3 +901,4 @@ sibling below it.
 | 2026-10-03 | Career tables (player and coach) lead with the club's logo and name, season beneath | **pending** — web career tables still show season with the club abbreviation |
 | 2026-10-03 | Player Stats tab season chip (every season with a line, latest default) | **pending** — web Stats tab shows the latest season only |
 | 2026-10-03 | Player and coach pages: collapsing header, pinned tabs, name over club in the bar on scroll | **pending** — web player and coach heroes scroll away with no compact title |
+| 2026-10-03 | Roster Coach card lists coordinators, assistant head coach and QB coach from `coaches.json` (Wikipedia, weekly PR job) | **pending** — the web already serves the file (`web/public/coaches.json`) but `roster-list.tsx` doesn't read it yet |
