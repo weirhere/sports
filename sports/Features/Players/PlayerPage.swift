@@ -44,6 +44,8 @@ struct PlayerPage: View {
     /// ESPN's season year the Games tab shows; nil until one is picked,
     /// which asks ESPN for its current one.
     @State private var logSeason: Int?
+    /// ESPN's season year the Stats tab shows; nil is the latest with a line.
+    @State private var statsSeason: Int?
     /// The News tab's stories: the athlete overview's own list, fetched on
     /// the tab's first visit and held for the page.
     @State private var news: [NewsStory]?
@@ -153,7 +155,9 @@ struct PlayerPage: View {
         case .games:
             gamesPane
         case .stats:
-            statsTab(empty: "No stats this season") { PlayerStatsPane(stats: $0) }
+            statsTab(empty: "No stats this season") {
+                PlayerStatsPane(stats: $0, league: player.league, season: $statsSeason)
+            }
         case .career:
             statsTab(empty: "No career stats yet") {
                 PlayerCareerPane(stats: $0, league: player.league)
