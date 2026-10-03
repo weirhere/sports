@@ -900,3 +900,4 @@ sibling below it.
 | 2026-10-03 | Roster's coach row in the player-row layout with an avatar (photo or initials) and "Head coach" as the meta line | **pending** — `roster-list.tsx`'s coach row is still name and role |
 | 2026-10-03 | Career tables (player and coach) lead with the club's logo and name, season beneath | **pending** — web career tables still show season with the club abbreviation |
 | 2026-10-03 | Player Stats tab season chip (every season with a line, latest default) | **pending** — web Stats tab shows the latest season only |
+| 2026-10-03 | Player and coach pages: collapsing header, pinned tabs, name over club in the bar on scroll | **pending** — web player and coach heroes scroll away with no compact title |

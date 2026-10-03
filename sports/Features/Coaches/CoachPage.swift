@@ -29,6 +29,8 @@ struct CoachPage: View {
     @State private var failed = false
     @State private var tab: Tab = .profile
     @State private var teamHexLoaded: String?
+    @State private var heroCollapse: CGFloat = 0
+    @State private var showsInlineTitle = false
     @Environment(\.colorScheme) private var colorScheme
 
     /// The team's color in light mode, as on PlayerPage (2026-10-03).
@@ -38,22 +40,37 @@ struct CoachPage: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    CoachHero(coach: coach, headshotURL: career?.profile.headshotURL,
-                              paint: headerPaint)
-                    HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 },
-                               ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
-                }
+        // PlayerPage's collapsing header (2026-10-03).
+        CollapsingHeaderScrollView(landing: ScrollLanding(key: tab.title),
+                                   collapse: $heroCollapse) {
+            CoachHero(coach: coach, headshotURL: career?.profile.headshotURL,
+                      paint: headerPaint)
                 .frame(maxWidth: .infinity)
                 .background(headerPaint?.background ?? .bgCard)
-
-                VStack(spacing: Spacing.sm) {
-                    content
-                }
-                .padding(Spacing.sm)
-                .padding(.bottom, Spacing.lg)
+        } strip: {
+            HeroTabBar(tabs: Tab.allCases, selection: tab, onSelect: { tab = $0 },
+                       ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
+                .frame(maxWidth: .infinity)
+                .background(headerPaint?.background ?? .bgCard)
+        } content: { _ in
+            VStack(spacing: Spacing.sm) {
+                content
+            }
+            .padding(Spacing.sm)
+            .padding(.bottom, Spacing.lg)
+        }
+        .onChange(of: heroCollapse > 60) { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                CollapsedTitle(title: coach.name,
+                               subtitle: coach.team.map { $0.displayName ?? $0.location },
+                               paint: headerPaint)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
             }
         }
         // The entity pages' header, as on PlayerPage.

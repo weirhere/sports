@@ -53,6 +53,10 @@ struct PlayerPage: View {
     /// The team's color once `/teams/{id}` answers, for a door that didn't
     /// pass through the team page (search, a box score).
     @State private var teamHexLoaded: String?
+    /// How far the hero has collapsed under the bar.
+    @State private var heroCollapse: CGFloat = 0
+    /// True once the name has scrolled under the bar, which then carries it.
+    @State private var showsInlineTitle = false
 
     init(player: PlayerIdentity) {
         self.player = player
@@ -72,22 +76,41 @@ struct PlayerPage: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    hero
-                    HeroTabBar(tabs: Tab.allCases, selection: tab,
-                               onSelect: { tab = $0 },
-                               ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
-                }
+        // ConferencePage's collapsing header (Andy, 2026-10-03, from
+        // FotMob's player page): the hero scrolls away, the tab row pins
+        // under the bar, and the bar takes over the name and the club.
+        CollapsingHeaderScrollView(landing: ScrollLanding(key: tab.title),
+                                   collapse: $heroCollapse) {
+            hero
                 .frame(maxWidth: .infinity)
                 .background(headerPaint?.background ?? .bgCard)
-
-                VStack(spacing: Spacing.sm) {
-                    tabContent
-                }
-                .padding(Spacing.sm)
-                .padding(.bottom, Spacing.lg)
+        } strip: {
+            HeroTabBar(tabs: Tab.allCases, selection: tab,
+                       onSelect: { tab = $0 },
+                       ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
+                .frame(maxWidth: .infinity)
+                .background(headerPaint?.background ?? .bgCard)
+        } content: { _ in
+            VStack(spacing: Spacing.sm) {
+                tabContent
+            }
+            .padding(Spacing.sm)
+            .padding(.bottom, Spacing.lg)
+        }
+        // The name sits mid-way down the 76pt photo row, so it is under
+        // the bar about 60pt into the collapse.
+        .onChange(of: heroCollapse > 60) { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                CollapsedTitle(title: shown.name,
+                               subtitle: teamBadgeTitle ?? unlinkedTeamName,
+                               paint: headerPaint)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
             }
         }
         // The entity pages' header, applied here too (Andy, 2026-09-21,
