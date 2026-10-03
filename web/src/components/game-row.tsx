@@ -18,6 +18,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { gamePath } from "@/lib/routes";
+import { PossessionMark } from "./possession-mark";
 
 interface GameRowProps {
   game: Game;
@@ -153,15 +154,7 @@ function TeamLine({
           </span>
         )}
       </span>
-      {hasPossession && (
-        // Tiny football: live possession's quiet marker.
-        <svg
-          viewBox="0 0 12 8"
-          className="h-2 w-3 shrink-0 fill-text-secondary"
-        >
-          <ellipse cx="6" cy="4" rx="5.6" ry="3.6" />
-        </svg>
-      )}
+      {hasPossession && <PossessionMark />}
       <span className="ml-auto shrink-0 pl-2">
         {phase === "pre" && side.record !== undefined && (
           <span className="type-row-meta-medium text-text-secondary">

@@ -27,7 +27,7 @@
 // then the context".
 
 import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
 import { getHeadToHead, getTeamsNews } from "@/lib/api";
@@ -40,6 +40,8 @@ import {
 import { periodFormat, scoringCardTitle, seasonYear } from "@/lib/leagues";
 import { isLiveStatus, showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
+import { CompactGameHeader } from "./compact-game-header";
+import { cn } from "@/lib/utils";
 import {
   GameInfoCard,
   VenueCard,
@@ -188,6 +190,14 @@ export function GameDetailView({
   })();
 
   const showsTabs = tabs.length > 1;
+  // The strip's top sits this far above the sentinel (its negative margin).
+  const [stickSentinel, stuck] = useStuck(showsTabs ? 52 : 44);
+  // Who has the ball: the drive in progress, live only. Never the pushed
+  // row's `possession`, which froze when the page was opened (iOS
+  // `GameHeaderState.possessionTeamId`).
+  const possessionTeamId = isLiveStatus(game.status)
+    ? data.situation?.possessionTeamId
+    : undefined;
 
   // The game's own story (iOS E25, docs/news.md N2 and N3): the recap once
   // final, the preview before kickoff, nothing live. It rode in with the
@@ -200,17 +210,51 @@ export function GameDetailView({
   );
 
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full flex-col">
       {/* The header sits on the card surface, and the tab row with it —
           headers match the cards on every entity page. */}
-      <div className="flex flex-col">
-        <GameHeader game={game} />
+      <GameHeader game={game} possessionTeamId={possessionTeamId} />
+      {/* Siblings of the header, not wrapped with it: `position: sticky`
+          only travels inside its parent's box, and this page's container
+          spans the content the strip has to pin over. */}
+      <div ref={stickSentinel} aria-hidden="true" className="h-px -mb-px" />
+      <div
+        className={cn(
+          "sticky top-14 z-20 sm:top-16",
+          // The compact row overlays the header's last 44px, invisible,
+          // until the strip pins; with tabs it also tucks 8px further up
+          // to cover the header card's bottom corners.
+          showsTabs ? "-mt-[52px]" : "-mt-11"
+        )}
+      >
+        <div
+          className={cn(
+            "transition-opacity duration-150",
+            stuck
+              ? "bg-bg-card opacity-100"
+              : "pointer-events-none opacity-0",
+            stuck && !showsTabs && "border-b border-divider"
+          )}
+        >
+          <CompactGameHeader game={game} possessionTeamId={possessionTeamId} />
+        </div>
         {showsTabs && (
-          <div className="-mt-2 rounded-b-[10px] bg-bg-card">
+          // The nav bar's hairline along the bottom, so the pinned row has
+          // the same edge over the content scrolling under it (iOS,
+          // 2026-10-02). The card's rounded foot only while it sits on the
+          // header; pinned, it runs square.
+          <div
+            className={cn(
+              "border-b border-divider bg-bg-card",
+              !stuck && "rounded-b-[10px]"
+            )}
+          >
             <HeroTabBar tabs={tabs} selected={activeTab} onSelect={selectTab} />
           </div>
         )}
       </div>
+
+      <div className="mt-2 flex flex-col gap-2">
 
       {activeTab === "summary" && (
         // Desktop splits the summary into two columns: the game itself on
@@ -387,6 +431,48 @@ export function GameDetailView({
           onRetry={series.reload}
         />
       )}
+      </div>
     </div>
   );
+}
+
+/** The nav bar's height: `h-14`, and `sm:h-16` from 640px up. */
+function navBarHeight(): number {
+  return window.matchMedia("(min-width: 640px)").matches ? 64 : 56;
+}
+
+/**
+ * Whether the tab strip has pinned under the nav bar — what fades the
+ * compact scoreboard in (iOS hands the bar its compact score at the same
+ * moment). Watched off a sentinel just above the strip, which sits
+ * `offset` px below the strip's own top.
+ */
+function useStuck(offset: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const sentinel = ref.current;
+    if (!sentinel) return;
+    let observer: IntersectionObserver | undefined;
+    const observe = () => {
+      observer?.disconnect();
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          // Out of the band *above* it, not below the fold.
+          const top = entry.rootBounds?.top ?? 0;
+          setStuck(!entry.isIntersecting && entry.boundingClientRect.top < top);
+        },
+        { rootMargin: `-${navBarHeight() + offset}px 0px 0px 0px` }
+      );
+      observer.observe(sentinel);
+    };
+    observe();
+    const media = window.matchMedia("(min-width: 640px)");
+    media.addEventListener("change", observe);
+    return () => {
+      media.removeEventListener("change", observe);
+      observer?.disconnect();
+    };
+  }, [offset]);
+  return [ref, stuck] as const;
 }
