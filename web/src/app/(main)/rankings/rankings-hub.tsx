@@ -7,9 +7,9 @@
 // the Top 25 row — the poll one tap down, so the conferences aren't buried
 // under 25 rank rows — then FBS's eleven conferences and FCS's fourteen,
 // in one card. The pro leagues have no poll at all, so they lead with their
-// own whole-league table and then list **divisions**: a division is the
-// race a team is actually in, where a conference is a seeding pool for a
-// bracket (iOS, 2026-09-09).
+// own whole-league table and then list their **conferences** (iOS,
+// 2026-09-26, reversing 2026-09-09's divisions): a division has no page of
+// its own, and is read stacked inside its conference's.
 //
 // FCS is inside College Football's card, not beside it: the accordions are
 // leagues, and FCS is a division of one, so a card of its own read as a
@@ -18,7 +18,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDown, Star } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   conferenceLogoUrl,
@@ -27,7 +27,6 @@ import {
   collegeDivision,
 } from "@/lib/conferences";
 import {
-  divisionsIn,
   findTable,
   foldingDivisions,
   followableTables,
@@ -59,11 +58,13 @@ import { PageHeader } from "@/components/page-header";
 import { SearchField } from "@/components/search-field";
 import { filterFollowed, filterHubGroups, hubQuery } from "@/lib/hub-filter";
 import { cn } from "@/lib/utils";
+import { FollowCapsuleButton } from "@/components/follow-capsule";
 
 interface LeaguesHubProps {
   /** The polls, filtered and in picker order (AP first when present). */
   polls: Poll[];
-  /** Each league's tables — divisional for the pro leagues. */
+  /** Each league's tables — divisional for the pro leagues, folded back up
+   * into conferences here. */
   standings: Record<League, ConferenceStandingsGroup[]>;
   /** College football's other division, fetched and failing separately. */
   fcsStandings: ConferenceStandingsGroup[];
@@ -154,7 +155,9 @@ export function LeaguesHub({
 
   /**
    * What a league's accordion holds, league-wide row first: the whole thing
-   * above its parts.
+   * above its parts. The parts are conferences in every league (iOS,
+   * 2026-09-26): the fold in `conferencesIn` is what turns the pro leagues'
+   * divisional fetch back into them.
    */
   const tablesIn = useMemo(() => {
     const cache = {} as Record<League, ConferenceStandingsGroup[]>;
@@ -166,11 +169,11 @@ export function LeaguesHub({
       const wide = leagueTable(conferencesIn[league], league);
       cache[league] = [
         ...(wide ? [wide] : []),
-        ...divisionsIn(standings[league] ?? [], league),
+        ...conferencesIn[league],
       ];
     }
     return cache;
-  }, [collegeTables, conferencesIn, standings]);
+  }, [collegeTables, conferencesIn]);
 
   const rowsIn = useMemo(() => {
     const cache = {} as Record<League, HubRow[]>;
@@ -191,10 +194,9 @@ export function LeaguesHub({
   }, [polls, tablesIn]);
 
   /**
-   * Every table someone could be following, including the conference rows
-   * the accordion no longer lists. A conference follow made before the hub
-   * showed divisions still has a card in Following and still hoists its
-   * section on Scores.
+   * Every table someone could be following. Since divisions left
+   * (2026-09-26) that's what the accordions list, plus college football's
+   * conferences, which its FBS/FCS roots don't repeat.
    */
   const loadedTables = useMemo(
     () =>
@@ -324,10 +326,11 @@ export function LeaguesHub({
         {/* The complete list. Followed rows repeat inside their league —
             sections stay complete, never deduplicated. */}
         {/* Names what's below rather than repeating the tab (iOS,
-            2026-09-21): every table the app has — the four leagues, their
-            conferences, and the divisions inside those. */}
+            2026-09-21): every table the app has — the four leagues and
+            their conferences. Divisions are read inside their
+            conference's page (2026-09-26). */}
         {visibleFollowed.length > 0 && visibleGroups.length > 0 && (
-          <SectionHeading title="All leagues, conferences, divisions" />
+          <SectionHeading title="All leagues and conferences" />
         )}
         {visibleGroups.map(({ league, rows }) => (
           <LeagueAccordion
@@ -422,7 +425,9 @@ function LeagueAccordion({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "ml-auto h-4 w-4 text-text-secondary transition-transform",
+            // Inset over the rows' follow capsules' round ends (iOS,
+            // 2026-09-27), rather than past their edge.
+            "ml-auto mr-2 h-4 w-4 text-text-secondary transition-transform",
             isExpanded && "rotate-180"
           )}
         />
@@ -475,7 +480,7 @@ export function Top25Row({ league }: { league: League }) {
   const followed = isFavoritePoll(league);
 
   return (
-    <div className="flex min-h-12 items-center gap-3 pr-2">
+    <div className="flex min-h-12 items-center gap-3 pr-4">
       <Link
         href="/rankings/poll"
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
@@ -489,7 +494,7 @@ export function Top25Row({ league }: { league: League }) {
           Top 25
         </span>
       </Link>
-      <FollowStar
+      <FollowCapsuleButton
         followed={followed}
         name="Top 25"
         onToggle={() => toggleFavoritePoll(league)}
@@ -499,8 +504,8 @@ export function Top25Row({ league }: { league: League }) {
 }
 
 /**
- * One table: mark, name, follow star. The row navigates to that table's
- * page; the star doesn't.
+ * One table: mark, name, follow button. The row navigates to that
+ * table's page; the button doesn't.
  *
  * No leader teaser (iOS, 2026-09-21). The accordion is a way *into* a
  * league's tables, and a leader beside every row is a column of numbers
@@ -514,7 +519,7 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   const followed = token !== undefined && isFavoriteConference(token);
 
   return (
-    <div className="flex min-h-12 items-center gap-3 pr-2">
+    <div className="flex min-h-12 items-center gap-3 pr-4">
       <Link
         href={ref ? conferencePath(ref) : "#"}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
@@ -529,7 +534,7 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
         </span>
       </Link>
       {token !== undefined && isFollowable(table) && (
-        <FollowStar
+        <FollowCapsuleButton
           followed={followed}
           name={table.name}
           onToggle={() => toggleFavoriteConference(token)}
@@ -539,27 +544,3 @@ function TableRow({ table }: { table: ConferenceStandingsGroup }) {
   );
 }
 
-export function FollowStar({
-  followed,
-  name,
-  onToggle,
-}: {
-  followed: boolean;
-  name: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={followed ? `Unfollow ${name}` : `Follow ${name}`}
-      aria-pressed={followed}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-text-primary"
-    >
-      <Star
-        aria-hidden="true"
-        className={cn("h-4 w-4", followed && "fill-current text-text-primary")}
-      />
-    </button>
-  );
-}

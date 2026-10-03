@@ -5,7 +5,7 @@
 // leaders. Live games poll every 1s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
-// **Summary / Plays / Box score / H2H**, and a tab only exists where its data
+// **Summary / News / Plays / Box score / H2H**, and a tab only exists where its data
 // does: a game ESPN hasn't filled in shows Summary and the series alone. Plays
 // sits in the middle because chronology comes before rosters, and the Drives
 // card lives inside it: leaving it on Summary would print the same rows in two
@@ -16,7 +16,8 @@
 // there is, and "who usually wins this" is the pre-game question. That does
 // mean a pre-kick page now shows a tab row where it deliberately showed none;
 // a row of two real answers is not the chrome-saying-nothing that rule was
-// written against.
+// written against. News (E26) is the same kind of tab: the two teams' own
+// feeds, fetched when it first opens, second like every entity page's.
 //
 // Desktop splits that into two columns: the game itself on the left, and
 // the context that surrounds it — where it's played, who showed up, what
@@ -29,13 +30,15 @@ import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getHeadToHead } from "@/lib/api";
+import { getHeadToHead, getTeamsNews } from "@/lib/api";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { forYou } from "@/lib/espn/news";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
 } from "@/components/slate-control-row";
-import { scoringCardTitle, seasonYear } from "@/lib/leagues";
-import { showsScores } from "./game-status";
+import { periodFormat, scoringCardTitle, seasonYear } from "@/lib/leagues";
+import { isLiveStatus, showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
 import {
   GameInfoCard,
@@ -44,7 +47,13 @@ import {
   venueHasContent,
 } from "./game-info-cards";
 import { GetTheAppCard } from "@/components/get-the-app";
-import { LiveSituationCard } from "./live-situation-card";
+import {
+  DriveGamecastCard,
+  ShotGamecastCard,
+} from "./live-situation-card";
+import { currentShotMap, shotMapGamecast } from "@/lib/gamecast";
+import { allowsShootout } from "@/lib/period-label";
+
 import { LineScoreCard } from "./line-score-card";
 import { WinProbabilityCard } from "./win-probability-card";
 import { ScoringPlaysCard } from "./scoring-plays-card";
@@ -57,6 +66,9 @@ import {
 import { BoxScoreList } from "./box-score-list";
 import { DrivePlayList, PeriodPlayList } from "./play-lists";
 import { HeadToHeadPane } from "./head-to-head-pane";
+import { DetailCard } from "./detail-card";
+import { StoryRow } from "@/components/story-row";
+import { storyForGame, storyKindTitle } from "@/lib/news";
 
 interface GameDetailViewProps {
   initialData: GameDetail;
@@ -102,6 +114,7 @@ export function GameDetailView({
   const hasHeadToHead = awayId !== "" && homeId !== "" && awayId !== homeId;
   const tabs: HeroTab[] = [
     { id: "summary", label: "Summary" },
+    ...(hasHeadToHead ? [{ id: "news", label: "News" }] : []),
     ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
     ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
     ...(hasHeadToHead ? [{ id: "h2h", label: "H2H" }] : []),
@@ -115,13 +128,23 @@ export function GameDetailView({
   // Latched on the tap that opens it rather than watched for afterwards: once
   // asked for it stays asked for, so flipping back costs nothing.
   const [seriesRequested, setSeriesRequested] = useState(false);
+  const [newsRequested, setNewsRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "h2h") setSeriesRequested(true);
+    if (id === "news") setNewsRequested(true);
   };
   const series = useOnDemand(
     seriesRequested ? `${game.league}:${game.id}` : undefined,
     () => getHeadToHead(game.league, game.id)
+  );
+  const newsFeed = useOnDemand(
+    newsRequested ? `${game.league}:${game.id}` : undefined,
+    () =>
+      getTeamsNews([
+        { league: game.league, teamId: awayId },
+        { league: game.league, teamId: homeId },
+      ])
   );
   const hasScoringPlays =
     drives.length > 0
@@ -151,8 +174,30 @@ export function GameDetailView({
   // "Scoring" in football, "Goals" in hockey, and no card at all in
   // basketball — ~98 buckets a game is the box score with worse formatting.
   const scoringTitle = scoringCardTitle(game.league);
+  // The court or rink Gamecast, live games only: the color budget's surface
+  // exception is "only ever drawn while a game is live", and a final keeps
+  // the page it had. Undefined in football, whose card is the drive, and
+  // wherever the feed has nothing to draw.
+  const shotGamecast = (() => {
+    if (!isLiveStatus(game.status)) return undefined;
+    const plays = data.plays ?? [];
+    const shootout = allowsShootout(game);
+    const map = currentShotMap(game, plays, shootout);
+    const content = shotMapGamecast(game, plays, shootout);
+    return map && content ? { map, content } : undefined;
+  })();
 
   const showsTabs = tabs.length > 1;
+
+  // The game's own story (iOS E25, docs/news.md N2 and N3): the recap once
+  // final, the preview before kickoff, nothing live. It rode in with the
+  // summary, so the card costs no request of its own.
+  const story = storyForGame(data.article, game.id, game.status);
+  const storyCard = story && (
+    <DetailCard title={storyKindTitle(story.kind)}>
+      <StoryRow story={story} />
+    </DetailCard>
+  );
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -174,12 +219,30 @@ export function GameDetailView({
         // right. The iPhone's single column keeps the same reading order.
         <div className="grid w-full gap-2 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            {/* The Gamecast strip leads while a game is live: the down, the
-                spot and the last play are what the page is being opened for
-                at 3:30 on a Saturday. It is built from the drive in
+            {/* A final leads with its recap, FotMob's match report on Facts. */}
+            {story?.kind === "recap" && storyCard}
+            {/* The Gamecast leads while a game is live: the down, the spot
+                and the last play are what the page is being opened for at
+                3:30 on a Saturday. Football's is built from the drive in
                 progress, which ESPN drops at final — so it retires itself. */}
-            {data.situation && (
-              <LiveSituationCard game={game} situation={data.situation} />
+            {data.situation ? (
+              <DetailCard title="Current drive">
+                <DriveGamecastCard game={game} situation={data.situation} />
+              </DetailCard>
+            ) : (
+              shotGamecast && (
+                // Basketball and hockey: the same card over this period's
+                // shots (iOS, 2026-09-27).
+                <DetailCard
+                  title={`Current ${periodFormat(game.league).longName.toLowerCase()}`}
+                >
+                  <ShotGamecastCard
+                    game={game}
+                    content={shotGamecast.content}
+                    map={shotGamecast.map}
+                  />
+                </DetailCard>
+              )
             )}
             {hasLinescores && <LineScoreCard game={game} />}
             {/* ESPN's predictor before kickoff, the per-play value after
@@ -226,6 +289,9 @@ export function GameDetailView({
             {infoVisible && (
               <GameInfoCard game={game} detail={data} standings={standings} />
             )}
+            {/* Pre-game the preview follows Game info: when and where to
+                watch is still the first question. */}
+            {story?.kind === "preview" && storyCard}
             {venueVisible && <VenueCard game={game} detail={data} />}
             {standingsVisible && (
               <MatchupStandingsCard
@@ -283,6 +349,35 @@ export function GameDetailView({
       {activeTab === "boxScore" && (
         <BoxScoreList boxScore={boxScore} game={game} />
       )}
+
+      {activeTab === "news" &&
+        (newsFeed.state.status === "failed" ? (
+          <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+            <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+            <button
+              type="button"
+              onClick={newsFeed.reload}
+              className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+            >
+              Retry
+            </button>
+          </section>
+        ) : newsFeed.state.status === "loading" ? (
+          <StoryListCardSkeleton />
+        ) : (
+          // The game's own recap or preview folds in with the feeds —
+          // the Summary tab's card, listed with the rest of the matchup.
+          (() => {
+            const stories = forYou([story ? [story] : [], newsFeed.state.value]);
+            return stories.length > 0 ? (
+              <StoryListCard stories={stories} />
+            ) : (
+              <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+                No stories about this matchup right now.
+              </section>
+            );
+          })()
+        ))}
 
       {activeTab === "h2h" && (
         <HeadToHeadPane

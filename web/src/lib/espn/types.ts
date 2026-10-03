@@ -5,6 +5,8 @@
 // layer. These types never leave lib/espn — transformers map them to the
 // domain models in @/lib/types.
 
+import type { EspnNewsArticle } from "./news";
+
 /** ESPN sends some numerics as numbers, some as numeric strings. */
 export type FlexibleNumber = number | string;
 
@@ -328,6 +330,9 @@ export interface EspnGameSummaryResponse {
   /** The two competing teams' own standings tables, shipped inside the
    *  request the game page already makes (iOS E21, 2026-09-21). */
   standings?: EspnSummaryStandings;
+  /** The game's own story: AP's preview before kickoff, its recap once
+   *  final, nothing live (iOS E25, docs/news.md N2 and N3). */
+  article?: EspnNewsArticle;
 }
 
 export interface EspnPredictor {
@@ -442,6 +447,12 @@ export interface EspnPlay {
   team?: { id?: string };
   start?: EspnPlaySpot;
   end?: EspnPlaySpot;
+  /** Basketball and hockey only. A play with no spot ships -214748340 on
+   *  both axes rather than leaving the field out. */
+  coordinate?: { x?: number; y?: number };
+  shootingPlay?: boolean;
+  /** Hockey's manpower: `abbreviation` is "power-play", "even-strength"… */
+  strength?: { text?: string; abbreviation?: string };
 }
 
 export interface EspnPlaySpot {
@@ -452,6 +463,8 @@ export interface EspnPlaySpot {
   shortDownDistanceText?: string;
   possessionText?: string;
   yardsToEndzone?: number;
+  /** Whose ball it was at this end of the play. */
+  team?: { id?: string };
 }
 
 export interface EspnBoxscoreTeam {
@@ -655,6 +668,8 @@ export interface EspnRosterPosition {
 }
 
 export interface EspnRosterCoach {
+  /** Joins to the core API's `coaches/{id}` (E27, 2026-09-27). */
+  id?: string | number;
   firstName?: string;
   lastName?: string;
 }
@@ -689,4 +704,18 @@ export interface EspnSearchContent {
    *  rest, which is why this is filtered rather than trusted. */
   defaultLeagueSlug?: string;
   image?: { default?: string | null } | null;
+  /** An article's story id (`50039929`), the one the content API takes. A
+   *  person's is a GUID. */
+  id?: string;
+  /** An article's ESPN type, lowercased: `headlinenews`, `story`, `recap`,
+   *  `preview`. */
+  type?: string;
+  /** `https://www.espn.com/nba/story/_/id/…` — the path's first segment is
+   *  the only league an article hit carries. */
+  link?: { web?: string | null } | null;
+  /** An article's byline, or its wire: "Associated Press", "ESPN". */
+  byline?: string | null;
+  date?: string | null;
+  /** An article's photos, in the feeds' shape. */
+  images?: { type?: string; url?: string }[] | null;
 }

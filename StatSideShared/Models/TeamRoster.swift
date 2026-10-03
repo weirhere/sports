@@ -44,6 +44,9 @@ nonisolated struct RosterGroup: Sendable, Identifiable, Hashable {
 }
 
 nonisolated struct RosterCoach: Sendable, Hashable {
+    /// ESPN's coach id, the key to the coach's page (E27). Optional because
+    /// every field is: a coach without one is a name and not a link.
+    var id: String? = nil
     let name: String
 }
 

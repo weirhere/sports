@@ -112,9 +112,9 @@ struct TablesScreen: View {
             }
                 .background(Color.bgPrimary)
                 .toolbar(.hidden, for: .navigationBar)
-                // TeamPage is pushed view-based here, but its standing line
-                // and a standings row's team both push values — register
-                // them so those links work inside this stack too.
+                // Every push in this stack is by value — a view-based push
+                // sits above the path, and a value pushed from on top of it
+                // lands underneath instead (see PollDestination).
                 // Identity follows the conference, for the reason the team
                 // destination below does: a replaced value at the same path
                 // position otherwise reuses the page and its caches.
@@ -128,6 +128,13 @@ struct TablesScreen: View {
                 // identity doesn't change is reused with all of its `@State`
                 // intact — which is how the Lakers page came to show Ole Miss's
                 // schedule, standings and roster under a Lakers crest.
+                // The Top 25 row's push, with the polls this hub already
+                // fetched.
+                .navigationDestination(for: PollDestination.self) { destination in
+                    PollScreen(polls: destination.polls, league: destination.league,
+                               opensNews: destination.opensNews)
+                        .id(destination.league)
+                }
                 .navigationDestination(for: Team.self) { team in
                     TeamPage(team: team)
                         .id(team.followKey)
@@ -135,6 +142,16 @@ struct TablesScreen: View {
                 .navigationDestination(for: PlayerIdentity.self) { player in
                     PlayerPage(player: player)
                         .id(player.id)
+                }
+                .navigationDestination(for: CoachIdentity.self) { coach in
+                    CoachPage(coach: coach)
+                        .id(coach.id)
+                }
+                // The story reader (docs/news.md): game pages and team
+                // pages push it.
+                .navigationDestination(for: StoryDestination.self) { destination in
+                    StoryReader(destination: destination)
+                        .id(destination.story.id)
                 }
                 // TeamPage's Next game card pushes game detail. Identity
                 // follows the game, exactly as the two destinations above
@@ -431,11 +448,10 @@ struct TablesScreen: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        // The column the rows' stars centre in, so the
-                        // header's chevron and every star below it share
-                        // one vertical line.
-                        .frame(width: ConferenceFollowStar.controlColumn)
-                        .padding(.trailing, ConferenceFollowStar.controlNudge)
+                        // Inset into the rows' follow capsules' round
+                        // ends, so the chevron sits over the controls
+                        // below it rather than past their edge.
+                        .padding(.trailing, Spacing.sm)
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.md)
@@ -486,9 +502,9 @@ struct TablesScreen: View {
     }
 
     /// What a followed table's card measures, and so what a league header
-    /// does: the follow star's 34pt tap target, inside the row's 7pt and
-    /// the card's 4pt.
-    private static let headerHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
+    /// does: the follow capsule's 34pt tap target, inside the row's 7pt
+    /// and the card's 4pt.
+    private static let headerHeight: CGFloat = FollowCapsule.height + (7 * 2) + (Spacing.xs * 2)
 
     /// League-qualified and namespaced: the collapse state is persisted
     /// alongside every conference accordion's, so the key has to be unique

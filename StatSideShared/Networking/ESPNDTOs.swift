@@ -226,6 +226,11 @@ nonisolated struct TeamDTO: Decodable {
     /// under FBS, both times). Read as a fallback, so a team decoded from
     /// either one knows its conference instead of guessing nil.
     let groups: TeamGroupsDTO?
+    /// ESPN's team colors as bare hex ("970310"). Only the Gamecast
+    /// field's end zones read them (2026-09-27) — the one place the color
+    /// budget lets a team's own color in besides its logo.
+    let color: String?
+    let alternateColor: String?
 }
 
 nonisolated struct LogoDTO: Decodable {
@@ -323,6 +328,9 @@ nonisolated struct ScheduleTeamDTO: Decodable {
     let recordSummary: String?
     let standingSummary: String?
     let groups: TeamGroupsDTO?
+    /// The team's primary color — TeamPage's light-mode header. The
+    /// schedule endpoint sends no `alternateColor` (probed 2026-09-27:
+    /// Texas, Ohio State, the Celtics).
     let color: String?
 }
 
@@ -448,6 +456,11 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// headline line and total are read (2026-09-24); the moneyline,
     /// per-team odds and bet links are deliberately left undecoded.
     let pickcenter: LossyArray<PickcenterDTO>?
+    /// The game's own story: AP's preview before kickoff, its recap once
+    /// the game is final, and nothing while it's live (probed 2026-09-27).
+    /// The body rides along whole, so the game page's story card costs no
+    /// request of its own (docs/news.md, N2 and N3).
+    let article: NewsArticleDTO?
 }
 
 nonisolated struct PickcenterDTO: Decodable {
@@ -455,6 +468,79 @@ nonisolated struct PickcenterDTO: Decodable {
     /// the moneyline ("ANA -185") in hockey.
     let details: String?
     let overUnder: Double?
+}
+
+// MARK: - News
+// One shape across three sources: the summary's `article`, a `/news` feed's
+// `articles[]`, and the content API's `headlines[]`. Each carries a subset —
+// the feed has no `story`, no `source` and no `gameId` — so every field is
+// optional and the mapper names what's missing rather than guessing.
+//
+// `images`, `video`, `links.web` and the reactions and comments flags are
+// deliberately not decoded: the reader is text-only (N8) and never sends
+// anyone to espn.com (N4).
+
+nonisolated struct NewsArticleDTO: Decodable {
+    let id: FlexibleInt?
+    let type: String?
+    let headline: String?
+    let description: String?
+    let byline: String?
+    let source: String?
+    let published: String?
+    let story: String?
+    let gameId: FlexibleInt?
+    let categories: LossyArray<NewsCategoryDTO>?
+    let links: NewsLinksDTO?
+    let images: LossyArray<NewsImageDTO>?
+}
+
+/// One of a story's photos. `header` is the story's own lead photo; `Media`
+/// is a video's still.
+nonisolated struct NewsImageDTO: Decodable {
+    let type: String?
+    let url: String?
+}
+
+nonisolated struct NewsCategoryDTO: Decodable {
+    let type: String?
+    let description: String?
+    let teamId: FlexibleInt?
+    let eventId: FlexibleInt?
+}
+
+nonisolated struct NewsLinksDTO: Decodable {
+    let api: NewsAPILinksDTO?
+}
+
+nonisolated struct NewsAPILinksDTO: Decodable {
+    let selfLink: NewsHrefDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case selfLink = "self"
+    }
+}
+
+nonisolated struct NewsHrefDTO: Decodable {
+    let href: String?
+}
+
+/// `/news?team=`: a team's feed, headlines only.
+nonisolated struct NewsFeedDTO: Decodable {
+    let articles: LossyArray<NewsArticleDTO>?
+}
+
+/// The athlete overview's `news` block: ESPN's own list of a player's
+/// stories, the one per-player source it publishes (`/news?athlete=` is
+/// ignored). Only `news` is decoded; the stats and game log it also
+/// carries come from their own endpoints.
+nonisolated struct AthleteOverviewNewsDTO: Decodable {
+    let news: LossyArray<NewsArticleDTO>?
+}
+
+/// The content API's single story, the body a feed item opens to.
+nonisolated struct NewsHeadlinesDTO: Decodable {
+    let headlines: LossyArray<NewsArticleDTO>?
 }
 
 // MARK: - Standings, the summary's own copy
@@ -512,6 +598,13 @@ nonisolated struct DrivesDTO: Decodable {
 nonisolated struct DriveDTO: Decodable {
     let id: String?
     let description: String?     // "5 plays, 20 yards, 2:39"
+    /// The same line's parts, which the current drive card lays out as
+    /// its own "4 plays, 57 yds" column. Flexible, since a drive that
+    /// failed to decode over one mistyped number would drop off the log.
+    let offensivePlays: FlexibleInt?
+    let yards: FlexibleInt?
+    /// "2:39" — the Plays tab's third drive column.
+    let timeElapsed: ClockRefDTO?
     let displayResult: String?   // "Punt", not the ALL-CAPS `result`
     let isScore: Bool?
     let team: TeamDTO?
@@ -537,6 +630,21 @@ nonisolated struct PlayDTO: Decodable {
     /// in; a flat feed has no drive, and a goals card with no mark beside
     /// the row can't say whose goal it was.
     let team: TeamRefDTO?
+    /// Where a basketball or hockey play happened, in feet — the Gamecast
+    /// shot map's only input (2026-09-27). Basketball folds every shot onto
+    /// one half court (x across, y out from the baseline); hockey is the
+    /// whole rink from center ice. A play with no spot ships
+    /// `-214748340`, which the shot map drops.
+    let coordinate: PlayCoordinateDTO?
+    let shootingPlay: Bool?
+    /// Hockey's manpower on the play: "even-strength", "power-play",
+    /// "short-handed", "empty-net" — from the play's team's side.
+    let strength: PlayTypeDTO?
+}
+
+nonisolated struct PlayCoordinateDTO: Decodable {
+    let x: Double?
+    let y: Double?
 }
 
 nonisolated struct TeamRefDTO: Decodable {
@@ -548,6 +656,12 @@ nonisolated struct PlayEndpointDTO: Decodable {
     let shortDownDistanceText: String?  // "1st & 10"
     let possessionText: String?         // "MIA 28"
     let yardsToEndzone: Int?
+    /// Yards to a first down from this spot — the field's line to gain.
+    let distance: FlexibleInt?
+    /// Whose ball it was at this end of the play. A kickoff starts with
+    /// the kicking team and ends with the receiver, which is how the
+    /// mapper tells a snap from a change of possession.
+    let team: TeamRefDTO?
 }
 
 nonisolated struct DriveEndpointDTO: Decodable {
@@ -764,6 +878,14 @@ nonisolated struct CoreRefDTO: Decodable {
     }
 }
 
+/// A poll's season index — `seasons/{year}/rankings/{id}` — whose
+/// `rankings` are one ref per week that poll was published, preseason to
+/// final. The only document that says which weeks exist before they're
+/// fetched.
+nonisolated struct CoreRankingIndexDTO: Decodable {
+    let rankings: LossyArray<CoreRefDTO>?
+}
+
 nonisolated struct CoreRankingDTO: Decodable {
     let id: String?
     let name: String?
@@ -901,6 +1023,8 @@ nonisolated struct RosterInjuryDTO: Decodable {
 }
 
 nonisolated struct RosterCoachDTO: Decodable {
+    /// Joins to the core API's `coaches/{id}` (E27, 2026-09-27).
+    let id: FlexibleID?
     let firstName: String?
     let lastName: String?
 }

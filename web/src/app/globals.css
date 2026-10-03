@@ -34,6 +34,22 @@
   --live-edge: rgb(0 133 56 / 0.28);
   --shadow-card: 0 2px 8px rgb(0 0 0 / 0.06);
 
+  /* The Gamecast surfaces' paint — the color budget's fourth exception
+     (iOS `SurfaceColors`, 2026-09-27). Turf, maple and ice, drawn only while
+     a game is live and only inside `app/(main)/game/…/gamecast/`. Nothing
+     else may read these; the card around them stays monochrome. */
+  --surface-turf: #5aa865;
+  --surface-turf-alt: #52a05d;
+  --surface-line-to-gain: #f2d024; /* one yellow, both modes: only on turf */
+  --surface-chalk: #ffffff;
+  --surface-ink: #121212; /* the last play; fixed so it never turns white */
+  --surface-maple: #e6cc9c;
+  --surface-paint: #d9b983;
+  --surface-ice: #f5f8fa;
+  --surface-boards: #9aa3ab;
+  --surface-blue-line: #8f8f8f; /* gray: no blue joins the app for it */
+  --surface-mark-fallback: #c7c7c7;
+
   /* The scores page's follow rail. One source of truth: the grid that
      opens the column, and the fixed day strip that has to clear it, both
      read these. `--page-max` is set per route by AppShell. */
@@ -54,6 +70,15 @@
   --logo-backing: #ebebeb;
   --rank-up: #33d166;
   --rank-down: #ff453b;
+  /* Dark deepens turf and wood rather than inverting them, so the black
+     play arrow still reads; ice stays ice, a touch dimmer. */
+  --surface-turf: #3d8049;
+  --surface-turf-alt: #377543;
+  --surface-maple: #9c7f52;
+  --surface-paint: #8a6e44;
+  --surface-ice: #dfe5ea;
+  --surface-boards: #6b747c;
+  --surface-mark-fallback: #4d4d4d;
   --live-tint: #0e2a18;
   --live-edge: rgb(51 209 102 / 0.38);
   --shadow-card: none; /* dark elevation is luminance, not shadow */
@@ -225,6 +250,13 @@
   font-size: 24px;
   font-weight: 800;
 }
+/* A featured story's headline under its photo (iOS `storyFeatured`,
+   2026-09-27): a step past a row's 15, short of the hero's 24. */
+@utility type-story-featured {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+}
 @utility type-row-name {
   font-size: 13px;
   font-weight: 500;
@@ -279,6 +311,56 @@
 
 .live-dot {
   animation: live-dot-pulse 0.9s ease-in-out infinite alternate;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Gamecast — a team's color, picked per mode (see lib/gamecast.ts),   */
+/*  and the new play drawing in over 0.6s                               */
+/* ------------------------------------------------------------------ */
+
+.gamecast-team-mark {
+  fill: var(--mark-light);
+}
+.dark .gamecast-team-mark {
+  fill: var(--mark-dark);
+}
+
+@keyframes gamecast-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes gamecast-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes gamecast-grow {
+  from {
+    transform: scale(0.01);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.gamecast-draw {
+  stroke-dasharray: 1;
+  animation: gamecast-draw 0.6s ease-out both;
+}
+.gamecast-head-in {
+  animation: gamecast-appear 0.12s ease-out 0.52s both;
+}
+.gamecast-grow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gamecast-grow 0.6s ease-out both;
 }
 
 /* Reduced motion preference */

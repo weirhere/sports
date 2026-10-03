@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The poll, on the entity-page template ConferencePage and TeamPage share
 /// (Andy, 2026-09-05): hero mark and title, a Standings / Games tab pair,
-/// content as cards on the recessed ground, and the toolbar row carrying
-/// the season chip and the follow pill.
+/// content as cards on the recessed ground, and the follow pill on the
+/// toolbar row. Season, week and poll are chips over the table.
 ///
 /// The Top 25 *is* an entity here, and its members are the 25 ranked teams
 /// — so Standings is the poll table (rendered in the standings tables' own
@@ -31,12 +31,13 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, postseason
+        case standings, games, news, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .news: "News"
             case .postseason: "Postseason"
             }
         }
@@ -50,12 +51,40 @@ struct PollScreen: View {
     /// Whose poll this is — the follow control's id.
     var league: League = .collegeFootball
 
+    init(polls: [Poll] = [], league: League = .collegeFootball, opensNews: Bool = false) {
+        self.polls = polls
+        self.league = league
+        // A News page's "See more" lands on News (2026-09-27).
+        _tab = State(initialValue: opensNews ? .news : .standings)
+    }
+
     @Environment(UIStateStore.self) private var uiState
     @State private var showsInlineTitle = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    /// Bumped when the mark's color has been worked out (ConferencePage's
+    /// pattern).
+    @State private var markHexLoaded: String?
+
+    /// The poll is its league's, so its header is the league's: ESPN's
+    /// color where it has one, the mark's own where it doesn't (college
+    /// football, 2026-09-27).
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: league.brandColorHex ?? markHexLoaded ?? HeaderPaint.markHex(for: league.logoURL),
+                    colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
     @State private var tab: Tab = .standings
+    /// The News tab's stories (E26): the league's feed, fetched on the
+    /// tab's first visit and held for the page.
+    @State private var news: [NewsStory]?
+    @State private var newsFailed = false
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
+    /// How far the hero has collapsed under the bar (`CollapsingHeaderScrollView`).
+    @State private var heroCollapse: CGFloat = 0
 
     /// Nil means the season in progress, which needs no fetch of its own.
     @State private var pickedYear: Int?
@@ -63,6 +92,24 @@ struct PollScreen: View {
     @State private var pollsByYear: [Int: [Poll]] = [:]
     @State private var loadingYears: Set<Int> = []
     @State private var failedYears: Set<Int> = []
+
+    /// Each season's published weeks, oldest first, fetched beside its
+    /// polls. A season whose list doesn't come back just shows no week
+    /// chip — its latest table is still the page.
+    @State private var weeksByYear: [Int: [PollWeek]] = [:]
+    /// The week picked on the chip; nil is the season's latest (Andy,
+    /// 2026-09-27): the current week while a season runs, the final polls
+    /// once it's over. Cleared by a season switch.
+    @State private var pickedWeek: PollWeek?
+    /// Weeks before the latest, fetched on pick and kept for the visit.
+    @State private var weekPolls: [SeasonWeek: [Poll]] = [:]
+    @State private var loadingWeeks: Set<SeasonWeek> = []
+    @State private var failedWeeks: Set<SeasonWeek> = []
+
+    private struct SeasonWeek: Hashable {
+        let year: Int
+        let week: PollWeek
+    }
 
     /// The ranked teams' season slate, per year — one request each, kept
     /// for the visit.
@@ -86,58 +133,58 @@ struct PollScreen: View {
     @State private var postseasonRound: String?
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                hero
-                tabRow
-                Group {
-                    switch tab {
-                    case .standings: standingsSection
-                    case .games: gamesSection
-                    case .postseason: postseasonSection
-                    }
+        // ConferencePage's shape (2026-09-27): the header rides over the
+        // content and collapses as it scrolls, so a Games tab opens on this
+        // week with the hero expanded and the tabs and chips in view.
+        CollapsingHeaderScrollView(landing: landing, collapse: $heroCollapse) {
+            hero
+        } strip: {
+            pinnedControls
+        } content: { headerHeight in
+            Group {
+                switch tab {
+                case .standings: standingsSection
+                case .games: gamesSection(scrollInset: headerHeight)
+                case .news: newsSection
+                case .postseason: postseasonSection
                 }
-                .transition(.push(from: tabSlideEdge))
-                .geometryGroup()
-                .id(tab)
             }
+            .transition(.push(from: tabSlideEdge))
+            .geometryGroup()
+            .id(tab)
         }
         // ConferencePage's handoff: once the hero's own title scrolls under
         // the bar, the bar takes over the identity.
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, scrolledPastHero in
+        .onChange(of: heroCollapse > 64) { _, scrolledPastHero in
             withAnimation(.easeInOut(duration: 0.15)) {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .task(id: league) { markHexLoaded = await HeaderPaint.loadMarkHex(for: league.logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Top 25")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
-            // Declaration order is left-to-right, so the season sits left
-            // of Follow (Andy, 2026-09-05).
+            // The season chip leads each pane's control row instead
+            // (2026-09-27) — see `seasonChip`.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                SeasonMenuChip(current: year, seasons: availableSeasons, league: league, style: .bar,
-                               onSelect: { select(year: $0) })
                 PollFollowPill(league: league)
             }
         }
         .task {
             async let poll: Void = load(year: year)
+            async let weeks: Void = loadWeeks(year: year)
             async let games: Void = loadGames(year: year)
-            _ = await (poll, games)
+            _ = await (poll, weeks, games)
         }
     }
 
@@ -154,9 +201,73 @@ struct PollScreen: View {
     /// The shown season's polls. The current one came in with the push
     /// where the caller had it; every other — and the current one on a
     /// push that carried none — is fetched on demand and kept.
+    ///
+    /// A picked week other than the latest reads from its own fetch; the
+    /// latest *is* the season's table, so picking it back costs nothing.
     private var seasonPolls: [Poll] {
+        if let key = pickedPastWeek { return weekPolls[key] ?? [] }
         if year == currentYear, !polls.isEmpty { return Self.displayed(polls) }
         return pollsByYear[year] ?? []
+    }
+
+    // MARK: - Week
+
+    private var seasonWeeks: [PollWeek] { weeksByYear[year] ?? [] }
+
+    /// What the week chip reads: the pick, or the season's newest week.
+    private var shownWeek: PollWeek? { pickedWeek ?? seasonWeeks.last }
+
+    /// A pick that needs its own fetch — anything but the latest week.
+    private var pickedPastWeek: SeasonWeek? {
+        guard let pickedWeek, pickedWeek != seasonWeeks.last else { return nil }
+        return SeasonWeek(year: year, week: pickedWeek)
+    }
+
+    private var tableIsLoading: Bool {
+        pickedPastWeek.map { loadingWeeks.contains($0) } ?? loadingYears.contains(year)
+    }
+
+    private var tableFailed: Bool {
+        pickedPastWeek.map { failedWeeks.contains($0) } ?? failedYears.contains(year)
+    }
+
+    private func retryTable() async {
+        if let key = pickedPastWeek {
+            await load(week: key, force: true)
+        } else {
+            await load(year: year, force: true)
+        }
+    }
+
+    private func select(week value: PollWeek) {
+        guard value != shownWeek else { return }
+        pickedWeek = value
+        guard let key = pickedPastWeek else { return }
+        Task { await load(week: key) }
+    }
+
+    private func loadWeeks(year value: Int) async {
+        guard weeksByYear[value] == nil else { return }
+        // A miss hides the chip rather than failing the page, and isn't
+        // cached, so the next visit to the season asks again.
+        if let weeks = try? await DataProvider.makeClient(league: league).rankingWeeks(year: value) {
+            weeksByYear[value] = weeks
+        }
+    }
+
+    private func load(week key: SeasonWeek, force: Bool = false) async {
+        guard weekPolls[key] == nil || force else { return }
+        guard !loadingWeeks.contains(key) else { return }
+        loadingWeeks.insert(key)
+        defer { loadingWeeks.remove(key) }
+        do {
+            let fetched = try await DataProvider.makeClient(league: league)
+                .rankings(year: key.year, week: key.week)
+            weekPolls[key] = Self.displayed(fetched)
+            failedWeeks.remove(key)
+        } catch {
+            failedWeeks.insert(key)
+        }
     }
 
     private var selectedPoll: Poll? {
@@ -166,12 +277,16 @@ struct PollScreen: View {
     private func select(year value: Int) {
         guard value != year else { return }
         pickedYear = value
+        // A week number means nothing across seasons: the new one opens
+        // on its own latest, as the page does.
+        pickedWeek = nil
         // The grouping is a view choice and carries over; the team pick
         // survives only where the team is still ranked (`activeTeamId`).
         Task {
             async let poll: Void = load(year: value)
+            async let weeks: Void = loadWeeks(year: value)
             async let games: Void = loadGames(year: value)
-            _ = await (poll, games)
+            _ = await (poll, weeks, games)
         }
     }
 
@@ -224,32 +339,33 @@ struct PollScreen: View {
 
     // MARK: - Hero
 
-    /// The conference hero's shape, wearing the league's own mark — the
-    /// same swap the hub's row made (Andy, 2026-09-06): "Top 25" doesn't
-    /// say whose, and the trophy said even less.
+    /// The conference hero's shape, wearing the hub row's trophy.
     private var hero: some View {
         HStack(spacing: Spacing.md) {
-            LogoImage(url: league.logoURL, placeholder: nil)
+            // The trophy, not the league's football (Andy, 2026-09-27) —
+            // the hub row's mark since 2026-09-21, and the Leagues tab's
+            // glyph, so the row and the page it opens agree. On a painted
+            // header it takes the header's ink; unpainted (dark mode, or a
+            // color too pale to paint) it's black on the logo-backing disc,
+            // which is light in dark mode and clear on a light hero. The
+            // header's color still comes from the league's mark
+            // (`headerPaint`), which is what the page is — only the glyph
+            // changed.
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 24, weight: .medium))
+                .foregroundStyle(headerPaint?.ink ?? Color.black)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.logoBacking).padding(-6))
                 .padding(6)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Top 25")
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                // ESPN's own line for the poll ("2026 AP Poll: Preseason")
-                // — which poll, and how far into the season it is. It moved
-                // up here from the card, where it read as a caption. On a
-                // past season it names the year too, so the page can't be
-                // mistaken for this week's.
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.chipEmphasis)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                }
+                // No subtitle (Andy, 2026-09-27): ESPN's headline ("2025
+                // AP Poll: Final Rankings") said which season, poll and
+                // week, and the chips over the table now say all three.
             }
             Spacer(minLength: 0)
         }
@@ -257,56 +373,137 @@ struct PollScreen: View {
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bgCard)
-    }
-
-    /// The poll's own headline, or the bare season while there's no poll
-    /// to headline — the hero must never say 2026 under a 2019 table.
-    private var subtitle: String? {
-        selectedPoll?.headline ?? (year == currentYear ? nil : String(year))
+        .background(headerGround)
     }
 
     private var tabRow: some View {
         // Unpadded: HeroTabBar carries its own gutter so tabs scroll out
         // at the surface edge (2026-09-21).
         HeroTabBar(tabs: availableTabs, selection: tab,
-                   onSelect: { select(tab: $0) })
-            .background(Color.bgCard)
+                   onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
+    }
+
+    /// The sticky header — the tab row and the pane's control row, both
+    /// painting their own surface so content can slide under them
+    /// (ConferencePage's `pinnedControls`).
+    private var pinnedControls: some View {
+        VStack(spacing: 0) {
+            tabRow
+                // Reaches above the strip's frame to cover the seam a
+                // pinned header leaves under the bar.
+                .background(headerGround.padding(.top, -Spacing.sm))
+            VStack(spacing: 0) {
+                // No control on News: stories are today's, whatever season
+                // the other tabs are showing.
+                if tab != .news {
+                    controlRow(for: tab)
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.top, Spacing.sm)
+                }
+                // The gap that used to be the pane's own top padding.
+                Color.clear.frame(height: Spacing.sm)
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.bgRecessed)
+        }
+    }
+
+    /// The season leads every tab's row; after it, what shapes this pane
+    /// alone — the week and poll on Standings, the slate toggles on Games,
+    /// nothing on Postseason, whose round chips live in the pane.
+    private func controlRow(for tab: Tab) -> some View {
+        SeasonControlRow(season: seasonChip) {
+            switch tab {
+            case .standings:
+                if let shownWeek, seasonWeeks.count > 1 {
+                    PollWeekMenuChip(weeks: seasonWeeks, current: shownWeek,
+                                     onSelect: { select(week: $0) })
+                }
+                if seasonPolls.count > 1 {
+                    PollMenuChip(polls: seasonPolls, current: selectedPoll?.type,
+                                 onSelect: { uiState.pollChoice = $0 })
+                }
+            case .games:
+                SlateControlRow(grouping: grouping,
+                                onToggle: { toggle($0) },
+                                teams: filterableTeams,
+                                teamSelection: activeTeamId,
+                                onSelectTeam: { teamFilter = $0 })
+            case .news, .postseason:
+                EmptyView()
+            }
+        }
+    }
+
+    // MARK: - News
+
+    /// College football's league page reads the league's own feed, the
+    /// News tab's NCAAF page: previews last, and topped up with the AP Top
+    /// 10's stories on a flood day (E26).
+    private var newsSection: some View {
+        VStack(spacing: Spacing.sm) {
+            if let news, !news.isEmpty {
+                StoryListCard(stories: news)
+            } else if news != nil {
+                StatusMessage(text: "No \(league.shortName) stories right now.")
+                    .cardSurface()
+            } else if newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews() } })
+                    .cardSurface()
+            } else {
+                // A lone spinner gets no card (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .task { if news == nil { await loadNews() } }
+    }
+
+    private func loadNews() async {
+        newsFailed = false
+        if let loaded = await NewsFeedStore.leaguePage(league) {
+            news = loaded
+        } else {
+            newsFailed = true
+        }
     }
 
     // MARK: - Standings
 
     private var standingsSection: some View {
-        VStack(spacing: Spacing.sm) {
-            if seasonPolls.count > 1 { pollRow }
-            standingsContent
-        }
-        .padding(Spacing.sm)
+        standingsContent
+            // No top padding: the pinned header carries it.
+            .padding(.horizontal, Spacing.sm)
+            .padding(.bottom, Spacing.sm)
     }
 
-    /// The poll picker, trailing above the table it scopes — the pane
-    /// control row's slot on every other entity page.
-    private var pollRow: some View {
-        HStack {
-            Spacer()
-            PollMenuChip(polls: seasonPolls, current: selectedPoll?.type,
-                         onSelect: { uiState.pollChoice = $0 })
-        }
+    /// The season picker leads every pane's control row, above the cards
+    /// it scopes (Andy, 2026-09-27, superseding the 2026-09-05 move onto
+    /// the toolbar row), with the pane's own controls after it: the poll
+    /// picker on Rankings, the slate toggles on Games.
+    private var seasonChip: SeasonMenuChip {
+        SeasonMenuChip(current: year, seasons: availableSeasons, league: league,
+                       onSelect: { select(year: $0) })
     }
 
     @ViewBuilder
     private var standingsContent: some View {
         if let poll = selectedPoll, !poll.ranks.isEmpty {
             pollCard(poll)
-        } else if loadingYears.contains(year) {
+        } else if tableIsLoading {
             // A lone spinner gets no card — a surface around it hugs into
             // a floating pill (Andy, 2026-08-31).
             ProgressView()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
-        } else if failedYears.contains(year) {
+        } else if tableFailed {
             StatusMessage(text: "Couldn't load the poll.",
-                          retry: { Task { await load(year: year, force: true) } })
+                          retry: { Task { await retryTable() } })
                 .cardSurface()
         } else {
             // A season ESPN has no poll for — the preseason before the
@@ -321,9 +518,8 @@ struct PollScreen: View {
             RankColumnCaptions()
             LazyVStack(spacing: 0) {
                 ForEach(poll.ranks) { ranked in
-                    NavigationLink {
-                        TeamPage(team: ranked.team)
-                    } label: {
+                    // By value, never view-based: see PollDestination.
+                    NavigationLink(value: ranked.team) {
                         RankRow(ranked: ranked)
                     }
                     .buttonStyle(.plain)
@@ -390,7 +586,8 @@ struct PollScreen: View {
     /// it, because a bowl slate is the division's, not the Top 25's, and a
     /// postseason narrowed to ranked teams would drop most of the bowls.
     private var availableTabs: [Tab] {
-        postseasonRounds.isEmpty ? [.standings, .games] : [.standings, .games, .postseason]
+        // News after Games (Andy, 2026-09-27, E26).
+        postseasonRounds.isEmpty ? [.standings, .games, .news] : [.standings, .games, .news, .postseason]
     }
 
     private var postseasonRounds: [PostseasonRound] {
@@ -411,23 +608,27 @@ struct PollScreen: View {
                                                             league: league),
                           selection: activePostseasonRound,
                           onSelectRound: { postseasonRound = $0 })
-            .padding(Spacing.sm)
+            .padding(.horizontal, Spacing.sm)
+            .padding(.bottom, Spacing.sm)
     }
 
-    private var gamesSection: some View {
-        VStack(spacing: Spacing.sm) {
-            filterRow
-            gamesContent
-        }
-        .padding(Spacing.sm)
+    /// ConferencePage's landing rule: Games on this week, every other tab
+    /// straight back to the top.
+    private var landing: ScrollLanding {
+        ScrollLanding(key: "\(tab)",
+                      target: tab == .games
+                          ? gamesOpeningCardId.map(ConferenceGamesList.scrollAnchor(for:))
+                          : nil)
     }
 
-    private var filterRow: some View {
-        SlateControlRow(grouping: grouping,
-                        onToggle: { toggle($0) },
-                        teams: filterableTeams,
-                        teamSelection: activeTeamId,
-                        onSelectTeam: { teamFilter = $0 })
+    private func gamesSection(scrollInset: CGFloat) -> some View {
+        gamesContent(scrollInset: scrollInset)
+            .padding(.horizontal, Spacing.sm)
+            .padding(.bottom, Spacing.sm)
+    }
+
+    private var gamesOpeningCardId: String? {
+        filteredGames.flatMap { ConferenceSlate.openingCardId(games: $0, by: grouping) }
     }
 
     /// Turning a grouping on turns the other off — they're two answers to
@@ -439,9 +640,10 @@ struct PollScreen: View {
     }
 
     @ViewBuilder
-    private var gamesContent: some View {
+    private func gamesContent(scrollInset: CGFloat) -> some View {
         if let filteredGames, !filteredGames.isEmpty {
-            ConferenceGamesList(games: filteredGames, grouping: grouping)
+            ConferenceGamesList(games: filteredGames, grouping: grouping,
+                                scrollInset: scrollInset)
         } else if hasNarrowedToNothing {
             // The narrowed-empty state, Scores' rule (2026-08-29): name
             // what's hiding the games and offer them back, so a filtered

@@ -1,0 +1,31 @@
+{
+ "$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/coaches/7157/record/0?lang=en&region=us",
+ "id": "0",
+ "name": "Total",
+ "type": "Total",
+ "summary": "60-77-0",
+ "displayValue": "60-77-0",
+ "value": 0.4379562044,
+ "stats": [
+  {
+   "name": "OTLosses",
+   "value": 4.0
+  },
+  {
+   "name": "OTWins",
+   "value": 6.0
+  },
+  {
+   "name": "losses",
+   "value": 77.0
+  },
+  {
+   "name": "ties",
+   "value": 0.0
+  },
+  {
+   "name": "wins",
+   "value": 60.0
+  }
+ ]
+}

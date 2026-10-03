@@ -3,6 +3,7 @@
 // `?year=`. The server component owns every fetch (the provider is the
 // per-year cache); the client shell owns tab choice only.
 
+import { opensNews } from "@/lib/routes";
 import { notFound } from "next/navigation";
 import {
   teamSchedule,
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ league: string; teamId: string }>;
-  searchParams: Promise<{ year?: string | string[] }>;
+  searchParams: Promise<{ year?: string | string[]; tab?: string | string[] }>;
 }
 
 /**
@@ -77,7 +78,8 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   if (!league || !/^\d+$/.test(teamId)) notFound();
 
   const currentYear = seasonYear(league);
-  const year = parseYear((await searchParams).year, league);
+  const query = await searchParams;
+  const year = parseYear(query.year, league);
   // Nil for the current season keeps the shipped request shape (and the
   // provider's unpublished-season fallback); an explicit past year is
   // scoped exactly — a user who picked 2019 must never silently get 2018.
@@ -139,6 +141,7 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
       isCurrentSeason={isCurrentSeason}
       seasonStats={seasonStats}
       leaders={leaders}
+      opensNews={opensNews(query.tab)}
     />
   );
 }

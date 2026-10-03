@@ -9,6 +9,12 @@ nonisolated struct GameSummary: Sendable {
         let rank: Int?
         let winner: Bool?
         let linescores: [String]   // per-quarter, incl. OT columns
+        /// ESPN's team colors, bare hex. The Gamecast field paints its
+        /// end zones with them and nothing else does (2026-09-27). On the
+        /// side rather than `Team` so a team's identity, which follows and
+        /// merges compare, doesn't change with the payload it came from.
+        var color: String? = nil
+        var alternateColor: String? = nil
     }
 
     let home: Side?
@@ -53,6 +59,10 @@ nonisolated struct GameSummary: Sendable {
     /// wherever the payload has neither block, which is how the card hides
     /// itself for hockey.
     var winProbability: WinProbability? = nil
+    /// The game's own story, body included: a Preview before kickoff, a
+    /// Recap once final (docs/news.md, N2 and N3). Nil for CFBD and every
+    /// fixture, and for a live game, whose summary ships none.
+    var article: NewsStory? = nil
 }
 
 /// Who's likely to win, as ESPN models it. Two shapes, because the payload
@@ -149,6 +159,23 @@ nonisolated struct Drive: Identifiable, Hashable, Sendable {
     /// and every fixture construct unchanged — an empty array is what
     /// leaves a drive row unexpandable.
     var plays: [Play] = []
+    /// `summary`'s parts, for the current drive card's Drive column.
+    /// Defaulted for CFBD and the fixtures, which fall back to `summary`.
+    var offensivePlays: Int? = nil
+    var yards: Int? = nil
+    /// "2:39", the Plays tab row's time column.
+    var timeElapsed: String? = nil
+}
+
+extension Drive {
+    /// The last score this drive put up, with whose points they were —
+    /// the Plays tab row prints it after the result. Nil on a drive that
+    /// scored nothing, and on one whose numbers ESPN didn't ship.
+    var runningScore: (away: Int, home: Int, side: ScoringSide?)? {
+        guard let play = scoringPlays.last,
+              let away = play.awayScore, let home = play.homeScore else { return nil }
+        return (away, home, play.scoringSide)
+    }
 }
 
 /// One play inside a drive: ESPN's play-by-play row, and the source of
@@ -156,8 +183,10 @@ nonisolated struct Drive: Identifiable, Hashable, Sendable {
 /// down, the ball's spot, and how far it is from the end zone).
 nonisolated struct Play: Identifiable, Hashable, Sendable {
     let id: String
-    /// ESPN's own narration — "(12:16) Shotgun #15 F.Mendoza pass
-    /// complete short right to #3 O.Cooper for 11 yards".
+    /// ESPN's own narration — "Shotgun #15 F.Mendoza pass complete
+    /// short right to #3 O.Cooper for 11 yards". ESPN leads it with the
+    /// clock in parentheses; the mapper strips that, since every surface
+    /// that prints the text prints `clock` beside it.
     let text: String?
     /// The down the play began on, ESPN's string: "1st & 10 at IU 5".
     let downDistanceText: String?
@@ -183,6 +212,35 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Whose play it was, where the payload says. Only the flat feed
     /// carries it — a drive's plays belong to the drive's offense.
     var teamId: String? = nil
+    /// Whose ball it was once the play ended — ESPN's `end.team`. Not
+    /// always the drive's: after a punt, ESPN keeps the punting team's
+    /// drive current until the next snap, and the plays in between (the
+    /// punt's own end, a timeout, a review) belong to the receiving team.
+    /// `yardsToEndzone` counts toward the end zone *this* team attacks.
+    var endTeamId: String? = nil
+    /// Distance from the offense's target end zone at the snap — where
+    /// the field draws this play's arrow from. Nil when the play changed
+    /// hands (a kickoff, a punt, a turnover): the two ends are measured
+    /// toward different end zones, so no one arrow joins them.
+    var startYardsToEndzone: Int? = nil
+    /// Yards to a first down once the play ended — the field's line to
+    /// gain. Goal to go when it reaches the end zone.
+    var nextDistance: Int? = nil
+    /// Where a basketball or hockey play happened, in ESPN's feet. Nil in
+    /// football and on a play ESPN gave no usable spot.
+    var coordinate: PlayCoordinate? = nil
+    /// ESPN's flag for a shot attempt, free throws included.
+    var isShootingPlay: Bool = false
+    /// Hockey's manpower, ESPN's abbreviation: "even-strength",
+    /// "power-play", "short-handed", "empty-net".
+    var strength: String? = nil
+}
+
+/// A spot in ESPN's own coordinate space, feet. What each axis means is
+/// the league's — see `ShotMap`.
+nonisolated struct PlayCoordinate: Hashable, Sendable {
+    let x: Double
+    let y: Double
 }
 
 /// Which side of the matchup a scoring play's points belong to. Read off
@@ -285,26 +343,57 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
     var id: String { teamId }
 }
 
-/// The Gamecast strip's content: who has the ball, on what down, where,
-/// and what just happened. Derived entirely from the current drive's last
-/// play — one verified shape rather than a second live-only payload.
+/// The Gamecast card's content: who has the ball, on what down, where,
+/// how the drive got there, and what just happened. Derived entirely from
+/// the current drive — one verified shape rather than a second live-only
+/// payload.
 nonisolated struct GameSituation: Hashable, Sendable {
     let possessionTeamId: String?
     /// "2nd & 4".
     let downDistanceText: String?
     /// "WSU 26" — the ball's spot.
     let possessionText: String?
-    /// The drive so far: "1 play, 6 yards, 0:05".
+    /// ESPN's whole drive line: "1 play, 6 yards, 0:05".
     let driveSummary: String?
+    /// The Drive column: "4 plays, 57 yds" from the drive's own numbers,
+    /// or ESPN's line when they didn't arrive.
+    var driveLine: String? = nil
     /// ESPN's narration of the play that just ended.
     let lastPlayText: String?
+    /// The down that play faced — "2nd & 15 at WSU 48" — for the Last play
+    /// label. The columns above already say where things stand now.
+    var lastPlayDownText: String? = nil
+    var lastPlayClock: String? = nil
+    /// What the field keys its animation on: a new id is a new play, and a
+    /// poll that brings the same play back redraws nothing.
+    var lastPlayId: String? = nil
+    /// Set once the drive has scored — "Touchdown" — and with it the team
+    /// whose points they were, which a pick six makes the defense.
+    var result: String? = nil
+    var resultTeamId: String? = nil
     /// Where the ball sits, 0 at the away team's own goal line and 1 at
     /// the home team's. Nil when the payload gave no distance, which
-    /// leaves the field bar off and the rest of the strip standing.
+    /// leaves the field off and the rest of the card standing.
     let fieldPosition: Double?
     /// True when the offense is moving toward the home end zone — the
-    /// away team has the ball, so the bar's arrow points right.
+    /// away team has the ball, so the field's arrow points right.
     let drivingRight: Bool
+    var field: Field? = nil
+
+    /// Every spot in yards from the away team's goal line, 0...100, which
+    /// is left to right on a field drawn away-end-zone-left.
+    struct Field: Hashable, Sendable {
+        let ball: Double
+        /// The drive's first snap — the trail's hollow dot.
+        let driveStart: Double?
+        /// Where the last play began. Nil when it changed hands, which
+        /// leaves the field showing the ball without an arrow.
+        let playStart: Double?
+        /// Nil on goal to go, and once the drive has scored.
+        let lineToGain: Double?
+        /// Passes arc; runs, sacks and penalties travel along the ground.
+        let isPass: Bool
+    }
 }
 
 extension GameSummary {
@@ -313,22 +402,92 @@ extension GameSummary {
     /// renders the lines it has and drops the ones it doesn't.
     var situation: GameSituation? {
         guard let drive = currentDrive, let play = drive.plays.last else { return nil }
-        let isAway = drive.teamId != nil && drive.teamId == away?.team.id
+        // Whose ball it is now, which isn't always the drive's: ESPN keeps a
+        // punting team's drive current until the next snap, and the plays
+        // after the punt (a timeout, a review) belong to the receiving team
+        // (verified live, NFL 2026-09-27).
+        let ballTeamId = play.endTeamId ?? drive.teamId
+        let handsChanged = ballTeamId != nil && drive.teamId != nil && ballTeamId != drive.teamId
+        let isAway = ballTeamId != nil && ballTeamId == away?.team.id
+        // yardsToEndzone counts down toward the end zone its own team
+        // attacks, so which end of the field that is depends on whose play
+        // it was. Clamped: a payload can hand back a spot past the goal line
+        // on a scoring play.
+        func fromAwayGoal(_ yardsToEndzone: Int, teamId: String? = ballTeamId) -> Double {
+            let measuredFromAway = teamId != nil && teamId == away?.team.id
+            return min(max(Double(measuredFromAway ? 100 - yardsToEndzone : yardsToEndzone), 0), 100)
+        }
+        // A snap is never from inside the end zone: a start of 0 is ESPN's
+        // filler on a timeout or review, not a spot.
+        func snapStart(_ play: Play) -> Int? {
+            play.startYardsToEndzone.flatMap { $0 > 0 ? $0 : nil }
+        }
+        let scoring = drive.plays.filter(\.isScoringPlay)
+        let result: String? = scoring.isEmpty && !drive.isScore
+            ? nil
+            : Self.resultName(of: scoring) ?? drive.result ?? "Score"
+        let resultTeamId: String? = result == nil ? nil : {
+            switch scoring.last?.scoringSide {
+            case .away: away?.team.id
+            case .home: home?.team.id
+            case nil: drive.teamId
+            }
+        }()
+        let field: GameSituation.Field? = play.yardsToEndzone.map { yardsToEndzone in
+            let lineToGain: Double? = {
+                guard result == nil, let distance = play.nextDistance,
+                      distance > 0, distance < yardsToEndzone else { return nil }
+                return fromAwayGoal(yardsToEndzone - distance)
+            }()
+            let type = play.typeText?.lowercased() ?? ""
+            // Once the ball has changed hands the drive is over in all but
+            // name: the field shows the ball and the new side's line, and
+            // no trail or arrow. A snap's start and end share a team, so
+            // its end team is the side its start was measured against.
+            let firstSnap = handsChanged ? nil : drive.plays.first { snapStart($0) != nil }
+            return GameSituation.Field(
+                ball: fromAwayGoal(yardsToEndzone),
+                driveStart: firstSnap.flatMap { snap in
+                    snapStart(snap).map { fromAwayGoal($0, teamId: snap.endTeamId ?? drive.teamId) }
+                },
+                playStart: handsChanged ? nil : snapStart(play).map { fromAwayGoal($0) },
+                lineToGain: lineToGain,
+                isPass: type.contains("pass") && !type.contains("sack")
+            )
+        }
         return GameSituation(
-            possessionTeamId: drive.teamId,
+            possessionTeamId: ballTeamId,
             downDistanceText: play.nextDownDistanceText,
             possessionText: play.possessionText,
             driveSummary: drive.summary,
+            driveLine: Self.driveLine(drive),
             lastPlayText: play.text,
-            fieldPosition: play.yardsToEndzone.map {
-                // yardsToEndzone counts down toward the *defense's* end
-                // zone, so which end of the bar that is depends on who
-                // has the ball. Clamped: a payload can hand back a spot
-                // past the goal line on a scoring play.
-                let fromAwayGoal = isAway ? 100 - $0 : $0
-                return min(max(Double(fromAwayGoal) / 100, 0), 1)
-            },
-            drivingRight: isAway
+            lastPlayDownText: play.downDistanceText,
+            lastPlayClock: play.clock,
+            lastPlayId: play.id,
+            result: result,
+            resultTeamId: resultTeamId,
+            fieldPosition: field.map { $0.ball / 100 },
+            drivingRight: isAway,
+            field: field
         )
+    }
+
+    /// "4 plays, 57 yds". ESPN's own line carries the elapsed time too,
+    /// which the card leaves to the Plays tab.
+    static func driveLine(_ drive: Drive) -> String? {
+        guard let plays = drive.offensivePlays, let yards = drive.yards else { return drive.summary }
+        return "\(plays) \(plays == 1 ? "play" : "plays"), \(yards) \(abs(yards) == 1 ? "yd" : "yds")"
+    }
+
+    /// The name a scoring drive goes by. A touchdown outranks the extra
+    /// point that follows it, which is the last scoring play on the drive
+    /// but not what anyone calls it.
+    static func resultName(of scoring: [Play]) -> String? {
+        let types = scoring.compactMap { $0.typeText?.lowercased() }
+        if types.contains(where: { $0.contains("touchdown") }) { return "Touchdown" }
+        if types.contains(where: { $0.contains("field goal") }) { return "Field Goal" }
+        if types.contains(where: { $0.contains("safety") }) { return "Safety" }
+        return nil
     }
 }

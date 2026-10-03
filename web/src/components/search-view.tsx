@@ -30,6 +30,7 @@ import {
 } from "@/components/search-result-rows";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useAthleteSearch } from "@/lib/hooks/use-athlete-search";
+import { StoryRow } from "@/components/story-row";
 import { useTeamScheduleSearch } from "@/lib/hooks/use-team-schedule-search";
 import { useRecentSearches } from "@/lib/hooks/use-recent-searches";
 import { useFcsDirectory } from "@/lib/hooks/use-fcs-directory";
@@ -63,7 +64,9 @@ import { followKey } from "@/lib/refs";
  *
  * It was college football's eleven conferences alone until 2026-09-09 — so
  * a search for "AFC East" or "Pacific" found nothing at all, in an app that
- * has shown four leagues since 2.0.
+ * has shown four leagues since 2.0. *
+ * Divisions stay findable after they stopped being pages (2026-09-26); their
+ * rows open the conference that stacks them.
  */
 const CONFERENCE_CORPUS: ConferenceRef[] = LEAGUES.flatMap((league) => {
   const ids = new Set<number>(topLevelIds(league));
@@ -207,7 +210,8 @@ export function SearchView() {
     (shows(scope, "teams") && teamResults.length > 0) ||
     (shows(scope, "conferences") && conferenceResults.length > 0) ||
     (shows(scope, "players") && athletes.length > 0) ||
-    (shows(scope, "games") && visibleGames.length > 0)
+    (shows(scope, "games") && visibleGames.length > 0) ||
+    (shows(scope, "news") && athleteSearch.stories.length > 0)
   );
 
   const leave = () => {
@@ -341,6 +345,14 @@ export function SearchView() {
             ))}
           </>
         )}
+        {/* Last in All: a story is about the pages above it. Not recorded
+            as a recent, which is for pages. */}
+        {shows(scope, "news") &&
+          athleteSearch.stories.map((story) => (
+            <ResultCard key={`story-${story.id}`}>
+              <StoryRow story={story} />
+            </ResultCard>
+          ))}
       </div>
     );
   }
@@ -366,7 +378,7 @@ export function SearchView() {
         <SearchField
           value={query}
           onChange={setQuery}
-          placeholder="Teams, players, conferences, games"
+          placeholder="Teams, players, conferences, games, news"
           autoFocus={autoFocus}
           className="flex-1"
         />

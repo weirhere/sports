@@ -46,6 +46,16 @@ struct TeamsScreen: View {
                     PlayerPage(player: player)
                         .id(player.id)
                 }
+                .navigationDestination(for: CoachIdentity.self) { coach in
+                    CoachPage(coach: coach)
+                        .id(coach.id)
+                }
+                // The story reader (docs/news.md): game pages and team
+                // pages push it.
+                .navigationDestination(for: StoryDestination.self) { destination in
+                    StoryReader(destination: destination)
+                        .id(destination.story.id)
+                }
                 // Identity follows the conference, for the reason the team
                 // destination below does: a replaced value at the same path
                 // position otherwise reuses the page and its caches.

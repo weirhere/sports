@@ -18,4 +18,4 @@ export {
   EspnDataError,
 } from "./provider";
 export { teamSeasonStats, teamLeaders } from "./team-stats-provider";
-export { searchAthletes } from "./athlete-search";
+export { searchAll, searchAthletes } from "./athlete-search";

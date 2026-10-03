@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// One team's home: a card-color hero header (the team-color paint retired
-/// 2026-08-31 — headers match the cards, FotMob-style), Overview, Games,
+/// One team's home: a hero header in the team's own color in light mode and
+/// the card color in dark (2026-09-27; the both-modes team-color paint
+/// retired 2026-08-31 — see `HeaderPaint`), Overview, Games,
 /// and Standings tabs, and a schedule for any season back to the CFP era.
 struct TeamPage: View {
     let team: Team
@@ -20,7 +21,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, games, stats, standings, roster, trophies
+        case overview, news, games, stats, standings, trades, roster, trophies
 
         var title: String {
             switch self {
@@ -29,7 +30,9 @@ struct TeamPage: View {
             case .stats: "Stats"
             case .standings: "Standings"
             case .roster: "Roster"
+            case .trades: "Trades"
             case .trophies: "Trophies"
+            case .news: "News"
             }
         }
     }
@@ -60,6 +63,14 @@ struct TeamPage: View {
     @State private var initialFailed = false
 
     @State private var tab: Tab = .overview
+
+    /// `opensNews` lands on the News tab: a For you team section's "See
+    /// more" (2026-09-27). News only exists on ESPN's provider, and so
+    /// does every story that could lead here.
+    init(team: Team, opensNews: Bool = false) {
+        self.team = team
+        _tab = State(initialValue: opensNews ? .news : .overview)
+    }
     /// True once the hero title has scrolled under the nav bar — the bar's
     /// principal slot then carries the team name.
     @State private var showsInlineTitle = false
@@ -109,9 +120,32 @@ struct TeamPage: View {
     /// Overview leads with both. Keyed to the team like the roster, so a
     /// reused page can't show the last team's numbers.
     @State private var teamStats: TeamStatsModel?
+    /// The News tab's stories (docs/news.md, N9): one request on the tab's
+    /// first visit, held for the page's life and never polled. Keyed to the
+    /// team like the roster, for the same reason.
+    @State private var news: [NewsStory]?
+    @State private var newsTeamKey: String?
+    @State private var newsLoading = false
+    @State private var newsFailed = false
+
+    /// The Trades tab's wire (2026-09-27), made on the tab's first visit and
+    /// keyed to the team like the stats — a reused page can't show the last
+    /// team's moves.
+    @State private var tradesFeed: RosterMovesFeed?
+    /// "Signings & trades" or "All". Session-scoped like the standings scope.
+    @State private var tradesFilter: RosterMove.Filter = .signingsAndTrades
+
+    private var currentTradesFeed: RosterMovesFeed? {
+        tradesFeed?.team?.followKey == team.followKey ? tradesFeed : nil
+    }
 
     private var currentTeamStats: TeamStatsModel? {
         teamStats?.team.followKey == team.followKey ? teamStats : nil
+    }
+
+    /// The stories, but only if they belong to the team on screen.
+    private var currentNews: [NewsStory]? {
+        newsTeamKey == team.followKey ? news : nil
     }
 
     /// The roster, but only if it belongs to the team on screen.
@@ -135,6 +169,28 @@ struct TeamPage: View {
     private var currentSchedule: TeamSchedule? {
         currentSeasonYear.flatMap { schedules[$0] }
     }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The team's color, from whichever payload carried it: the pushed
+    /// team rarely does, the schedule's own team always should. Any
+    /// season's will do — a color doesn't change with the year viewed.
+    /// A team seen this launch paints from its first frame rather than
+    /// flashing white until the schedule lands again.
+    private var teamColorHex: String? {
+        team.colorHex ?? currentSchedule?.team?.colorHex
+            ?? schedules.values.lazy.compactMap { $0.team?.colorHex }.first
+            ?? HeaderPaint.remembered[team.followKey]
+    }
+
+    /// Nil in dark mode and until the schedule lands; the header is
+    /// `bgCard` then, exactly as before.
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamColorHex, colorScheme: colorScheme)
+    }
+
+    private var headerGround: Color { headerPaint?.background ?? .bgCard }
+    private var headerInk: Color { headerPaint?.ink ?? .textPrimary }
 
     /// Newest first, floored at the league's own floor — the CFP era for
     /// all four, matching the ConferencePage selector.
@@ -257,7 +313,9 @@ struct TeamPage: View {
                         case .stats: statsContent
                         case .standings: standingsContent
                         case .roster: rosterContent
+                        case .trades: tradesContent
                         case .trophies: trophiesContent
+                        case .news: newsContent
                         }
                     }
                     // geometryGroup pins every child (row logos included) to
@@ -302,31 +360,28 @@ struct TeamPage: View {
                 showsInlineTitle = scrolledPastHero
             }
         }
-        // The card color through the status-bar strip and the top bounce.
-        .heroTopBand(Color.bgCard)
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        // Solid card-color bar, seamless against the bgCard hero at rest —
-        // the transparent-until-scrolled dance retired with the team-color
-        // paint it existed for (2026-08-31).
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .onChange(of: teamColorHex, initial: true) { _, hex in
+            if let hex { HeaderPaint.remembered[team.followKey] = hex }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(team.location)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(headerInk)
                     .lineLimit(1)
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
             // The control row, FotMob's pattern (Andy, 2026-08-31): bell,
             // follow, and share ride beside the system back button. The
-            // season chip moved into the tab panes to make the room.
+            // season chip lives in the pane's pinned row (2026-09-27), so
+            // this row is the same three controls on every tab.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                seasonChip
-                NotificationBell()
+                NotificationBell(team: team)
                 FollowPill(team: team)
                 shareButton
             }
@@ -368,7 +423,7 @@ struct TeamPage: View {
                     // mistake, where a wrap reads as a long name.
                     Text(team.displayName ?? team.location)
                         .font(.heroTitle)
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(headerInk)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                     conferenceLine
@@ -389,7 +444,7 @@ struct TeamPage: View {
         // The strip above — through the bar and the top bounce — is
         // heroTopBand's job: an in-content extension never escaped the
         // ScrollView's clip (2026-08-31).
-        .background(Color.bgCard)
+        .background(headerGround)
     }
 
     /// The sticky header: the tab row and the chip that scopes the pane
@@ -410,20 +465,33 @@ struct TeamPage: View {
                 // identity block's own bottom gap, so at rest the overhang
                 // lands on empty bgCard and can never cover the subtitle —
                 // whatever the text size does to it.
-                .background(Color.bgCard.padding(.top, -Spacing.sm))
+                .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                // The Standings tab's own control: how wide the table is
-                // (Andy, 2026-09-07). Only the NFL's team pages have one —
-                // a college team belongs to a conference and nothing else,
-                // so there is no other level to read it at.
-                if showsScopeChip {
+                // The pane's own controls, above the first card they scope:
+                // the season (see `seasonChip`), then on Standings how wide
+                // the table is (Andy, 2026-09-07). Only the NFL's team pages
+                // have a scope — a college team belongs to a conference and
+                // nothing else, so there is no other level to read it at.
+                // Season leads so it holds the same spot on Games and
+                // Standings, and the scope chip is the one that comes and goes.
+                if tab == .trades {
+                    // The Trades tab's own control, and no season beside
+                    // it — see `TradesFilterRow`.
+                    TradesFilterRow(selection: tradesFilter,
+                                    onSelect: { value in withAnimation(.default) { tradesFilter = value } })
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.top, Spacing.sm)
+                } else if showsSeasonChip || showsScopeChip {
                     HStack(spacing: Spacing.sm) {
-                        StandingsScopeChip(
-                            scopes: availableScopes, selection: scope,
-                            isNarrowed: resolvedConference.map {
-                                scope.isNarrower(than: StandingsScope.default(forTeamIn: $0))
-                            } ?? false,
-                            onSelect: { select(scope: $0) })
+                        seasonChip
+                        if showsScopeChip {
+                            StandingsScopeChip(
+                                scopes: availableScopes, selection: scope,
+                                isNarrowed: resolvedConference.map {
+                                    scope.isNarrower(than: StandingsScope.default(forTeamIn: $0))
+                                } ?? false,
+                                onSelect: { select(scope: $0) })
+                        }
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, Spacing.sm)
@@ -432,7 +500,7 @@ struct TeamPage: View {
                 // The gap that used to be the pane's own top padding, so
                 // pinned cards never touch the row above. Its own view
                 // rather than the chip's padding: every other tab has no
-                // chip, and a collapsed gap there merges a bgCard card into
+                // chip row, and a collapsed gap there merges a bgCard card into
                 // the bgCard tab row (ConferencePage's shape).
                 Color.clear.frame(height: Spacing.sm)
             }
@@ -450,8 +518,11 @@ struct TeamPage: View {
 
     /// Bare mark on the card-color header — dark mode reads the `500-dark`
     /// variant through LogoImage, so no backing disc (Andy, 2026-08-31).
+    /// On a team-color header the mark gets a white outline wherever it
+    /// would blend into the ground (Andy, 2026-09-27) — which, since ESPN
+    /// takes the color from the mark, is most of them.
     private var logoMark: some View {
-        LogoImage(url: team.logoURL)
+        LogoImage(url: team.logoURL, outlineAgainst: headerPaint?.hex)
             .frame(width: 56, height: 56)
     }
 
@@ -495,7 +566,7 @@ struct TeamPage: View {
                 // page to send it to.
                 Text(label)
                     .font(.chipEmphasis)
-                    .foregroundStyle(.textSecondary)
+                    .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
             }
         }
     }
@@ -509,18 +580,26 @@ struct TeamPage: View {
         return NavigationLink(value: ConferenceDestination(conference: target,
                                                            name: Conference.name(for: target),
                                                            highlightTeamId: team.id)) {
-            HeaderLinkBadge(title: label)
+            headerBadge(label)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View standings")
+        .accessibilityIdentifier("team-group-badge")
+    }
+
+    private func headerBadge(_ title: String) -> some View {
+        HeaderLinkBadge(title: title,
+                        fill: headerPaint?.badgeFill ?? .bgRecessed,
+                        ink: headerPaint?.secondaryInk ?? .textSecondary)
     }
 
     private func leagueLink(_ destination: ConferenceDestination) -> some View {
         NavigationLink(value: destination) {
-            HeaderLinkBadge(title: destination.name)
+            headerBadge(destination.name)
         }
         .buttonStyle(.plain)
         .accessibilityHint("View league standings")
+        .accessibilityIdentifier("team-league-badge")
     }
 
     /// The list this team's group sits in: a pro league's whole-league
@@ -534,15 +613,24 @@ struct TeamPage: View {
 
     private var tabRow: some View {
         HeroTabBar(tabs: visibleTabs, selection: tab,
-                   onSelect: { select(tab: $0) })
+                   onSelect: { select(tab: $0) },
+                   ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
     }
 
     private var visibleTabs: [Tab] {
-        var tabs: [Tab] = [.overview, .games]
+        var tabs: [Tab] = [.overview]
+        // Second, after Overview (Andy, 2026-09-27, E26): FotMob's order,
+        // replacing N9's "last". ESPN-gated like the roster, so the
+        // fixture-backed UI suites never reach the network through it.
+        if showsRosterTab { tabs.append(.news) }
+        tabs.append(.games)
         // ESPN-only, like the roster: the same backend gate, and the pane
         // says so rather than sitting empty when a season has no numbers.
         if showsRosterTab { tabs.append(.stats) }
         if showsStandingsTab { tabs.append(.standings) }
+        // Trades leads Roster (Andy, 2026-09-27): who's arriving and
+        // leaving, then who's here.
+        if showsTradesTab { tabs.append(.trades) }
         if showsRosterTab { tabs.append(.roster) }
         tabs.append(.trophies)
         return tabs
@@ -552,6 +640,14 @@ struct TeamPage: View {
     /// league; CFBD and the UI-test fixture don't, and an empty pane behind a
     /// permanent tab is worse than no tab.
     private var showsRosterTab: Bool { client.providesRoster }
+
+    /// The pro leagues' wire, from ESPN. College football has none — ESPN
+    /// answers `count: 0` and has no transfer portal — and CFBD and the
+    /// UI-test fixture have no endpoint at all, so the roster's backend gate
+    /// covers them.
+    private var showsTradesTab: Bool {
+        pageLeague != .collegeFootball && client.providesRoster
+    }
 
     /// The tab one step along the row — the *visible* row, not the enum's.
     /// Standings is conference-gated, so a hidden tab sits in the middle of
@@ -659,10 +755,11 @@ struct TeamPage: View {
             .first
     }
 
-    /// The season picker rides the toolbar row (Andy, 2026-09-05,
-    /// superseding the 2026-08-31 move into the panes) — it scopes the
-    /// schedule and the standings alike, so it sits with the page's
-    /// identity rather than above one pane's cards.
+    /// The season picker leads the pane's pinned control row, above the
+    /// first card it scopes (Andy, 2026-09-27, superseding the 2026-09-05
+    /// move onto the toolbar row). On the bar it came and went with the tab,
+    /// shifting bell, follow and share each time; in the pane it sits with
+    /// the content it changes, and a tab without one simply has no row.
     ///
     /// Overview is the exception it has always been: its record card is
     /// pinned to the current season, so there is nothing there for a year
@@ -681,11 +778,15 @@ struct TeamPage: View {
     /// Stats is the fourth, for Roster's reason (2026-09-24): the team
     /// statistics endpoint answers for ESPN's current season only, and its
     /// card already names which season that is.
+    private var showsSeasonChip: Bool {
+        selectedYear != nil && (tab == .games || tab == .standings)
+    }
+
     @ViewBuilder
     private var seasonChip: some View {
-        if let selectedYear, tab != .overview, tab != .roster, tab != .trophies, tab != .stats {
+        if showsSeasonChip, let selectedYear {
             SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: pageLeague,
-                           style: .bar, onSelect: { select(year: $0) })
+                           onSelect: { select(year: $0) })
         }
     }
 
@@ -950,6 +1051,77 @@ struct TeamPage: View {
         // by the team so a reused page re-fetches rather than keeping the
         // last one's squad.
         .task(id: team.followKey) { await loadRoster() }
+    }
+
+    // MARK: - News
+
+    /// The team's own stories (N9) — FotMob's team News tab, second in the
+    /// row (E26), each row with its photo (2026-09-27).
+    private var newsContent: some View {
+        VStack(spacing: Spacing.sm) {
+            if let stories = currentNews, !stories.isEmpty {
+                StoryListCard(stories: stories, gameFor: scheduledGame(for:))
+            } else if currentNews != nil {
+                StatusMessage(text: "No \(team.location) stories right now.")
+                    .cardSurface()
+            } else if newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews(force: true) } })
+                    .cardSurface()
+            } else {
+                // A lone spinner gets no card (Andy, 2026-08-31).
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .task(id: team.followKey) { await loadNews() }
+    }
+
+    /// The game a story is about, when this season's schedule has it — so
+    /// the reader's score row opens it (N5).
+    private func scheduledGame(for story: NewsStory) -> Game? {
+        guard let gameId = story.gameId,
+              let game = currentSchedule?.games.first(where: { $0.id == gameId }) else { return nil }
+        return fresher(game)
+    }
+
+    /// The one feed request, the roster's fetch-once shape.
+    private func loadNews(force: Bool = false) async {
+        let key = team.followKey
+        if newsTeamKey != key {
+            news = nil
+            newsFailed = false
+        }
+        guard force || currentNews == nil, !newsLoading else { return }
+        newsLoading = true
+        newsFailed = false
+        defer { newsLoading = false }
+        let loaded = await NewsClient().teamNews(teamId: team.id, league: pageLeague)
+        guard team.followKey == key else { return }
+        if let loaded {
+            news = loaded
+            newsTeamKey = key
+        } else {
+            newsFailed = true
+        }
+    }
+
+    /// The team's moves, without its mark on every row: the header above
+    /// already says whose they are.
+    private var tradesContent: some View {
+        TradesPane(feed: currentTradesFeed, filter: tradesFilter, showsTeamLogos: false,
+                   onShowAll: { withAnimation(.default) { tradesFilter = .all } })
+            // First visit fetches; a reused page for another team starts a
+            // new feed rather than keeping the last one's.
+            .task(id: team.followKey) { await loadTrades() }
+    }
+
+    private func loadTrades() async {
+        if currentTradesFeed == nil { tradesFeed = RosterMovesFeed(league: pageLeague, team: team) }
+        await currentTradesFeed?.loadFirst()
     }
 
     // MARK: - Season stats

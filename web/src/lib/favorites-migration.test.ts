@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { migrateFavorites } from "./favorites-migration";
+import { foldDivisionTokens, migrateFavorites } from "./favorites-migration";
 
 describe("migrateFavorites", () => {
   it("maps legacy mock ids to ESPN numeric strings", () => {
@@ -45,5 +45,26 @@ describe("migrateFavorites", () => {
     const first = migrateFavorites(["t-1", "espn-96", "2633"], ["8", "37"]);
     const second = migrateFavorites(first.teams, first.confs);
     expect(second).toEqual(first);
+  });
+
+  it("moves a pro division follow to its conference, first place wins", () => {
+    // The Atlantic (1) and Central (2) are both the East (5).
+    expect(
+      migrateFavorites([], ["cfb:8", "nba:1", "nfl:7", "nba:2"]).confs
+    ).toEqual(["cfb:8", "nba:5", "nfl:7"]);
+  });
+});
+
+describe("foldDivisionTokens", () => {
+  it("folds the Following drag order under its prefix", () => {
+    expect(
+      foldDivisionTokens(["poll-cfb", "conf-nba:4", "conf-nba:6", "conf-cfb:4"], "conf-")
+    ).toEqual(["poll-cfb", "conf-nba:6", "conf-cfb:4"]);
+  });
+
+  it("is idempotent", () => {
+    const once = foldDivisionTokens(["nhl:32", "nfl:4"]);
+    expect(once).toEqual(["nhl:7", "nfl:8"]);
+    expect(foldDivisionTokens(once)).toEqual(once);
   });
 });

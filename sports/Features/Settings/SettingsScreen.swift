@@ -9,11 +9,13 @@ import UIKit
 /// preference nobody can find is the same as none, and the Scores header is
 /// the app's front door, not a place for a gambling switch. Kickoff reminders
 /// live here too, as the same state the Team page's bell shows, so the one
-/// place called Settings holds every setting there is.
+/// place called Settings holds every setting there is. Since 2026-09-28 the
+/// switch is the app-wide one above each team's own bell sheet.
 struct SettingsScreen: View {
     @Environment(UIStateStore.self) private var uiState
     @Environment(NotificationScheduler.self) private var notifications
     @Environment(FollowingStore.self) private var following
+    @Environment(TeamAlertStore.self) private var teamAlerts
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
@@ -43,7 +45,7 @@ struct SettingsScreen: View {
                 } header: {
                     Text("Notifications")
                 } footer: {
-                    Text("A heads-up 30 minutes before each of your teams' games.")
+                    Text("A heads-up 30 minutes before each of your teams' games. The bell on a team's page chooses what that team sends.")
                 }
 
                 Section {
@@ -90,7 +92,9 @@ struct SettingsScreen: View {
         } set: { on in
             Task {
                 if on {
-                    await notifications.requestAndEnable(followedKeys: following.teamKeys)
+                    let keys = teamAlerts.keys(receiving: .kickoffReminder,
+                                               among: following.teamKeys)
+                    await notifications.requestAndEnable(followedKeys: keys)
                 } else {
                     await notifications.disable()
                 }

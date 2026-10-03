@@ -132,6 +132,12 @@ struct SearchScreen: View {
             .navigationDestination(for: PlayerIdentity.self) { player in
                 PlayerPage(player: player).id(player.id)
             }
+            .navigationDestination(for: CoachIdentity.self) { coach in
+                CoachPage(coach: coach).id(coach.id)
+            }
+            .navigationDestination(for: StoryDestination.self) { destination in
+                StoryReader(destination: destination).id(destination.story.id)
+            }
             .navigationDestination(for: ConferenceDestination.self) { destination in
                 ConferencePage(destination: destination).id(destination)
             }
@@ -152,7 +158,7 @@ struct SearchScreen: View {
     private var searchBar: some View {
         HStack(spacing: Spacing.md) {
             SearchField(text: $searchText,
-                        prompt: "Teams, players, conferences, games",
+                        prompt: "Teams, players, conferences, games, news",
                         focusOnAppear: restoresKeyboard,
                         identifier: "search.appWide",
                         onFocusChange: { fieldFocused = $0 })
@@ -248,6 +254,18 @@ struct SearchScreen: View {
                             .cardSurface()
                         }
                     }
+                    if shows(.news) {
+                        // Last in All: a story is about the pages above it.
+                        // Not recorded as a recent, which is for pages.
+                        ForEach(athleteSearch.stories) { story in
+                            NavigationLink(value: StoryDestination(story: story, game: nil)) {
+                                StoryRow(story: story)
+                            }
+                            .buttonStyle(.plain)
+                            .frame(minHeight: Self.cardHeight)
+                            .cardSurface()
+                        }
+                    }
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm)
@@ -282,7 +300,8 @@ struct SearchScreen: View {
         let conferences = shows(.conferences) && !results.conferences.isEmpty
         let players = shows(.players) && !athleteSearch.athletes.isEmpty
         let games = shows(.games) && !visibleGames.isEmpty
-        return !(teams || conferences || players || games)
+        let news = shows(.news) && !athleteSearch.stories.isEmpty
+        return !(teams || conferences || players || games || news)
     }
 
     /// A recent, resolved against the live directory. Persisted entries

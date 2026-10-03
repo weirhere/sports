@@ -4,7 +4,7 @@ import SwiftUI
 /// you follow (Andy, 2026-09-05), so a followed team gets a card of its own
 /// rather than a row inside a list of everybody.
 ///
-/// The card navigates; the star unfollows — the same split every browse row
+/// The card navigates; the Following button unfollows — the same split every browse row
 /// in the app uses.
 struct FollowedTeamCard: View {
     let team: Team

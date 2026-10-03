@@ -69,6 +69,13 @@ struct GameDetailScreen: View {
     @State private var seriesFailed = false
     @State private var isLoadingSeries = false
 
+    /// The News tab's stories, and the game they were fetched for — the
+    /// series' guard again. Fetched when the tab first opens: two team
+    /// feeds are two requests most visits never need.
+    @State private var news: [NewsStory]?
+    @State private var newsKey: String?
+    @State private var newsFailed = false
+
     /// The summary, but only if it belongs to the game on screen. Every
     /// card on the page reads through here, so a screen handed a new game
     /// falls back to what the pushed row already knows — the header it has
@@ -99,13 +106,16 @@ struct GameDetailScreen: View {
     /// comparison. Summary keeps every card the screen has always had,
     /// minus Drives, which moved into Plays (2026-09-06); Plays sits in
     /// the middle because chronology comes before rosters, and H2H comes
-    /// last because the history comes after the game itself.
+    /// last because the history comes after the game itself. News sits
+    /// second (Andy, 2026-09-27, E26), the entity pages' order: what's
+    /// being written about the matchup, one swipe from the score.
     private enum Tab: Int, HeroTabItem {
-        case summary, plays, boxScore, headToHead
+        case summary, news, plays, boxScore, headToHead
 
         var title: String {
             switch self {
             case .summary: "Summary"
+            case .news: "News"
             case .plays: "Plays"
             case .boxScore: "Box score"
             case .headToHead: "H2H"
@@ -118,6 +128,10 @@ struct GameDetailScreen: View {
     /// no tab row — exactly as they did before either tab existed.
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.summary]
+        // News reads the two teams' feeds, not the summary, so like H2H
+        // it's there from the first frame. ESPN's only: the fixture and
+        // CFBD feeds have no news endpoint to ask.
+        if hasHeadToHead, client.providesRoster { tabs.append(.news) }
         if let summary {
             if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
             if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
@@ -197,7 +211,7 @@ struct GameDetailScreen: View {
                 // flight and — the case that matters — when the summary
                 // failed outright. A page that can't reach one endpoint
                 // shouldn't hide a tab that doesn't use it.
-                if summary != nil || tab == .headToHead {
+                if summary != nil || tab == .headToHead || tab == .news {
                     Group {
                         // A tab whose data went away between polls falls
                         // back rather than rendering an empty pane.
@@ -212,6 +226,8 @@ struct GameDetailScreen: View {
                             if let summary { playsPane(summary) }
                         case .headToHead:
                             headToHeadPane
+                        case .news:
+                            newsPane
                         case .summary:
                             if let summary { summaryCards(summary) }
                         }
@@ -318,6 +334,11 @@ struct GameDetailScreen: View {
         .task(id: "\(game.routeKey):\(tab == .headToHead)") {
             guard tab == .headToHead else { return }
             await loadSeries()
+        }
+        // The News tab's feeds, on the same terms.
+        .task(id: "\(game.routeKey):\(tab == .news)") {
+            guard tab == .news else { return }
+            await loadNews()
         }
         // The live auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
@@ -614,13 +635,26 @@ struct GameDetailScreen: View {
     /// the Box score tab is additive, so nothing here moved.
     @ViewBuilder
     private func summaryCards(_ summary: GameSummary) -> some View {
+        let story = summary.story(forGame: game.id, status: GameHeaderState.status(game, summary))
         VStack(spacing: Spacing.sm) {
+                    // A final leads with its recap, FotMob's match report
+                    // on Facts (docs/news.md, N2). It rode in with the
+                    // summary, so the card costs no request of its own.
+                    if let story, story.kind == .recap {
+                        storyCard(story)
+                    }
                     // The Gamecast strip leads while a game is live: the
                     // down, the spot, and the last play are what the page
                     // is being opened for at 3:30 on a Saturday.
                     if let situation = summary.situation {
                         card(title: "Current drive") {
                             LiveSituationCard(summary: summary, situation: situation)
+                        }
+                    } else if let shots = shotGamecast(summary) {
+                        // Basketball and hockey: the same card over this
+                        // period's shots (2026-09-27).
+                        card(title: "Current \(gameLeague.periodFormat.longName.lowercased())") {
+                            LiveSituationCard(summary: summary, content: shots.content, map: shots.map)
                         }
                     }
                     // When and where to watch is one question; the
@@ -634,6 +668,11 @@ struct GameDetailScreen: View {
                         card(title: "Game info") {
                             KickoffInfoRows(game: game, summary: summary, showsLines: showsLines)
                         }
+                    }
+                    // Pre-game the preview follows Game info (N3): when
+                    // and where to watch is still the first question.
+                    if let story, story.kind == .preview {
+                        storyCard(story)
                     }
                     if !showsScores, GameInfoRows.hasVenueContent(summary) {
                         card(title: "Venue") {
@@ -697,6 +736,32 @@ struct GameDetailScreen: View {
                     }
             }
             .padding(Spacing.sm)
+    }
+
+    /// The game's story as one `StoryRow`, opening the reader. The reader's
+    /// score row doesn't link back: this page is where it would go.
+    private func storyCard(_ story: NewsStory) -> some View {
+        card(title: story.kind.title) {
+            NavigationLink(value: StoryDestination(story: story, game: game, linksGame: false)) {
+                StoryRow(story: story)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// The court or rink Gamecast, live games only (D1): the color budget's
+    /// surface exception is "only ever drawn while a game is live", and a
+    /// final keeps the page it had. Nil in football, whose card is the
+    /// drive, and wherever the feed has nothing to draw.
+    private func shotGamecast(_ summary: GameSummary) -> (content: GamecastContent, map: ShotMap)? {
+        guard case .live = GameHeaderState.status(game, summary),
+              let map = ShotMap.current(plays: summary.plays, league: gameLeague,
+                                        awayId: summary.away?.team.id,
+                                        allowsShootout: allowsShootout),
+              let content = GamecastContent.shotMap(summary: summary, league: gameLeague,
+                                                    allowsShootout: allowsShootout)
+        else { return nil }
+        return (content, map)
     }
 
     /// The Plays tab: the Games tabs' control row language — two toggles
@@ -773,6 +838,48 @@ struct GameDetailScreen: View {
         }
     }
 
+    /// The News tab: both teams' stories in the rows every News tab uses.
+    @ViewBuilder
+    private var newsPane: some View {
+        Group {
+            if newsKey == game.routeKey, let news, !news.isEmpty {
+                StoryListCard(stories: news)
+            } else if newsKey == game.routeKey, news != nil {
+                StatusMessage(text: "No stories about this matchup right now.")
+                    .cardSurface()
+            } else if newsKey == game.routeKey, newsFailed {
+                StatusMessage(text: "Couldn't load the news.",
+                              retry: { Task { await loadNews(force: true) } })
+                    .cardSurface()
+            } else {
+                ProgressView().padding(.vertical, Spacing.xl)
+            }
+        }
+        .padding(Spacing.sm)
+    }
+
+    /// The two teams' own feeds, merged, with the game's own recap or
+    /// preview folded in where the summary carries one — the Summary
+    /// tab's card, listed with everything else about the matchup.
+    private func loadNews(force: Bool = false) async {
+        let key = game.routeKey
+        if newsKey == key, news != nil, !force { return }
+        newsKey = key
+        newsFailed = false
+        let teams = [game.away.team.id, game.home.team.id]
+            .map { FollowKey(league: gameLeague, teamId: $0) }
+        let loaded = await NewsFeedStore.teamsPage(teams)
+        guard game.routeKey == key else { return }
+        if let loaded {
+            let own = summary.flatMap {
+                $0.story(forGame: game.id, status: GameHeaderState.status(game, $0))
+            }
+            news = NewsMapper.forYou([own.map { [$0] } ?? [], loaded])
+        } else {
+            newsFailed = true
+        }
+    }
+
     /// One content card: optional bordered header, then the section's own
     /// rows — the same recipe as the team-page cards.
     private func card(title: String? = nil, subtitle: String? = nil,
@@ -810,6 +917,9 @@ struct GameDetailScreen: View {
             loadedSeries = nil
             seriesKey = nil
             seriesFailed = false
+            news = nil
+            newsKey = nil
+            newsFailed = false
             loadedKey = key
         }
         guard loadedSummary == nil || force else { return }

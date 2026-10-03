@@ -12,6 +12,9 @@ struct ConferenceDestination: Hashable {
     /// in hand (TeamPage's hero conference line). Defaulted so every other
     /// push stays anchor-free.
     var highlightTeamId: String? = nil
+    /// Open on the News tab rather than Standings: a News page's "See
+    /// more" (2026-09-27).
+    var opensNews: Bool = false
 
     var conferenceId: Int { conference.id }
     var league: League { conference.league }

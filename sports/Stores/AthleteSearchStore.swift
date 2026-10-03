@@ -18,6 +18,10 @@ import SwiftUI
 @MainActor
 final class AthleteSearchStore {
     private(set) var athletes: [PlayerIdentity] = []
+    /// The stories the same request found, for the News scope (E26). Held
+    /// here because they ride the athletes' response: one request, two
+    /// kinds of result.
+    private(set) var stories: [NewsStory] = []
     /// True only while a request for the *current* query is outstanding, so
     /// a spinner can't outlive the query that asked for it.
     private(set) var isSearching = false
@@ -59,6 +63,7 @@ final class AthleteSearchStore {
         guard !trimmed.isEmpty else {
             // A cleared field costs no request and keeps no stale people.
             athletes = []
+            stories = []
             isSearching = false
             return
         }
@@ -67,11 +72,13 @@ final class AthleteSearchStore {
         task = Task { [weak self, client] in
             try? await Task.sleep(for: Self.debounce)
             guard !Task.isCancelled else { return }
-            let found = (try? await client.athletes(matching: trimmed,
-                                                    limit: Self.limit)) ?? []
+            // Typed: a bare `([], [])` fallback infers an unlabeled tuple.
+            let found: (athletes: [PlayerIdentity], stories: [NewsStory]) =
+                (try? await client.search(matching: trimmed, limit: Self.limit)) ?? ([], [])
             guard !Task.isCancelled else { return }
             guard let self, self.query == trimmed else { return }
-            self.athletes = found.filter { player in
+            self.stories = found.stories
+            self.athletes = found.athletes.filter { player in
                 // Only college football is filtered. The three pro leagues
                 // have complete directories and exact slugs, so a name that
                 // failed to match there would be a string bug dropping a
@@ -92,6 +99,7 @@ final class AthleteSearchStore {
         task?.cancel()
         query = ""
         athletes = []
+        stories = []
         isSearching = false
     }
 }

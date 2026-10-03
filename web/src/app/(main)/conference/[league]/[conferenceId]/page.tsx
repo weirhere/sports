@@ -3,9 +3,10 @@
 // CFP floor via `?year=`. The server component owns both fetches; the
 // client shell owns tab choice only.
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { hubStandings, conferenceGames } from "@/lib/espn";
-import { conferenceName } from "@/lib/conferences";
+import { conferenceName, parentOf } from "@/lib/conferences";
+import { conferencePath, opensNews } from "@/lib/routes";
 import {
   SEASON_FLOOR,
   displayName,
@@ -20,7 +21,11 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ league: string; conferenceId: string }>;
-  searchParams: Promise<{ year?: string | string[]; team?: string | string[] }>;
+  searchParams: Promise<{
+    year?: string | string[];
+    team?: string | string[];
+    tab?: string | string[];
+  }>;
 }
 
 /** A validated season year, or undefined (= the current season). */
@@ -77,6 +82,18 @@ export default async function ConferencePage({
   const highlightTeamId =
     highlightRaw && /^\d+$/.test(highlightRaw) ? highlightRaw : undefined;
 
+  // Divisions have no pages (iOS, 2026-09-26): an old division link or a
+  // bookmark lands on its conference, which opens on its divisions stacked.
+  const parent = parentOf(numericId, league);
+  if (parent !== undefined) {
+    redirect(
+      conferencePath(
+        { league, id: parent },
+        { year, team: highlightTeamId }
+      )
+    );
+  }
+
   // The divisional response where the league nests, so the scope chip has
   // divisions to show without a second request.
   const [standingsResult, gamesResult] = await Promise.allSettled([
@@ -97,6 +114,7 @@ export default async function ConferencePage({
       games={games}
       displayYear={year ?? currentYear}
       highlightTeamId={highlightTeamId}
+      opensNews={opensNews(sp.tab)}
     />
   );
 }

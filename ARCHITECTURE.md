@@ -163,6 +163,12 @@ Base: `https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}` — `foot
 - **`/apis/site/v2/sports/{sport}/{league}/teams/{id}/statistics`** — `results.stats.categories[]` and `results.opponent[]`, each stat with `abbreviation`, `displayName`, `displayValue`, `perGameDisplayValue`, `rankDisplayValue` (nil in football). In the NBA/NHL offseason it answers with a season labelled "Preseason 2026-27" carrying last season's full numbers — don't trust the label.
 - **`sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}/seasons/{y}/types/2/teams/{id}/leaders`** — per category, `leaders[]` of `displayValue` plus an athlete **`$ref`** (the id is in the URL; resolve names against the roster rather than following every ref).
 
+### News (verified live 2026-09-27)
+
+- **`/summary`'s `article`** — the game's own AP story, body whole in `story` (HTML: blank-line paragraphs, `<hl2>` subheads, `<a>` links, and a `------` rule before AP's boilerplate). `type` is `Preview` before kickoff and `Recap` once final; a live game's summary carries none, and a just-finished one none yet. `gameId` is a string; `categories[]` tags `team` (with `teamId`, an Int) and `event` (with `eventId`). The summary's `news.articles` is the league's feed, **not** the game's.
+- **`site.web.api.espn.com/apis/site/v2/sports/{sport}/{league}/news?team={id}&limit=25`** — headlines only: no `story`, no `source`, no `gameId`, a `byline` on some. Every result tags the team, but most tag many more (league roundups). `type` is `Story`, `HeadlineNews`, `Recap`, `Preview`, `Media` (video) or `Eticket`. On `site.api` this path 403s a browser or empty UA.
+- **`links.api.self`** → `content.core.api.espn.com/v1/sports/news/{id}` — `headlines[0]` carries `story` (HTML: `<p>`, `<h2>`, `<img>`, and ESPN's own `<inline1>`/`<alsosee>` embeds), `source` ("Associated Press", "ESPN") and `byline`. `Media` items answer `videos[]` and no story.
+
 ## Failure posture
 
 - Every DTO field optional; a partial row renders partially (no network? show time TBD; no record? omit it). Decode failure of one event drops that event, never the screen.

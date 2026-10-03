@@ -19,6 +19,7 @@ import {
   leagueLogoUrl,
   seasonYear,
   seasonYears,
+  shortName,
   type League,
 } from "@/lib/leagues";
 import { pollLabel } from "@/lib/polls";
@@ -43,6 +44,9 @@ import {
 import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
 import { teamPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
+import { useOnDemand } from "@/lib/hooks/use-on-demand";
+import { getLeagueNews } from "@/lib/api";
 
 /** Mirrors the iOS `UIStateStore.pollChoice` preference. */
 const POLL_CHOICE_KEY = "statside.ui.pollChoice";
@@ -52,6 +56,7 @@ export function PollView({
   polls,
   games,
   displayYear,
+  opensNews = false,
 }: {
   league: League;
   /** The season's displayable polls; null = the fetch failed. */
@@ -59,9 +64,11 @@ export function PollView({
   /** The division's whole season, the ranked slate's source; null = failed. */
   games: Game[] | null;
   displayYear: number;
+  /** Open on News — a News page's "See more" (`?tab=news`). */
+  opensNews?: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState("standings");
+  const [tab, setTab] = useState(opensNews ? "news" : "standings");
   const [pollChoice, setPollChoice] = useState<string>("ap");
   const [grouping, setGrouping] = useState<SlateGrouping>("week");
   const [teamChoice, setTeamChoice] = useState<string | undefined>();
@@ -143,12 +150,25 @@ export function PollView({
   const tabs: HeroTab[] = [
     { id: "standings", label: "Standings" },
     { id: "games", label: "Games" },
+    // College football's league page reads the league's feed, the News
+    // tab's NCAAF page (iOS E26, 2026-09-27).
+    { id: "news", label: "News" },
     // A tab that would open on "no games" is worse than no tab.
     ...(rounds.length > 0
       ? [{ id: "postseason", label: "Postseason" }]
       : []),
   ];
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
+
+  // Fetched on the tab's first open, and kept.
+  const [newsRequested, setNewsRequested] = useState(opensNews);
+  const news = useOnDemand(newsRequested ? `league:${league}` : undefined, () =>
+    getLeagueNews(league)
+  );
+  const selectTab = (id: string) => {
+    setTab(id);
+    if (id === "news") setNewsRequested(true);
+  };
 
   const logoUrl = leagueLogoUrl(league);
 
@@ -184,17 +204,20 @@ export function PollView({
         }
         trailing={
           <>
-            <SeasonMenuChip
-              value={displayYear}
-              years={seasonYears(league)}
-              onSelect={selectYear}
-            />
+            {/* Stories are today's, whatever season the other tabs show. */}
+            {activeTab !== "news" && (
+              <SeasonMenuChip
+                value={displayYear}
+                years={seasonYears(league)}
+                onSelect={selectYear}
+              />
+            )}
             {/* The Top 25 is followable — a third follow set, keyed by
                 league so a league that grows a poll needs no migration. */}
             <FollowPill league={league} kind="poll" name="Top 25" />
           </>
         }
-        tabs={<HeroTabBar tabs={tabs} selected={activeTab} onSelect={setTab} />}
+        tabs={<HeroTabBar tabs={tabs} selected={activeTab} onSelect={selectTab} />}
         controls={
           activeTab === "standings" ? (
             seasonPolls.length > 1 ? (
@@ -262,6 +285,28 @@ export function PollView({
           ) : (
             <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
               Schedule TBA
+            </section>
+          ))}
+
+        {activeTab === "news" &&
+          (news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">Couldn&apos;t load the news.</p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <StoryListCardSkeleton />
+          ) : news.state.value.length > 0 ? (
+            <StoryListCard stories={news.state.value} />
+          ) : (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No {shortName(league)} stories right now.
             </section>
           ))}
 

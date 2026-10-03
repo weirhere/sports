@@ -2,12 +2,13 @@ import SwiftUI
 
 struct RootView: View {
     enum Tab {
-        case scores, tables, teams, search
+        case scores, news, tables, teams, search
     }
 
     @State private var following = FollowingStore()
     @State private var uiState = UIStateStore()
     @State private var notifications = NotificationScheduler()
+    @State private var teamAlerts = TeamAlertStore()
     // Scoreboard and team directory live here, not in their tabs, so the
     // search cover (and any tab) sees the same loaded data, and polling
     // follows the scene's lifecycle instead of one tab's.
@@ -46,10 +47,22 @@ struct RootView: View {
         }
     }
 
+    /// The followed teams whose bell sheet has the kickoff reminder on —
+    /// what the scheduler is handed in place of the whole follow set.
+    private var reminderKeys: Set<String> {
+        teamAlerts.keys(receiving: .kickoffReminder, among: following.teamKeys)
+    }
+
     var body: some View {
         TabView(selection: tabSelection) {
             SwiftUI.Tab("Games", systemImage: "sportscourt.fill", value: Tab.scores) {
                 ScoresScreen()
+            }
+            // Second, after FotMob's Matches · News (Andy, 2026-09-27,
+            // E26): every league's stories in one place. Games stays first,
+            // so Scores is still the screen the app opens on.
+            SwiftUI.Tab("News", systemImage: "newspaper.fill", value: Tab.news) {
+                NewsScreen()
             }
             // "Leagues", not "Rankings" or "Tables" (Andy, 2026-09-09):
             // the NFL has no poll, so half the time "Rankings" would name a
@@ -121,7 +134,7 @@ struct RootView: View {
             if tab != .search { lastContentTab = tab }
         }
         .onChange(of: following.teamKeys) { oldIds, newIds in
-            Task { await notifications.resync(followedKeys: newIds) }
+            Task { await notifications.resync(followedKeys: reminderKeys) }
             // The contextual permission moment: right after the first-ever
             // follow, once, and never at launch.
             if oldIds.isEmpty, !newIds.isEmpty, !uiState.notificationsPrompted,
@@ -136,15 +149,29 @@ struct RootView: View {
                 KickoffReminderActions.register()
                 Task {
                     await notifications.refreshAuthorization()
-                    await notifications.resync(followedKeys: following.teamKeys)
+                    await notifications.resync(followedKeys: reminderKeys)
+                    #if canImport(ActivityKit)
+                    await LiveActivityController()
+                        .pinGames(of: teamAlerts.pinnedKeys(among: following.teamKeys))
+                    #endif
                 }
             } else {
                 scoreboards.stopPolling()
             }
         }
+        // A change in any team's bell sheet: a kickoff row, a mute, a pin.
+        .onChange(of: teamAlerts.revision) { _, _ in
+            Task {
+                await notifications.resync(followedKeys: reminderKeys)
+                #if canImport(ActivityKit)
+                await LiveActivityController()
+                    .pinGames(of: teamAlerts.pinnedKeys(among: following.teamKeys))
+                #endif
+            }
+        }
         .alert("Get kickoff reminders?", isPresented: $showReminderOffer) {
             Button("Enable") {
-                Task { await notifications.requestAndEnable(followedKeys: following.teamKeys) }
+                Task { await notifications.requestAndEnable(followedKeys: reminderKeys) }
             }
             Button("Not Now", role: .cancel) {}
         } message: {
@@ -160,6 +187,7 @@ struct RootView: View {
         .environment(router)
         .environment(reviewPrompt)
         .environment(notifications)
+        .environment(teamAlerts)
         .environment(scoreboards)
         .environment(directory)
         .environment(recents)

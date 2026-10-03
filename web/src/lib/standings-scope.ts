@@ -85,7 +85,10 @@ function scopeAtTier(rung: ReturnType<typeof tier>): StandingsScope | undefined 
 /**
  * Where a page opens.
  *
- * A conference page opens at its own widest view of itself. A **team** page
+ * The league page opens on the league's own table; a pro **conference**
+ * page opens on its divisions, stacked (iOS, 2026-09-26: divisions have no
+ * pages of their own, so the conference is where they're read, and its one
+ * 16-team table is a tap away on the chip). A **team** page
  * opens on its conference's table, which is what the tab has always shown:
  * the league is one step out and the division one step in, so a team sits
  * in the middle of its own hierarchy with no widest-view-of-itself to
@@ -99,7 +102,9 @@ export function defaultScope(
   if (kind === "team") {
     return scopes.includes("conference") ? "conference" : scopes[0];
   }
-  return scopes[0];
+  return scopes[0] === "conference" && scopes.includes("division")
+    ? "division"
+    : scopes[0];
 }
 
 /**

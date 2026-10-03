@@ -8,7 +8,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { conferenceName, divisionForTeamId } from "@/lib/conferences";
+import { conferenceName, divisionForTeamId, parentOf } from "@/lib/conferences";
+import { conferencePath } from "@/lib/routes";
 import type { TeamLeaders, TeamSeasonStats } from "@/lib/espn/team-stats";
 import { teamFullName } from "@/lib/team-name";
 import {
@@ -44,7 +45,8 @@ import {
 } from "@/components/team-trophies-card";
 import { trophyCaseIsEmpty } from "@/lib/trophies";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getTeamTrophies } from "@/lib/api";
+import { getTeamNews, getTeamTrophies } from "@/lib/api";
+import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { StandingsList } from "@/components/standings-list";
 import { StandingsScopeChip } from "@/components/standings-scope-chip";
 import { divisionShortName, tablesAtScope } from "@/lib/standings-tables";
@@ -57,7 +59,7 @@ import { SeasonStatsCard } from "./season-stats-card";
 import { TeamLeadersCard } from "./team-leaders-card";
 import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 
-// Ordered — the ordinal is the tab walk (Overview → Games → Stats →
+// Ordered — the ordinal is the tab walk (Overview → News → Games → Stats →
 // Standings → Roster → Trophies). Standings is conference-gated, so the row
 // is assembled rather than sliced. Stats sits after Games (iOS, 2026-09-24):
 // the row scrolls, so a sixth tab costs no cramming.
@@ -71,8 +73,12 @@ import { TeamStatsPane, TeamStatsPaneSkeleton } from "./team-stats-pane";
 // seconds after the page opened, which reads as a bug; gating on the current
 // season alone would hide the tab on a team that won its conference last
 // December. So the row is stable and the empty state does the talking.
+//
+// News is second, after Overview (iOS E26, 2026-09-27): FotMob's order,
+// replacing docs/news.md N9's "last".
 const TABS: HeroTab[] = [
   { id: "overview", label: "Overview" },
+  { id: "news", label: "News" },
   { id: "games", label: "Games" },
   { id: "stats", label: "Stats" },
   { id: "standings", label: "Standings" },
@@ -98,6 +104,8 @@ interface TeamViewProps {
   seasonStats: Promise<TeamSeasonStats>;
   /** The season's leaders, current season only — streamed, never rejects. */
   leaders?: Promise<TeamLeaders>;
+  /** Open on News — a News page's "See more" (`?tab=news`). */
+  opensNews?: boolean;
 }
 
 export function TeamView({
@@ -111,9 +119,10 @@ export function TeamView({
   isCurrentSeason,
   seasonStats,
   leaders,
+  opensNews = false,
 }: TeamViewProps) {
   const router = useRouter();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(opensNews ? "news" : "overview");
 
   // The schedule payload's conference wins (season-scoped, so a realignment
   // year reads correctly); the standings groups cover entry paths where the
@@ -148,13 +157,21 @@ export function TeamView({
   // opens it, and keyed by the team so a shelf can never be shown under
   // another team's crest.
   const [trophiesRequested, setTrophiesRequested] = useState(false);
+  // The News tab's feed, latched the same way: one request on the tab's
+  // first open, never polled.
+  const [newsRequested, setNewsRequested] = useState(opensNews);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "trophies") setTrophiesRequested(true);
+    if (id === "news") setNewsRequested(true);
   };
   const trophies = useOnDemand(
     trophiesRequested ? `${league}:${teamId}` : undefined,
     () => getTeamTrophies(league, teamId)
+  );
+  const news = useOnDemand(
+    newsRequested ? `${league}:${teamId}` : undefined,
+    () => getTeamNews(league, teamId)
   );
 
   // The full name — "Philadelphia Flyers", not "Philadelphia" (iOS,
@@ -267,8 +284,15 @@ export function TeamView({
         rank={apRank}
         subtitle={
           conferenceId !== undefined ? (
+            // A pro team's group is its division, which has no page (iOS,
+            // 2026-09-26): the badge still says "AFC North" and opens the
+            // AFC, whose page stacks its divisions with this team's row
+            // highlighted.
             <Link
-              href={`/conference/${league}/${conferenceId}?team=${teamId}`}
+              href={conferencePath(
+                { league, id: parentOf(conferenceId, league) ?? conferenceId },
+                { team: teamId }
+              )}
               className="inline-flex items-center gap-1 type-chip-em text-text-secondary transition-colors hover:text-text-primary"
             >
               {conferenceName(conferenceId, league)}
@@ -293,7 +317,8 @@ export function TeamView({
             {activeTab !== "overview" &&
               activeTab !== "roster" &&
               activeTab !== "trophies" &&
-              activeTab !== "stats" && (
+              activeTab !== "stats" &&
+              activeTab !== "news" && (
               <SeasonMenuChip
                 value={displayYear}
                 years={seasonYears(league)}
@@ -445,6 +470,33 @@ export function TeamView({
             </section>
           ) : (
             <TeamTrophiesCard trophyCase={trophies.state.value} />
+          ))}
+
+        {activeTab === "news" &&
+          // The team's own stories (N9), text only (N8). A feed that didn't
+          // answer and a team with no stories look identical on this tab,
+          // and only one of them is worth a Retry button.
+          (news.state.status === "failed" ? (
+            <section className="card-surface flex flex-col items-center gap-3 px-4 py-8">
+              <p className="type-team-name text-text-secondary">
+                Couldn&apos;t load the news.
+              </p>
+              <button
+                type="button"
+                onClick={news.reload}
+                className="rounded-full bg-bg-elevated px-4 py-1.5 type-chip-em text-text-primary transition-colors hover:bg-divider"
+              >
+                Retry
+              </button>
+            </section>
+          ) : news.state.status === "loading" ? (
+            <StoryListCardSkeleton />
+          ) : news.state.value.length === 0 ? (
+            <section className="card-surface px-4 py-8 text-center type-team-name text-text-secondary">
+              No {identity?.school ?? school} stories right now.
+            </section>
+          ) : (
+            <StoryListCard stories={news.state.value} />
           ))}
 
         {activeTab === "standings" &&

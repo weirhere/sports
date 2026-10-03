@@ -132,6 +132,49 @@ final class LiveActivityController {
         }
     }
 
+    // MARK: - Teams that pin every game (2026-09-28)
+
+    /// How far ahead of kickoff a pinning team's game gets its card.
+    /// ActivityKit ends a card eight hours after it starts, so one made
+    /// earlier than this could die before the final.
+    static let pinWindow: TimeInterval = 6 * 60 * 60
+
+    /// Which of a pinning team's games should be on the Lock Screen now:
+    /// live, or kicking off within `pinWindow` at a known time, and not
+    /// already carded. A game both pinning teams play is one card.
+    static func gamesToPin(_ games: [Game], active: Set<String>,
+                           now: Date = .now) -> [Game] {
+        var seen: Set<String> = []
+        return games.filter { game in
+            guard seen.insert(game.id).inserted, !active.contains(game.id),
+                  isStartable(game, now: now) else { return false }
+            guard case .pre = game.status else { return true }
+            guard let date = game.date, !game.timeTBD else { return false }
+            return date.timeIntervalSince(now) <= pinWindow
+        }
+    }
+
+    /// Starts a card for each game `gamesToPin` picks from the teams'
+    /// schedules. Called on scene-active: a card can only be started by the
+    /// running app until push-to-start exists, so a pinning team's game is
+    /// carded the first time the app opens inside its window. One schedule
+    /// request per pinning team, and none while the feature is gated off.
+    func pinGames(of teamKeys: Set<String>,
+                  makeClient: @Sendable (League) -> any ScoresProviding = {
+                      DataProvider.makeClient(league: $0)
+                  }) async {
+        guard Self.isAvailable, areActivitiesEnabled, !teamKeys.isEmpty else { return }
+        var games: [Game] = []
+        for key in teamKeys.followKeys {
+            guard let schedule = try? await makeClient(key.league)
+                .teamSchedule(teamId: key.teamId) else { continue }
+            games += schedule.games
+        }
+        for game in Self.gamesToPin(games, active: activeGameIds) {
+            await start(game: game)
+        }
+    }
+
     // MARK: - Internals
 
     private func activity(for gameId: String) -> Activity<GameActivityAttributes>? {

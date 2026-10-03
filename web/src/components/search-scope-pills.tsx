@@ -26,6 +26,9 @@ export const SEARCH_SCOPES = [
   "players",
   "games",
   "conferences",
+  // News last (Andy, 2026-09-27, E26): the stories ESPN's search sent with
+  // the people, one pill past the kinds of page search opens.
+  "news",
 ] as const;
 
 export type SearchScope = (typeof SEARCH_SCOPES)[number];
@@ -36,6 +39,7 @@ const TITLES: Record<SearchScope, string> = {
   players: "Players",
   games: "Games",
   conferences: "Conferences",
+  news: "News",
 };
 
 export function parseSearchScope(value: string | null | undefined): SearchScope {

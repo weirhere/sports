@@ -403,7 +403,8 @@ struct ScoresScreen: View {
             // Scores holds no polls — the page fetches the season in
             // progress itself, so the value is just the league.
             .navigationDestination(for: PollDestination.self) { destination in
-                PollScreen(league: destination.league)
+                PollScreen(polls: destination.polls, league: destination.league,
+                           opensNews: destination.opensNews)
                     .id(destination)
             }
             // Identity follows the team (2026-09-10). Search and the
@@ -419,6 +420,16 @@ struct ScoresScreen: View {
             .navigationDestination(for: PlayerIdentity.self) { player in
                 PlayerPage(player: player)
                     .id(player.id)
+            }
+            .navigationDestination(for: CoachIdentity.self) { coach in
+                CoachPage(coach: coach)
+                    .id(coach.id)
+            }
+            // The story reader (docs/news.md): game pages and team pages
+            // push it. Identity follows the story, like every other page.
+            .navigationDestination(for: StoryDestination.self) { destination in
+                StoryReader(destination: destination)
+                    .id(destination.story.id)
             }
         }
         // onAppear mirrors TeamsScreen: lazy tab content means an intent can

@@ -21,6 +21,7 @@ import { CardHeader } from "@/components/card-header";
 import { cn } from "@/lib/utils";
 import { headshotThumbnail } from "@/lib/logos";
 import { playerHref } from "@/lib/player-profile";
+import { coachPath } from "@/lib/routes";
 import type { League } from "@/lib/leagues";
 import {
   rosterMetric,
@@ -43,7 +44,7 @@ export function RosterList({ roster, league, teamId }: RosterListProps) {
 
   return (
     <>
-      {roster.coach && <CoachCard coach={roster.coach} />}
+      {roster.coach && <CoachCard coach={roster.coach} league={league} teamId={teamId} />}
       {roster.groups.map((group) => (
         <section key={group.name} className="card-surface pb-1">
           <CardHeader title={group.name} />
@@ -65,18 +66,39 @@ export function RosterList({ roster, league, teamId }: RosterListProps) {
   );
 }
 
-function CoachCard({ coach }: { coach: RosterCoach }) {
+/** A link to the coach's page when ESPN sent an id (E27, 2026-09-27), the
+ *  plain row it always was when it didn't. */
+function CoachCard({
+  coach,
+  league,
+  teamId,
+}: {
+  coach: RosterCoach;
+  league: League;
+  teamId: string;
+}) {
+  const row = (
+    <>
+      <span className="type-team-name truncate text-text-primary">{coach.name}</span>
+      <span className="flex shrink-0 items-center gap-1.5 type-meta text-text-secondary">
+        Head coach
+        {coach.id && <ChevronRight aria-hidden="true" className="h-3 w-3 shrink-0" />}
+      </span>
+    </>
+  );
   return (
     <section className="card-surface">
       <CardHeader title="Coach" />
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <span className="type-team-name truncate text-text-primary">
-          {coach.name}
-        </span>
-        <span className="type-meta shrink-0 text-text-secondary">
-          Head coach
-        </span>
-      </div>
+      {coach.id ? (
+        <Link
+          href={coachPath(league, coach.id, teamId)}
+          className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-bg-elevated focus-visible:bg-bg-elevated focus-visible:outline-none"
+        >
+          {row}
+        </Link>
+      ) : (
+        <div className="flex items-center justify-between gap-3 px-4 py-3">{row}</div>
+      )}
     </section>
   );
 }
