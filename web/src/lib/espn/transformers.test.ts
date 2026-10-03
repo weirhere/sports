@@ -378,8 +378,15 @@ describe("a season that hasn't opened has no numbers", () => {
   // serving the old table underneath it: probed live 2026-09-09, the NBA
   // standings were stamped 2026-27 and full of 2025-26 results three weeks
   // before a ball was tipped.
+  //
+  // The dates are relative to today, not written out: `seasonHasStarted`
+  // reads the real clock, and a fixed "future" start date (2026-09-30) went
+  // stale two days after that date and failed every PR's web job.
+  const yearMs = 365 * 24 * 60 * 60 * 1000;
+  const nextYear = new Date(Date.now() + yearMs).toISOString();
+  const lastYear = new Date(Date.now() - yearMs).toISOString();
   const response = {
-    season: { year: 2027, startDate: "2026-09-30T07:00Z" },
+    season: { year: 2027, startDate: nextYear },
     children: [
       {
         id: 5,
@@ -414,7 +421,7 @@ describe("a season that hasn't opened has no numbers", () => {
   it("keeps them once the season has opened", () => {
     const started = {
       ...response,
-      season: { ...response.season, startDate: "2026-09-01T07:00Z" },
+      season: { ...response.season, startDate: lastYear },
     } as EspnStandingsResponse;
     const [entry] = transformStandings(started, "nba")[0].entries;
     expect(entry.conferenceRecord).toBe("36-16");
