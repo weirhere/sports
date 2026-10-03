@@ -466,7 +466,7 @@ struct GameDetailScreen: View {
         let away = competitor(game.away, summary?.away)
         let home = competitor(game.home, summary?.home)
         return HStack(alignment: .top, spacing: Spacing.lg) {
-            headerSide(away)
+            headerSide(away, outerEdge: .leading)
             VStack(spacing: Spacing.xs) {
                 // The merge, not the pushed snapshot: `game` is frozen at
                 // push, so a game that ends while its detail is open would
@@ -524,7 +524,7 @@ struct GameDetailScreen: View {
                 ([headerStatusSpoken]
                     + (headerBroadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
-            headerSide(home)
+            headerSide(home, outerEdge: .trailing)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
@@ -565,13 +565,41 @@ struct GameDetailScreen: View {
         possessionTeamId != nil && possessionTeamId == team.id
     }
 
-    private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
+    /// `Spacing.sm` clear of the logo's `outside` edge. A zero-width frame
+    /// pinned to that edge, with the mark hanging off it outward, rather
+    /// than alignment guides: a pair of guides on one view read each
+    /// other's values and left the mark inside the logo.
+    private func possessionMark(outside edge: HorizontalEdge) -> some View {
+        Image(systemName: gameLeague.fallbackGlyph)
+            .font(.system(size: 9))
+            .foregroundStyle(.textSecondary)
+            .padding(edge == .leading ? .trailing : .leading, Spacing.sm)
+            .fixedSize()
+            .frame(width: 0, alignment: edge == .leading ? .trailing : .leading)
+    }
+
+    /// `outerEdge` is the side of the header this team sits on: `.leading`
+    /// for away, `.trailing` for home.
+    private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?),
+                            outerEdge: HorizontalEdge) -> some View {
         // Value-based so the push lands in the Scores stack's NavigationPath;
         // ScoresScreen owns the matching Team destination.
         NavigationLink(value: side.team) {
             VStack(spacing: Spacing.xs) {
                 LogoImage(url: side.team.logoURL)
                     .frame(width: Self.logoSize, height: Self.logoSize)
+                    // The scoreboard row's possession mark, at the header's
+                    // scale, on the logo's outer side: left of the away
+                    // logo, right of the home one. An overlay rather than
+                    // an HStack sibling, so the logo stays centered in its
+                    // column and the two sides still mirror each other.
+                    // It sat off the name until 2026-10-02, where a wrapped
+                    // name ("Central Michigan") ran into it.
+                    .overlay(alignment: outerEdge == .leading ? .leading : .trailing) {
+                        if hasPossession(side.team) {
+                            possessionMark(outside: outerEdge)
+                        }
+                    }
                 Text(side.team.location)
                     .font(side.winner == true ? .teamNameEmphasis : .teamName)
                     .foregroundStyle(.textPrimary)
@@ -579,19 +607,6 @@ struct GameDetailScreen: View {
                     // Reserved so a wrapping name ("Arkansas-Pine Bluff")
                     // doesn't push its record below the other side's.
                     .lineLimit(2, reservesSpace: true)
-                    // The scoreboard row's possession mark, at the header's
-                    // scale. An overlay hung off the name's trailing edge
-                    // rather than an HStack sibling, so the name stays
-                    // centered under its logo and the two sides still
-                    // mirror each other.
-                    .overlay(alignment: Alignment(horizontal: .trailing, vertical: .firstTextBaseline)) {
-                        if hasPossession(side.team) {
-                            Image(systemName: gameLeague.fallbackGlyph)
-                                .font(.system(size: 9))
-                                .foregroundStyle(.textSecondary)
-                                .alignmentGuide(.trailing) { $0[.leading] - Spacing.sm }
-                        }
-                    }
                 if let record = side.record {
                     Text(record)
                         .font(.meta)
