@@ -30,6 +30,10 @@ Alternates:
 - `Live scores for your teams` (26) — says what the app does, not what it
   covers
 
+Audited at 2.7.0 and unchanged. News and coach pages are new surfaces,
+not a new sport, and the subtitle names sports. `news` went into the
+keywords instead, where it costs nothing visible.
+
 Audited at 2.3.0 and unchanged: 2.3.0 adds no league, so the field still names
 exactly what the app covers. Audited again at 2.5.0 and unchanged, for the
 same reason, and at 2.6.0 and 2.6.1.
@@ -60,6 +64,27 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.7.0 (build 22)
+
+> • News. It's a new tab, second in the bar. For you is built from the
+>   teams you follow: what's trending, a section for each of your teams,
+>   then the latest. Every league gets a page of its own. Stories come with
+>   photos and open right in the app.
+> • News is everywhere else too. Team, game, player, conference and league
+>   pages each have a News tab, and so do Teams and Leagues. Search has a
+>   News pill.
+> • Coach pages. Tap the head coach on a team's roster for their profile,
+>   every job they've held with the record there, and the games, season by
+>   season.
+> • The bell on a team page opens that team's notifications. Turn one
+>   team's reminders off and leave the rest alone.
+> • On a team page, Trades comes before the roster now.
+> • Fixed: after a punt, the Gamecast field could put the ball at the wrong
+>   end of the field until the next snap.
+
+2.6.1 (21) was approved and live before this cut, so these notes cover only
+what's new since it. Nothing here names a league (§ 4.1(a) rejection).
 
 ### 2.6.1 (build 21)
 
@@ -414,6 +439,11 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.7.0 and left alone. Every clause is still true, and the bell
+sheet made "a reminder 30 minutes before they play" more true, not less. A
+News line would be a fair swap later (no review needed), but it would cost
+the "30 minutes", the one concrete thing in the line.
+
 Audited at 2.6.1 and left alone: fixes and polish, nothing in the line
 changed.
 
@@ -452,7 +482,9 @@ leagues ever stop being the thing worth saying first; no review needed.
 > YOUR TEAMS, EVERYWHERE
 > • A Home Screen and Lock Screen widget with your teams' live score or next
 >   game, from every league you follow
-> • Reminders 30 minutes before your teams play
+> • Reminders 30 minutes before your teams play, switched on team by team
+> • News from the teams you follow, with photos, read right in the app — and
+>   a News tab on every team, game, player and league page
 > • Ask Siri "What's my next game?" — or share a score straight from any game
 > • Long-press any game to follow a team or share the score
 >
@@ -467,15 +499,17 @@ leagues ever stop being the thing worth saying first; no review needed.
 >   weeks, the roster, the home ground, and the trophies the team has won
 > • Player pages: this season's numbers, every game, and the career, reached
 >   from a roster, a search, a box score or a game's leaders
+> • Coach pages: every job a head coach has held, the record at each, and
+>   the games season by season
 > • Optional betting lines: the spread and over/under before kickoff, off
 >   unless you turn them on
-> • Search any team, conference, game or player — across every league,
+> • Search any team, conference, game, player or story — across every league,
 >   from a field that sits under your thumb
 > • Browse past seasons back to 2014
 >
 > DESIGNED QUIET
-> Black, white, and team logos in full color, light or dark or matching your
-> phone. No banner ads, no autoplay video,
+> Black, white, and team logos and news photos in full color, light or dark
+> or matching your phone. No banner ads, no autoplay video,
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
@@ -492,6 +526,14 @@ and pro conference and division, where it used to list the FBS, FCS, AFC,
 NFC, NBA and NHL), and the disclaimer. The disclaimer used to name the
 NFL, NBA, NHL and NCAA; it still disclaims every one of them, it just
 doesn't print their marks to do it. Features are untouched.
+
+Changed for 2.7.0, in five places. YOUR TEAMS gains a News bullet (the
+release's headline, and the one tab a reader can't infer from "scores"),
+and the reminders bullet says they're per team now, which is what the bell's
+sheet changed. A Coach pages bullet follows Player pages. Search names
+stories, since News is a scope there. DESIGNED QUIET names news photos
+beside logos, because the paragraph lists what's in color and photos are now
+the second thing. Trades moving ahead of Roster is a tab order, not a bullet.
 
 Audited at 2.6.1 and unchanged. The description never named a refresh rate,
 and Hide all, the day swipe and the switches are refinements of surfaces
@@ -542,7 +584,12 @@ data" paragraph is unchanged, because nothing in this release collects any.
 
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
-`college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops` (95)
+`college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops,news` (100)
+
+**Changed for 2.7.0: `news` in**, the five spare characters exactly. It's
+the release's headline and a word people do type into store search, and
+nothing else in the listing indexes it. That leaves no room at all; the
+next term in has to push one out.
 
 **Changed for the 4.1(a) rejection (2.6.1, 2026-09-28).** Out: `ncaaf`,
 `afc` and `nfc`, which are league and conference marks, and `football`,
@@ -768,6 +815,17 @@ Resolution Center reply).
 exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
 `docs/social/README.md` § Regenerating before upload if the glyphs need to
 match frames 02–07 exactly.
+
+### 2.7.0: carried forward a sixth time
+
+The gray-disc set that cleared the second 4.1(a) rejection carries forward
+untouched. Nothing in it became false: no frame shows the bell or the tab
+bar's order closely enough for News landing second to contradict it. News
+and coach pages appear in no frame. If News ever earns a frame, it has to
+be shot with `-screenshot.neutralLogos YES` and with **story photos
+neutralized too**: a news photo is a picture of a team's players in its
+marks, which is exactly what 4.1(a) objected to, and `neutralLogos` covers
+`LogoImage`, not `StoryPhoto`.
 
 ### 2.6.1: carried forward a fifth time
 
@@ -1003,6 +1061,16 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.7.0: no change to the paste-in block.** 2.7.0 adds no
+entitlement, account or data collection. "No web views anywhere" is still
+true: the story reader renders ESPN's article text natively and nothing in
+the app opens a link out (checked by grepping for WebKit, SafariServices,
+`openURL` and `Link(destination:)`: none). The bell's sheet in Release shows
+only the per-team switch and the 30-minute row; the server-backed rows and
+the Live Activities switch are both gated off, so nothing on it promises an
+alert the app can't send. The reviewer-timing note above stays current until
+the NBA and NHL open in late October. Paste the whole block fresh.
 
 **Notes audit at 2.6.1: one line changed.** The live-scores bullet said
 "every 30 seconds"; 2.6.1 polls every second while games are live (quiet
