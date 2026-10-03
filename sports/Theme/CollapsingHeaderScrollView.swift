@@ -116,7 +116,12 @@ struct CollapsingHeaderScrollView<Hero: View, Strip: View, Content: View>: View 
     private func track(_ scrolled: CGFloat) {
         offset = scrolled
         if isLanding || scrolled < base {
-            base = scrolled
+            // Never above the page's top: a flick that overshoots into the
+            // top bounce would otherwise leave the landing point at the
+            // bounce's depth, and the settle back to 0 would read as
+            // collapse, handing the bar its title with the hero in full
+            // view (Andy, 2026-10-02, on the game page's compact score).
+            base = max(scrolled, 0)
         }
         let next = min(max(scrolled - base, 0), heroHeight)
         if next != collapse { collapse = next }

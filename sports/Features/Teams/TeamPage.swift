@@ -379,11 +379,18 @@ struct TeamPage: View {
             // The control row, FotMob's pattern (Andy, 2026-08-31): bell,
             // follow, and share ride beside the system back button. The
             // season chip lives in the pane's pinned row (2026-09-27), so
-            // this row is the same three controls on every tab.
+            // this row is the same three controls on every tab. Once the
+            // hero is gone they fold into one ellipsis and the bar belongs
+            // to the team name (Andy, 2026-10-02).
             ToolbarItemGroup(placement: .topBarTrailing) {
-                NotificationBell(team: team)
-                FollowPill(team: team)
-                shareButton
+                if showsInlineTitle {
+                    TeamActionsMenu(team: team,
+                                    shareText: team.shareText(schedule: currentSchedule))
+                } else {
+                    NotificationBell(team: team)
+                    FollowPill(team: team)
+                    shareButton
+                }
             }
         }
         // Sequential: standings need the schedule's conference id. The

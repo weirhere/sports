@@ -46,6 +46,11 @@ struct GameDetailScreen: View {
     /// which is the polite-guest rule broken by a card, of all things.
     @State private var triedStandingsFallback = false
     @State private var tab: Tab = .summary
+    /// How far the header has collapsed under the bar (`CollapsingHeaderScrollView`).
+    @State private var heroCollapse: CGFloat = 0
+    /// True once the header's score line has scrolled under the bar — the
+    /// bar's principal slot then carries the compact scoreboard.
+    @State private var showsCompactHeader = false
     @State private var isSharing = false
     /// Rendered on the share tap, so the card can never carry a score the
     /// screen has already moved past.
@@ -187,25 +192,38 @@ struct GameDetailScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // The header sits on the card surface — headers match the
-                // cards on every entity page (Andy, 2026-08-31); the
-                // content below stays in cards on the recessed one.
-                VStack(spacing: 0) {
-                    header
-                    if showsTabs {
-                        // Leading, with the entity pages' Spacing.lg gutter —
-                        // Team and Conference anchor their tab rows to the
-                        // left edge and this is the same component. The
-                        // gutter lives inside HeroTabBar as of 2026-09-21,
-                        // so this hands it an unpadded surface.
-                        HeroTabBar(tabs: availableTabs, selection: tab,
-                                   onSelect: { select(tab: $0) })
-                    }
-                }
+        // The header rides over the content and collapses as it scrolls,
+        // the entity pages' template: the matchup scrolls away, the tab row
+        // pins under the bar, and the bar takes over the score once the
+        // header's own score line has gone under it (Andy, 2026-10-02).
+        CollapsingHeaderScrollView(landing: landing, collapse: $heroCollapse) {
+            // The header sits on the card surface — headers match the
+            // cards on every entity page (Andy, 2026-08-31); the content
+            // below stays in cards on the recessed one. Opaque because it
+            // draws over the content rather than above it.
+            header
                 .frame(maxWidth: .infinity)
                 .background(Color.bgCard)
+        } strip: {
+            if showsTabs {
+                // Leading, with the entity pages' Spacing.lg gutter — Team
+                // and Conference anchor their tab rows to the left edge and
+                // this is the same component. The gutter lives inside
+                // HeroTabBar as of 2026-09-21, so this hands it an unpadded
+                // surface.
+                HeroTabBar(tabs: availableTabs, selection: tab,
+                           onSelect: { select(tab: $0) })
+                    .frame(maxWidth: .infinity)
+                    .background(Color.bgCard)
+                    // The nav bar's hairline, repeated under the tabs, so
+                    // the pinned row has the same edge over the content
+                    // scrolling under it (Andy, 2026-10-02).
+                    .overlay(alignment: .bottom) {
+                        Divider().overlay(Color.divider)
+                    }
+            }
+        } content: { _ in
+            VStack(spacing: 0) {
                 // H2H stands outside the summary gate: it is built from the
                 // pushed row, so it works while the summary is still in
                 // flight and — the case that matters — when the summary
@@ -272,19 +290,40 @@ struct GameDetailScreen: View {
                 }
             }
         }
+        .onChange(of: heroCollapse > Self.compactThreshold) { _, scrolledPastScore in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsCompactHeader = scrolledPastScore
+            }
+        }
         // The card color through the top bounce, matching the entity pages.
         .heroTopBand(Color.bgCard)
         .background(Color.bgRecessed)
-        .navigationTitle(game.shortName ?? "Game")
+        // No bar title: the header is the identity until it scrolls away,
+        // and then the compact scoreboard in the principal slot is.
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.bgCard, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                CompactGameHeader(away: competitor(game.away, summary?.away),
+                                  home: competitor(game.home, summary?.home),
+                                  middle: compactMiddle,
+                                  possessionTeamId: possessionTeamId,
+                                  glyph: gameLeague.fallbackGlyph)
+                    .opacity(showsCompactHeader ? 1 : 0)
+                    .accessibilityHidden(!showsCompactHeader)
+            }
             #if canImport(ActivityKit)
-            ToolbarItem(placement: .topBarTrailing) {
-                // Renders nothing until path 3's service exists — see
-                // LiveActivityController.isAvailable.
-                GameActivityPinButton(game: game, summary: summary)
+            // The pin steps out while the compact scoreboard holds the bar:
+            // the score needs the width, and pinning is a choice made from
+            // the full header, not mid-scroll.
+            if !showsCompactHeader {
+                ToolbarItem(placement: .topBarTrailing) {
+                    // Renders nothing until path 3's service exists — see
+                    // LiveActivityController.isAvailable.
+                    GameActivityPinButton(game: game, summary: summary)
+                }
             }
             #endif
             ToolbarItem(placement: .topBarTrailing) {
@@ -360,6 +399,29 @@ struct GameDetailScreen: View {
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
+
+    /// Where the header's score line ends: 16pt of padding, the live
+    /// dot's row and the 41pt score. Past it, the bar takes over.
+    private static let compactThreshold: CGFloat = 64
+
+    /// Re-landing on a tab flip, the entity pages' rule: the new pane opens
+    /// at its top with the header fully expanded.
+    private var landing: ScrollLanding {
+        ScrollLanding(key: "\(game.routeKey):\(tab)", target: nil)
+    }
+
+    /// What sits between the logos in the compact scoreboard.
+    private var compactMiddle: CompactGameHeader.Middle {
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        if let kickoff { return .kickoff(kickoff.time) }
+        if hasScoreLine(away, home), let awayScore = away.score, let homeScore = home.score {
+            return .score(away: awayScore, home: homeScore,
+                          status: statusLine.replacingOccurrences(of: "\n", with: " "),
+                          isLive: isLiveNow)
+        }
+        return .status(statusLine.replacingOccurrences(of: "\n", with: " "))
+    }
 
     /// The rating ask, at the only moment it is earned: a kickoff reminder
     /// fired, the user tapped it, and the game it promised is on screen
@@ -466,7 +528,7 @@ struct GameDetailScreen: View {
         let away = competitor(game.away, summary?.away)
         let home = competitor(game.home, summary?.home)
         return HStack(alignment: .top, spacing: Spacing.lg) {
-            headerSide(away)
+            headerSide(away, outerEdge: .leading)
             VStack(spacing: Spacing.xs) {
                 // The merge, not the pushed snapshot: `game` is frozen at
                 // push, so a game that ends while its detail is open would
@@ -476,7 +538,7 @@ struct GameDetailScreen: View {
                 // headline: one big centered score between the logos
                 // (FotMob's full-time layout), status demoted beneath it.
                 if showsScores, let awayScore = away.score, let homeScore = home.score {
-                    scoreLine(away: (awayScore, away.winner), home: (homeScore, home.winner))
+                    scoreLine(away: awayScore, home: homeScore)
                 }
                 // Before kickoff the time IS the headline — it takes the
                 // slot the score takes once there is one, with the date as
@@ -499,6 +561,12 @@ struct GameDetailScreen: View {
                         .font(.metaEmphasis)
                         .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
                         .multilineTextAlignment(.center)
+                        // With no score and no kickoff ("Postponed") the
+                        // status is all the middle has, and it centers on
+                        // the logos rather than hanging off the top of the
+                        // row. A frame rather than a padding so it stays
+                        // centered at every text size.
+                        .frame(minHeight: hasScoreLine(away, home) ? nil : Self.logoSize)
                 }
                 // Live is the one state with no other network surface —
                 // pre-game has the info card, finals have nothing left to
@@ -518,22 +586,19 @@ struct GameDetailScreen: View {
                 ([headerStatusSpoken]
                     + (headerBroadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
-            headerSide(home)
+            headerSide(home, outerEdge: .trailing)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.lg)
     }
 
-    /// The centered "24 – 17": the loser's number keeps the muted ink the
-    /// per-side scores carried, so the winner still reads without color.
-    private func scoreLine(away: (score: Int, winner: Bool?),
-                           home: (score: Int, winner: Bool?)) -> some View {
-        (Text("\(away.score)")
-            .foregroundStyle(away.winner == false ? Color.textSecondary : Color.textPrimary)
-            + Text(" – ").foregroundStyle(Color.textSecondary)
-            + Text("\(home.score)")
-            .foregroundStyle(home.winner == false ? Color.textSecondary : Color.textPrimary))
-            .font(isLiveNow ? .scoreHeroLive : .scoreHero)
+    /// The centered "24 – 17", semibold and in ink in every state (Andy's
+    /// Paper pass, 2026-10-02). The winner reads from its semibold name,
+    /// and a live game from its dot and clock, not from the numbers.
+    private func scoreLine(away: Int, home: Int) -> some View {
+        Text("\(away) – \(home)")
+            .foregroundStyle(Color.textPrimary)
+            .font(.scoreHero)
             // The equal-thirds header would wrap this line; let it keep its
             // intrinsic width and the flexible sides absorb the difference.
             .fixedSize()
@@ -546,13 +611,54 @@ struct GameDetailScreen: View {
         GameHeaderState.competitor(fallback, side)
     }
 
-    private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> some View {
+    private static let logoSize: CGFloat = 44
+
+    private func hasScoreLine(_ away: (team: Team, score: Int?, record: String?, winner: Bool?),
+                              _ home: (team: Team, score: Int?, record: String?, winner: Bool?)) -> Bool {
+        showsScores && away.score != nil && home.score != nil
+    }
+
+    private var possessionTeamId: String? { GameHeaderState.possessionTeamId(game, summary) }
+
+    private func hasPossession(_ team: Team) -> Bool {
+        possessionTeamId != nil && possessionTeamId == team.id
+    }
+
+    /// `Spacing.sm` clear of the logo's `outside` edge. A zero-width frame
+    /// pinned to that edge, with the mark hanging off it outward, rather
+    /// than alignment guides: a pair of guides on one view read each
+    /// other's values and left the mark inside the logo.
+    private func possessionMark(outside edge: HorizontalEdge) -> some View {
+        Image(systemName: gameLeague.fallbackGlyph)
+            .font(.system(size: 9))
+            .foregroundStyle(.textSecondary)
+            .padding(edge == .leading ? .trailing : .leading, Spacing.sm)
+            .fixedSize()
+            .frame(width: 0, alignment: edge == .leading ? .trailing : .leading)
+    }
+
+    /// `outerEdge` is the side of the header this team sits on: `.leading`
+    /// for away, `.trailing` for home.
+    private func headerSide(_ side: (team: Team, score: Int?, record: String?, winner: Bool?),
+                            outerEdge: HorizontalEdge) -> some View {
         // Value-based so the push lands in the Scores stack's NavigationPath;
         // ScoresScreen owns the matching Team destination.
         NavigationLink(value: side.team) {
             VStack(spacing: Spacing.xs) {
                 LogoImage(url: side.team.logoURL)
-                    .frame(width: 44, height: 44)
+                    .frame(width: Self.logoSize, height: Self.logoSize)
+                    // The scoreboard row's possession mark, at the header's
+                    // scale, on the logo's outer side: left of the away
+                    // logo, right of the home one. An overlay rather than
+                    // an HStack sibling, so the logo stays centered in its
+                    // column and the two sides still mirror each other.
+                    // It sat off the name until 2026-10-02, where a wrapped
+                    // name ("Central Michigan") ran into it.
+                    .overlay(alignment: outerEdge == .leading ? .leading : .trailing) {
+                        if hasPossession(side.team) {
+                            possessionMark(outside: outerEdge)
+                        }
+                    }
                 Text(side.team.location)
                     .font(side.winner == true ? .teamNameEmphasis : .teamName)
                     .foregroundStyle(.textPrimary)
@@ -576,8 +682,9 @@ struct GameDetailScreen: View {
 
     /// Internal for AccessibilityLabelTests.
     func sideAccessibilityLabel(_ side: (team: Team, score: Int?, record: String?, winner: Bool?)) -> String {
-        guard showsScores, let score = side.score else { return side.team.location }
-        return "\(side.team.location) \(score)"
+        let ball = hasPossession(side.team) ? ", has the ball" : ""
+        guard showsScores, let score = side.score else { return side.team.location + ball }
+        return "\(side.team.location) \(score)\(ball)"
     }
 
     private var showsScores: Bool { GameHeaderState.showsScores(game, summary) }
