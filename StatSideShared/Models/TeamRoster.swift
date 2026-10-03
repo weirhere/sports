@@ -48,6 +48,16 @@ nonisolated struct RosterCoach: Sendable, Hashable {
     /// every field is: a coach without one is a name and not a link.
     var id: String? = nil
     let name: String
+
+    /// ESPN's 65px coach photo, guessed from the id so the Roster row
+    /// needn't walk the core API for it (2026-10-03). Pro leagues only:
+    /// 0 of 40 sampled college head coaches have one, so asking would be a
+    /// 404 per roster. Most pro coaches 404 too (11 of 32 NFL); the row's
+    /// initials sit under the image, so a miss just leaves them showing.
+    func headshotURL(in league: League) -> URL? {
+        guard let id, league != .collegeFootball else { return nil }
+        return URL(string: "https://a.espncdn.com/i/headshots/\(league.pathSegment)/coaches/65/\(id).jpg")
+    }
 }
 
 /// One player. Everything but the id and the name is optional, because ESPN

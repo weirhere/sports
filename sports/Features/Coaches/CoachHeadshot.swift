@@ -13,12 +13,14 @@ struct CoachHeadshot: View {
     var body: some View {
         ZStack {
             Circle().fill(Color.bgElevated)
+            // Always drawn, under the photo: the Roster row guesses a URL
+            // that 404s for most coaches (2026-10-03), and a miss should
+            // read as initials, not an empty disc.
+            Text(initials)
+                .font(.system(size: size * 0.36, weight: .semibold))
+                .foregroundStyle(.textSecondary)
             if let url {
                 LogoImage(url: url, placeholder: nil, contentMode: .fill)
-            } else {
-                Text(initials)
-                    .font(.system(size: size * 0.36, weight: .semibold))
-                    .foregroundStyle(.textSecondary)
             }
         }
         .frame(width: size, height: size)

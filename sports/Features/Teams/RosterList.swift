@@ -40,39 +40,14 @@ struct RosterList: View {
             if let id = coach.id {
                 NavigationLink(value: CoachIdentity(coachId: id, name: coach.name,
                                                     league: league, team: team)) {
-                    coachRow(coach, isLink: true)
+                    RosterCoachRow(coach: coach, league: league, isLink: true)
                 }
                 .buttonStyle(.plain)
             } else {
-                coachRow(coach, isLink: false)
+                RosterCoachRow(coach: coach, league: league)
             }
         }
         .cardSurface()
-    }
-
-    private func coachRow(_ coach: RosterCoach, isLink: Bool) -> some View {
-        HStack(spacing: Spacing.md) {
-            Text(coach.name)
-                .font(.teamName)
-                .foregroundStyle(.textPrimary)
-                .lineLimit(1)
-            Spacer(minLength: Spacing.sm)
-            Text("Head coach")
-                .font(.meta)
-                .foregroundStyle(.textSecondary)
-            if isLink {
-                // `RosterRow`'s chevron, so the two kinds of row on the tab
-                // say "this goes somewhere" the same way.
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.textSecondary)
-                    .accessibilityHidden(true)
-            }
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.md)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
     }
 
     private func groupCard(_ group: RosterGroup) -> some View {
