@@ -87,8 +87,40 @@ enum ScoreFilter: Hashable {
     }
 }
 
+/// The rung a league's slate is broken down at on Scores, chosen per league
+/// in Settings (Andy, 2026-10-03: the league, its conferences and their
+/// divisions all at once was "a bit excessive"). One rung, never a stack of
+/// them: an NFL game is in the NFL section, or in its teams' conferences,
+/// or in their divisions — still in both teams' groups when they differ.
+enum SlateGrouping: String, CaseIterable, Hashable, Sendable {
+    case league
+    case conference
+    case division
+
+    /// What Settings offers. College football has no divisions; FBS and
+    /// FCS already stand where they would.
+    static func options(for league: League) -> [SlateGrouping] {
+        league == .collegeFootball ? [.league, .conference] : allCases
+    }
+
+    /// College football keeps its conference split, which is what fans
+    /// browse it by; the pros are one section each until asked otherwise.
+    static func defaultValue(for league: League) -> SlateGrouping {
+        league == .collegeFootball ? .conference : .league
+    }
+
+    var label: String {
+        switch self {
+        case .league: "League"
+        case .conference: "Conference"
+        case .division: "Division"
+        }
+    }
+}
+
 /// One ordered section of the scores screen. A game appears in every section
-/// whose promise it satisfies — sections are complete, never deduplicated.
+/// whose promise it satisfies — sections are complete, never deduplicated
+/// within the grouping a league is shown at.
 struct GameSection: Identifiable, Hashable {
     static let followingId = "following"
     /// League sections use ids like "league-nfl"; the prefix routes their

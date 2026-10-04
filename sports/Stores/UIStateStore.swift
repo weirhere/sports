@@ -121,6 +121,33 @@ final class UIStateStore {
         didSet { defaults.set(appearance.rawValue, forKey: Self.appearanceKey) }
     }
 
+    /// How each league's Scores slate is broken down (Andy, 2026-10-03).
+    /// Only choices that differ from the default are stored, so a league
+    /// without an entry follows `SlateGrouping.defaultValue(for:)`. Read
+    /// once in `init`.
+    private(set) var slateGroupings: [League: SlateGrouping] {
+        didSet {
+            defaults.set(Dictionary(uniqueKeysWithValues: slateGroupings.map { ($0.key.rawValue, $0.value.rawValue) }),
+                         forKey: Self.slateGroupingKey)
+        }
+    }
+
+    func grouping(for league: League) -> SlateGrouping {
+        slateGroupings[league] ?? .defaultValue(for: league)
+    }
+
+    func setGrouping(_ grouping: SlateGrouping, for league: League) {
+        guard SlateGrouping.options(for: league).contains(grouping) else { return }
+        slateGroupings[league] = grouping == .defaultValue(for: league) ? nil : grouping
+    }
+
+    /// Every league's grouping, defaults filled in — what the sections
+    /// pipeline is a function of.
+    var resolvedGroupings: [League: SlateGrouping] {
+        Dictionary(uniqueKeysWithValues: League.allCases.map { ($0, grouping(for: $0)) })
+    }
+
+    private static let slateGroupingKey = "ui.slateGrouping"
     private static let showsLinesKey = "lines.enabled"
     private static let appearanceKey = "ui.appearance"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
@@ -152,6 +179,15 @@ final class UIStateStore {
         appearance = defaults.string(forKey: Self.appearanceKey)
             .flatMap(Appearance.init(rawValue:)) ?? .system
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
+        var groupings: [League: SlateGrouping] = [:]
+        for (raw, value) in defaults.dictionary(forKey: Self.slateGroupingKey) ?? [:] {
+            guard let league = League(rawValue: raw),
+                  let grouping = (value as? String).flatMap(SlateGrouping.init(rawValue:)),
+                  SlateGrouping.options(for: league).contains(grouping)
+            else { continue }
+            groupings[league] = grouping
+        }
+        slateGroupings = groupings
     }
 
     func isExpanded(_ sectionId: String) -> Bool {

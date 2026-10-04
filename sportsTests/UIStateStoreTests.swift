@@ -204,4 +204,29 @@ import Testing
         defaults.set("sepia", forKey: "ui.appearance")
         #expect(UIStateStore(defaults: defaults).appearance == .system)
     }
+
+    @Test func groupingsDefaultPerLeagueAndPersist() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.grouping(for: .collegeFootball) == .conference)
+        #expect(store.grouping(for: .nfl) == .league)
+
+        store.setGrouping(.division, for: .nfl)
+        store.setGrouping(.league, for: .collegeFootball)
+        // College football has no divisions; the call is refused.
+        store.setGrouping(.division, for: .collegeFootball)
+
+        let reloaded = UIStateStore(defaults: defaults)
+        #expect(reloaded.grouping(for: .nfl) == .division)
+        #expect(reloaded.grouping(for: .collegeFootball) == .league)
+        #expect(reloaded.grouping(for: .nba) == .league)
+    }
+
+    @Test func aSavedGroupingTheLeagueCannotHaveFallsBackToTheDefault() {
+        let defaults = makeDefaults()
+        defaults.set(["cfb": "division", "nhl": "sideways"], forKey: "ui.slateGrouping")
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.grouping(for: .collegeFootball) == .conference)
+        #expect(store.grouping(for: .nhl) == .league)
+    }
 }

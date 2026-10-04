@@ -489,7 +489,8 @@ struct ScoresScreen: View {
                              followingIds: following.teamKeys,
                              followedTables: following.orderedTables,
                              liveOnly: uiState.liveOnly(on: shownDay),
-                             tightOnly: uiState.tightOnly(on: shownDay))
+                             tightOnly: uiState.tightOnly(on: shownDay),
+                             groupings: uiState.resolvedGroupings)
     }
 
     /// Turning the Live filter on goes to where live games are — today
@@ -920,7 +921,8 @@ struct ScoresScreen: View {
                                             followingIds: following.teamKeys,
                                             followedTables: following.orderedTables,
                                             liveOnly: uiState.liveOnly(on: target),
-                                            tightOnly: uiState.tightOnly(on: target))
+                                            tightOnly: uiState.tightOnly(on: target),
+                                            groupings: uiState.resolvedGroupings)
         Group {
             if sections.isEmpty {
                 VStack(spacing: Spacing.md) {
