@@ -490,6 +490,11 @@ describe("the box score carries its own columns", () => {
                     athlete: { id: "", displayName: "Blank Id" },
                     stats: ["1/2", "9", "0"],
                   },
+                  {
+                    // ESPN's "Team" line: a negative placeholder id.
+                    athlete: { id: "-5327", displayName: " Team" },
+                    stats: ["0/1", "0", "0"],
+                  },
                 ],
               }),
             ],
@@ -503,11 +508,13 @@ describe("the box score carries its own columns", () => {
       "4430841",
       "2390-No Id",
       "2390-Blank Id",
+      "-5327",
     ]);
     // Only the first is real, so only the first is a link. An empty string
     // is ESPN's other way of not knowing, and must not become "/player//".
     expect(players.map((p) => p.athleteId)).toEqual([
       "4430841",
+      undefined,
       undefined,
       undefined,
     ]);
