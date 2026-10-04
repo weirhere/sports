@@ -235,13 +235,12 @@ struct HeaderChrome: ViewModifier {
         content
             // The header's ground through the status-bar strip and the
             // top bounce.
-            .heroTopBand(paint?.background ?? .bgCard)
-            // Solid, seamless against the hero at rest — the
-            // transparent-until-scrolled dance retired 2026-08-31 and stays
-            // retired: a solid colored bar needs no glass trick to read as
-            // part of the header.
+            // The band owns the bar's visibility (2026-10-03): hidden while
+            // the band covers it, so the whole header slides in on a push as
+            // one piece; solid once the hero has scrolled under, in the same
+            // color, so there is nothing to see change.
+            .heroTopBand(paint?.background ?? .bgCard, ownsBar: true)
             .toolbarBackground(paint?.background ?? .bgCard, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
             // A dark ground turns the back button and the toolbar's
             // controls white; nil leaves the bar on the app's appearance.
             .toolbarColorScheme(paint.map { $0.isDarkGround ? .dark : .light },

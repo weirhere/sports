@@ -922,3 +922,4 @@ sibling below it.
 | 2026-10-03 | Career tab: traded year's club-less total line dropped from both views; hairlines between club rows | **pending**: web Career tab shows ESPN's lines as sent |
 | 2026-10-03 | Career rows' club logo and name link to the team page (player and coach) | **pending**: web Career rows are unlinked |
 | 2026-10-03 | Team colors bundled (`team-colors.json`) so team, player and coach headers paint their first frame | **n/a**: the web header is not team-colored |
+| 2026-10-03 | Painted entity header's nav bar stays transparent at rest so the header slides in as one piece on a push | **n/a**: the web header is not team-colored and has no push |
