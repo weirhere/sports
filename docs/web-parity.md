@@ -913,4 +913,6 @@ sibling below it.
 | 2026-10-03 | Empty Following header reads "No ongoing games" while the Live filter narrows today | **pending** — rides the 2026-09-26 stand-in row: the web has no empty Following header yet |
 | 2026-10-04 | Play/drive decode: `isTurnover`, `isPenalty`, `priority`, `statYardage`, `shortDescription` (NBA/NHL) and the drive's `shortDisplayResult` | **n/a for now** — decode-only, neither iOS's `PlayRow` nor the web draws any of these fields yet; revisit once a row treatment ships |
 | 2026-10-03 | Scores groups each league at one rung (League / Conference / Division), chosen per league in Settings; pros default to League | **pending**: the web's stack is already one section per pro league with NCAAF by conference, which matches the new defaults, but it has no setting to choose another rung |
+| 2026-10-03 | Box score rows: player avatars (team logo on the "Team" line) and wider row spacing | **pending**: web rows are still text-only |
+| 2026-10-03 | Box score "Team" line's negative placeholder id is no athlete (no player link) | **shipped**: `athleteIdOrNull` in `web/src/lib/espn/transformers.ts` |
 | 2026-10-03 | Painted entity header's nav bar stays transparent at rest so the header slides in as one piece on a push | **n/a**: the web header is not team-colored and has no push |
