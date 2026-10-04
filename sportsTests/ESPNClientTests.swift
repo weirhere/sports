@@ -221,7 +221,8 @@ private func fixture(_ name: String) throws -> Data {
             from: StatusDTO(clock: nil, displayClock: clock, period: period,
                             type: StatusTypeDTO(id: nil, name: name, state: "in",
                                                 completed: false, detail: detail,
-                                                shortDetail: detail)),
+                                                shortDetail: detail, altDetail: nil),
+                            isTBDFlex: nil),
             situation: nil)
     }
 
