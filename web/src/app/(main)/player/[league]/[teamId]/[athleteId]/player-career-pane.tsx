@@ -1,5 +1,5 @@
 // The Career tab — iOS `PlayerCareerPane` over `StatTableCard`: every
-// season the player has a line for, with the club he played it for, and
+// season the player has a line for, newest first, with the club he played it for, and
 // ESPN's own career totals closing each table.
 //
 // Nothing here is summed (2026-09-24): the seasons are ESPN's rows and the
@@ -17,7 +17,7 @@
 // header over nothing, since the tab row is always drawn (2026-09-25).
 
 import type { PlayerStats, PlayerSeasonLine } from "@/lib/player-stats";
-import { categoriesWithLines, seasonLineId } from "@/lib/player-stats";
+import { categoriesWithLines, newestFirst, seasonLineId } from "@/lib/player-stats";
 import { CardHeader } from "@/components/card-header";
 
 export function PlayerCareerPane({ stats }: { stats: PlayerStats }) {
@@ -62,7 +62,7 @@ export function PlayerCareerPane({ stats }: { stats: PlayerStats }) {
                 </tr>
               </thead>
               <tbody>
-                {category.seasons.map((line) => (
+                {newestFirst(category.seasons).map((line) => (
                   <tr
                     key={seasonLineId(line)}
                     className="border-t border-divider align-middle"
@@ -89,7 +89,7 @@ export function PlayerCareerPane({ stats }: { stats: PlayerStats }) {
                       scope="row"
                       className="sticky left-0 z-10 bg-bg-card px-4 py-2 text-left type-row-name-em text-text-primary"
                     >
-                      Career
+                      Total
                     </th>
                     {category.career.map((value, index) => (
                       <td

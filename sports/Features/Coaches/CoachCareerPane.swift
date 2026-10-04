@@ -89,7 +89,9 @@ struct CoachCareerPane: View {
                 let team = teams[season.teamId]
                 return StatTableCard.Row(id: season.id, title: team?.name ?? league.seasonLabel(season.year),
                                          subtitle: team == nil ? nil : league.seasonLabel(season.year),
-                                         values: values(season.record), logoURL: team?.logoURL)
+                                         values: values(season.record), logoURL: team?.logoURL,
+                                         team: directory.team(matching: TeamRef(id: season.teamId,
+                                                                                league: league)))
             },
             footer: total.map { StatTableCard.Row(id: "career", title: "Career", values: values($0)) },
             leadsWithTeam: true)

@@ -33,27 +33,6 @@ struct TeamStatsPane: View {
     }
 
     private var sideSwitch: some View {
-        HStack(spacing: 0) {
-            segment("Team", active: !showsOpponents) { showsOpponents = false }
-            segment("Opponents", active: showsOpponents) { showsOpponents = true }
-        }
-        .padding(4)
-        .background(Capsule().fill(Color.bgElevated))
-    }
-
-    private func segment(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.chipEmphasis)
-                .lineLimit(1)
-                .foregroundStyle(active ? Color.bgPrimary : Color.textPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(Capsule().fill(active ? Color.textPrimary : Color.clear))
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(active ? [.isSelected] : [])
+        CapsuleSwitch(options: [(false, "Team"), (true, "Opponents")], selection: $showsOpponents)
     }
 }

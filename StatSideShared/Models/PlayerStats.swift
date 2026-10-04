@@ -11,9 +11,11 @@ import Foundation
 /// player's own table — which is what the Current season card reads.
 ///
 /// Every season the player has a line for is a row, with the club they
-/// played it for. That *is* the Career tab: no aggregation, and ESPN's own
+/// played it for. That *is* the Career tab's Seasons view, with ESPN's own
 /// `totals` as the career line rather than a sum the app computed
-/// (2026-09-24, answering E20's Career row).
+/// (2026-09-24, answering E20's Career row). The Teams view is the one
+/// exception: ESPN has no per-club split, so `combined` builds it
+/// (2026-10-03).
 nonisolated struct PlayerStats: Sendable, Hashable {
     struct Category: Sendable, Hashable, Identifiable {
         /// ESPN's machine name: "passing", "averages", "goaltender".
@@ -69,6 +71,23 @@ nonisolated extension PlayerStats.Category {
         guard let index = names.firstIndex(of: name), values.indices.contains(index) else { return nil }
         let value = values[index]
         return value.isEmpty || value == "-" ? nil : value
+    }
+
+    /// A traded player's year as ESPN totals it: a line with no club
+    /// beside the year's per-club lines ("2022 Totals", Baker Mayfield's
+    /// Panthers-then-Rams season, probed 2026-10-03). A line with no club
+    /// in a year that has no others is just a line we can't place.
+    func isSeasonTotal(_ line: PlayerStats.SeasonLine) -> Bool {
+        line.teamId == nil
+            && seasons.contains { $0.year == line.year && $0.teamId != nil }
+    }
+
+    /// The lines that each belong to one club — what the Career tab draws
+    /// in both views. A season total would count that year twice in Teams
+    /// and stand as a club of its own; in Seasons it repeats the two rows
+    /// beside it (Andy, 2026-10-03).
+    var clubLines: [PlayerStats.SeasonLine] {
+        seasons.filter { !isSeasonTotal($0) }
     }
 
     /// The lines for one ESPN season year — usually one, two for a player

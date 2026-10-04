@@ -10,6 +10,7 @@ import {
   gameLogIsEmpty,
   gameLogResult,
   headlineNames,
+  newestFirst,
   seasonHeadlines,
   seasonLabelFor,
   type PlayerGameLog,
@@ -219,5 +220,22 @@ describe("the Stats and Career tabs' contents", () => {
     const empty = category({ id: "rushing", seasons: [] });
     const played = category();
     expect(categoriesWithLines({ categories: [empty, played] })).toEqual([played]);
+  });
+});
+
+describe("newestFirst", () => {
+  it("puts this season on top and a traded year's later club first", () => {
+    const lines = [
+      { year: 2024, label: "2024", values: [] },
+      { year: 2025, label: "2025", teamId: "1", values: [] },
+      { year: 2025, label: "2025", teamId: "2", values: [] },
+      { year: 2026, label: "2026", values: [] },
+    ];
+    expect(newestFirst(lines).map((line) => `${line.year}${line.teamId ?? ""}`)).toEqual([
+      "2026",
+      "20252",
+      "20251",
+      "2024",
+    ]);
   });
 });
