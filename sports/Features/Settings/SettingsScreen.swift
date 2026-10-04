@@ -31,6 +31,8 @@ struct SettingsScreen: View {
                     Text("Shows the spread and over/under before kickoff, on the Scores page and the game page.")
                 }
 
+                SlateGroupingSection()
+
                 Section {
                     if notifications.isDenied {
                         Button("Kickoff reminders are off in iOS Settings") {

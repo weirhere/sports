@@ -71,7 +71,11 @@ struct SectionAccordion: View, Equatable {
     /// needs nothing but a league, and fetches the rest itself.
     private var nameOpensATable: Bool {
         switch section.table {
-        case .some(.conference(let id)): return Conference.isKnown(id.id, in: id.league)
+        // A division has no page of its own (2026-09-26), so a division
+        // section — Scores grouped by division — only toggles.
+        case .some(.conference(let id)):
+            return Conference.isKnown(id.id, in: id.league)
+                && Conference.tier(for: id.id, in: id.league) != .division
         case .some(.poll): return true
         case .none: return false
         }

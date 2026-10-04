@@ -397,17 +397,29 @@ nonisolated enum Conference {
     /// where the visitor is from besides.
     ///
     /// Nil for a member, a team we can't place, and any section that isn't
-    /// a conference — a league, FBS or FCS claims both teams anyway.
+    /// a conference or a pro division — a league, FBS or FCS claims both
+    /// teams anyway.
     static func guestTag(for team: ConferenceID?, in section: ConferenceID) -> String? {
         guard let team, team.league == section.league else { return nil }
         let league = section.league
         let chain = chain(for: team)
         guard !chain.contains(section) else { return nil }
         if let registry = registries[league] {
-            guard tier(for: section.id, in: league) == .conference,
-                  let own = chain.first(where: { tier(for: $0.id, in: league) == .conference })
-            else { return nil }
-            return registry.conferenceShorts[own.id]
+            switch tier(for: section.id, in: league) {
+            case .conference:
+                guard let own = chain.first(where: { tier(for: $0.id, in: league) == .conference })
+                else { return nil }
+                return registry.conferenceShorts[own.id]
+            case .division:
+                // A division section, when Scores is grouped that way
+                // (2026-10-03): the visitor's own division by its bare
+                // name — "NFC South", "Pacific" — since the row is short.
+                guard let own = chain.first(where: { tier(for: $0.id, in: league) == .division })
+                else { return nil }
+                return registry.divisionNames[own.id]
+            default:
+                return nil
+            }
         }
         guard !isDivisionRoot(section.id, in: league), isKnown(team.id, in: league) else { return nil }
         return name(for: team)
