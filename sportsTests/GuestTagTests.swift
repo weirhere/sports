@@ -17,6 +17,15 @@ import Testing
         #expect(Conference.guestTag(for: .nhl(33), in: .nhl(7)) == nil)
     }
 
+    @Test func aDivisionVisitorWearsItsOwnDivision() {
+        // Scores grouped by division (2026-10-03): the Falcons (NFC South)
+        // in the AFC East's section, a Bill (AFC East) at home in it.
+        #expect(Conference.guestTag(for: .nfl(11), in: .nfl(4)) == "NFC South")
+        #expect(Conference.guestTag(for: .nfl(4), in: .nfl(4)) == nil)
+        // The bare name — the row is short, and the section says the sport.
+        #expect(Conference.guestTag(for: .nba(4), in: .nba(1)) == "Pacific")
+    }
+
     @Test func aCollegeVisitorWearsItsConference() {
         #expect(Conference.guestTag(for: .cfb(20), in: .cfb(8)) == "Big Sky")
         #expect(Conference.guestTag(for: .cfb(5), in: .cfb(8)) == "Big Ten")
