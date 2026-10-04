@@ -302,6 +302,61 @@ private func summary(current: Drive?, drives: [Drive] = []) -> GameSummary {
     }
 }
 
+/// E21's play/drive flags (2026-10-04): turnover, penalty and key-play
+/// marks, stat yardage and the drive's compact result — all decoded now,
+/// none drawn yet. `PlayRow` still only ever prints `play.text`.
+@Suite struct PlayFlagDecodingTests {
+    private func loadSummary() throws -> GameSummary {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
+        return ESPNMapper.gameSummary(from: dto)
+    }
+
+    @Test func aQuietPlayCarriesNoFlagsAndItsOwnYardage() throws {
+        let summary = try loadSummary()
+        let kickoff = try #require(summary.drives.flatMap(\.plays).first { $0.id == "4017690763" })
+        #expect(kickoff.isTurnover == false)
+        #expect(kickoff.isPenalty == false)
+        #expect(kickoff.isKeyPlay == false)
+        #expect(kickoff.yardage == 27)
+    }
+
+    @Test func aPenaltyIsFlagged() throws {
+        let summary = try loadSummary()
+        let penalty = try #require(summary.drives.flatMap(\.plays).first { $0.id == "401769076143" })
+        #expect(penalty.isPenalty == true)
+        #expect(penalty.isTurnover == false)
+        #expect(penalty.yardage == 10)
+    }
+
+    /// The blocked-punt touchdown `scoringSideComesFromTheScoreNotThePossession`
+    /// already knows by its type text — the same play carries `isTurnover`.
+    @Test func aChangeOfPossessionIsFlagged() throws {
+        let summary = try loadSummary()
+        let blockedPunt = try #require(summary.drives.flatMap(\.plays).first { $0.id == "401769076477" })
+        #expect(blockedPunt.isTurnover == true)
+        #expect(blockedPunt.isScoringPlay == true)
+    }
+
+    @Test func aKeyPlayIsFlagged() throws {
+        let summary = try loadSummary()
+        let plays = summary.drives.flatMap(\.plays)
+        let keyPlay = try #require(plays.first { $0.id == "401769076292" })
+        #expect(keyPlay.isKeyPlay == true)
+        // ESPN's mark is sparse: the blocked-punt touchdown above doesn't
+        // carry it, so a scoring play isn't `isKeyPlay` by default.
+        let unmarkedScore = try #require(plays.first { $0.id == "401769076477" })
+        #expect(unmarkedScore.isKeyPlay == false)
+    }
+
+    @Test func drivesCarryTheirCompactResult() throws {
+        let summary = try loadSummary()
+        #expect(summary.drives.first?.result == "Punt")
+        #expect(summary.drives.first?.shortResult == "PUNT")
+        let touchdown = try #require(summary.drives.first { $0.result == "Touchdown" })
+        #expect(touchdown.shortResult == "TD")
+    }
+}
+
 /// The field's geometry, all in yards from the away goal line.
 @Suite struct GamecastFieldTests {
     private func snap(id: String, from start: Int, to end: Int, type: String = "Rush",

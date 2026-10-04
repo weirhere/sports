@@ -1621,7 +1621,8 @@ nonisolated enum ESPNMapper {
                          idPrefix: dto.id ?? fallbackId),
             offensivePlays: dto.offensivePlays?.value,
             yards: dto.yards?.value,
-            timeElapsed: dto.timeElapsed?.displayValue
+            timeElapsed: dto.timeElapsed?.displayValue,
+            shortResult: dto.shortDisplayResult
         )
     }
 
@@ -1649,7 +1650,12 @@ nonisolated enum ESPNMapper {
                 nextDistance: play.end?.distance?.value,
                 coordinate: coordinate(play.coordinate),
                 isShootingPlay: play.shootingPlay ?? false,
-                strength: play.strength?.abbreviation
+                strength: play.strength?.abbreviation,
+                isTurnover: play.isTurnover ?? false,
+                isPenalty: play.isPenalty ?? false,
+                isKeyPlay: play.priority ?? false,
+                yardage: play.statYardage?.value,
+                shortText: play.shortDescription
             )
         }
     }
