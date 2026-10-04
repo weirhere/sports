@@ -165,6 +165,9 @@ nonisolated struct Drive: Identifiable, Hashable, Sendable {
     var yards: Int? = nil
     /// "2:39", the Plays tab row's time column.
     var timeElapsed: String? = nil
+    /// "PUNT", "TD" — ESPN's compact result, beside `result`'s readable
+    /// "Punt". Defaulted for CFBD and the fixtures, same as the pair above.
+    var shortResult: String? = nil
 }
 
 extension Drive {
@@ -234,6 +237,20 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Hockey's manpower, ESPN's abbreviation: "even-strength",
     /// "power-play", "short-handed", "empty-net".
     var strength: String? = nil
+    /// Football's turnover and penalty flags — the two plays a drive log
+    /// reader is hunting for, which `text` alone doesn't mark.
+    var isTurnover: Bool = false
+    var isPenalty: Bool = false
+    /// ESPN's own key-play mark (`priority`), renamed for what it means
+    /// rather than its JSON key.
+    var isKeyPlay: Bool = false
+    /// Yards gained, ESPN's own number rather than one parsed out of
+    /// `text`. Nil where ESPN didn't ship it.
+    var yardage: Int? = nil
+    /// The flat feed's compact label ("Missed FG") where `text` is a full
+    /// sentence. Nil in football, which has no shorter word for a play
+    /// than its down-and-distance line already gives it.
+    var shortText: String? = nil
 }
 
 /// A spot in ESPN's own coordinate space, feet. What each axis means is

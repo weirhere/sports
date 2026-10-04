@@ -528,6 +528,21 @@ private func fixture(_ name: String) throws -> Data {
         #expect(summary.plays.contains { $0.isScoringPlay })
     }
 
+    /// The flat feed's compact label (E21, 2026-10-04): a jump ball and a
+    /// turnover read as one word where `text` is a full sentence. Decoded
+    /// now; `PlayRow` still only ever prints `text`.
+    @Test func basketballPlaysCarryTheirShortLabel() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nba)
+        let jumpball = try #require(summary.plays.first { $0.id == "4018108714" })
+        #expect(jumpball.shortText == "Jump Ball")
+        let turnover = try #require(summary.plays.first { $0.id == "4018108717" })
+        #expect(turnover.shortText == "Turnover")
+        // Football has no shorter word than its down-and-distance line
+        // already gives it, so the flat feed it never uses stays untested
+        // here — `aFootballSummaryKeepsItsPlaysInItsDrives` covers that.
+    }
+
     /// Leaders come from the league's own categories, and a running score
     /// still attributes the side that scored.
     @Test func leadersAndScoringSidesComeThroughForBothLeagues() throws {

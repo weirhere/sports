@@ -606,6 +606,10 @@ nonisolated struct DriveDTO: Decodable {
     /// "2:39" — the Plays tab's third drive column.
     let timeElapsed: ClockRefDTO?
     let displayResult: String?   // "Punt", not the ALL-CAPS `result`
+    /// "PUNT", "TD" — the same word `result` sends, not an abbreviation of
+    /// `displayResult`. A compact label the Plays tab's drive row could
+    /// use where "Punt" is the one spelled-out word.
+    let shortDisplayResult: String?
     let isScore: Bool?
     let team: TeamDTO?
     let start: DriveEndpointDTO?
@@ -640,6 +644,21 @@ nonisolated struct PlayDTO: Decodable {
     /// Hockey's manpower on the play: "even-strength", "power-play",
     /// "short-handed", "empty-net" — from the play's team's side.
     let strength: PlayTypeDTO?
+    /// Football's own flags: whether the ball changed hands on this play
+    /// and whether it was a penalty. `priority` is ESPN's key-play mark —
+    /// every sampled instance was a scoring play, but nothing guarantees
+    /// that holds live.
+    let isTurnover: Bool?
+    let isPenalty: Bool?
+    let priority: Bool?
+    /// Yards gained, as its own number rather than parsed out of `text`.
+    /// Flexible since a stat yardage is as prone to arriving as a string
+    /// as any other ESPN number.
+    let statYardage: FlexibleInt?
+    /// The flat feed's compact label — "Missed FG", "Turnover" — where
+    /// `text` is a full sentence. Basketball and hockey ship it; football's
+    /// drive-nested plays don't.
+    let shortDescription: String?
 }
 
 nonisolated struct PlayCoordinateDTO: Decodable {
