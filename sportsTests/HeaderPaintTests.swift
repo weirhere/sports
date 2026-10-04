@@ -79,4 +79,14 @@ struct HeaderPaintTests {
         #expect(League.nfl.brandColorHex == "013369")
         #expect(League.collegeFootball.brandColorHex == nil)
     }
+
+    /// A team page paints its first frame from the shipped table (2026-10-03)
+    /// rather than opening white until the schedule lands.
+    @Test func everyLeaguesTeamsShipWithTheirColor() {
+        #expect(HeaderPaint.bundled["nfl:5"] != nil)      // Browns
+        #expect(HeaderPaint.bundled["cfb:239"] != nil)    // Baylor
+        #expect(HeaderPaint.bundled["nba:13"] != nil)     // Lakers
+        #expect(HeaderPaint.bundled["nhl:1"] != nil)      // Bruins
+        #expect(HeaderPaint.knownHex(forKey: "nfl:5") == HeaderPaint.bundled["nfl:5"])
+    }
 }

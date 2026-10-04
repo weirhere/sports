@@ -175,12 +175,13 @@ struct TeamPage: View {
     /// The team's color, from whichever payload carried it: the pushed
     /// team rarely does, the schedule's own team always should. Any
     /// season's will do — a color doesn't change with the year viewed.
-    /// A team seen this launch paints from its first frame rather than
-    /// flashing white until the schedule lands again.
+    /// A team seen this launch, or any team the app ships a color for,
+    /// paints from its first frame rather than flashing white until the
+    /// schedule lands (2026-10-03).
     private var teamColorHex: String? {
         team.colorHex ?? currentSchedule?.team?.colorHex
             ?? schedules.values.lazy.compactMap { $0.team?.colorHex }.first
-            ?? HeaderPaint.remembered[team.followKey]
+            ?? HeaderPaint.knownHex(forKey: team.followKey)
     }
 
     /// Nil in dark mode and until the schedule lands; the header is

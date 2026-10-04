@@ -48,13 +48,32 @@ struct HeaderPaint: Equatable {
     /// and turns team-colored when the request lands.
     static var remembered: [String: String] = [:]
 
+    /// Every team's color as shipped with the app, by follow key
+    /// (2026-10-03) — `scripts/build-team-colors.py` from ESPN's `/teams`.
+    /// What lets a team's page, or a player's, paint its first frame
+    /// rather than opening white until a request lands; a live color
+    /// still wins wherever one has arrived.
+    static let bundled: [String: String] = {
+        guard let url = Bundle.main.url(forResource: "team-colors", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let table = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return [:] }
+        return table
+    }()
+
+    /// The best color known for a team without asking ESPN: this launch's,
+    /// else the shipped one.
+    static func knownHex(forKey key: String) -> String? {
+        remembered[key] ?? bundled[key]
+    }
+
     /// A team's color for a page that isn't the team's own — a player's
     /// or a coach's header wears their team's (Andy, 2026-10-03). Opened
     /// from the roster, `remembered` already has it; from search or a box
     /// score it costs one `/teams/{id}` request, remembered after.
     static func teamHex(for team: Team?) -> String? {
         guard let team else { return nil }
-        return team.colorHex ?? remembered[team.followKey]
+        return team.colorHex ?? knownHex(forKey: team.followKey)
     }
 
     static func loadTeamHex(for team: Team?) async -> String? {
