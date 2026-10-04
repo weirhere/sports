@@ -18,6 +18,9 @@ struct StatTableCard: View {
         let values: [String]
         /// The club's mark, leading the row under `leadsWithTeam`.
         var logoURL: URL? = nil
+        /// The club's page, when the directory knows it: the logo and name
+        /// then push it (Andy, 2026-10-03), as a coach's stints do.
+        var team: Team? = nil
     }
 
     let title: String
@@ -67,6 +70,12 @@ struct StatTableCard: View {
                 }
                 Divider().overlay(Color.divider).gridCellColumns(columns.count + 1)
                 ForEach(rows) { row in
+                    // A hairline between club rows (Andy, 2026-10-03): each
+                    // is two lines tall, and without one the seasons ran
+                    // together. Plain season tables stay one-line dense.
+                    if leadsWithTeam, row.id != rows.first?.id {
+                        Divider().overlay(Color.divider).gridCellColumns(columns.count + 1)
+                    }
                     GridRow {
                         titleCell(row, emphasized: false)
                         cells(row.values, emphasized: false)
@@ -88,7 +97,14 @@ struct StatTableCard: View {
 
     @ViewBuilder
     private func titleCell(_ row: Row, emphasized: Bool) -> some View {
-        if leadsWithTeam {
+        if leadsWithTeam, let team = row.team {
+            NavigationLink(value: team) {
+                teamTitleCell(row, emphasized: emphasized)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View team page")
+        } else if leadsWithTeam {
             teamTitleCell(row, emphasized: emphasized)
         } else {
             inlineTitleCell(row, emphasized: emphasized)

@@ -74,6 +74,19 @@ export function categoriesWithLines(stats: PlayerStats): PlayerStatsCategory[] {
   return stats.categories.filter((category) => category.seasons.length > 0);
 }
 
+/**
+ * The Career tab's order: this season on top (2026-10-03); ESPN lists them
+ * oldest first. Within a year the later line leads, so a player traded
+ * mid-season shows the new club first — ESPN's order reversed, with the
+ * year as the guarantee. iOS `PlayerCareerPane.newestFirst`.
+ */
+export function newestFirst(seasons: PlayerSeasonLine[]): PlayerSeasonLine[] {
+  return seasons
+    .map((line, offset) => ({ line, offset }))
+    .sort((a, b) => b.line.year - a.line.year || b.offset - a.offset)
+    .map(({ line }) => line);
+}
+
 /** A player traded mid-season has two lines for one year. */
 export function seasonLineId(line: PlayerSeasonLine): string {
   return `${line.year}-${line.teamId ?? ""}`;
