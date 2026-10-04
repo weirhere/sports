@@ -912,3 +912,4 @@ sibling below it.
 | 2026-10-03 | Roster Coach card lists coordinators, assistant head coach and QB coach from `coaches.json` (Wikipedia, weekly PR job) | **pending** — the web already serves the file (`web/public/coaches.json`) but `roster-list.tsx` doesn't read it yet |
 | 2026-10-03 | Empty Following header reads "No ongoing games" while the Live filter narrows today | **pending** — rides the 2026-09-26 stand-in row: the web has no empty Following header yet |
 | 2026-10-04 | Play/drive decode: `isTurnover`, `isPenalty`, `priority`, `statYardage`, `shortDescription` (NBA/NHL) and the drive's `shortDisplayResult` | **n/a for now** — decode-only, neither iOS's `PlayRow` nor the web draws any of these fields yet; revisit once a row treatment ships |
+| 2026-10-03 | Painted entity header's nav bar stays transparent at rest so the header slides in as one piece on a push | **n/a**: the web header is not team-colored and has no push |
