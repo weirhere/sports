@@ -2058,6 +2058,18 @@ nonisolated enum ESPNMapper {
                     record: rank.recordSummary
                 )
             }
+            func mentions(_ dtos: LossyArray<RankDTO>?) -> [PollMention] {
+                (dtos?.elements ?? []).compactMap { rank -> PollMention? in
+                    guard let team = team(from: rank.team) else { return nil }
+                    return PollMention(
+                        team: team,
+                        points: rank.points,
+                        firstPlaceVotes: rank.firstPlaceVotes,
+                        previousRank: rank.previous,
+                        record: rank.recordSummary
+                    )
+                }
+            }
             return Poll(
                 id: ranking.id ?? name,
                 name: name,
@@ -2066,7 +2078,10 @@ nonisolated enum ESPNMapper {
                 // "2025 AP Poll: Final Rankings" over the long headline,
                 // which says "Rankings" twice under a Rankings title.
                 headline: ranking.shortHeadline ?? ranking.headline,
-                ranks: ranks
+                ranks: ranks,
+                others: mentions(ranking.others),
+                droppedOut: mentions(ranking.droppedOut),
+                occurrenceLabel: ranking.occurrence?.displayValue
             )
         }
     }
