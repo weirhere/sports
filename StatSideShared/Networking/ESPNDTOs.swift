@@ -935,6 +935,16 @@ nonisolated struct RankingDTO: Decodable {
     let headline: String?
     let shortHeadline: String?
     let ranks: LossyArray<RankDTO>?
+    /// Teams receiving votes outside the top 25.
+    let others: LossyArray<RankDTO>?
+    /// Teams ranked last week and not this one.
+    let droppedOut: LossyArray<RankDTO>?
+    let occurrence: OccurrenceDTO?
+}
+
+/// This edition's week, named by ESPN itself ("Week 4", "Final Rankings").
+nonisolated struct OccurrenceDTO: Decodable {
+    let displayValue: String?
 }
 
 // MARK: - Historical rankings (sports.core.api)

@@ -419,6 +419,33 @@ private func fixture(_ name: String) throws -> Data {
         #expect(top.team.id.isEmpty == false)
         #expect(top.movement == 0)
     }
+
+    @Test func decodesOthersAndDroppedOutAndOccurrence() throws {
+        let dto = try JSONDecoder().decode(RankingsResponseDTO.self, from: fixture("rankings-live"))
+        let polls = ESPNMapper.polls(from: dto)
+
+        let ap = try #require(polls.first(where: { $0.type == "ap" }))
+        #expect(ap.occurrenceLabel == "Final Rankings")
+        #expect(ap.others.count == 14)
+        #expect(ap.droppedOut.count == 3)
+
+        let droppedOut = try #require(ap.droppedOut.first(where: { $0.team.location == "Arizona" }))
+        #expect(droppedOut.previousRank == 21)
+        #expect(droppedOut.points == 54)
+        #expect(droppedOut.firstPlaceVotes == 0)
+
+        // A team can still be drawing votes after falling out — both lists
+        // name it, from the same raw rank.
+        #expect(ap.others.contains(where: { $0.team.location == "Arizona" }))
+
+        // A poll built without this data (CFBD, or the core API) defaults
+        // to empty rather than failing.
+        let fallback = Poll(id: "ap", name: "AP Top 25", shortName: "AP", type: "ap",
+                             headline: nil, ranks: [])
+        #expect(fallback.others.isEmpty)
+        #expect(fallback.droppedOut.isEmpty)
+        #expect(fallback.occurrenceLabel == nil)
+    }
 }
 
 /// The season window's tokens — the rule that replaced halving.
