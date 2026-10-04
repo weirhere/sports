@@ -343,6 +343,13 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
         let headshotURL: URL?
         /// Positionally paired with the owning category's `columns`.
         let stats: [String]
+
+        /// ESPN's "Team" line — the rushing and passing groups book sacks,
+        /// kneel-downs and spikes to the team rather than a player. No
+        /// athlete stands behind it, so no id does either.
+        var isTeam: Bool {
+            athleteId == nil && name.caseInsensitiveCompare("Team") == .orderedSame
+        }
     }
 
     struct Category: Identifiable, Hashable, Sendable {
