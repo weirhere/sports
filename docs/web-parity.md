@@ -915,4 +915,10 @@ sibling below it.
 | 2026-10-03 | Scores groups each league at one rung (League / Conference / Division), chosen per league in Settings; pros default to League | **pending**: the web's stack is already one section per pro league with NCAAF by conference, which matches the new defaults, but it has no setting to choose another rung |
 | 2026-10-03 | Box score rows: player avatars (team logo on the "Team" line) and wider row spacing | **pending**: web rows are still text-only |
 | 2026-10-03 | Box score "Team" line's negative placeholder id is no athlete (no player link) | **shipped**: `athleteIdOrNull` in `web/src/lib/espn/transformers.ts` |
+| 2026-10-03 | Player Career tab lists seasons newest first, a traded year's later club leading | **shipped**: `newestFirst` in `web/src/lib/player-stats.ts`, used by `player-career-pane.tsx` |
+| 2026-10-03 | Career tab's closing row says "Total", not "Career" | **shipped**: `player-career-pane.tsx` |
+| 2026-10-03 | Career tab Seasons / Teams switch | **pending**: web Career tab is the Seasons view only |
+| 2026-10-03 | Career Teams view is one computed line per club (`combined`: sums, recomputed rates, games-weighted averages, a dash otherwise) | **pending**: no Teams view on the web yet |
+| 2026-10-03 | Career tab: traded year's club-less total line dropped from both views; hairlines between club rows | **pending**: web Career tab shows ESPN's lines as sent |
+| 2026-10-03 | Career rows' club logo and name link to the team page (player and coach) | **pending**: web Career rows are unlinked |
 | 2026-10-03 | Painted entity header's nav bar stays transparent at rest so the header slides in as one piece on a push | **n/a**: the web header is not team-colored and has no push |
