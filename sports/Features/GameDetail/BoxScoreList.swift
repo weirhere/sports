@@ -13,6 +13,7 @@ struct BoxScoreList: View {
     @State private var selectedTeamId: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption) private var statColumnWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .subheadline) private var avatarSize: CGFloat = 28
 
     private var isStacked: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -101,7 +102,10 @@ struct BoxScoreList: View {
     /// seven columns and can't fit a phone at any type size.
     private func table(_ category: BoxScore.Category, team: Team) -> some View {
         ScrollView(.horizontal) {
-            Grid(alignment: .leading, horizontalSpacing: Spacing.sm, verticalSpacing: Spacing.xs) {
+            // Rows breathe at `md` with a face on each (Andy, 2026-10-03:
+            // "more room to breathe"); `xs` packed the names too tight to
+            // tell apart at a glance.
+            Grid(alignment: .leading, horizontalSpacing: Spacing.sm, verticalSpacing: Spacing.md) {
                 GridRow {
                     // Empty, but it anchors the name column's width to the
                     // player rows below it.
@@ -137,6 +141,8 @@ struct BoxScoreList: View {
                         Text("Total")
                             .font(.rowName)
                             .foregroundStyle(.textSecondary)
+                            // Under the names, not the avatars.
+                            .padding(.leading, avatarSize + Spacing.sm)
                         statCells(category.totals, columns: category.columns, emphasized: true)
                     }
                 }
@@ -162,16 +168,43 @@ struct BoxScoreList: View {
                                                  team: team,
                                                  jersey: player.jersey,
                                                  headshotURL: player.headshotURL)) {
-                nameCell(player)
+                nameCell(player, team: team)
             }
             .buttonStyle(.plain)
             .accessibilityHint("View player page")
         } else {
-            nameCell(player)
+            nameCell(player, team: team)
         }
     }
 
-    private func nameCell(_ player: BoxScore.Player) -> some View {
+    private func nameCell(_ player: BoxScore.Player, team: Team) -> some View {
+        HStack(spacing: Spacing.sm) {
+            avatar(player, team: team)
+            nameLabel(player)
+        }
+    }
+
+    /// The player's face in a quiet disc, as the roster and the Leaders
+    /// card draw one (Andy, 2026-10-03). ESPN's "Team" line — sacks and
+    /// kneel-downs booked to nobody — has no face, so it wears the team's
+    /// mark instead, uncropped inside the same disc.
+    private func avatar(_ player: BoxScore.Player, team: Team) -> some View {
+        ZStack {
+            Circle().fill(Color.bgElevated)
+            if player.isTeam {
+                LogoImage(url: team.logoURL, placeholder: nil)
+                    .padding(avatarSize * 0.15)
+            } else {
+                LogoImage(url: player.headshotURL?.headshotThumbnail ?? player.headshotURL,
+                          placeholder: nil, contentMode: .fill)
+                    .clipShape(Circle())
+            }
+        }
+        .frame(width: avatarSize, height: avatarSize)
+        .accessibilityHidden(true)
+    }
+
+    private func nameLabel(_ player: BoxScore.Player) -> some View {
         HStack(spacing: Spacing.xs) {
             Text(player.name)
                 .font(.rowName)

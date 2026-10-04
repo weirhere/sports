@@ -285,6 +285,29 @@ private func fixture(_ name: String) throws -> Data {
         #expect(passing.players.map(\.name) == ["Good Row"])
     }
 
+    /// ESPN's "Team" line carries a negative placeholder id (2026-10-03).
+    /// It's the team, not an athlete: no link, and its avatar is the logo.
+    @Test func boxScoreTeamLineIsNoAthlete() throws {
+        let json = Data("""
+        {"players": [{
+          "team": {"id": "1", "displayName": "Test Team"},
+          "statistics": [{
+            "name": "passing", "labels": ["C/ATT", "YDS"],
+            "athletes": [
+              {"athlete": {"id": "5079555", "displayName": "DJ Lagway"}, "stats": ["22/36", "290"]},
+              {"athlete": {"id": "-5327", "displayName": " Team"}, "stats": ["0/1", "0"]}
+            ]
+          }]
+        }]}
+        """.utf8)
+        let dto = try JSONDecoder().decode(BoxscoreDTO.self, from: json)
+        let players = try #require(ESPNMapper.boxScore(from: dto).first?.categories.first?.players)
+        #expect(players.map(\.athleteId) == ["5079555", nil])
+        #expect(players.map(\.isTeam) == [false, true])
+        // ESPN pads it: " Team".
+        #expect(players.last?.name == "Team")
+    }
+
     /// A totals row that doesn't match the header is dropped the same way,
     /// leaving the table without one rather than misaligned.
     @Test func boxScoreDropsMisalignedTotals() throws {
