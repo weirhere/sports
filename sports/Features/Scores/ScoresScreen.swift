@@ -795,7 +795,7 @@ struct ScoresScreen: View {
                                 .equatable()
                                 .cardSurface()
                             case .followingEmpty:
-                                FollowingEmptyHeader()
+                                FollowingEmptyHeader(liveOnly: uiState.liveOnly(on: shownDay))
                             case .hideAllControl(let others):
                                 HideAllControl(
                                     others: others,
@@ -949,7 +949,7 @@ struct ScoresScreen: View {
                                     .equatable()
                                     .cardSurface()
                             case .followingEmpty:
-                                FollowingEmptyHeader()
+                                FollowingEmptyHeader(liveOnly: uiState.liveOnly(on: target))
                             case .hideAllControl(let others):
                                 HideAllControl(others: others,
                                                isHidden: uiState.hideOtherSections,
