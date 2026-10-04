@@ -46,6 +46,8 @@ Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in
 
 - [x] **P1** Scores lists every league and conference below Hide all, and divisions stop being pages (Andy, 2026-09-26). Pro leagues show the league then its conferences A–Z ("NFL - AFC"), each with the league's mark. NCAAF shows Top 25, FBS and FCS, then every conference A–Z, so FCS is always fetched. A visitor in a conference section is tagged with its own conference. Conference pages open on their divisions stacked, the Leagues tab lists conferences, and existing division follows migrate. *(Unit-tested; verified on the simulator on a college Saturday and an NFL Sunday.)*
 
+- [x] **P1** Group games by league, conference or division, per league, in Settings (Andy, 2026-10-03: pro games "replicated per league, conference and division" read as "a bit excessive"). Each league is broken down at one rung: the NFL, NBA and NHL default to one section each, college football to its conferences. College football is the Top 25 then its conferences, or the Top 25, FBS and FCS by league. A game between two groups still sits in both, and Following is untouched. Persisted as `ui.slateGrouping`. Acceptance: an AFC–NFC game appears once by league and twice by conference, never in both rungs at once; a division section's name toggles rather than opening a page; the visitor tag follows the rung ("NFC South" in a division). *(Unit-tested; verified in the simulator on the NBA's division grouping.)*
+
 ## E2 — Game detail
 
 - [x] **P1** Header: teams, records, score, status; linescore grid by quarter (incl. OT columns). *(Pre-game header verified on-device; linescore decode-verified against the 2025 CFP championship fixture — visual check needs a completed game, see E5.)*
