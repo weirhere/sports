@@ -931,6 +931,14 @@ nonisolated struct TeamsResponseDTO: Decodable {
     }
 }
 
+/// `/teams/{id}`: one team, colors included. Read only for the color —
+/// a player's or coach's header paints in their team's (2026-10-03), and
+/// a page that wasn't opened from the team's own page has no other
+/// payload carrying it.
+nonisolated struct TeamDetailResponseDTO: Decodable {
+    let team: TeamDTO?
+}
+
 nonisolated struct RankDTO: Decodable {
     let current: Int?
     let previous: Int?

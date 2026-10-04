@@ -5,7 +5,8 @@ import UIKit
 /// 2026-09-27: "in dark mode, this looks great, but when we're in light
 /// mode, the background of the page header should be the team color";
 /// the same day, "let's do this change for leagues as well"). TeamPage
-/// paints ESPN's team color; ConferencePage and PollScreen paint the
+/// paints ESPN's team color, and PlayerPage and CoachPage paint the
+/// person's team's (2026-10-03); ConferencePage and PollScreen paint the
 /// league's ESPN color on a whole-league page and the mark's own dominant
 /// color everywhere else (`LogoContrast.dominantHex`), since ESPN ships
 /// no conference colors.
@@ -46,6 +47,24 @@ struct HeaderPaint: Equatable {
     /// only payload carrying one, so without this every visit opens white
     /// and turns team-colored when the request lands.
     static var remembered: [String: String] = [:]
+
+    /// A team's color for a page that isn't the team's own — a player's
+    /// or a coach's header wears their team's (Andy, 2026-10-03). Opened
+    /// from the roster, `remembered` already has it; from search or a box
+    /// score it costs one `/teams/{id}` request, remembered after.
+    static func teamHex(for team: Team?) -> String? {
+        guard let team else { return nil }
+        return team.colorHex ?? remembered[team.followKey]
+    }
+
+    static func loadTeamHex(for team: Team?) async -> String? {
+        guard let team else { return nil }
+        if let known = teamHex(for: team) { return known }
+        guard let hex = await ESPNClient(league: team.league).teamColorHex(teamId: team.id)
+        else { return nil }
+        remembered[team.followKey] = hex
+        return hex
+    }
 
     /// Mark colors worked out this launch, by logo URL — a mark doesn't
     /// change color, and the pixel read is the only cost of the answer.

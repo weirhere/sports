@@ -36,6 +36,7 @@ struct PlayerPage: View {
     /// as `player` so the page paints immediately and fills in behind —
     /// there is never a spinner over facts that are already on screen.
     @Environment(TeamDirectoryStore.self) private var directory
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var filled: PlayerIdentity?
     @State private var model: PlayerStatsModel
@@ -43,10 +44,19 @@ struct PlayerPage: View {
     /// ESPN's season year the Games tab shows; nil until one is picked,
     /// which asks ESPN for its current one.
     @State private var logSeason: Int?
+    /// ESPN's season year the Stats tab shows; nil is the latest with a line.
+    @State private var statsSeason: Int?
     /// The News tab's stories: the athlete overview's own list, fetched on
     /// the tab's first visit and held for the page.
     @State private var news: [NewsStory]?
     @State private var newsFailed = false
+    /// The team's color once `/teams/{id}` answers, for a door that didn't
+    /// pass through the team page (search, a box score).
+    @State private var teamHexLoaded: String?
+    /// How far the hero has collapsed under the bar.
+    @State private var heroCollapse: CGFloat = 0
+    /// True once the name has scrolled under the bar, which then carries it.
+    @State private var showsInlineTitle = false
 
     init(player: PlayerIdentity) {
         self.player = player
@@ -56,22 +66,51 @@ struct PlayerPage: View {
 
     private var shown: PlayerIdentity { filled ?? player }
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    hero
-                    HeroTabBar(tabs: Tab.allCases, selection: tab,
-                               onSelect: { tab = $0 })
-                }
-                .frame(maxWidth: .infinity)
-                .background(Color.bgCard)
+    /// The header in the player's team's color, light mode only (Andy,
+    /// 2026-10-03: "player and coach header background colors should be
+    /// the same color as their teams"). TeamPage's paint, borrowed whole;
+    /// nil keeps the `bgCard` header, as in dark mode.
+    private var headerPaint: HeaderPaint? {
+        HeaderPaint(hex: teamHexLoaded ?? HeaderPaint.teamHex(for: shown.team),
+                    colorScheme: colorScheme)
+    }
 
-                VStack(spacing: Spacing.sm) {
-                    tabContent
-                }
-                .padding(Spacing.sm)
-                .padding(.bottom, Spacing.lg)
+    var body: some View {
+        // ConferencePage's collapsing header (Andy, 2026-10-03, from
+        // FotMob's player page): the hero scrolls away, the tab row pins
+        // under the bar, and the bar takes over the name and the club.
+        CollapsingHeaderScrollView(landing: ScrollLanding(key: tab.title),
+                                   collapse: $heroCollapse) {
+            hero
+                .frame(maxWidth: .infinity)
+                .background(headerPaint?.background ?? .bgCard)
+        } strip: {
+            HeroTabBar(tabs: Tab.allCases, selection: tab,
+                       onSelect: { tab = $0 },
+                       ink: headerPaint?.ink, secondaryInk: headerPaint?.secondaryInk)
+                .frame(maxWidth: .infinity)
+                .background(headerPaint?.background ?? .bgCard)
+        } content: { _ in
+            VStack(spacing: Spacing.sm) {
+                tabContent
+            }
+            .padding(Spacing.sm)
+            .padding(.bottom, Spacing.lg)
+        }
+        // The name sits mid-way down the 76pt photo row, so it is under
+        // the bar about 60pt into the collapse.
+        .onChange(of: heroCollapse > 60) { _, scrolledPastHero in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showsInlineTitle = scrolledPastHero
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                CollapsedTitle(title: shown.name,
+                               subtitle: teamBadgeTitle ?? unlinkedTeamName,
+                               paint: headerPaint)
+                    .opacity(showsInlineTitle ? 1 : 0)
+                    .accessibilityHidden(!showsInlineTitle)
             }
         }
         // The entity pages' header, applied here too (Andy, 2026-09-21,
@@ -80,12 +119,16 @@ struct PlayerPage: View {
         // the hero sitting on that band rather than bare on the recessed
         // ground. TeamPage and ConferencePage have read this way since
         // 2026-08-31; the player page was the one entity page that didn't.
-        .heroTopBand(Color.bgCard)
+        // In light mode the band is the team's color (2026-10-03).
+        .headerChrome(headerPaint)
         .background(Color.bgRecessed)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.bgCard, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // Keyed on the team, which search's athlete fetch can resolve
+        // after the page opens.
+        .task(id: shown.team?.followKey) {
+            teamHexLoaded = await HeaderPaint.loadTeamHex(for: shown.team)
+        }
         // Only when the door left the body facts out. Arriving from a
         // roster, every row is already here and the request would buy
         // nothing — the API rules say be a polite guest (Andy, 2026-09-21).
@@ -135,7 +178,9 @@ struct PlayerPage: View {
         case .games:
             gamesPane
         case .stats:
-            statsTab(empty: "No stats this season") { PlayerStatsPane(stats: $0) }
+            statsTab(empty: "No stats this season") {
+                PlayerStatsPane(stats: $0, league: player.league, season: $statsSeason)
+            }
         case .career:
             statsTab(empty: "No career stats yet") {
                 PlayerCareerPane(stats: $0, league: player.league)
@@ -253,7 +298,7 @@ struct PlayerPage: View {
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(shown.name)
                     .font(.heroTitle)
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
                     .accessibilityLabel(shown.spokenSummary)
@@ -288,7 +333,11 @@ struct PlayerPage: View {
                     // filling the badge with the colour behind it — the
                     // exact failure `HeaderLinkBadge`'s own comment warns
                     // about, in the other direction.
-                    HeaderLinkBadge(title: title, logoURL: shown.teamLogoURL)
+                    HeaderLinkBadge(title: title,
+                                    fill: headerPaint?.badgeFill ?? .bgRecessed,
+                                    logoURL: shown.teamLogoURL,
+                                    ink: headerPaint?.secondaryInk ?? .textSecondary,
+                                    logoOutlineAgainst: headerPaint?.hex)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View team page")
@@ -299,7 +348,7 @@ struct PlayerPage: View {
                     // would read as the club trailing a full stop.
                     .accessibilityHidden(true)
                     .font(.meta)
-                    .foregroundStyle(.textSecondary)
+                    .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
                     .lineLimit(1)
             }
         }

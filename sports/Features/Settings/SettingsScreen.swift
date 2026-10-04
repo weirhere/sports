@@ -60,8 +60,15 @@ struct SettingsScreen: View {
                     Text("System follows your iPhone's Light or Dark setting.")
                 }
 
-                Section("About") {
+                Section {
                     LabeledContent("Version", value: Self.version)
+                } header: {
+                    Text("About")
+                } footer: {
+                    // CC BY-SA asks for credit where the text is used; the
+                    // coordinators on the Roster tab are Wikipedia's
+                    // (2026-10-03).
+                    Text("Assistant coaching staffs are from Wikipedia, available under CC BY-SA 4.0.")
                 }
             }
             // The app's own ground and card, not the system's grouped grays,
