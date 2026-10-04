@@ -150,6 +150,70 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
+/// E21's "small unread fields" row (BACKLOG.md): decode-only, each field
+/// read straight off the DTOs with no mapper involved, since nothing draws
+/// any of them yet.
+@Suite struct UnreadFieldDecodingTests {
+    @Test func competitionStatusCarriesTheFlexSchedulingFlag() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+        let event = try #require(dto.events?.elements.first)
+        let competition = try #require(event.competitions?.first)
+        // The event-level status doesn't carry this flag at all — only the
+        // competition's own status object does.
+        #expect(competition.status?.isTBDFlex == false)
+    }
+
+    @Test func scheduleCompetitionStatusCarriesTheFlagToo() throws {
+        let dto = try JSONDecoder().decode(ScheduleResponseDTO.self, from: fixture("nfl-team-schedule"))
+        let event = try #require(dto.events?.elements.first)
+        let competition = try #require(event.competitions?.first)
+        #expect(competition.status?.isTBDFlex == false)
+    }
+
+    @Test func statusTypeCarriesTheNHLShootoutMarker() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let status = try #require(dto.header?.competitions?.first?.status)
+        #expect(status.type?.shortDetail == "Final/SO")
+        #expect(status.type?.altDetail == "SO")
+    }
+
+    @Test func headerCarriesTheGameNote() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
+        #expect(dto.header?.gameNote == "College Football Playoff National Championship Presented by AT&T")
+    }
+
+    @Test func summaryCarriesPerTeamGameInjuries() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let teams = try #require(dto.injuries?.elements)
+        #expect(teams.count == 2)
+
+        let nets = try #require(teams.first { $0.team?.id == "17" })
+        let injury = try #require(nets.injuries?.elements.first)
+        #expect(injury.status == "Day-To-Day")
+        #expect(injury.athlete?.displayName == "Nolan Traore")
+        #expect(injury.type?.abbreviation == "DD")
+    }
+
+    @Test func nhlSummaryCarriesPerTeamGameInjuriesToo() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let teams = try #require(dto.injuries?.elements)
+        #expect(teams.count == 2)
+        #expect(teams.allSatisfy { ($0.injuries?.elements.isEmpty ?? true) == false })
+    }
+
+    @Test func summaryCarriesTheNHLOnIceLineup() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let teams = try #require(dto.onIce?.elements)
+        #expect(teams.count == 2)
+
+        let ducks = try #require(teams.first { $0.teamId == "25" })
+        let entries = try #require(ducks.entries?.elements)
+        #expect(entries.count == 5)
+        #expect(entries.first?.athleteid == "4588165")
+        #expect(entries.first?.whereabouts?.description == "In Play")
+    }
+}
+
 @Suite struct LivePhaseMappingTests {
     private func status(name: String?, clock: String? = "0:00", period: Int? = 2,
                         detail: String? = nil) -> GameStatus {

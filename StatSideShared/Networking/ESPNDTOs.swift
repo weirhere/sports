@@ -136,6 +136,14 @@ nonisolated struct StatusDTO: Decodable {
     let displayClock: String?
     let period: Int?
     let type: StatusTypeDTO?
+    /// The NFL's flag that a kickoff is TBD *because of flex scheduling*,
+    /// on the **competition's** status object, not the event's — the
+    /// scoreboard and the team schedule both ship it there and nowhere
+    /// else (verified against `nfl-scoreboard.json` and
+    /// `nfl-team-schedule.json`; absent from the summary header's status,
+    /// the only other place `StatusDTO` decodes). `CompetitionDTO.timeValid`
+    /// already says a kickoff is TBD; this says why.
+    let isTBDFlex: Bool?
 }
 
 nonisolated struct StatusTypeDTO: Decodable {
@@ -145,6 +153,11 @@ nonisolated struct StatusTypeDTO: Decodable {
     let completed: Bool?
     let detail: String?
     let shortDetail: String?
+    /// "OT", "SO" — the NHL's shootout marker (`Final/SO`), cited by
+    /// `PeriodLabel`'s own doc comment but undecoded until now. `PeriodLabel`
+    /// still derives OT/SO from period arithmetic; drawing from this field
+    /// instead is a separate change.
+    let altDetail: String?
 }
 
 nonisolated struct CompetitionDTO: Decodable {
@@ -159,6 +172,8 @@ nonisolated struct CompetitionDTO: Decodable {
     let broadcasts: [BroadcastDTO]?
     let competitors: [CompetitorDTO]?
     let situation: SituationDTO?
+    /// Carries `isTBDFlex`; the event-level status above doesn't.
+    let status: StatusDTO?
     /// "Bucked Up LA Bowl", "College Football Playoff Quarterfinal at the
     /// Allstate Sugar Bowl". The only thing distinguishing one postseason
     /// college-football game from another — ESPN files every bowl and every
@@ -472,6 +487,43 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// The body rides along whole, so the game page's story card costs no
     /// request of its own (docs/news.md, N2 and N3).
     let article: NewsArticleDTO?
+    /// The game's inactives, one entry per team — the NBA and NHL ship it;
+    /// shaped nothing like `RosterInjuryDTO` (the roster's season-long
+    /// list nested inside an athlete), this is the game-day list keyed by
+    /// team with the athlete nested inside instead.
+    let injuries: LossyArray<SummaryTeamInjuriesDTO>?
+    /// The NHL's live lineup, one entry per team, by athlete id.
+    let onIce: LossyArray<OnIceTeamDTO>?
+}
+
+nonisolated struct SummaryTeamInjuriesDTO: Decodable {
+    let team: TeamDTO?
+    let injuries: LossyArray<GameInjuryDTO>?
+}
+
+nonisolated struct GameInjuryDTO: Decodable {
+    let status: String?
+    let athlete: AthleteDTO?
+    let type: InjuryTypeDTO?
+}
+
+nonisolated struct InjuryTypeDTO: Decodable {
+    let description: String?
+    let abbreviation: String?
+}
+
+nonisolated struct OnIceTeamDTO: Decodable {
+    let teamId: String?
+    let entries: LossyArray<OnIceEntryDTO>?
+}
+
+nonisolated struct OnIceEntryDTO: Decodable {
+    let athleteid: String?
+    let whereabouts: OnIceWhereaboutsDTO?
+}
+
+nonisolated struct OnIceWhereaboutsDTO: Decodable {
+    let description: String?
 }
 
 nonisolated struct PickcenterDTO: Decodable {
@@ -701,6 +753,11 @@ nonisolated struct DriveEndpointDTO: Decodable {
 
 nonisolated struct SummaryHeaderDTO: Decodable {
     let competitions: [HeaderCompetitionDTO]?
+    /// The game's own billing — "College Football Playoff National
+    /// Championship Presented by AT&T" — distinct from `notes[].headline`
+    /// on the scoreboard's `CompetitionDTO`, which is the same kind of fact
+    /// in a different response.
+    let gameNote: String?
 }
 
 nonisolated struct HeaderCompetitionDTO: Decodable {
