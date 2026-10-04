@@ -912,3 +912,9 @@ sibling below it.
 | 2026-10-03 | Roster Coach card lists coordinators, assistant head coach and QB coach from `coaches.json` (Wikipedia, weekly PR job) | **pending** — the web already serves the file (`web/public/coaches.json`) but `roster-list.tsx` doesn't read it yet |
 | 2026-10-03 | Empty Following header reads "No ongoing games" while the Live filter narrows today | **pending** — rides the 2026-09-26 stand-in row: the web has no empty Following header yet |
 | 2026-10-04 | Play/drive decode: `isTurnover`, `isPenalty`, `priority`, `statYardage`, `shortDescription` (NBA/NHL) and the drive's `shortDisplayResult` | **n/a for now** — decode-only, neither iOS's `PlayRow` nor the web draws any of these fields yet; revisit once a row treatment ships |
+| 2026-10-03 | Player Career tab lists seasons newest first, a traded year's later club leading | **shipped**: `newestFirst` in `web/src/lib/player-stats.ts`, used by `player-career-pane.tsx` |
+| 2026-10-03 | Career tab's closing row says "Total", not "Career" | **shipped**: `player-career-pane.tsx` |
+| 2026-10-03 | Career tab Seasons / Teams switch | **pending**: web Career tab is the Seasons view only |
+| 2026-10-03 | Career Teams view is one computed line per club (`combined`: sums, recomputed rates, games-weighted averages, a dash otherwise) | **pending**: no Teams view on the web yet |
+| 2026-10-03 | Career tab: traded year's club-less total line dropped from both views; hairlines between club rows | **pending**: web Career tab shows ESPN's lines as sent |
+| 2026-10-03 | Career rows' club logo and name link to the team page (player and coach) | **pending**: web Career rows are unlinked |
