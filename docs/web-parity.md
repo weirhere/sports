@@ -178,7 +178,8 @@ of a Saturday: one list, one order, both screens.
 | 2026-09-07 | The reorder is a hand-rolled drag, not a system drag session | shipped |
 | 2026-09-09 | A conference row's teaser falls back to the overall record; a league row shows none | shipped |
 | 2026-09-09 | NBA divisions wear their conference's mark | shipped — via the registry's parent walk |
-| — | The season-not-started rule (see below) | shipped |
+| 2026-09-09 | The season-not-started rule (see below) | shipped |
+| 2026-10-04 | Backlog reconciliation adds the `docs/decisions.md` row the gap below names | n/a — bookkeeping, no product surface |
 
 **The route keeps its name.** `/rankings` still serves the hub, exactly as
 iOS kept `TablesScreen` and `Tab.tables` — only the words on screen moved.
@@ -211,6 +212,13 @@ teams and drops the records.
 > can only enforce that the log and the ledger grow together — not that a
 > shipped behavior reached the log in the first place. Worth knowing before
 > treating a `pending`-free wave as proof of parity.
+>
+> **Closed 2026-10-04**, by a BACKLOG reconciliation pass (E8's "two shipped
+> iOS behaviours have no decision row" entry) that was reading this file and
+> ran into its own callout. `docs/decisions.md`
+> now carries the row, dated 2026-09-09 to when the behavior actually
+> shipped rather than to when it was written down — the same way this
+> ledger already dated its own row above.
 
 ## W4 — Entity pages
 
