@@ -923,3 +923,4 @@ sibling below it.
 | 2026-10-03 | Career rows' club logo and name link to the team page (player and coach) | **pending**: web Career rows are unlinked |
 | 2026-10-03 | Team colors bundled (`team-colors.json`) so team, player and coach headers paint their first frame | **n/a**: the web header is not team-colored |
 | 2026-10-03 | Painted entity header's nav bar stays transparent at rest so the header slides in as one piece on a push | **n/a**: the web header is not team-colored and has no push |
+| 2026-10-04 | Season calendar bounds decode: `calendarType`/`calendarStartDate`/`calendarEndDate` → `Scoreboard.seasonCalendar` | **n/a for now** — decode-only, nothing in iOS reads it yet beyond the hand-written season rule it sits alongside; revisit once a consumer ships |
