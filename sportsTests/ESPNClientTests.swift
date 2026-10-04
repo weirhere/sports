@@ -82,6 +82,74 @@ private func fixture(_ name: String) throws -> Data {
     }
 }
 
+/// BACKLOG.md: "Season bounds are a hand-written month table, and ESPN
+/// sends the real ones." These fixtures are all a single captured season,
+/// so this decodes ESPN's own bounds and cross-checks them against
+/// `League.seasonOpensIn`/`seasonRollsOverAfter` — it does not replace the
+/// hand-written rule, which (per `SeasonSpan`'s own doc comment) has to
+/// keep working for past seasons and `dates=` day requests that carry no
+/// `leagues[]` object at all.
+@Suite struct SeasonCalendarBoundsDecodingTests {
+    private func iso(_ string: String) -> Date {
+        ESPNDate.parse(string) ?? Date(timeIntervalSince1970: 0)
+    }
+
+    @Test func collegeFootballCarriesAListCalendar() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        let bounds = try #require(ESPNMapper.seasonCalendarBounds(from: dto))
+        #expect(bounds.isDayCalendar == false)
+        #expect(bounds.start == iso("2026-02-01T08:00Z"))
+        #expect(bounds.end == iso("2027-01-28T07:59Z"))
+    }
+
+    /// The NFL's own fixture opens its "Preseason 1" period August 6, not
+    /// July — `League.seasonOpensIn`'s July answer is about the Hall of
+    /// Fame Game specifically, which this captured season's calendar
+    /// doesn't carry as a period of its own. Recorded rather than silently
+    /// passing: it's the kind of drift this row exists to surface, not a
+    /// bug in either number.
+    @Test func nflCarriesAListCalendarStartingInAugustThisSeason() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+        let bounds = try #require(ESPNMapper.seasonCalendarBounds(from: dto))
+        #expect(bounds.isDayCalendar == false)
+        #expect(bounds.start == iso("2026-08-06T07:00Z"))
+        #expect(bounds.end == iso("2027-02-16T07:59Z"))
+    }
+
+    @Test func nbaAndNHLCarryADayCalendar() throws {
+        let nba = try #require(ESPNMapper.seasonCalendarBounds(
+            from: JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nba-scoreboard"))))
+        #expect(nba.isDayCalendar == true)
+        #expect(nba.start == iso("2025-10-01T07:00Z"))
+        #expect(nba.end == iso("2026-06-27T06:59Z"))
+
+        let nhl = try #require(ESPNMapper.seasonCalendarBounds(
+            from: JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nhl-scoreboard"))))
+        #expect(nhl.isDayCalendar == true)
+        #expect(nhl.start == iso("2025-09-20T07:00Z"))
+        #expect(nhl.end == iso("2026-07-01T06:59Z"))
+    }
+
+    @Test func missingLeagueObjectDecodesToNilRatherThanAllNilBounds() throws {
+        let json = Data("{\"events\": []}".utf8)
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: json)
+        #expect(ESPNMapper.seasonCalendarBounds(from: dto) == nil)
+    }
+
+    @Test func clippingAndMergingAScoreboardPreserveTheBounds() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        let board = ESPNMapper.scoreboard(from: dto)
+        #expect(board.seasonCalendar != nil)
+
+        let days = Date(timeIntervalSince1970: 0)...Date(timeIntervalSince1970: 1)
+        #expect(ESPNMapper.clipped(board, to: days).seasonCalendar == board.seasonCalendar)
+
+        let bare = Scoreboard(seasonYear: nil, seasonType: nil, currentWeekNumber: nil,
+                              weeks: [], games: [])
+        #expect(ESPNMapper.merged(bare, with: [board]).seasonCalendar == board.seasonCalendar)
+    }
+}
+
 @Suite struct LivePhaseMappingTests {
     private func status(name: String?, clock: String? = "0:00", period: Int? = 2,
                         detail: String? = nil) -> GameStatus {

@@ -398,6 +398,25 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 }
+
+/// The season window ESPN itself states on a scoreboard response, decoded
+/// alongside — never in place of — `League.seasonOpensIn`/
+/// `seasonRollsOverAfter`. Those two stay the hand-written rule everywhere
+/// a season's span is needed without a fetch: a past season and every
+/// `dates=` day request carry no `leagues[]` object to read this from (see
+/// `SeasonSpan`'s own doc comment), so this is additive data for the one
+/// request shape that does carry it — useful groundwork for scoping a
+/// future league's rules (the WNBA/MLB row) against what ESPN actually
+/// ships rather than a guess.
+nonisolated struct SeasonCalendarBounds: Sendable, Hashable {
+    let start: Date?
+    let end: Date?
+    /// `true` for basketball's and hockey's flat one-ISO-date-per-game-day
+    /// list (`calendarType == "day"`), `false` for football's labelled
+    /// weeks (`"list"`), `nil` for any other or missing value.
+    let isDayCalendar: Bool?
+}
+
 /// A conference identified unambiguously across leagues.
 ///
 /// A bare `Int` is the bug: ESPN group id 8 is the SEC in college football

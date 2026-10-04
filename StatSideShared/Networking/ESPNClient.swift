@@ -850,8 +850,26 @@ nonisolated enum ESPNMapper {
             seasonType: dto.season?.type,
             currentWeekNumber: dto.week?.number,
             weeks: weekSlots(from: dto),
-            games: (dto.events?.elements ?? []).compactMap { game(from: $0, league: league) }
+            games: (dto.events?.elements ?? []).compactMap { game(from: $0, league: league) },
+            seasonCalendar: seasonCalendarBounds(from: dto)
         )
+    }
+
+    /// `leagues[].calendarStartDate`/`calendarEndDate`/`calendarType`, read
+    /// off the same league object `weekSlots` already reads `calendar`
+    /// from. `nil` when the response carries none of the three, rather than
+    /// a bounds value full of nils.
+    static func seasonCalendarBounds(from dto: ScoreboardDTO) -> SeasonCalendarBounds? {
+        guard let league = dto.leagues?.elements.first else { return nil }
+        let start = ESPNDate.parse(league.calendarStartDate)
+        let end = ESPNDate.parse(league.calendarEndDate)
+        let isDayCalendar: Bool? = switch league.calendarType {
+        case "day": true
+        case "list": false
+        default: nil
+        }
+        guard start != nil || end != nil || isDayCalendar != nil else { return nil }
+        return SeasonCalendarBounds(start: start, end: end, isDayCalendar: isDayCalendar)
     }
 
     /// Union two or more division payloads into one week.
@@ -898,7 +916,8 @@ nonisolated enum ESPNMapper {
                           seasonType: board.seasonType,
                           currentWeekNumber: board.currentWeekNumber,
                           weeks: board.weeks,
-                          games: kept)
+                          games: kept,
+                          seasonCalendar: board.seasonCalendar)
     }
 
     static func merged(_ base: Scoreboard, with others: [Scoreboard]) -> Scoreboard {
@@ -916,7 +935,8 @@ nonisolated enum ESPNMapper {
             seasonType: base.seasonType,
             currentWeekNumber: base.currentWeekNumber,
             weeks: base.weeks.isEmpty ? (others.first { !$0.weeks.isEmpty }?.weeks ?? []) : base.weeks,
-            games: games
+            games: games,
+            seasonCalendar: base.seasonCalendar ?? others.first { $0.seasonCalendar != nil }?.seasonCalendar
         )
     }
 

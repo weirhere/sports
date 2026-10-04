@@ -74,6 +74,17 @@ nonisolated struct LeagueDTO: Decodable {
     /// single-day NBA or NHL request, lost to a field nothing reads for
     /// those leagues.
     let calendar: LossyArray<CalendarPeriodDTO>?
+
+    /// "list" or "day" — the same split `calendar`'s doc comment already
+    /// names, given its own key here because ESPN states it outright rather
+    /// than leaving it to be inferred from the calendar's shape.
+    let calendarType: String?
+    /// The season's real bounds, ISO 8601 — present in every held fixture
+    /// (all four leagues, current season). Whether a past season or a
+    /// `dates=` day request still carries it is unprobed; this decodes
+    /// defensively rather than assuming either way.
+    let calendarStartDate: String?
+    let calendarEndDate: String?
 }
 
 nonisolated struct CalendarPeriodDTO: Decodable {
