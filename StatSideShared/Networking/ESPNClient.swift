@@ -1829,8 +1829,13 @@ nonisolated enum ESPNMapper {
                 guard !columns.isEmpty else { return nil }
 
                 let players = (group.athletes?.elements ?? []).compactMap { row -> BoxScore.Player? in
+                    // Trimmed: ESPN names the "Team" line " Team", and the
+                    // stray space both indents it and hides it from
+                    // `isTeam` (probed 2026-10-03).
                     guard let athlete = row.athlete,
-                          let name = athlete.displayName ?? athlete.shortName,
+                          let name = (athlete.displayName ?? athlete.shortName)?
+                              .trimmingCharacters(in: .whitespaces),
+                          !name.isEmpty,
                           let stats = row.stats,
                           // A row that doesn't match the header would put
                           // every number under the wrong column. Drop it
@@ -1844,7 +1849,11 @@ nonisolated enum ESPNMapper {
                         // such rows in a category then collide in a
                         // `ForEach`. Found on the web twin, fixed in both.
                         id: nonEmpty(athlete.id) ?? "\(teamId)-\(name)",
-                        athleteId: nonEmpty(athlete.id),
+                        // The "Team" line's id is a negative placeholder
+                        // ("-5327", probed 2026-10-03) with no athlete
+                        // behind it; as a link it opened an empty player
+                        // page.
+                        athleteId: nonEmpty(athlete.id).flatMap { $0.hasPrefix("-") ? nil : $0 },
                         name: name,
                         jersey: athlete.jersey,
                         headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),

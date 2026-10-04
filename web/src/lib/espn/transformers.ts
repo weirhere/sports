@@ -108,6 +108,13 @@ import { parseKickoff } from "@/lib/format";
 
 // --- Small shared helpers ---
 
+/** A real ESPN athlete id: non-empty and not the negative placeholder the
+ * box score's "Team" line carries. */
+function athleteIdOrNull(id: string | null | undefined): string | undefined {
+  const value = nonEmpty(id);
+  return value && !value.startsWith("-") ? value : undefined;
+}
+
 function nonEmpty(value: string | null | undefined): string | undefined {
   return value ? value : undefined;
 }
@@ -1535,7 +1542,8 @@ export function transformBoxScore(
       const players: BoxScorePlayer[] = [];
       for (const row of group.athletes ?? []) {
         const athlete = row.athlete;
-        const playerName = athlete?.displayName ?? athlete?.shortName;
+        // Trimmed: ESPN names the "Team" line " Team" (probed 2026-10-03).
+        const playerName = (athlete?.displayName ?? athlete?.shortName)?.trim();
         if (!athlete || !playerName || !row.stats) continue;
         if (row.stats.length !== columns.length) continue;
         players.push({
@@ -1548,7 +1556,9 @@ export function transformBoxScore(
           // Genuinely optional, and deliberately not the line above: the
           // fallback there keeps React keyed when ESPN omits an athlete,
           // and must never become a link.
-          athleteId: nonEmpty(athlete.id),
+          // The "Team" line's id is a negative placeholder ("-5327",
+          // probed 2026-10-03) with no athlete behind it.
+          athleteId: athleteIdOrNull(athlete.id),
           name: playerName,
           jersey: nonEmpty(athlete.jersey),
           headshotUrl: nonEmpty(athlete.headshot?.href),
