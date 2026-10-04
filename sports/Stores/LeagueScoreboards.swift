@@ -439,14 +439,17 @@ final class LeagueScoreboards {
     /// directly beneath Following instead, in the order you dragged them
     /// into on the tables hub.
     ///
-    /// **Every league lists its conferences** (Andy, 2026-09-26). A pro
-    /// league is its whole slate, then each conference — never a division;
-    /// college football is its Top 25, FBS and FCS, then each conference.
-    /// Below Hide all, that's the full browse — anything you follow has
-    /// already moved up above it.
+    /// **Each league is broken down at the one rung you chose** (Andy,
+    /// 2026-10-03, narrowing 2026-09-26's every-league-and-conference
+    /// stack). A pro league is its whole slate, *or* its conferences, *or*
+    /// its divisions — never more than one of them; college football is
+    /// its Top 25, FBS and FCS, then each conference unless grouped by
+    /// league. Below Hide all, that's the full browse — anything you follow
+    /// has already moved up above it.
     ///
-    /// Sections stay complete, never deduplicated: a game is in Following,
-    /// in a followed table's section, and in its conference's. The one
+    /// Sections stay complete, never deduplicated, within that rung: a
+    /// game is in Following, in a followed table's section, and in each of
+    /// its teams' groups — an AFC–NFC game is in the AFC and the NFC. The one
     /// thing that never doubles is a section with itself — a followed
     /// conference *moves* up the page rather than being cloned, which is
     /// what `table` identifies.
@@ -463,7 +466,8 @@ final class LeagueScoreboards {
                   followedTables: [FollowedTable] = [],
                   liveOnly: Bool = false,
                   tightOnly: Bool = false,
-                  filter: ScoreFilter? = nil) -> [GameSection] {
+                  filter: ScoreFilter? = nil,
+                  groupings: [League: SlateGrouping] = [:]) -> [GameSection] {
         let day = day ?? selectedDay
         // Reading every store's revision is what keeps a cache hit honest:
         // it registers the same observation the build would have, so the
@@ -474,11 +478,13 @@ final class LeagueScoreboards {
                               liveOnly: liveOnly,
                               tightOnly: tightOnly,
                               filter: filter,
+                              groupings: groupings,
                               revisions: all.map(\.revision))
         if let cached = sectionsMemo[key] { return cached }
         let built = buildSections(day: day, followingIds: followingIds,
                                   followedTables: followedTables,
-                                  liveOnly: liveOnly, tightOnly: tightOnly, filter: filter)
+                                  liveOnly: liveOnly, tightOnly: tightOnly, filter: filter,
+                                  groupings: groupings)
         // Bounded, not LRU: the screen asks for the shown day and, mid-swipe,
         // one neighbour, so a handful of live keys is the whole working set
         // and dropping everything on overflow costs one rebuild each.
@@ -496,6 +502,7 @@ final class LeagueScoreboards {
         let liveOnly: Bool
         let tightOnly: Bool
         let filter: ScoreFilter?
+        let groupings: [League: SlateGrouping]
         let revisions: [Int]
     }
 
@@ -512,7 +519,8 @@ final class LeagueScoreboards {
                                followedTables: [FollowedTable],
                                liveOnly: Bool,
                                tightOnly: Bool,
-                               filter: ScoreFilter?) -> [GameSection] {
+                               filter: ScoreFilter?,
+                               groupings: [League: SlateGrouping]) -> [GameSection] {
         var following: [Game] = []
         // Per league, the games the stack is allowed to show. Following is
         // claimed before the filter narrows anything, so a followed team
@@ -540,9 +548,10 @@ final class LeagueScoreboards {
         for league in League.displayOrder {
             let games = visible[league] ?? []
             guard !games.isEmpty else { continue }
+            let grouping = groupings[league] ?? .defaultValue(for: league)
             stack += league == .collegeFootball
-                ? collegeSections(from: games, in: league)
-                : proSections(from: games, in: league)
+                ? collegeSections(from: games, in: league, grouping: grouping)
+                : proSections(from: games, in: league, grouping: grouping)
         }
 
         // Followed tables lead the stack, in the user's order. One already
@@ -580,21 +589,33 @@ final class LeagueScoreboards {
         return result + hoisted + stack.filter { !hoistedIds.contains($0.id) }
     }
 
-    /// A pro league's slate: the league whole, then each conference with a
-    /// game, A–Z — NFL, AFC, NFC (Andy, 2026-09-26, reversing the
-    /// one-section-per-league shape). Conferences are the floor: a
-    /// division is a breakdown *inside* its conference's page, never a
-    /// section of its own, which is also what keeps an AFC–NFC game to
-    /// three sections rather than the five the 2026-09-09 attempt was
-    /// pulled for.
-    private func proSections(from games: [Game], in league: League) -> [GameSection] {
+    /// A pro league's slate at the rung you chose (Andy, 2026-10-03): the
+    /// league whole, or each conference with a game, or each division,
+    /// A–Z. Exactly one rung — the league section no longer rides on top
+    /// of its conferences (2026-09-26's NFL + AFC + NFC), and a division
+    /// shows only when it's what you asked for, without the league and
+    /// conference copies whose pile-up got the 2026-09-09 attempt pulled.
+    /// A game between two groups is in both.
+    private func proSections(from games: [Game], in league: League,
+                             grouping: SlateGrouping) -> [GameSection] {
         guard !games.isEmpty else { return [] }
+        let rung: Conference.Tier
+        switch grouping {
+        case .league: return [leagueSection(league, games: games)]
+        case .conference: rung = .conference
+        case .division: rung = .division
+        }
         var byGroup: [ConferenceID: [Game]] = [:]
+        var unplaced: [Game] = []
         for game in games {
             let groups = Set([game.home.team.conference, game.away.team.conference]
                 .compactMap { $0 }
                 .flatMap(Conference.chain(for:))
-                .filter { Conference.tier(for: $0.id, in: league) == .conference })
+                .filter { Conference.tier(for: $0.id, in: league) == rung })
+            // A team the registry can't place would otherwise drop its
+            // game off the slate entirely; "Other" catches it, as it does
+            // in college football.
+            if groups.isEmpty { unplaced.append(game) }
             for id in groups {
                 byGroup[id, default: []].append(game)
             }
@@ -609,7 +630,11 @@ final class LeagueScoreboards {
                         logoURL: league.logoURL,
                         table: .conference(id))
         }
-        return [leagueSection(league, games: games)] + groups.sorted { $0.title < $1.title }
+        let sorted = groups.sorted { $0.title < $1.title }
+        guard !unplaced.isEmpty else { return sorted }
+        return sorted + [GameSection(id: GameSection.otherPrefix + league.rawValue,
+                                     title: "Other",
+                                     games: unplaced, league: league, logoURL: league.logoURL)]
     }
 
     /// A league that stands as one section — its whole night at a glance.
@@ -625,9 +650,17 @@ final class LeagueScoreboards {
                         .map { FollowedTable.conference(ConferenceID(league, $0)) })
     }
 
-    /// College football's slate: the Top 25, all of FBS and all of FCS,
-    /// then one section per conference, A–Z, with "Other" last (Andy,
-    /// 2026-09-26, replacing the P4 → G5 → FCS tier order).
+    /// College football's slate: the Top 25, then the rung you chose —
+    /// FBS and FCS by league, or one section per conference, A–Z, with
+    /// "Other" last (Andy, 2026-10-03; the conferences' A–Z order is
+    /// 2026-09-26's, replacing the P4 → G5 → FCS tier order).
+    ///
+    /// FBS and FCS are the sport's leagues, not peers of its conferences,
+    /// so they show only grouped by league. The Top 25 leads either way:
+    /// it cuts across the sport the way Following cuts across your teams,
+    /// and every ranked team is FBS (ESPN's scoreboard ranks are the AP's
+    /// and the CFP's — the FCS slate carries none, probed 2026-10-03), so
+    /// it never competes with a rung.
     ///
     /// A cross-conference game lands in both conferences. "Other" is a
     /// last resort for games no section can claim: an FCS visitor from a
@@ -635,19 +668,21 @@ final class LeagueScoreboards {
     /// only, or they'd pile up in Other as duplicates. The buckets follow
     /// the *slate's* divisions, which since 2026-09-26 are FBS and FCS
     /// both.
-    private func collegeSections(from games: [Game], in league: League) -> [GameSection] {
+    private func collegeSections(from games: [Game], in league: League,
+                                 grouping: SlateGrouping) -> [GameSection] {
         guard !games.isEmpty else { return [] }
-        let umbrellas: [FollowedTable] = [
-            .poll(league),
-            .conference(Conference.divisionRoot(.fbs)),
-            .conference(Conference.divisionRoot(.fcs)),
-        ]
+        let umbrellas: [FollowedTable] = grouping == .conference
+            ? [.poll(league)]
+            : [.poll(league),
+               .conference(Conference.divisionRoot(.fbs)),
+               .conference(Conference.divisionRoot(.fcs))]
         let leading = umbrellas.compactMap { table -> GameSection? in
             let claimed = games.filter(table.matches)
             guard !claimed.isEmpty else { return nil }
             return GameSection(id: table.token, title: table.name, games: claimed,
                                league: league, logoURL: table.logoURL, table: table)
         }
+        guard grouping == .conference else { return leading }
 
         let divisions = store(for: league).divisions
         var byConference: [ConferenceID?: [Game]] = [:]
