@@ -432,6 +432,35 @@
      }
     ]
    },
+   "204": {
+    "source": "https://en.wikipedia.org/wiki/2026_Oregon_State_Beavers_football_team",
+    "staff": [
+     {
+      "name": "Mitch Dahlen",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Ryan Wallace",
+      "role": "Co-offensive coordinator/tight ends"
+     },
+     {
+      "name": "Mike MacIntyre",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Cort Dennison",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Ricky Brumfield",
+      "role": "Special teams coordinator/cornerbacks"
+     },
+     {
+      "name": "Lee Marks",
+      "role": "Associate head coach/running backs"
+     }
+    ]
+   },
    "213": {
     "source": "https://en.wikipedia.org/wiki/2026_Penn_State_Nittany_Lions_football_team",
     "staff": [
@@ -738,6 +767,31 @@
      }
     ]
    },
+   "2483": {
+    "source": "https://en.wikipedia.org/wiki/2026_Oregon_Ducks_football_team",
+    "staff": [
+     {
+      "name": "Drew Mehringer",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Chris Hampton",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Joe Lorig",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Ra'Shaad Samples",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Koa Ka'ai",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
    "25": {
     "source": "https://en.wikipedia.org/wiki/2026_California_Golden_Bears_football_team",
     "staff": [
@@ -850,6 +904,23 @@
      }
     ]
    },
+   "2534": {
+    "source": "https://en.wikipedia.org/wiki/2026_Sam_Houston_Bearkats_football_team",
+    "staff": [
+     {
+      "name": "Zack Patterson",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Freddie Aughtry-Lindsay",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Eric Raisbeck",
+      "role": "Associate head coach/special teams coordinator/slot receivers"
+     }
+    ]
+   },
    "254": {
     "source": "https://en.wikipedia.org/wiki/2026_Utah_Utes_football_team",
     "staff": [
@@ -868,6 +939,10 @@
      {
       "name": "Mark Atuaia",
       "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Ryan Gunderson",
+      "role": "Quarterbacks coach"
      }
     ]
    },
@@ -2468,6 +2543,6 @@
   }
  },
  "license": "Text from Wikipedia, CC BY-SA 4.0",
- "updated": "2026-10-03",
+ "updated": "2026-10-06",
  "version": 1
 }
