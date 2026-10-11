@@ -93,6 +93,7 @@ nonisolated extension Game {
                         away: side(away, score: awayScore, winner: awayWinner),
                         broadcast: broadcast)
         copy.line = line
+        copy.isConferenceGame = isConferenceGame
         return copy
     }
 

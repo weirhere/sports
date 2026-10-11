@@ -168,6 +168,10 @@ nonisolated struct CompetitionDTO: Decodable {
     // `ESPNDate.parseKickoff` on the way into `Game`.
     let timeValid: Bool?
     let neutralSite: Bool?
+    /// Whether the two teams belong to the same conference — ESPN's own
+    /// answer to the question `Conference`'s hand-written division tables
+    /// currently derive.
+    let conferenceCompetition: Bool?
     let broadcast: String?
     let broadcasts: [BroadcastDTO]?
     let competitors: [CompetitorDTO]?
@@ -183,6 +187,37 @@ nonisolated struct CompetitionDTO: Decodable {
     /// The pre-game line, one entry per provider. Present on pre-game
     /// events and gone from finals (probed 2026-09-24, 0 of 76).
     let odds: LossyArray<OddsDTO>?
+    /// How long a game is. Lean here — just `regulation.periods`, verified
+    /// against the NFL, NBA and NHL scoreboard fixtures; the summary's own
+    /// top-level `format` (`SummaryResponseDTO.format`) is the fuller
+    /// version with `clock`/`overtime`/`suddenDeath`.
+    let format: FormatDTO?
+}
+
+/// How long a game runs before it can end — `PeriodLabel`'s per-league
+/// branches and `League.periodFormat`'s hand-written regulation counts are
+/// exactly this, stated by the payload instead of guessed.
+nonisolated struct FormatDTO: Decodable {
+    let regulation: RegulationFormatDTO?
+    let overtime: OvertimeFormatDTO?
+    let suddenDeath: SuddenDeathFormatDTO?
+}
+
+nonisolated struct RegulationFormatDTO: Decodable {
+    let periods: Int?
+    let displayName: String?
+    let slug: String?
+    let clock: Double?
+}
+
+nonisolated struct OvertimeFormatDTO: Decodable {
+    let displayName: String?
+    let slug: String?
+    let clock: Double?
+}
+
+nonisolated struct SuddenDeathFormatDTO: Decodable {
+    let periods: Int?
 }
 
 nonisolated struct OddsDTO: Decodable {
@@ -494,6 +529,12 @@ nonisolated struct SummaryResponseDTO: Decodable {
     let injuries: LossyArray<SummaryTeamInjuriesDTO>?
     /// The NHL's live lineup, one entry per team, by athlete id.
     let onIce: LossyArray<OnIceTeamDTO>?
+    /// How long this game runs — top-level on `/summary`, not nested under
+    /// `header.competitions[]` (verified across the NBA, NHL and football
+    /// summary fixtures: `clock` in seconds, `overtime` and `suddenDeath`
+    /// all live here, where the scoreboard's leaner `CompetitionDTO.format`
+    /// carries only `regulation.periods`).
+    let format: FormatDTO?
 }
 
 nonisolated struct SummaryTeamInjuriesDTO: Decodable {
@@ -785,6 +826,7 @@ nonisolated struct HeaderCompetitionDTO: Decodable {
     let date: String?
     let status: StatusDTO?
     let competitors: [HeaderCompetitorDTO]?
+    let conferenceCompetition: Bool?
 }
 
 nonisolated struct HeaderCompetitorDTO: Decodable {

@@ -988,7 +988,8 @@ nonisolated enum ESPNMapper {
             // honest instead of rendering an empty TV line.
             broadcast: nonEmpty(competition.broadcast)
                 ?? nonEmpty(broadcastName(from: competition.broadcasts)),
-            line: competition.odds?.elements.first.flatMap(line(from:))
+            line: competition.odds?.elements.first.flatMap(line(from:)),
+            isConferenceGame: competition.conferenceCompetition
         )
     }
 
@@ -1862,7 +1863,16 @@ nonisolated enum ESPNMapper {
                 predictor: dto.predictor.map { ($0.homeTeam?.gameProjection?.value,
                                                 $0.awayTeam?.gameProjection?.value) },
                 series: dto.winprobability?.elements.compactMap(\.homeWinPercentage) ?? []),
-            article: dto.article.flatMap { NewsMapper.story(from: $0, league: league) }
+            article: dto.article.flatMap { NewsMapper.story(from: $0, league: league) },
+            isConferenceGame: competition?.conferenceCompetition,
+            periodFormat: dto.format.map { format in
+                GamePeriodFormat(
+                    regulationPeriods: format.regulation?.periods,
+                    regulationClockSeconds: format.regulation?.clock,
+                    overtimeClockSeconds: format.overtime?.clock,
+                    suddenDeathPeriods: format.suddenDeath?.periods
+                )
+            }
         )
     }
 
