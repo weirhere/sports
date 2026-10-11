@@ -1863,6 +1863,7 @@ nonisolated enum ESPNMapper {
                 // No headers, nothing to align stats against.
                 let columns = group.labels ?? []
                 guard !columns.isEmpty else { return nil }
+                let descriptions = group.descriptions ?? []
 
                 let players = (group.athletes?.elements ?? []).compactMap { row -> BoxScore.Player? in
                     // Trimmed: ESPN names the "Team" line " Team", and the
@@ -1905,6 +1906,7 @@ nonisolated enum ESPNMapper {
                     id: name,
                     label: categoryLabel(name: name, text: group.text, team: entry.team),
                     columns: columns,
+                    columnDescriptions: descriptions.count == columns.count ? descriptions : [],
                     players: players,
                     totals: totals.count == columns.count ? totals : [])
             }
