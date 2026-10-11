@@ -356,9 +356,24 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
         let id: String          // ESPN's group name: "passing", "kickReturns"
         let label: String       // "Passing", "Kick Returns"
         let columns: [String]   // "C/ATT", "YDS", "AVG", ...
+        /// Plain-English meaning of each column ("Yards Per Pass Attempt"
+        /// for "AVG"), positionally paired with `columns`. Empty when
+        /// ESPN's `descriptions[]` didn't match the header count. Decoded
+        /// for VoiceOver; `BoxScoreList` doesn't read this yet.
+        let columnDescriptions: [String]
         let players: [Player]
         /// ESPN's team totals row. Empty when it doesn't match `columns`.
         let totals: [String]
+
+        /// The accessibility label for the column at `index` — its plain
+        /// English meaning when ESPN sent one, else its terse header.
+        func columnAccessibilityLabel(at index: Int) -> String? {
+            guard columns.indices.contains(index) else { return nil }
+            if columnDescriptions.indices.contains(index) {
+                return columnDescriptions[index]
+            }
+            return columns[index]
+        }
     }
 
     let teamId: String

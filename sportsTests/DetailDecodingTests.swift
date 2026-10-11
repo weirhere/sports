@@ -245,6 +245,13 @@ private func fixture(_ name: String) throws -> Data {
         // The team-name prefix comes off ESPN's "Miami Passing".
         #expect(passing.label == "Passing")
         #expect(passing.totals.count == passing.columns.count)
+        // Plain-English column meanings, positionally paired with the
+        // terse headers, for VoiceOver — not drawn by any view yet.
+        #expect(passing.columnDescriptions == [
+            "Completions/Attempts", "Yards", "Yards Per Pass Attempt",
+            "Touchdowns", "Interceptions", "Adjusted QBR",
+        ])
+        #expect(passing.columnAccessibilityLabel(at: 2) == "Yards Per Pass Attempt")
 
         let defensive = try #require(box.categories.first { $0.id == "defensive" })
         #expect(defensive.players.count == 16)
@@ -306,6 +313,27 @@ private func fixture(_ name: String) throws -> Data {
         #expect(players.map(\.isTeam) == [false, true])
         // ESPN pads it: " Team".
         #expect(players.last?.name == "Team")
+    }
+
+    /// A `descriptions[]` that doesn't match the header count is dropped
+    /// the same way `totals` is — and the accessibility label falls back
+    /// to the terse header rather than reading nothing.
+    @Test func boxScoreDropsMisalignedDescriptions() throws {
+        let json = Data("""
+        {"players": [{
+          "team": {"id": "1", "displayName": "Test Team"},
+          "statistics": [{
+            "name": "passing", "labels": ["C/ATT", "YDS"],
+            "descriptions": ["Completions/Attempts"],
+            "athletes": [{"athlete": {"id": "a", "displayName": "Thrower"}, "stats": ["10/14", "118"]}]
+          }]
+        }]}
+        """.utf8)
+        let dto = try JSONDecoder().decode(BoxscoreDTO.self, from: json)
+        let category = try #require(ESPNMapper.boxScore(from: dto).first?.categories.first)
+        #expect(category.columnDescriptions.isEmpty)
+        #expect(category.columnAccessibilityLabel(at: 0) == "C/ATT")
+        #expect(category.columnAccessibilityLabel(at: 5) == nil)
     }
 
     /// A totals row that doesn't match the header is dropped the same way,

@@ -794,6 +794,9 @@ nonisolated struct BoxscorePlayerGroupDTO: Decodable {
     let name: String?       // "passing"
     let text: String?       // "Miami Passing" — team name prefixed
     let labels: [String]?   // the column headers, live-vs-final variable
+    /// Plain-English column meanings ("Yards Per Pass Attempt" beside
+    /// "AVG"), positionally paired with `labels`.
+    let descriptions: [String]?
     let totals: [String]?
     let athletes: LossyArray<BoxscoreAthleteDTO>?
 }
