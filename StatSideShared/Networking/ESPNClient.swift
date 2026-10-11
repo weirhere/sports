@@ -1325,7 +1325,13 @@ nonisolated enum ESPNMapper {
             avgPointsFor: stat("avgpointsfor")?.value,
             avgPointsAgainst: stat("avgpointsagainst")?.value,
             gamesAhead: stat("gamesahead")?.displayValue,
-            leagueWinPercent: stat("leaguewinpercent")?.value,
+            // ESPN's own `value` is sometimes missing where `displayValue`
+            // isn't (a college football standings response has been seen
+            // shipping `leaguewinpercent` with no `value` at all) — the
+            // same "the number, however it arrives" leniency `record`
+            // already gives the string columns.
+            leagueWinPercent: stat("leaguewinpercent")?.value
+                ?? stat("leaguewinpercent")?.displayValue.flatMap(Double.init),
             regulationWins: stat("regwins")?.value.map(Int.init),
             regulationOvertimeWins: stat("rotwins")?.value.map(Int.init),
             shootoutWins: stat("shootoutwins")?.value.map(Int.init)

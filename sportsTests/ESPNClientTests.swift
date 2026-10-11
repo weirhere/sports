@@ -339,7 +339,10 @@ private func fixture(_ name: String) throws -> Data {
     @Test func decodesRecordAgainstRankedTeams() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("standings-live"))
         let tables = ESPNMapper.conferenceStandings(from: dto)
-        let american = try #require(tables.first { $0.name == "American Conference" })
+        // The registry's own display name for group 151 is "American"
+        // (`Team.swift`), not the payload's "American Conference" — the
+        // id is the stable handle.
+        let american = try #require(tables.first { $0.id == 151 })
         let uab = try #require(american.entries.first { $0.team.location == "UAB" })
         #expect(uab.vsRankedTeams == "0-0")
     }
