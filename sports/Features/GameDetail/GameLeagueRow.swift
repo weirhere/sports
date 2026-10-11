@@ -14,30 +14,38 @@ import SwiftUI
 /// badges are the tables this game appears in, and both sides share one.
 struct GameLeagueRow: View {
     let league: League
-    let destinations: [ConferenceDestination]
+    let badges: [Badge]
+
+    /// One badge: what it says, and the page it opens. The two differ for
+    /// a pro side — the badge names the team's division, the page is the
+    /// conference above it — so they're carried separately rather than
+    /// letting the label stand in as the page's title.
+    struct Badge: Hashable {
+        let title: String
+        let destination: ConferenceDestination
+    }
 
     /// The tables above this game, widest first: a pro league's
     /// whole-league one or the college-football division its teams play
-    /// in, then the conference each side plays in. Empty where neither
-    /// side can be placed — an unknown group gets no page, so the row
-    /// doesn't render at all rather than wearing a dead badge.
-    static func destinations(for game: Game) -> [ConferenceDestination] {
-        var tables: [ConferenceDestination] = []
+    /// in, then the group each side plays in. Empty where neither side can
+    /// be placed — an unknown group gets no page, so the row doesn't
+    /// render at all rather than wearing a dead badge.
+    static func badges(for game: Game) -> [Badge] {
+        var badges: [Badge] = []
         if let league = leagueTable(for: game) {
-            tables.append(league)
+            badges.append(Badge(title: league.name, destination: league))
         }
         for team in [game.away.team, game.home.team] {
             guard let id = conference(of: team) else { continue }
-            let label = groupName(of: team)
+            let title = groupName(of: team) ?? Conference.name(for: id)
             // Deduped on the *label*, not the conference: two AFC teams
-            // from different divisions are two badges now, where one
+            // from different divisions are two badges, where one
             // conference was one badge. A divisional game still collapses
             // to one, which is the rule this row already had.
-            guard !tables.contains(where: { $0.name == (label ?? Conference.name(for: id)) })
-            else { continue }
-            tables.append(named(id, labelled: label))
+            guard !badges.contains(where: { $0.title == title }) else { continue }
+            badges.append(Badge(title: title, destination: named(id, anchoring: team)))
         }
-        return tables
+        return badges
     }
 
     private static func leagueTable(for game: Game) -> ConferenceDestination? {
@@ -87,14 +95,15 @@ struct GameLeagueRow: View {
         ConferenceDestination(conference: id, name: Conference.name(for: id))
     }
 
-    /// The badge says the division and the link still goes to the
-    /// conference, because a division has no page of its own — `ConferencePage`
-    /// renders the NFL's eight *inside* a conference, and its own
-    /// `isDivisionRoot` means FBS/FCS rather than AFC East. The table you
-    /// land on therefore contains the one the badge named, which is why the
-    /// label and the destination are allowed to differ here.
-    private static func named(_ id: ConferenceID, labelled label: String?) -> ConferenceDestination {
-        ConferenceDestination(conference: id, name: label ?? Conference.name(for: id))
+    /// The badge says the division and the link goes to the conference,
+    /// because a division has no page of its own (2026-09-26) — the AFC's
+    /// page stacks its four. The page is titled by what it *is* ("AFC"),
+    /// and anchors on this side's row so it lands on the division the
+    /// badge named: TeamPage's group badge, same rule. Titling it by the
+    /// badge put "AFC West" over all four AFC divisions (Andy, 2026-10-11).
+    private static func named(_ id: ConferenceID, anchoring team: Team) -> ConferenceDestination {
+        ConferenceDestination(conference: id, name: Conference.name(for: id),
+                              highlightTeamId: team.id)
     }
 
     var body: some View {
@@ -106,8 +115,8 @@ struct GameLeagueRow: View {
             // line at every text size, so the badges wrap rather than
             // truncating a name the badge exists to say.
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: Spacing.sm) { badges }
-                VStack(alignment: .leading, spacing: Spacing.xs) { badges }
+                HStack(spacing: Spacing.sm) { badgeLinks }
+                VStack(alignment: .leading, spacing: Spacing.xs) { badgeLinks }
             }
             Spacer(minLength: 0)
         }
@@ -116,13 +125,13 @@ struct GameLeagueRow: View {
     }
 
     @ViewBuilder
-    private var badges: some View {
-        ForEach(destinations, id: \.self) { destination in
-            NavigationLink(value: destination) {
-                HeaderLinkBadge(title: destination.name)
+    private var badgeLinks: some View {
+        ForEach(badges, id: \.self) { badge in
+            NavigationLink(value: badge.destination) {
+                HeaderLinkBadge(title: badge.title)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(destination.name)
+            .accessibilityLabel(badge.title)
             .accessibilityHint("View standings")
         }
     }
