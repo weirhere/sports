@@ -30,6 +30,9 @@ Alternates:
 - `Live scores for your teams` (26) — says what the app does, not what it
   covers
 
+Audited at 2.8.0 and unchanged. Slate grouping and the header color are
+ways of showing the same sports, not new ones.
+
 Audited at 2.7.0 and unchanged. News and coach pages are new surfaces,
 not a new sport, and the subtitle names sports. `news` went into the
 keywords instead, where it costs nothing visible.
@@ -64,6 +67,33 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.8.0 (build 23)
+
+> • Split up Scores your way. Settings has a Group games by row for each
+>   league: one section for the whole league, or a section per conference or
+>   division. The pro leagues start as one section each, so a game doesn't
+>   show up three times before you get to your teams. College football still
+>   splits by conference.
+> • Player and coach pages wear their team's color in light mode, the same
+>   as team pages.
+> • Team colors are there the moment a page opens, not a beat later. And the
+>   colored header slides in with the page, all in one piece.
+> • The Career tab lists the newest season first. A Seasons / Teams switch
+>   adds up a player's numbers at each team, and tapping a team opens its
+>   page. Coach careers link their teams too.
+> • Box scores have headshots and a little more room. The Team line shows the
+>   team's logo and doesn't open an empty player page anymore.
+> • With Live on, an empty Following section says "No ongoing games" instead
+>   of "No games today" when your team plays later.
+> • Fixed: on a pro game page, tapping a team's division opened its
+>   conference with the division's name as the title. The page is titled by
+>   the conference now, and it lands on that team's division.
+
+2.7.0 (22) was live or in review before this cut, so these notes cover only
+what's new since it. Eleven of the 19 iOS commits since the 2.7.0 bump are
+decode-only groundwork (ESPN fields read, nothing drawn) and have no line
+here. Nothing here names a league (§ 4.1(a) rejection).
 
 ### 2.7.0 (build 22)
 
@@ -439,6 +469,8 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.8.0 and left alone. Nothing 2.8.0 changes is in the line.
+
 Audited at 2.7.0 and left alone. Every clause is still true, and the bell
 sheet made "a reminder 30 minutes before they play" more true, not less. A
 News line would be a fair swap later (no review needed), but it would cost
@@ -471,9 +503,9 @@ leagues ever stop being the thing worth saying first; no review needed.
 > BUILT FOR GAME DAY, ALL YEAR
 > • Your teams first: follow any team in any of the four leagues and their
 >   games lead the page, together
-> • One day at a time, every league stacked — college football broken down
->   the way you think about it, by conference, and pro football, basketball
->   and hockey each in a section of their own
+> • One day at a time, every league stacked, and each one split the way you
+>   want it — one section for the whole league, or a section per conference
+>   or division
 > • Live games get a pulsing dot, heavier type on the score, and possession
 >   where the sport has it
 > • One tap filters to live games, or to the tight ones: close late, or the
@@ -526,6 +558,14 @@ and pro conference and division, where it used to list the FBS, FCS, AFC,
 NFC, NBA and NHL), and the disclaimer. The disclaimer used to name the
 NFL, NBA, NHL and NCAA; it still disclaims every one of them, it just
 doesn't print their marks to do it. Features are untouched.
+
+Changed for 2.8.0, in one place: the "every league stacked" bullet. It
+described a fixed split (college by conference, each pro league one
+section), and 2.8.0 makes the split a per-league choice in Settings. The
+player/coach header color, the Career tab's Teams view and box-score
+headshots are refinements of surfaces already listed. DESIGNED QUIET still
+doesn't name the light-mode team-color headers; it didn't at 2.7.0 either,
+when team pages already had them, and it lists what's in color, not where.
 
 Changed for 2.7.0, in five places. YOUR TEAMS gains a News bullet (the
 release's headline, and the one tab a reader can't infer from "scores"),
@@ -585,6 +625,9 @@ data" paragraph is unchanged, because nothing in this release collects any.
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
 `college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops,news` (100)
+
+Audited at 2.8.0 and unchanged. At 100 of 100 a term in has to push one
+out, and nothing 2.8.0 adds is something people search for.
 
 **Changed for 2.7.0: `news` in**, the five spare characters exactly. It's
 the release's headline and a word people do type into store search, and
@@ -815,6 +858,22 @@ Resolution Center reply).
 exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
 `docs/social/README.md` § Regenerating before upload if the glyphs need to
 match frames 02–07 exactly.
+
+### 2.8.0: carried forward a seventh time
+
+Nothing in the frames became false, and the slate frames happen to match
+2.8.0's defaults: `01-hero` shows college football split by conference, and
+`04-week` shows a pro football Sunday as one league section. No frame shows
+a player or coach page in light mode. Same constraints as 2.7.0 for any
+reshoot: `-screenshot.neutralLogos YES`, and a light-mode entity page now
+puts a team's color in the frame, which is worth a look before shooting one.
+
+One thing found at this cut and not acted on: the PNGs in
+`screenshots-marketing-1284x2778/` still show real logos and league names
+(the NFL section header, a conference badge, the poll's name), so they are
+not the gray-disc set that cleared the second 4.1(a) rejection. Whatever
+went up to ASC, this folder isn't it. Replace them before they're ever
+re-uploaded.
 
 ### 2.7.0: carried forward a sixth time
 
@@ -1061,6 +1120,17 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.8.0: no change to the paste-in block; the timing note
+above is stale.** 2.8.0 adds no entitlement, account, data collection or
+web view. Slate grouping is a Settings row, and the header color is drawing.
+The reviewer-timing note above said the NBA and NHL open in late October:
+by this cut (2026-10-11) the NHL regular season is on (14 games on
+2026-10-10) and the NBA is in its preseason. If Andy wants a timing line in
+the submission, it's now: *"Hockey is in season; the basketball regular
+season opens later in October, so its slates may show preseason games or
+none."* Demo path for the release: Games → the gear → Group games by → set
+any pro league to Division.
 
 **Notes audit at 2.7.0: no change to the paste-in block.** 2.7.0 adds no
 entitlement, account or data collection. "No web views anywhere" is still
