@@ -312,6 +312,41 @@ private func fixture(_ name: String) throws -> Data {
         #expect(sec.entries.count == 3)
     }
 
+    /// `leaguewinpercent` is college football's too, not just the NBA's —
+    /// Ole Miss's entry here carries it alongside `vsconf`.
+    @Test func decodesLeagueWinPercent() throws {
+        let sec = try #require(try standings().first { $0.id == 8 })
+        let oleMiss = try #require(sec.entries.first { $0.team.location == "Ole Miss" })
+        #expect(oleMiss.leagueWinPercent == 0.875)
+        #expect(oleMiss.value(for: StandingsColumn(
+            field: .leagueWinPercent, caption: "LPCT", spoken: "league win percentage", width: 40
+        )) == ".875")
+    }
+
+    /// A stat with no matching entry degrades the column, same as every
+    /// other optional one — Georgia's stats array here has no
+    /// `leaguewinpercent`.
+    @Test func missingLeagueWinPercentDegradesTheColumn() throws {
+        let sec = try #require(try standings().first { $0.id == 8 })
+        let georgia = try #require(sec.entries.first { $0.team.location == "Georgia" })
+        #expect(georgia.leagueWinPercent == nil)
+    }
+
+    /// `vsaprankedteams` is college football's record against ranked
+    /// opponents, and its exact `type` string must not be confused with
+    /// the per-split variants ESPN prefixes with it ("vsaprankedteams_wins"
+    /// and friends) — the lookup is an exact match.
+    @Test func decodesRecordAgainstRankedTeams() throws {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("standings-live"))
+        let tables = ESPNMapper.conferenceStandings(from: dto)
+        // The registry's own display name for group 151 is "American"
+        // (`Team.swift`), not the payload's "American Conference" — the
+        // id is the stable handle.
+        let american = try #require(tables.first { $0.id == 151 })
+        let uab = try #require(american.entries.first { $0.team.location == "UAB" })
+        #expect(uab.vsRankedTeams == "0-0")
+    }
+
     @Test func emptyConferenceIsKeptForTheStandingsPage() throws {
         // Offseason quirk (Sun Belt, 2026-07-20): zero entries. The browse
         // mapper drops it; the standings mapper must keep it so the page

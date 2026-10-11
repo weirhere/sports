@@ -354,6 +354,36 @@ private func fixture(_ name: String) throws -> Data {
         }
     }
 
+    /// Decoded but not yet drawn (BACKLOG.md, "Standings stats sitting
+    /// unread in tables we already fetch") — neither league's
+    /// `standingsColumns` carries these yet, so this reads the model
+    /// layer directly instead of going through `league.standingsColumns`
+    /// the way `everyLeaguesColumnsFindTheirNumbers` does.
+    @Test func newlyDecodedStandingsStatsFindTheirNumbers() throws {
+        let nba = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nba-standings"))
+        let nbaLeader = try #require(
+            ESPNMapper.conferenceStandings(from: nba, league: .nba, now: Self.inSeason)
+                .first?.entries.first)
+        #expect(nbaLeader.lastTenGames == "8-2")
+        #expect(nbaLeader.clincher == "z")
+        #expect(nbaLeader.avgPointsFor != nil)
+        #expect(nbaLeader.avgPointsAgainst != nil)
+        #expect(nbaLeader.gamesAhead == "43")
+        #expect(nbaLeader.leagueWinPercent == 0.75)
+
+        let nhl = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nhl-standings"))
+        let nhlLeader = try #require(
+            ESPNMapper.conferenceStandings(from: nhl, league: .nhl, now: Self.inSeason)
+                .first?.entries.first)
+        // Prefers the clean "7-2-1" summary over the displayValue's
+        // "7-2-1, 0 PTS" sentence, same as every other record column.
+        #expect(nhlLeader.lastTenGames == "7-2-1")
+        #expect(nhlLeader.clincher == "z")
+        #expect(nhlLeader.regulationWins == 39)
+        #expect(nhlLeader.regulationOvertimeWins == 48)
+        #expect(nhlLeader.shootoutWins == 5)
+    }
+
     @Test func theNHLRecordIsComposedNotTakenFromTheSummary() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nhl-standings"))
         let table = try #require(ESPNMapper.conferenceStandings(from: dto, league: .nhl, now: Self.inSeason).first)
