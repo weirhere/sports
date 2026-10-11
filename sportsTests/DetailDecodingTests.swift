@@ -399,4 +399,27 @@ private func fixture(_ name: String) throws -> Data {
         #expect(ESPNMapper.statMagnitude("31:14") == 1874.0)
         #expect(ESPNMapper.statMagnitude("—") == nil)
     }
+
+    @Test func decodesConferenceGameFlagAndPeriodFormat() throws {
+        let summary = try loadSummary()
+        #expect(summary.isConferenceGame == false)
+        let format = try #require(summary.periodFormat)
+        #expect(format.regulationPeriods == 4)
+        #expect(format.regulationClockSeconds == 900.0)
+        #expect(format.suddenDeathPeriods == 0)
+    }
+
+    @Test func winterLeagueSummariesCarryTheirOwnPeriodFormat() throws {
+        let nbaDTO = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let nba = ESPNMapper.gameSummary(from: nbaDTO, league: .nba)
+        let nbaFormat = try #require(nba.periodFormat)
+        #expect(nbaFormat.regulationPeriods == 4)
+        #expect(nbaFormat.regulationClockSeconds == 720.0)
+        #expect(nbaFormat.overtimeClockSeconds == 300.0)
+
+        let nhlDTO = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let nhl = ESPNMapper.gameSummary(from: nhlDTO, league: .nhl)
+        #expect(nhl.periodFormat?.regulationPeriods == 3)
+        #expect(nhl.periodFormat?.regulationClockSeconds == 1200.0)
+    }
 }

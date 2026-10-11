@@ -89,4 +89,17 @@ private func live(_ clock: String?, _ period: Int?, phase: LivePhase = .playing)
         #expect(Game.keepingProgress(board, from: []) == board)
         #expect(Game.keepingProgress(board, from: [game("g9", status: .final(detail: nil), away: 1, home: 0)]) == board)
     }
+
+    /// `withLiveState` rebuilds the struct by hand rather than copying it —
+    /// the same trap `line` fell into before `copy.line = line` was added.
+    /// `isConferenceGame` needs the identical fix or every live tick drops
+    /// it back to nil.
+    @Test func withLiveStateKeepsIsConferenceGame() {
+        var acc = game("g1", status: live("1:56", 4), away: 20, home: 22)
+        acc.isConferenceGame = true
+        let updated = acc.withLiveState(status: live("0:58", 4),
+                                        homeScore: 29, homeWinner: nil,
+                                        awayScore: 20, awayWinner: nil)
+        #expect(updated.isConferenceGame == true)
+    }
 }

@@ -37,6 +37,11 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// only with Betting lines on in Settings, and read by the Tight
     /// filter for who was favored. ESPN drops `odds` from a final.
     var line: GameLine? = nil
+    /// ESPN's own answer to whether the two teams share a conference —
+    /// the scoreboard's `conferenceCompetition`. Decoded, unused: nothing
+    /// reads it in place of `Conference`'s hand-written division tables
+    /// yet (BACKLOG.md).
+    var isConferenceGame: Bool? = nil
 
     var isLive: Bool {
         if case .live = status { return true }

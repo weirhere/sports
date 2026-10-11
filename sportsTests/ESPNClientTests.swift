@@ -59,6 +59,15 @@ private func fixture(_ name: String) throws -> Data {
         #expect(ESPNMapper.scoreboard(from: dto).games.allSatisfy { !$0.timeTBD })
     }
 
+    @Test func mappedGameCarriesIsConferenceGame() throws {
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        let games = ESPNMapper.scoreboard(from: dto).games
+        #expect(games.count > 2)
+        // NCSU @ UVA, the one held fixture event known to be a conference game.
+        #expect(games[2].isConferenceGame == true)
+        #expect(games.first?.isConferenceGame == false)
+    }
+
     @Test func malformedEventIsDroppedNotFatal() throws {
         let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-malformed"))
         let scoreboard = ESPNMapper.scoreboard(from: dto)
@@ -211,6 +220,51 @@ private func fixture(_ name: String) throws -> Data {
         #expect(entries.count == 5)
         #expect(entries.first?.athleteid == "4588165")
         #expect(entries.first?.whereabouts?.description == "In Play")
+    }
+
+    @Test func scoreboardCompetitionCarriesConferenceCompetitionAndRegulationPeriods() throws {
+        // NCSU @ UVA, index 2 of scoreboard-live.json, is the one held
+        // fixture event whose conferenceCompetition is true.
+        let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        let events = try #require(dto.events?.elements)
+        #expect(events.count > 2)
+        let accCompetition = try #require(events[2].competitions?.first)
+        #expect(accCompetition.conferenceCompetition == true)
+        #expect(accCompetition.format?.regulation?.periods == 4)
+
+        let nflCompetition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+                .events?.elements.first?.competitions?.first)
+        #expect(nflCompetition.conferenceCompetition == false)
+        #expect(nflCompetition.format?.regulation?.periods == 4)
+
+        let nhlCompetition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nhl-scoreboard"))
+                .events?.elements.first?.competitions?.first)
+        #expect(nhlCompetition.format?.regulation?.periods == 3)
+    }
+
+    @Test func summaryTopLevelFormatCarriesClockAndOvertimeAndSuddenDeath() throws {
+        let nba = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        #expect(nba.format?.regulation?.periods == 4)
+        #expect(nba.format?.regulation?.clock == 720.0)
+        #expect(nba.format?.overtime?.clock == 300.0)
+
+        let nhl = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        #expect(nhl.format?.regulation?.periods == 3)
+        #expect(nhl.format?.regulation?.clock == 1200.0)
+
+        // Football's own summary names a sudden-death period count, zero
+        // in this fixture — carried as-is rather than read as "no sudden
+        // death exists in this league", which a single fixture can't prove.
+        let football = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
+        #expect(football.format?.overtime?.slug == "untimed")
+        #expect(football.format?.suddenDeath?.periods == 0)
+    }
+
+    @Test func summaryHeaderCarriesConferenceCompetitionToo() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
+        #expect(dto.header?.competitions?.first?.conferenceCompetition == false)
     }
 }
 

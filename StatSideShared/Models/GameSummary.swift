@@ -63,6 +63,25 @@ nonisolated struct GameSummary: Sendable {
     /// Recap once final (docs/news.md, N2 and N3). Nil for CFBD and every
     /// fixture, and for a live game, whose summary ships none.
     var article: NewsStory? = nil
+    /// ESPN's own answer to whether the two teams share a conference —
+    /// the summary header's `conferenceCompetition`. Decoded, unused.
+    var isConferenceGame: Bool? = nil
+    /// How long this game runs, off the summary's top-level `format`.
+    /// Decoded, unused: `PeriodLabel`'s per-league branches and
+    /// `League.periodFormat`'s hand-written regulation counts still do
+    /// the work this could replace (BACKLOG.md).
+    var periodFormat: GamePeriodFormat? = nil
+}
+
+/// `SummaryResponseDTO.format`, unflattened. `clock` is in seconds;
+/// `suddenDeathPeriods` of 0 is what football's own fixture ships, so a
+/// league that never reaches sudden death and one that hasn't been sampled
+/// yet read identically until more fixtures distinguish them.
+nonisolated struct GamePeriodFormat: Hashable, Sendable {
+    let regulationPeriods: Int?
+    let regulationClockSeconds: Double?
+    let overtimeClockSeconds: Double?
+    let suddenDeathPeriods: Int?
 }
 
 /// Who's likely to win, as ESPN models it. Two shapes, because the payload
