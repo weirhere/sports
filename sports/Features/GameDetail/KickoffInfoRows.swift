@@ -14,7 +14,7 @@ struct KickoffInfoRows: View {
     /// `GameInfoRows.hasVenueContent` precedent.
     static func hasContent(game: Game, summary: GameSummary, showsLines: Bool = false) -> Bool {
         game.date != nil || game.broadcast != nil || !weatherLine(of: summary).isEmpty
-            || !GameLeagueRow.destinations(for: game).isEmpty
+            || !GameLeagueRow.badges(for: game).isEmpty
             || line(game: game, summary: summary, showsLines: showsLines) != nil
     }
 
@@ -35,9 +35,9 @@ struct KickoffInfoRows: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            let tables = GameLeagueRow.destinations(for: game)
+            let tables = GameLeagueRow.badges(for: game)
             if !tables.isEmpty {
-                GameLeagueRow(league: game.home.team.league, destinations: tables)
+                GameLeagueRow(league: game.home.team.league, badges: tables)
             }
             if let date = game.date {
                 GameInfoLine(symbol: "calendar",
