@@ -17,6 +17,15 @@ nonisolated struct StandingsColumn: Hashable, Sendable, Identifiable {
         case wins, losses, ties
         case homeRecord, awayRecord, divisionRecord
         case pointsFor, pointsAgainst, pointDifferential, streak
+        // Decoded 2026-10-11 (BACKLOG.md, "Standings stats sitting unread
+        // in tables we already fetch") — not yet in any league's
+        // `standingsColumns` below. Which column set gets which of these,
+        // and whether that pushes the NBA/NHL into
+        // `standingsScrollsHorizontally`, is a design call for a session
+        // with a device, not a mechanical add.
+        case lastTenGames, clincher, vsRankedTeams
+        case avgPointsFor, avgPointsAgainst, gamesAhead, leagueWinPercent
+        case regulationWins, regulationOvertimeWins, shootoutWins
 
         /// Whether the value is a record ("2-0") rather than a number.
         /// Only these get the dash-to-"and" treatment when spoken — a
@@ -24,7 +33,8 @@ nonisolated struct StandingsColumn: Hashable, Sendable, Identifiable {
         var isRecord: Bool {
             switch self {
             case .inGroupRecord, .overallRecord, .winLossOTL,
-                 .homeRecord, .awayRecord, .divisionRecord: true
+                 .homeRecord, .awayRecord, .divisionRecord,
+                 .lastTenGames, .vsRankedTeams: true
             default: false
             }
         }
@@ -170,6 +180,20 @@ nonisolated extension ConferenceStanding {
         case .pointsAgainst: pointsAgainst.map(String.init)
         case .pointDifferential: pointDifferential
         case .streak: streak
+        case .lastTenGames: lastTenGames
+        case .clincher: clincher
+        case .vsRankedTeams: vsRankedTeams
+        case .avgPointsFor: avgPointsFor.map { String(format: "%.1f", $0) }
+        case .avgPointsAgainst: avgPointsAgainst.map { String(format: "%.1f", $0) }
+        case .gamesAhead: gamesAhead
+        // Same zero-dropping treatment as `winPercent` — basketball's
+        // tables never write the leading "0.".
+        case .leagueWinPercent: leagueWinPercent.map {
+            String(format: "%.3f", $0).replacingOccurrences(of: "0.", with: ".")
+        }
+        case .regulationWins: regulationWins.map(String.init)
+        case .regulationOvertimeWins: regulationOvertimeWins.map(String.init)
+        case .shootoutWins: shootoutWins.map(String.init)
         }
     }
 

@@ -46,6 +46,31 @@ nonisolated struct ConferenceStanding: Identifiable, Hashable, Sendable {
     var pointsFor: Int? = nil
     var pointsAgainst: Int? = nil
     var pointDifferential: String? = nil
+    /// The NBA's and NHL's own "L10" record. ESPN's `lasttengames`.
+    var lastTenGames: String? = nil
+    /// The playoff-clinch mark ESPN prints as a single letter ("z", "y",
+    /// "x", "e" — division, conference, playoff berth, elimination) —
+    /// its own display string, not a code this app assigns meaning to.
+    var clincher: String? = nil
+    /// College football's record against ranked opponents. ESPN's
+    /// `vsaprankedteams`; always the AP poll regardless of which poll the
+    /// Rankings tab has picked.
+    var vsRankedTeams: String? = nil
+    /// Points per game, for and against — the NBA's own two columns,
+    /// distinct from the season totals `pointsFor`/`pointsAgainst` above.
+    var avgPointsFor: Double? = nil
+    var avgPointsAgainst: Double? = nil
+    /// ESPN's own display string, mirroring `gamesBehind` — the
+    /// arithmetic is a tiebreaker's, not ours to invent.
+    var gamesAhead: String? = nil
+    /// ESPN's `leaguewinpercent` — win percentage against the *whole*
+    /// league rather than `winPercent`'s in-group number.
+    var leagueWinPercent: Double? = nil
+    /// The NHL's own tiebreakers, ahead of a plain win total: wins in
+    /// regulation, wins in regulation-or-overtime, and shootout wins.
+    var regulationWins: Int? = nil
+    var regulationOvertimeWins: Int? = nil
+    var shootoutWins: Int? = nil
 
     var id: String { team.id }
 }

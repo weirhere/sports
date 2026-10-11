@@ -1318,7 +1318,17 @@ nonisolated enum ESPNMapper {
             // column. `differential` and `pointdifferential` are the
             // same number under two names in every payload we have read.
             pointDifferential: stat("pointdifferential")?.displayValue
-                ?? stat("differential")?.displayValue
+                ?? stat("differential")?.displayValue,
+            lastTenGames: record(stat, "lasttengames"),
+            clincher: stat("clincher")?.displayValue,
+            vsRankedTeams: record(stat, "vsaprankedteams"),
+            avgPointsFor: stat("avgpointsfor")?.value,
+            avgPointsAgainst: stat("avgpointsagainst")?.value,
+            gamesAhead: stat("gamesahead")?.displayValue,
+            leagueWinPercent: stat("leaguewinpercent")?.value,
+            regulationWins: stat("regwins")?.value.map(Int.init),
+            regulationOvertimeWins: stat("rotwins")?.value.map(Int.init),
+            shootoutWins: stat("shootoutwins")?.value.map(Int.init)
         )
     }
 
