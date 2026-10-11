@@ -77,17 +77,23 @@ final class WidgetUITests: XCTestCase {
 
         // The provider fetches each followed league's scoreboard, then
         // renders team lines. The gallery's first page is the medium family
-        // now; both system sizes carry the ★ Following header, and "UGA"
-        // is Georgia's abbreviation in a game row.
+        // now; both system sizes carry the ★ Following header. Either
+        // follow's abbreviation proves a game row rendered: the medium
+        // family shows two rows, and which team owns them is a calendar
+        // fact. (Seen live 2026-10-11: Seattle live that Sunday and again on
+        // Thursday pushed Georgia's Saturday game to the hidden third row,
+        // the mirror of the 2026-09-11 case described below.)
         XCTAssertTrue(springboard.staticTexts["Following"].firstMatch.waitForExistence(timeout: 30),
                       "Widget should render the Following header")
-        let rendered = springboard.staticTexts["UGA"].firstMatch
+        let rendered = springboard.staticTexts
+            .matching(NSPredicate(format: "label IN %@", ["UGA", "SEA"]))
+            .firstMatch
         XCTAssertTrue(rendered.waitForExistence(timeout: 30),
-                      "Widget should render the followed team's game")
+                      "Widget should render a followed team's game")
         // The Seahawks follow above stays deliberately — it exercises the
         // provider's two-league fan-out, and its card on the Teams tab is
-        // asserted. What is *not* asserted here is that the NFL game
-        // reaches the Home Screen, because that encodes a calendar fact
+        // asserted. What is *not* asserted here is that a particular
+        // league's game reaches the Home Screen, because that encodes a calendar fact
         // the gallery's medium family can't honour: medium renders two
         // rows where the provider's limit is four, so whenever a followed
         // college team has two fixtures before the followed NFL team's
@@ -103,8 +109,8 @@ final class WidgetUITests: XCTestCase {
         // Tap-through: the row's link → statside://game/{id}?day=… → game
         // lands in-app. The day is what makes a row the app hasn't loaded
         // openable at all (Andy, 2026-09-07); Georgia's next game is
-        // usually inside the loaded window, so this asserts the path, not
-        // the far-off case.
+        // usually inside the loaded window (and Seattle's, when it's
+        // Seattle's row), so this asserts the path, not the far-off case.
         rendered.tap()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10),
                       "Widget tap should foreground the app")
