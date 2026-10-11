@@ -722,6 +722,27 @@ nonisolated struct PlayDTO: Decodable {
     /// `text` is a full sentence. Basketball and hockey ship it; football's
     /// drive-nested plays don't.
     let shortDescription: String?
+    /// Points or goals this play was worth: the NHL's 1, the NBA's 2 or 3,
+    /// 0 on anything that didn't score. Separate from `scoringPlay` because
+    /// a basketball and-one is one scoring play worth 3.
+    let scoreValue: Int?
+    /// Who was involved, by ESPN's own word for their role — hockey's
+    /// `scorer`/`assister`/`saver`/`face-off-winner`, basketball's bare
+    /// athlete ids with no role at all (every sampled jump ball and shot
+    /// carried none). Football's drive-nested plays don't ship this; the
+    /// flat feed does.
+    let participants: LossyArray<PlayParticipantDTO>?
+}
+
+nonisolated struct PlayParticipantDTO: Decodable {
+    let athlete: AthleteDTO?
+    let type: String?
+    /// The scorer's and the assister's own season tallies, stamped on the
+    /// play that moved them — not a running total anywhere else in the
+    /// payload. Mutually exclusive per sample: a `scorer` carries this,
+    /// an `assister` carries `ytdAssists` instead.
+    let ytdGoals: Int?
+    let ytdAssists: Int?
 }
 
 nonisolated struct PlayCoordinateDTO: Decodable {
