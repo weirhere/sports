@@ -71,6 +71,9 @@ nonisolated struct GameSummary: Sendable {
     /// `League.periodFormat`'s hand-written regulation counts still do
     /// the work this could replace (BACKLOG.md).
     var periodFormat: GamePeriodFormat? = nil
+    /// The summary header's own `broadcasts[]`, same shape as `Game`'s
+    /// scoreboard-sourced `broadcasts`. Decoded, unused.
+    var broadcasts: [GameBroadcast] = []
 }
 
 /// `SummaryResponseDTO.format`, unflattened. `clock` is in seconds;

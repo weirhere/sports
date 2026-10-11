@@ -94,6 +94,7 @@ nonisolated extension Game {
                         broadcast: broadcast)
         copy.line = line
         copy.isConferenceGame = isConferenceGame
+        copy.broadcasts = broadcasts
         return copy
     }
 

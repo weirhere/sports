@@ -102,4 +102,15 @@ private func live(_ clock: String?, _ period: Int?, phase: LivePhase = .playing)
                                         awayScore: 20, awayWinner: nil)
         #expect(updated.isConferenceGame == true)
     }
+
+    /// Same trap, same fix, for `broadcasts` (BACKLOG.md).
+    @Test func withLiveStateKeepsBroadcasts() {
+        var acc = game("g1", status: live("1:56", 4), away: 20, home: 22)
+        acc.broadcasts = [GameBroadcast(kind: "TV", network: "FOX", isNational: true,
+                                        logoURL: nil, darkLogoURL: nil)]
+        let updated = acc.withLiveState(status: live("0:58", 4),
+                                        homeScore: 29, homeWinner: nil,
+                                        awayScore: 20, awayWinner: nil)
+        #expect(updated.broadcasts.first?.network == "FOX")
+    }
 }

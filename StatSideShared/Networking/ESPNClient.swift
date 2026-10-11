@@ -989,7 +989,8 @@ nonisolated enum ESPNMapper {
             broadcast: nonEmpty(competition.broadcast)
                 ?? nonEmpty(broadcastName(from: competition.broadcasts)),
             line: competition.odds?.elements.first.flatMap(line(from:)),
-            isConferenceGame: competition.conferenceCompetition
+            isConferenceGame: competition.conferenceCompetition,
+            broadcasts: geoBroadcasts(from: competition.geoBroadcasts ?? [])
         )
     }
 
@@ -1014,6 +1015,22 @@ nonisolated enum ESPNMapper {
         guard let broadcasts, !broadcasts.isEmpty else { return nil }
         let national = broadcasts.first { $0.market?.lowercased() == "national" }
         return (national ?? broadcasts.first)?.names?.first
+    }
+
+    /// `geoBroadcasts`/the summary header's `broadcasts`, kept apart by
+    /// market rather than flattened into `broadcastName`'s single string.
+    static func geoBroadcasts(from dtos: [GeoBroadcastDTO]) -> [GameBroadcast] {
+        dtos.map { dto in
+            GameBroadcast(
+                kind: dto.type?.shortName,
+                network: dto.media?.shortName,
+                isNational: dto.isNational ?? (dto.market?.type?.lowercased() == "national"),
+                // ESPN sends "" (not nil) for a team with no dark logo yet —
+                // same normalization as `broadcast`'s empty string above.
+                logoURL: nonEmpty(dto.media?.logo).flatMap(URL.init(string:)),
+                darkLogoURL: nonEmpty(dto.media?.darkLogo).flatMap(URL.init(string:))
+            )
+        }
     }
 
     private static func nonEmpty(_ string: String?) -> String? {
@@ -1872,7 +1889,8 @@ nonisolated enum ESPNMapper {
                     overtimeClockSeconds: format.overtime?.clock,
                     suddenDeathPeriods: format.suddenDeath?.periods
                 )
-            }
+            },
+            broadcasts: geoBroadcasts(from: competition?.broadcasts ?? [])
         )
     }
 

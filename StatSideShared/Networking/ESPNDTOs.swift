@@ -174,6 +174,10 @@ nonisolated struct CompetitionDTO: Decodable {
     let conferenceCompetition: Bool?
     let broadcast: String?
     let broadcasts: [BroadcastDTO]?
+    /// The same slate of networks as `broadcasts`, geographically scoped:
+    /// each entry names a market ("National", "Home", "Away") rather than
+    /// flattening them into one string. BACKLOG.md.
+    let geoBroadcasts: [GeoBroadcastDTO]?
     let competitors: [CompetitorDTO]?
     let situation: SituationDTO?
     /// Carries `isTBDFlex`; the event-level status above doesn't.
@@ -238,6 +242,34 @@ nonisolated struct CompetitionNoteDTO: Decodable {
 nonisolated struct BroadcastDTO: Decodable {
     let market: String?
     let names: [String]?
+}
+
+/// `geoBroadcasts[]`'s own entry shape — also the summary header's
+/// `broadcasts[]`, which carries the identical nesting plus `isNational`.
+nonisolated struct GeoBroadcastDTO: Decodable {
+    let type: GeoBroadcastTypeDTO?
+    let market: GeoBroadcastMarketDTO?
+    let media: GeoBroadcastMediaDTO?
+    /// Only the summary header's copy ships this directly; the
+    /// scoreboard's `geoBroadcasts` doesn't, so the mapper derives it from
+    /// `market.type` when this is nil.
+    let isNational: Bool?
+}
+
+nonisolated struct GeoBroadcastTypeDTO: Decodable {
+    /// "TV", "Radio", "Streaming", "Subscription Package".
+    let shortName: String?
+}
+
+nonisolated struct GeoBroadcastMarketDTO: Decodable {
+    /// "National", "Home", "Away".
+    let type: String?
+}
+
+nonisolated struct GeoBroadcastMediaDTO: Decodable {
+    let shortName: String?
+    let logo: String?
+    let darkLogo: String?
 }
 
 nonisolated struct SituationDTO: Decodable {
@@ -827,6 +859,9 @@ nonisolated struct HeaderCompetitionDTO: Decodable {
     let status: StatusDTO?
     let competitors: [HeaderCompetitorDTO]?
     let conferenceCompetition: Bool?
+    /// Same shape as the scoreboard's `geoBroadcasts`, under the summary's
+    /// own key — each entry also ships `isNational` directly.
+    let broadcasts: [GeoBroadcastDTO]?
 }
 
 nonisolated struct HeaderCompetitorDTO: Decodable {
