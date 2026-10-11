@@ -573,6 +573,47 @@ private func fixture(_ name: String) throws -> Data {
         // here — `aFootballSummaryKeepsItsPlaysInItsDrives` covers that.
     }
 
+    /// E10's NHL amendment (2026-10-11): the flat feed's `participants` and
+    /// `scoreValue`, named but not yet decoded. A goal names its scorer and
+    /// assisters with their own season tallies; nothing draws any of it yet.
+    @Test func hockeyGoalsNameTheirScorerAndAssistersWithSeasonTallies() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nhl)
+        let goal = try #require(summary.plays.first { $0.id == "401803303000003620" })
+        #expect(goal.scoreValue == 1)
+        #expect(goal.participants.count == 3)
+        let scorer = try #require(goal.participants.first { $0.role == "scorer" })
+        #expect(scorer.athleteId == "4352750")
+        #expect(scorer.name == "Joel Farabee")
+        #expect(scorer.headshotURL?.absoluteString.contains("4352750") == true)
+        #expect(scorer.seasonGoals == 13)
+        #expect(scorer.seasonAssists == nil)
+        let assisters = goal.participants.filter { $0.role == "assister" }
+        #expect(assisters.map(\.seasonAssists) == [5, 3])
+
+        // A non-scoring play carries a zero scoreValue and its own roles —
+        // a face-off has a winner, not a scorer.
+        let faceoff = try #require(summary.plays.first { $0.id == "401803303000000530" })
+        #expect(faceoff.scoreValue == 0)
+        #expect(faceoff.participants.map(\.role) == ["face-off-winner", nil])
+    }
+
+    /// Basketball's flat feed ships `participants` too, but every sampled
+    /// entry is a bare athlete id — no role, no name, no headshot. The
+    /// model still carries the id; nothing else is there to carry.
+    @Test func basketballParticipantsCarryOnlyAnAthleteId() throws {
+        let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let summary = ESPNMapper.gameSummary(from: dto, league: .nba)
+        let jumpball = try #require(summary.plays.first { $0.id == "4018108714" })
+        #expect(jumpball.participants.map(\.athleteId) == ["4278067", "3136195", "5279130"])
+        #expect(jumpball.participants.allSatisfy { $0.name == nil && $0.role == nil && $0.headshotURL == nil })
+        #expect(jumpball.scoreValue == 0)
+
+        let shot = try #require(summary.plays.first { $0.id == "40181087125" })
+        #expect(shot.scoreValue == 2)
+        #expect(shot.participants.map(\.athleteId) == ["5279130"])
+    }
+
     /// Leaders come from the league's own categories, and a running score
     /// still attributes the side that scored.
     @Test func leadersAndScoringSidesComeThroughForBothLeagues() throws {

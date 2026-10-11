@@ -251,6 +251,29 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// sentence. Nil in football, which has no shorter word for a play
     /// than its down-and-distance line already gives it.
     var shortText: String? = nil
+    /// Points or goals this play was worth. Nil in football, which has no
+    /// such field and scores through `awayScore`/`homeScore` alone.
+    var scoreValue: Int? = nil
+    /// Who was involved, in flat-feed leagues only — empty in football,
+    /// whose drive-nested plays carry no `participants` block.
+    var participants: [PlayParticipant] = []
+}
+
+/// One person named on a play, by ESPN's own word for what they did.
+/// Basketball ships bare athlete ids and no role; hockey names every
+/// shooter, scorer, assister and goalie.
+nonisolated struct PlayParticipant: Hashable, Sendable {
+    let athleteId: String?
+    let name: String?
+    let headshotURL: URL?
+    /// ESPN's own word — "scorer", "assister", "shooter", "saver",
+    /// "face-off-winner" — nil where ESPN sent none (every sampled
+    /// basketball participant).
+    let role: String?
+    /// The scorer's or assister's own season tally as of this play, where
+    /// ESPN sent one. Never both on the same participant.
+    let seasonGoals: Int?
+    let seasonAssists: Int?
 }
 
 /// A spot in ESPN's own coordinate space, feet. What each axis means is

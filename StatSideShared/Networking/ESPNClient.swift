@@ -1691,7 +1691,25 @@ nonisolated enum ESPNMapper {
                 isPenalty: play.isPenalty ?? false,
                 isKeyPlay: play.priority ?? false,
                 yardage: play.statYardage?.value,
-                shortText: play.shortDescription
+                shortText: play.shortDescription,
+                scoreValue: play.scoreValue,
+                participants: participants(from: play.participants?.elements ?? [])
+            )
+        }
+    }
+
+    /// A play's named participants, by role. Nil where ESPN gave no name
+    /// or headshot at all, which is every basketball sample — the athlete
+    /// id still carries.
+    static func participants(from dtos: [PlayParticipantDTO]) -> [PlayParticipant] {
+        dtos.map { dto in
+            PlayParticipant(
+                athleteId: dto.athlete?.id,
+                name: dto.athlete?.displayName,
+                headshotURL: dto.athlete?.headshot?.href.flatMap(URL.init(string:)),
+                role: dto.type,
+                seasonGoals: dto.ytdGoals,
+                seasonAssists: dto.ytdAssists
             )
         }
     }
