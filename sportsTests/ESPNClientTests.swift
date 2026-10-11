@@ -266,6 +266,87 @@ private func fixture(_ name: String) throws -> Data {
         let dto = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
         #expect(dto.header?.competitions?.first?.conferenceCompetition == false)
     }
+
+    /// BACKLOG.md: "`geoBroadcasts` separates national from local;
+    /// `broadcast` flattens both into one string." Three leagues, three
+    /// market shapes: the NHL leads with a national stream and a home
+    /// regional, the NFL ships one national feed, the NBA ships two
+    /// market-local feeds and no national one at all.
+    @Test func scoreboardGeoBroadcastsSplitNationalFromLocal() throws {
+        let nhlCompetition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nhl-scoreboard"))
+                .events?.elements.first?.competitions?.first)
+        let nhlBroadcasts = ESPNMapper.geoBroadcasts(from: nhlCompetition.geoBroadcasts ?? [])
+        #expect(nhlBroadcasts.count == 2)
+        let national = try #require(nhlBroadcasts.first { $0.isNational })
+        #expect(national.network == "ESPN+")
+        #expect(national.kind == "Streaming")
+        #expect(national.logoURL?.absoluteString.hasSuffix("default.png") == true)
+        #expect(nhlBroadcasts.contains { $0.network == "MSG" && !$0.isNational })
+
+        let nflCompetition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+                .events?.elements.first?.competitions?.first)
+        let nflBroadcasts = ESPNMapper.geoBroadcasts(from: nflCompetition.geoBroadcasts ?? [])
+        #expect(nflBroadcasts.count == 1)
+        #expect(nflBroadcasts.first?.network == "NBC")
+        #expect(nflBroadcasts.first?.isNational == true)
+
+        let nbaCompetition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nba-scoreboard"))
+                .events?.elements.first?.competitions?.first)
+        let nbaBroadcasts = ESPNMapper.geoBroadcasts(from: nbaCompetition.geoBroadcasts ?? [])
+        #expect(nbaBroadcasts.count == 2)
+        #expect(nbaBroadcasts.allSatisfy { !$0.isNational })
+    }
+
+    /// ESPN sends `""` (not nil) for a network's dark logo before one is
+    /// published — the same normalization `broadcast`'s empty string
+    /// already gets, extended to `geoBroadcasts`' nested logo fields.
+    @Test func geoBroadcastEmptyDarkLogoDecodesToNilRatherThanAnEmptyURL() throws {
+        let competition = try #require(
+            try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+                .events?.elements.first?.competitions?.first)
+        let broadcasts = ESPNMapper.geoBroadcasts(from: competition.geoBroadcasts ?? [])
+        let espn = try #require(broadcasts.first)
+        #expect(espn.network == "ESPN")
+        #expect(espn.logoURL != nil)
+        #expect(espn.darkLogoURL == nil)
+    }
+
+    /// The summary header's `broadcasts[]` ships `isNational` on every
+    /// entry directly, rather than leaving it to be derived from
+    /// `market.type` the way the scoreboard's `geoBroadcasts` does.
+    @Test func summaryHeaderBroadcastsCarryIsNationalDirectly() throws {
+        let nba = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let nbaBroadcasts = ESPNMapper.geoBroadcasts(
+            from: nba.header?.competitions?.first?.broadcasts ?? [])
+        #expect(nbaBroadcasts.count == 3)
+        #expect(nbaBroadcasts.allSatisfy { !$0.isNational })
+        #expect(nbaBroadcasts.contains {
+            $0.network == "NBA League Pass" && $0.kind == "Subscription Package"
+        })
+
+        let cfb = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("cfb-summary-pregame"))
+        let cfbBroadcasts = ESPNMapper.geoBroadcasts(
+            from: cfb.header?.competitions?.first?.broadcasts ?? [])
+        #expect(cfbBroadcasts.count == 1)
+        #expect(cfbBroadcasts.first?.isNational == true)
+    }
+
+    /// End to end: `Game` and `GameSummary` both carry the mapped list,
+    /// not just the DTO layer.
+    @Test func gameAndGameSummaryCarryTheirMappedBroadcasts() throws {
+        let scoreboard = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+        let event = try #require(scoreboard.events?.elements.first)
+        let game = try #require(ESPNMapper.game(from: event, league: .nfl))
+        #expect(game.broadcasts.count == 1)
+        #expect(game.broadcasts.first?.network == "NBC")
+
+        let summary = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let gameSummary = ESPNMapper.gameSummary(from: summary, league: .nba)
+        #expect(gameSummary.broadcasts.count == 3)
+    }
 }
 
 @Suite struct LivePhaseMappingTests {

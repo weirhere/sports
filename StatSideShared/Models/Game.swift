@@ -42,6 +42,10 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// reads it in place of `Conference`'s hand-written division tables
     /// yet (BACKLOG.md).
     var isConferenceGame: Bool? = nil
+    /// The scoreboard's `geoBroadcasts` — the same slate `broadcast`
+    /// flattens into one string, kept apart by market. Decoded, unused:
+    /// `broadcast` is still every row's only network line (BACKLOG.md).
+    var broadcasts: [GameBroadcast] = []
 
     var isLive: Bool {
         if case .live = status { return true }
@@ -167,6 +171,25 @@ nonisolated enum LivePhase: Hashable, Sendable {
     case playing
     case halftime
     case endOfPeriod
+}
+
+/// One network carrying a game, geographically scoped — ESPN's
+/// `geoBroadcasts[]` and the summary header's `broadcasts[]`, which split
+/// what `broadcast`'s single string flattens into one name: a game's
+/// national feed is a different set of eyes than its home or away
+/// market's regional one.
+nonisolated struct GameBroadcast: Hashable, Sendable {
+    /// "TV", "Radio", "Streaming", "Subscription Package".
+    let kind: String?
+    let network: String?
+    /// True for the feed everyone can get; false for a market-local one.
+    /// The scoreboard's `geoBroadcasts` doesn't say this directly — derived
+    /// from `market.type` the same way `broadcastName` already picks a
+    /// national feed. The summary header ships the bool itself, which
+    /// wins when present.
+    let isNational: Bool
+    let logoURL: URL?
+    let darkLogoURL: URL?
 }
 
 nonisolated struct Competitor: Hashable, Sendable {
