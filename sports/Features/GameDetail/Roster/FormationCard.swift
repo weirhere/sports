@@ -36,9 +36,13 @@ struct FormationCard: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
+                // The same `sm` the pane pads above the list layout's title
+                // row, so the title sits at one height whichever chip is on
+                // and a Field / List tap doesn't shift the section (Andy,
+                // 2026-10-18 — it was `xs`, 4pt higher than the list's).
                 StartersHeader(roster: roster, layout: layout, onLayoutChange: onLayoutChange, ink: ink)
                     .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.xs)
+                    .padding(.top, Spacing.sm)
                 if isFootball {
                     HStack(spacing: Spacing.sm) {
                         SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
@@ -68,6 +72,13 @@ struct FormationCard: View {
                            topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
                            bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
                 .background(SurfaceColors.base(for: league))
+            // The tab row's hairline again, under the paint, so the field
+            // has the same edge below it that it has above it and the cards
+            // under it line up against something (Andy, 2026-10-18). Drawn
+            // on the page, not the paint, where the gray can be seen; the
+            // list layout has no such edge — its cards already sit on the
+            // page like the ones below them.
+            Divider().overlay(Color.divider)
             unplacedRows
                 .padding(.horizontal, Spacing.sm)
         }
