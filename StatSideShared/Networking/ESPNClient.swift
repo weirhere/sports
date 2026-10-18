@@ -2110,8 +2110,11 @@ nonisolated enum ESPNMapper {
                           let stats = row.stats,
                           // A row that doesn't match the header would put
                           // every number under the wrong column. Drop it
-                          // rather than render a lie.
-                          stats.count == columns.count
+                          // rather than render a lie — unless it is a
+                          // basketball DNP, which ESPN ships with no stats
+                          // at all: he has no numbers to misalign, and the
+                          // Roster tab's inactive list is built from him.
+                          stats.count == columns.count || (row.didNotPlay == true && stats.isEmpty)
                     else { return nil }
                     return BoxScore.Player(
                         // `nonEmpty`, not `??`: ESPN's other way of not

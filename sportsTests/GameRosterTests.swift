@@ -59,7 +59,7 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
         #expect(lineup.contains { $0.shortName == "D.J. Jones" })
         #expect(lineup.contains { $0.shortName == "B. Jones" })
         // An NFL inactive carries no reason, and gets no invented one.
-        let inactive = try #require(lineup.first(where: \.didNotPlay))
+        let inactive = try #require(lineup.first { $0.didNotPlay })
         #expect(inactive.note == nil)
     }
 
