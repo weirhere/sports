@@ -42,8 +42,7 @@ struct ConferenceListRow: View {
     var body: some View {
         HStack(spacing: Spacing.md) {
             if let id = conference.conference {
-                NavigationLink(value: ConferenceDestination(conference: id,
-                                                            name: conference.name)) {
+                NavigationLink(value: destination(for: id)) {
                     rowContent
                 }
                 // Not `.plain`: this row is also a card the Following list
@@ -90,6 +89,21 @@ struct ConferenceListRow: View {
     }
 
     private var displayName: String { title ?? conference.name }
+
+    /// Where the row goes: its own page — or, for a pro division, its
+    /// conference's, since divisions have no pages (2026-09-26) and are
+    /// read stacked inside their conference's. The team-page badge opens
+    /// the same way. Divisions are rows again now that the Leagues tab
+    /// lists a league at the rung Scores groups it by (2026-10-18).
+    private func destination(for id: ConferenceID) -> ConferenceDestination {
+        if Conference.tier(for: id.id, in: id.league) == .division,
+           let parent = Conference.parent(of: id.id, in: id.league) {
+            let conference = ConferenceID(id.league, parent)
+            return ConferenceDestination(conference: conference,
+                                         name: Conference.name(for: conference))
+        }
+        return ConferenceDestination(conference: id, name: conference.name)
+    }
 
     private var nameText: some View {
         Text(showsLeagueTag
