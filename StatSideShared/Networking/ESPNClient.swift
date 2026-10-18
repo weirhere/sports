@@ -1890,7 +1890,22 @@ nonisolated enum ESPNMapper {
                     suddenDeathPeriods: format.suddenDeath?.periods
                 )
             },
-            broadcasts: geoBroadcasts(from: competition?.broadcasts ?? [])
+            broadcasts: geoBroadcasts(from: competition?.broadcasts ?? []),
+            seasonSeries: seasonSeries(from: dto.seasonseries?.elements.first)
+        )
+    }
+
+    static func seasonSeries(from dto: SeasonSeriesDTO?) -> SeasonSeries? {
+        guard let dto else { return nil }
+        return SeasonSeries(
+            type: dto.type,
+            summary: dto.summary,
+            completed: dto.completed,
+            totalCompetitions: dto.totalCompetitions,
+            seriesScore: dto.seriesScore,
+            meetings: (dto.events?.elements ?? []).map {
+                SeasonSeriesMeeting(id: $0.id, altDetail: $0.statusType?.altDetail)
+            }
         )
     }
 
