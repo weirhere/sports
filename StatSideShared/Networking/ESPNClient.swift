@@ -104,6 +104,14 @@ nonisolated protocol ScoresProviding: Sendable {
     /// where it doesn't — an empty pane behind a permanent tab is worse than
     /// no tab.
     var providesRoster: Bool { get }
+    /// Who dressed for one game, from the backend's game-day roster — the
+    /// starters, the inactives and the rest (E29, 2026-10-18). Empty where
+    /// the backend has none for this game: ESPN publishes football's on
+    /// game day and 404s a week out, which is an answer, not a failure.
+    func gameLineup(eventId: String, teamId: String) async throws -> [LineupEntry]
+    /// One team's current depth chart, flattened to ranked slots. Empty
+    /// where the backend keeps none — college football, per the probe.
+    func depthChart(teamId: String) async throws -> [DepthSlot]
 }
 
 nonisolated extension ScoresProviding {
@@ -125,6 +133,12 @@ nonisolated extension ScoresProviding {
     var providesRoster: Bool { false }
 
     func roster(teamId: String) async throws -> TeamRoster { .empty }
+
+    /// The game-day roster's rule: a backend without one has nobody
+    /// dressed, and the Roster tab's lists fall back to the team roster.
+    func gameLineup(eventId: String, teamId: String) async throws -> [LineupEntry] { [] }
+
+    func depthChart(teamId: String) async throws -> [DepthSlot] { [] }
 
     /// A backend with no week axis offers no weeks, and the page shows
     /// its season's one table with no week chip.
@@ -794,6 +808,35 @@ actor ESPNClient: ScoresProviding {
         // note), so the only roster there is, is the current one.
         let dto: RosterResponseDTO = try await fetch(path: "/teams/\(teamId)/roster", query: [])
         return ESPNMapper.roster(from: dto)
+    }
+
+    func gameLineup(eventId: String, teamId: String) async throws -> [LineupEntry] {
+        // The event id doubles as the competition id on every ESPN game
+        // the app has met — the scoreboard's `competitions[0].id` equals
+        // the event's.
+        do {
+            let dto: CompetitorRosterDTO = try await fetch(
+                base: coreBase,
+                path: "/events/\(eventId)/competitions/\(eventId)/competitors/\(teamId)/roster",
+                query: [], live: true)
+            return ESPNMapper.lineup(from: dto, league: league)
+        } catch ESPNError.badStatus(404) {
+            // Not published yet (college football, before game day): the
+            // lists have other sources, and asking again next visit is right.
+            return []
+        }
+    }
+
+    func depthChart(teamId: String) async throws -> [DepthSlot] {
+        let season = league.espnSeason(for: SeasonYear.year(for: league))
+        do {
+            let dto: DepthChartsDTO = try await fetch(
+                base: coreBase, path: "/seasons/\(season)/teams/\(teamId)/depthcharts", query: [])
+            return ESPNMapper.depthChart(from: dto)
+        } catch ESPNError.badStatus(400), ESPNError.badStatus(404) {
+            // College football's answer (400): no chart, not an error.
+            return []
+        }
     }
 
     func gameSummary(eventId: String) async throws -> GameSummary {
@@ -1920,8 +1963,109 @@ nonisolated enum ESPNMapper {
                 )
             },
             broadcasts: geoBroadcasts(from: competition?.broadcasts ?? []),
-            seasonSeries: seasonSeries(from: dto.seasonseries?.elements.first)
+            seasonSeries: seasonSeries(from: dto.seasonseries?.elements.first),
+            injuries: injuries(from: dto.injuries?.elements ?? []),
+            onIce: onIce(from: dto.onIce?.elements ?? [])
         )
+    }
+
+    /// The summary's game-day injury list, per team. A name is required —
+    /// a row that says "Questionable" about nobody is nothing — and the
+    /// rest degrades field by field.
+    static func injuries(from dtos: [SummaryTeamInjuriesDTO]) -> [TeamInjuries] {
+        dtos.compactMap { teamDTO -> TeamInjuries? in
+            guard let teamId = teamDTO.team?.id else { return nil }
+            let injuries = (teamDTO.injuries?.elements ?? []).compactMap { dto -> GameInjury? in
+                guard let athlete = dto.athlete,
+                      let name = nonEmpty(athlete.displayName) ?? nonEmpty(athlete.fullName)
+                else { return nil }
+                // The row's status is ESPN's sentence case ("Injured
+                // Reserve"); `type.description` is the lowercase code.
+                let status = nonEmpty(dto.status)
+                    ?? dto.type?.description.map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                    ?? "Injured"
+                return GameInjury(
+                    id: nonEmpty(athlete.id) ?? "\(teamId)-\(name)",
+                    name: name,
+                    jersey: nonEmpty(athlete.jersey),
+                    position: athlete.position?.abbreviation,
+                    headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),
+                    status: status,
+                    detail: nonEmpty(dto.details?.type).flatMap {
+                        $0.caseInsensitiveCompare("Undisclosed") == .orderedSame ? nil : $0
+                    },
+                    returnDate: nonEmpty(dto.details?.returnDate))
+            }
+            guard !injuries.isEmpty else { return nil }
+            return TeamInjuries(teamId: teamId, injuries: injuries)
+        }
+    }
+
+    /// Hockey's skaters in play, per team id. Only the "In Play"
+    /// whereabouts count: the payload also lists the bench and the box.
+    static func onIce(from dtos: [OnIceTeamDTO]) -> [String: [String]] {
+        var result: [String: [String]] = [:]
+        for team in dtos {
+            guard let teamId = team.teamId else { continue }
+            let ids = (team.entries?.elements ?? []).compactMap { entry -> String? in
+                guard entry.whereabouts?.description?.caseInsensitiveCompare("In Play") == .orderedSame
+                else { return nil }
+                return nonEmpty(entry.athleteid)
+            }
+            if !ids.isEmpty { result[teamId] = ids }
+        }
+        return result
+    }
+
+    /// The core API's game-day roster, one entry per dressed player. The
+    /// athlete id is the only requirement — it's the join key to the team
+    /// roster, which carries the name the entry only abbreviates.
+    static func lineup(from dto: CompetitorRosterDTO, league: League) -> [LineupEntry] {
+        (dto.entries?.elements ?? []).compactMap { entry -> LineupEntry? in
+            guard let id = entry.playerId?.value, !id.isEmpty else { return nil }
+            let didNotPlay = entry.didNotPlay ?? false
+            let scratched = entry.scratched ?? false
+            let reason = nonEmpty(entry.reason) ?? nonEmpty(entry.scratchReason)
+            return LineupEntry(
+                athleteId: id,
+                shortName: nonEmpty(entry.displayName),
+                jersey: nonEmpty(entry.jersey),
+                position: entry.position?.positionId.flatMap { ESPNPositions.position(id: $0, league: league) },
+                isStarter: entry.starter ?? false,
+                didNotPlay: didNotPlay,
+                isScratched: scratched,
+                // "COACH'S DECISION" and "SCRATCHED" as ESPN shouts them,
+                // cased for a row; a scratch with no reason still says so.
+                note: reason.map(sentenceCased) ?? (scratched ? "Scratched" : nil),
+                recordedStat: entry.statistics?.ref != nil)
+        }
+    }
+
+    /// Every chart's slots, flattened. The NBA and NHL ship one chart;
+    /// the NFL ships three and isn't asked.
+    static func depthChart(from dto: DepthChartsDTO) -> [DepthSlot] {
+        (dto.items?.elements ?? []).flatMap { chart -> [DepthSlot] in
+            (chart.positions ?? [:])
+                // A dictionary's order is nobody's; the chart's own
+                // position ids give the slots a stable one.
+                .sorted { (Int($0.value.position?.id ?? "") ?? .max) < (Int($1.value.position?.id ?? "") ?? .max) }
+                .flatMap { pair -> [DepthSlot] in
+                    let position = pair.value
+                    let abbreviation = nonEmpty(position.position?.abbreviation) ?? pair.key.uppercased()
+                    return (position.athletes?.elements ?? []).compactMap { athlete in
+                        guard let id = athlete.athlete?.athleteId, let rank = athlete.rank else { return nil }
+                        return DepthSlot(position: abbreviation,
+                                         positionName: position.position?.displayName,
+                                         rank: rank, athleteId: id)
+                    }
+                }
+        }
+    }
+
+    /// "COACH'S DECISION" → "Coach's decision".
+    private static func sentenceCased(_ text: String) -> String {
+        let lowered = text.lowercased()
+        return lowered.prefix(1).uppercased() + lowered.dropFirst()
     }
 
     static func seasonSeries(from dto: SeasonSeriesDTO?) -> SeasonSeries? {
@@ -1984,7 +2128,15 @@ nonisolated enum ESPNMapper {
                         name: name,
                         jersey: athlete.jersey,
                         headshotURL: athlete.headshot?.href.flatMap(URL.init(string:)),
-                        stats: stats)
+                        stats: stats,
+                        isStarter: row.starter,
+                        didNotPlay: row.didNotPlay ?? false,
+                        didNotPlayReason: nonEmpty(row.reason).map { reason in
+                            let lowered = reason.lowercased()
+                            return lowered.prefix(1).uppercased() + lowered.dropFirst()
+                        },
+                        position: athlete.position?.abbreviation,
+                        positionName: athlete.position?.displayName ?? athlete.position?.name)
                 }
                 // ESPN ships all ten categories for every game whether or
                 // not anyone recorded one. An interception group with no

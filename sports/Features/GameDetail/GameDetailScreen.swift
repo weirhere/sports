@@ -45,7 +45,7 @@ struct GameDetailScreen: View {
     /// standings block would otherwise ask for the tables on every tick —
     /// which is the polite-guest rule broken by a card, of all things.
     @State private var triedStandingsFallback = false
-    @State private var tab: Tab = .summary
+    @State private var tab: Tab = .facts
     /// How far the header has collapsed under the bar (`CollapsingHeaderScrollView`).
     @State private var heroCollapse: CGFloat = 0
     /// True once the header's score line has scrolled under the bar — the
@@ -81,6 +81,20 @@ struct GameDetailScreen: View {
     @State private var newsKey: String?
     @State private var newsFailed = false
 
+    /// The Roster tab's model, and the game it was built for — the series'
+    /// guard a third time. Fetched when the tab first opens (up to six
+    /// requests, see `GameRosterFetch.swift`) and again when the game's
+    /// phase flips under it: a lineup moves at kickoff and at the final,
+    /// not between polls.
+    @State private var loadedRoster: GameRoster?
+    @State private var rosterKey: String?
+    @State private var rosterFailed = false
+    @State private var isLoadingRoster = false
+    /// Whether the summary was in hand when the roster was assembled. One
+    /// that lands after is a source — the box score names who played —
+    /// so the lists are rebuilt once it does.
+    @State private var rosterHadSummary = false
+
     /// The summary, but only if it belongs to the game on screen. Every
     /// card on the page reads through here, so a screen handed a new game
     /// falls back to what the pushed row already knows — the header it has
@@ -108,31 +122,50 @@ struct GameDetailScreen: View {
     }
 
     /// Raw values order the tabs — the slide direction is an ordinal
-    /// comparison. Summary keeps every card the screen has always had,
+    /// comparison. Facts keeps every card the screen has always had,
     /// minus Drives, which moved into Plays (2026-09-06); Plays sits in
     /// the middle because chronology comes before rosters, and H2H comes
     /// last because the history comes after the game itself. News sits
     /// second (Andy, 2026-09-27, E26), the entity pages' order: what's
-    /// being written about the matchup, one swipe from the score.
+    /// being written about the matchup, one swipe from the score. Roster
+    /// (E29, 2026-10-18) sits after the box score, which is the rosters'
+    /// place that comment always reserved.
     private enum Tab: Int, HeroTabItem {
-        case summary, news, plays, boxScore, headToHead
+        case facts, news, plays, boxScore, roster, headToHead
 
+        /// The bar reads `TabLabel.title`, not this: the first tab's name
+        /// follows the game's state. This is the static name the rest of
+        /// the screen (and the UI tests' identifiers) know a tab by.
         var title: String {
             switch self {
-            case .summary: "Summary"
+            case .facts: "Facts"
             case .news: "News"
             case .plays: "Plays"
             case .boxScore: "Box score"
+            case .roster: "Roster"
             case .headToHead: "H2H"
             }
         }
+    }
+
+    /// What the bar draws for a tab: the enum's order under a title that
+    /// can move. The first tab is "Preview" until kickoff and "Facts" from
+    /// the first snap on (Andy, 2026-10-18, FotMob's naming), with the same
+    /// cards either way — so the name lives on the label, not the case.
+    private struct TabLabel: HeroTabItem {
+        let tab: Tab
+        let title: String
+    }
+
+    private func label(_ tab: Tab) -> TabLabel {
+        TabLabel(tab: tab, title: tab == .facts ? GameHeaderState.factsTabTitle(game, summary) : tab.title)
     }
 
     /// A tab only exists where its data does. Pre-kick games, CFBD's
     /// feed, and any game ESPN hasn't filled in show Summary alone and
     /// no tab row — exactly as they did before either tab existed.
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.summary]
+        var tabs: [Tab] = [.facts]
         // News reads the two teams' feeds, not the summary, so like H2H
         // it's there from the first frame. ESPN's only: the fixture and
         // CFBD feeds have no news endpoint to ask.
@@ -141,6 +174,10 @@ struct GameDetailScreen: View {
             if hasDrives(summary) || !summary.plays.isEmpty { tabs.append(.plays) }
             if !summary.boxScore.isEmpty { tabs.append(.boxScore) }
         }
+        // Roster reads its own endpoints, so like News it is there from the
+        // first frame, and ESPN-only for the same reason: the fixture and
+        // CFBD feeds have no roster to ask for (E29).
+        if hasHeadToHead, client.providesRoster { tabs.append(.roster) }
         // H2H reads the pushed row, not the summary, so it is offered from
         // the first frame — which is the point: before kickoff it is the
         // only other tab there is, and "who usually wins this" is the
@@ -211,8 +248,8 @@ struct GameDetailScreen: View {
                 // this is the same component. The gutter lives inside
                 // HeroTabBar as of 2026-09-21, so this hands it an unpadded
                 // surface.
-                HeroTabBar(tabs: availableTabs, selection: tab,
-                           onSelect: { select(tab: $0) })
+                HeroTabBar(tabs: availableTabs.map(label), selection: label(tab),
+                           onSelect: { select(tab: $0.tab) })
                     .frame(maxWidth: .infinity)
                     .background(Color.bgCard)
                     // The nav bar's hairline, repeated under the tabs, so
@@ -229,11 +266,11 @@ struct GameDetailScreen: View {
                 // flight and — the case that matters — when the summary
                 // failed outright. A page that can't reach one endpoint
                 // shouldn't hide a tab that doesn't use it.
-                if summary != nil || tab == .headToHead || tab == .news {
+                if summary != nil || tab == .headToHead || tab == .news || tab == .roster {
                     Group {
                         // A tab whose data went away between polls falls
                         // back rather than rendering an empty pane.
-                        let shown: Tab = availableTabs.contains(tab) ? tab : .summary
+                        let shown: Tab = availableTabs.contains(tab) ? tab : .facts
                         switch shown {
                         case .boxScore:
                             if let summary {
@@ -246,7 +283,11 @@ struct GameDetailScreen: View {
                             headToHeadPane
                         case .news:
                             newsPane
-                        case .summary:
+                        case .roster:
+                            GameRosterPane(league: gameLeague, state: rosterState,
+                                           possessionTeamId: possessionTeamId,
+                                           onRetry: { Task { await loadRoster(force: true) } })
+                        case .facts:
                             if let summary { summaryCards(summary) }
                         }
                     }
@@ -379,6 +420,17 @@ struct GameDetailScreen: View {
             guard tab == .news else { return }
             await loadNews()
         }
+        // The Roster tab's sources, on the same terms — and asked again
+        // when the game's phase changes under an open tab (the pre-game
+        // projection becomes the lineup at kickoff) or when the summary
+        // lands after the lists were built without it.
+        .task(id: "\(game.routeKey):\(tab == .roster):\(rosterPhase):\(summary != nil)") {
+            guard tab == .roster else { return }
+            let stale = loadedRoster.map {
+                $0.phase != rosterPhase || (!rosterHadSummary && summary != nil)
+            } ?? false
+            await loadRoster(force: stale)
+        }
         // The live auto-refresh mirrors the scoreboard's polling rules: only while
         // the scene is active and the game is in progress. The id flips when
         // either condition changes, cancelling or restarting the loop — a
@@ -395,7 +447,10 @@ struct GameDetailScreen: View {
             }
             Self.logger.info("detail polling: stopped for event \(game.id)")
         }
-        .refreshable { await load(force: true) }
+        .refreshable {
+            await load(force: true)
+            if tab == .roster { await loadRoster(force: true) }
+        }
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
@@ -705,8 +760,45 @@ struct GameDetailScreen: View {
         }
     }
 
-    /// Every card the screen has always had, in the order it had them —
-    /// the Box score tab is additive, so nothing here moved.
+    /// The Roster tab's phase — which of "planning to play", "playing"
+    /// and "played" its lists answer.
+    private var rosterPhase: GameRoster.Phase { GameHeaderState.rosterPhase(game, summary) }
+
+    /// What the Roster pane draws, keyed by the game like the series.
+    private var rosterState: GameRosterPane.LoadState {
+        guard rosterKey == game.routeKey else { return .loading }
+        if let loadedRoster { return .loaded(loadedRoster) }
+        return rosterFailed ? .failed : .loading
+    }
+
+    /// Up to six requests, once per game per phase — see
+    /// `GameRosterFetch.swift` for which and why. A refetch that fails
+    /// keeps the lists it had rather than replacing them with Retry.
+    private func loadRoster(force: Bool = false) async {
+        let key = game.routeKey
+        if rosterKey == key, loadedRoster != nil, !force { return }
+        guard !isLoadingRoster else { return }
+        isLoadingRoster = true
+        defer { isLoadingRoster = false }
+        rosterKey = key
+        rosterFailed = false
+        let hadSummary = summary != nil
+        let phase = rosterPhase
+        do {
+            let loaded = try await client.gameRoster(for: game, summary: summary, phase: phase,
+                                                     currentSeason: isCurrentSeason)
+            guard game.routeKey == key else { return }
+            loadedRoster = loaded
+            rosterHadSummary = hadSummary
+        } catch {
+            guard game.routeKey == key else { return }
+            if loadedRoster == nil { rosterFailed = true }
+        }
+    }
+
+    /// Every card the Facts (or, pre-game, Preview) tab has always had, in
+    /// the order it had them — the Box score tab is additive, so nothing
+    /// here moved.
     @ViewBuilder
     private func summaryCards(_ summary: GameSummary) -> some View {
         let story = summary.story(forGame: game.id, status: GameHeaderState.status(game, summary))
@@ -985,7 +1077,7 @@ struct GameDetailScreen: View {
             conferenceStandings = []
             triedStandingsFallback = false
             lastError = nil
-            tab = .summary
+            tab = .facts
             scoringOnly = false
             shareCardPNG = nil
             loadedSeries = nil
@@ -994,6 +1086,10 @@ struct GameDetailScreen: View {
             news = nil
             newsKey = nil
             newsFailed = false
+            loadedRoster = nil
+            rosterKey = nil
+            rosterFailed = false
+            rosterHadSummary = false
             loadedKey = key
         }
         guard loadedSummary == nil || force else { return }

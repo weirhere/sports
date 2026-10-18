@@ -79,6 +79,15 @@ nonisolated struct GameSummary: Sendable {
     /// ships none, and the only form seen so far is the regular season's
     /// — the playoff shape is unprobed (BACKLOG.md E21).
     var seasonSeries: SeasonSeries? = nil
+    /// The game-day injury list, one entry per team, off the summary's
+    /// top-level `injuries` (2026-10-18). The NFL, NBA and NHL ship it in
+    /// every state; college football's summary carries none, so the
+    /// Roster tab's Injuries card hides itself there.
+    var injuries: [TeamInjuries] = []
+    /// Hockey's live lineup: the athlete ids "In Play" per team id, off
+    /// the summary's `onIce`. Empty in every other league and once the
+    /// game is final.
+    var onIce: [String: [String]] = [:]
 }
 
 /// `SummaryResponseDTO.seasonseries`'s one entry, unflattened. `type` is
@@ -410,6 +419,16 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
         let headshotURL: URL?
         /// Positionally paired with the owning category's `columns`.
         let stats: [String]
+        /// Basketball's lineup flags (2026-10-18): nil where the box score
+        /// doesn't say (football, hockey), true for the five who started.
+        var isStarter: Bool? = nil
+        var didNotPlay: Bool = false
+        /// "Coach's decision", beside `didNotPlay`.
+        var didNotPlayReason: String? = nil
+        /// "G", "F", "C" in basketball; "LW", "D", "G" in hockey; nil in
+        /// football, whose box score athlete carries no position.
+        var position: String? = nil
+        var positionName: String? = nil
 
         /// ESPN's "Team" line — the rushing and passing groups book sacks,
         /// kneel-downs and spikes to the team rather than a player. No

@@ -74,6 +74,22 @@ nonisolated extension PlayerIdentity {
                   injuryStatus: player.injuryStatus)
     }
 
+    /// A game roster's person, carried into the page it pushes (E29,
+    /// 2026-10-18). The roster row's init with the facts a game-day entry
+    /// has: no height, weight or age — the page fetches those.
+    init(person: GameRoster.Person, team: Team, league: League) {
+        self.init(athleteId: person.id,
+                  name: person.name,
+                  league: league,
+                  teamName: team.displayName ?? team.location,
+                  teamLogoURL: team.logoURL,
+                  team: team,
+                  jersey: person.jersey,
+                  position: person.position,
+                  positionName: person.positionName,
+                  headshotURL: person.headshotURL)
+    }
+
     /// Profile's label/value pairs, in the design's order, skipping whatever
     /// ESPN didn't send rather than printing a dash.
     ///
