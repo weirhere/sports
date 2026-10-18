@@ -1,13 +1,12 @@
 import SwiftUI
 
 /// The Roster tab's lineup card: the two starting units on one field, and
-/// in football the chip row that decides who has the ball — one team's
-/// eleven across the line from the other team's eleven, which is the
-/// picture a snap makes and the only honest one for a sport whose
-/// "lineup" changes every change of possession. The chips say "HOU has
-/// the ball", not "HOU offense": a chip named for one unit read as a
-/// choice of which team's lineup to show, when both are always on the
-/// field (Andy, 2026-10-18).
+/// in football the chip row that decides whose offense is drawn — one
+/// team's eleven across the line from the other team's eleven, which is
+/// the picture a snap makes and the only honest one for a sport whose
+/// "lineup" changes every change of possession. The chips say "HOU
+/// offense": a "HOU has the ball" wording was tried and reverted the same
+/// day — the unit's name felt better (Andy, 2026-10-18).
 struct FormationCard: View {
     let roster: GameRoster
     let league: League
@@ -26,11 +25,11 @@ struct FormationCard: View {
             CardHeader(title: title, subtitle: subtitle)
             if isFootball {
                 HStack(spacing: Spacing.sm) {
-                    SlateToggleChip(title: "\(shortName(away.team)) has the ball", isOn: awayHasBall,
+                    SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
                                     hint: "Draws \(away.team.location)'s offense against \(home.team.location)'s defense") {
                         offenseTeamId = away.team.id
                     }
-                    SlateToggleChip(title: "\(shortName(home.team)) has the ball", isOn: !awayHasBall,
+                    SlateToggleChip(title: "\(shortName(home.team)) offense", isOn: !awayHasBall,
                                     hint: "Draws \(home.team.location)'s offense against \(away.team.location)'s defense") {
                         offenseTeamId = home.team.id
                     }
