@@ -21,7 +21,7 @@ struct StartersSection: View {
                           layout: layout, onLayoutChange: onLayoutChange)
         case .list:
             VStack(spacing: Spacing.sm) {
-                StartersHeader(roster: roster, layout: layout, onLayoutChange: onLayoutChange)
+                StartersHeader(roster: roster, league: league, layout: layout, onLayoutChange: onLayoutChange)
                 StartersListCards(roster: roster, league: league)
             }
             .padding(.horizontal, Spacing.sm)

@@ -40,10 +40,20 @@ struct FormationCard: View {
                 // row, so the title sits at one height whichever chip is on
                 // and a Field / List tap doesn't shift the section (Andy,
                 // 2026-10-18 — it was `xs`, 4pt higher than the list's).
-                StartersHeader(roster: roster, layout: layout, onLayoutChange: onLayoutChange, ink: ink)
+                // This is the row's whole margin: the header pads no
+                // vertical of its own (same day, halving the strip).
+                StartersHeader(roster: roster, league: league, layout: layout,
+                               onLayoutChange: onLayoutChange, ink: ink)
                     .padding(.horizontal, Spacing.sm)
-                    .padding(.top, Spacing.sm)
+                    .padding(.vertical, Spacing.sm)
                 if isFootball {
+                    // Two rows, not one block: the title row and the
+                    // possession chips each keep their own 8pt above and
+                    // below, with a hairline between them in the surface's
+                    // ink — fainter than the idle chip's outline — so the
+                    // chips read as their own section under the title and
+                    // not as its second line (Andy, 2026-10-18).
+                    Divider().overlay(ink.text.opacity(0.3))
                     HStack(spacing: Spacing.sm) {
                         SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
                                         hint: "Draws \(away.team.location)'s offense against \(home.team.location)'s defense",
@@ -58,9 +68,9 @@ struct FormationCard: View {
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, Spacing.sm + Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                 }
             }
-            .padding(.bottom, Spacing.sm)
             // A shade deeper than the field, so the heading reads as the
             // section's and the field begins where the shade changes
             // (Andy, 2026-10-18 — on one green they ran together).
@@ -72,13 +82,6 @@ struct FormationCard: View {
                            topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
                            bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
                 .background(SurfaceColors.base(for: league))
-            // The tab row's hairline again, under the paint, so the field
-            // has the same edge below it that it has above it and the cards
-            // under it line up against something (Andy, 2026-10-18). Drawn
-            // on the page, not the paint, where the gray can be seen; the
-            // list layout has no such edge — its cards already sit on the
-            // page like the ones below them.
-            Divider().overlay(Color.divider)
             unplacedRows
                 .padding(.horizontal, Spacing.sm)
         }

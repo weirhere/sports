@@ -5,9 +5,13 @@ import SwiftUI
 /// chips trailing — on the section itself, because the field is what you
 /// are looking at when you decide you'd rather have the list (Andy,
 /// 2026-10-18). On the field the row sits on the surface's paint in its
-/// ink; over the list cards it sits on the page in the page's.
+/// ink; over the list cards it sits on the page in the page's. It pads
+/// itself only sideways: the 8pt above and below it is the card's or the
+/// pane's, once, not the row's own on top of theirs (Andy, 2026-10-18 —
+/// "it doesn't need to be that tall").
 struct StartersHeader: View {
     let roster: GameRoster
+    let league: League
     let layout: StartersLayout
     let onLayoutChange: (StartersLayout) -> Void
     /// Set on the painted field; nil over the list cards.
@@ -29,7 +33,7 @@ struct StartersHeader: View {
             Spacer(minLength: Spacing.sm)
             HStack(spacing: Spacing.xs) {
                 ForEach(StartersLayout.allCases) { option in
-                    SlateToggleChip(title: option.label, isOn: layout == option,
+                    SlateToggleChip(title: option.label(for: league), isOn: layout == option,
                                     hint: hint(for: option), ink: ink) {
                         onLayoutChange(option)
                     }
@@ -37,13 +41,12 @@ struct StartersHeader: View {
             }
             .accessibilityIdentifier("starters-layout")
         }
-        .padding(.vertical, Spacing.sm)
         .padding(.horizontal, Spacing.md)
     }
 
     private func hint(for option: StartersLayout) -> String {
         switch option {
-        case .field: "Draws the starters on the field"
+        case .field: "Draws the starters on the \(league.surfaceName.lowercased())"
         case .list: "Lists the starters in cards"
         }
     }

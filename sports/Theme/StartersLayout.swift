@@ -6,16 +6,30 @@ import Foundation
 /// visualization and just want to see a card with a list of all the
 /// players"). One preference for every league, persisted in
 /// `UIStateStore.startersLayout`; the control that sets it lives on the
-/// section itself, where you are looking when you decide.
+/// section itself, where you are looking when you decide. The case is
+/// `field` whatever the sport, the way the file is `FormationField`; the
+/// chip says what the sport calls it (Andy, 2026-10-18 — "on basketball,
+/// the field control should be court and hockey should be rink").
 enum StartersLayout: String, CaseIterable, Identifiable {
     case field, list
 
     var id: Self { self }
 
-    var label: String {
+    func label(for league: League) -> String {
         switch self {
-        case .field: "Field"
+        case .field: league.surfaceName
         case .list: "List"
+        }
+    }
+}
+
+extension League {
+    /// What the sport calls the place its starters are drawn on.
+    var surfaceName: String {
+        switch self {
+        case .collegeFootball, .nfl: "Field"
+        case .nba: "Court"
+        case .nhl: "Rink"
         }
     }
 }
