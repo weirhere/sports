@@ -36,7 +36,6 @@ struct FormationField: View {
             half(bottom, team: bottomTeam, label: bottomLabel, isTop: false)
         }
         .background(FieldMarkings(league: league))
-        .padding(.vertical, Spacing.sm)
     }
 
     /// One side's rows. Row 0 is the line of engagement, so the top half
