@@ -196,6 +196,18 @@ final class ScoreboardStore {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
+    /// When a 429 last told this store to back off, or nil when ESPN
+    /// hasn't asked. Cleared on the next successful fetch. While this is
+    /// in the future, both the poll loop and a manual Retry are no-ops —
+    /// the thing a soft rate limit needs is nobody hammering it, including
+    /// the user's own retry button.
+    private(set) var retryAvailableAt: Date?
+
+    private func isThrottled(at now: Date = Date()) -> Bool {
+        guard let retryAvailableAt else { return false }
+        return retryAvailableAt > now
+    }
+
     /// Which divisions the slate covers. FBS alone unless someone opts
     /// into FCS (E8 scope (b), Andy 2026-09-01) — the second request is
     /// what the polite-guest rule is spending, so it only exists while
@@ -318,6 +330,15 @@ final class ScoreboardStore {
     func load(around day: Date, force: Bool = false) async {
         let center = Calendar.current.startOfDay(for: day)
         windowCenter = center
+        guard !isThrottled() else {
+            // Covers both paths a 429 needs to quiet: the poll loop
+            // (`force: false`, already respected by `pollDelay`'s own
+            // backoff below, this is belt-and-suspenders) and a tapped
+            // Retry button (`force: true`), which would otherwise re-ask
+            // ESPN on every tap for the length of the throttle.
+            reschedulePolling()
+            return
+        }
         guard force || !covers(center) else {
             reschedulePolling()
             return
@@ -474,6 +495,7 @@ final class ScoreboardStore {
             }
             if updated != gamesByDay { gamesByDay = updated }
             if lastError != nil { lastError = nil }
+            retryAvailableAt = nil
         } catch is CancellationError {
             // Abandoned on purpose, as in `fetchWindow`.
         } catch let error as URLError where error.code == .cancelled {
@@ -481,6 +503,7 @@ final class ScoreboardStore {
         } catch {
             // Keep last-good games on failure.
             lastError = describe(error)
+            recordThrottle(error)
             Self.logger.error("\(self.league.rawValue) live fetch failed: \(error)")
         }
     }
@@ -526,6 +549,7 @@ final class ScoreboardStore {
             if updated != gamesByDay { gamesByDay = updated }
             lastWindowFetch = Date()
             if lastError != nil { lastError = nil }
+            retryAvailableAt = nil
         } catch is CancellationError {
             // Abandoned on purpose — the day moved out from under this
             // fetch. Not a failure, and never the refresh banner's copy.
@@ -534,8 +558,17 @@ final class ScoreboardStore {
         } catch {
             // Keep last-good games on failure.
             lastError = describe(error)
+            recordThrottle(error)
             Self.logger.error("\(self.league.rawValue) window fetch failed: \(error)")
         }
+    }
+
+    /// Notes when a 429's own `Retry-After` next allows a request, so the
+    /// poll loop and a tapped Retry both quiet down instead of hammering
+    /// the one response that actually asked for that.
+    private func recordThrottle(_ error: Error) {
+        guard let espn = error as? ESPNError, case .rateLimited(let retryAfter) = espn else { return }
+        retryAvailableAt = Date().addingTimeInterval(retryAfter)
     }
 
     private func evict(around center: Date) {
@@ -549,12 +582,15 @@ final class ScoreboardStore {
 
     /// What the screen says when a window fails.
     ///
-    /// Three failures, three sentences, because they need three different
-    /// things from the reader: wait for signal, wait for ESPN, or tell us.
-    /// The status code rides along on the third — ESPN's API is
-    /// undocumented and can change without notice, and a screenshot
-    /// carrying the number is the difference between "they moved the
-    /// endpoint" and "your wifi is out".
+    /// Four failures, four sentences, because they need four different
+    /// things from the reader: wait for signal, wait out a throttle, wait
+    /// for ESPN, or tell us. The status code rides along on the generic
+    /// one — ESPN's API is undocumented and can change without notice, and
+    /// a screenshot carrying the number is the difference between "they
+    /// moved the endpoint" and "your wifi is out". The throttle sentence
+    /// carries no number on purpose: it's a request to slow down, not an
+    /// outage, and `retryAvailableAt` (not this string) is what actually
+    /// silences the retry button and the poll loop.
     private func describe(_ error: Error) -> String {
         if error is DecodingError { return "Couldn't read the scoreboard." }
         if let url = error as? URLError {
@@ -567,8 +603,15 @@ final class ScoreboardStore {
                 return "Couldn't reach the scoreboard."
             }
         }
-        if let espn = error as? ESPNError, case .badStatus(let code) = espn {
-            return "The scoreboard is unavailable (\(code))."
+        if let espn = error as? ESPNError {
+            switch espn {
+            case .rateLimited:
+                return "ESPN is asking us to slow down. Trying again shortly."
+            case .badStatus(let code):
+                return "The scoreboard is unavailable (\(code))."
+            case .invalidURL, .nothingFetched:
+                break
+            }
         }
         return "Couldn't reach the scoreboard."
     }
@@ -625,6 +668,14 @@ final class ScoreboardStore {
     /// only on the window's own days, because those are what a tick
     /// refetches.
     private func pollDelay(now: Date = Date()) -> Duration? {
+        // A 429's own backoff outranks everything else a game's state
+        // would otherwise ask for — including a live game's 1s cadence.
+        // Once `retryAvailableAt` passes, this falls through to the normal
+        // computation on its own; nothing else has to notice the throttle
+        // ended.
+        if let retryAvailableAt, retryAvailableAt > now {
+            return .milliseconds(Int(retryAvailableAt.timeIntervalSince(now) * 1000))
+        }
         if hasLiveGames { return pollInterval }
         return Self.nextPollDelay(for: boardGames, now: now, interval: pollInterval)
     }

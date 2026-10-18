@@ -183,6 +183,13 @@ nonisolated extension ScoresProviding {
 nonisolated enum ESPNError: Error {
     case invalidURL
     case badStatus(Int)
+    /// A 429. ESPN has never been observed sending one (audit 2026-09-05:
+    /// a 12-request burst came back 12x200, no `x-ratelimit-*`), but a
+    /// generic `badStatus(429)` would hand the UI nothing to throttle a
+    /// retry button on, which is how a soft limit becomes a hard one.
+    /// `retryAfter` is the `Retry-After` header's value in seconds, or 30
+    /// when ESPN sends none.
+    case rateLimited(retryAfter: TimeInterval)
     /// Every request a composed answer was made of failed. Distinct from an
     /// empty answer on purpose: "no meetings since 2017" and "we couldn't
     /// ask" look identical on screen, and only one of them is true.
@@ -834,9 +841,27 @@ actor ESPNClient: ScoresProviding {
                                  ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy)
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            if http.statusCode == 429 {
+                throw ESPNError.rateLimited(retryAfter: Self.retryAfterInterval(from: http))
+            }
             throw ESPNError.badStatus(http.statusCode)
         }
         return try decoder.decode(T.self, from: data)
+    }
+
+    /// The `Retry-After` header's value in seconds. ESPN's own API carries
+    /// no documentation for this header — the audit that added this case
+    /// never observed a 429 in the wild — so this only handles the
+    /// seconds-delta form (`"30"`), which is the common one, and falls
+    /// back to a 30s floor when the header is missing, zero, negative, or
+    /// in the HTTP-date form this doesn't parse.
+    nonisolated static func retryAfterInterval(from response: HTTPURLResponse,
+                                                default fallback: TimeInterval = 30) -> TimeInterval {
+        guard let header = response.value(forHTTPHeaderField: "Retry-After"),
+              let seconds = TimeInterval(header.trimmingCharacters(in: .whitespaces)),
+              seconds > 0
+        else { return fallback }
+        return seconds
     }
 }
 

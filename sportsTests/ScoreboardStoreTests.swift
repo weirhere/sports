@@ -13,6 +13,10 @@ private final class DayProvider: ScoresProviding, @unchecked Sendable {
     private(set) var requests: [ClosedRange<Date>] = []
     private(set) var divisionsAsked: [Set<Conference.Division>] = []
     var shouldFail = false
+    /// Set to make the next (and every subsequent, until cleared) request
+    /// answer as ESPN's 429 would, rather than the generic network error
+    /// `shouldFail` throws.
+    var rateLimitRetryAfter: TimeInterval?
 
     init(league: League = .collegeFootball, games: [Game], fcsGames: [Game] = []) {
         self.league = league
@@ -29,6 +33,7 @@ private final class DayProvider: ScoresProviding, @unchecked Sendable {
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
         requests.append(days)
         divisionsAsked.append(divisions)
+        if let retryAfter = rateLimitRetryAfter { throw ESPNError.rateLimited(retryAfter: retryAfter) }
         if shouldFail { throw URLError(.networkConnectionLost) }
         let calendar = Calendar.current
         let lower = calendar.startOfDay(for: days.lowerBound)
@@ -182,6 +187,82 @@ private func game(_ id: String, on date: Date?, live: Bool = false,
         provider.shouldFail = false
         await store.refresh()
         #expect(store.lastError == nil)
+    }
+
+    /// The thing a 429 actually needs: a tapped Retry that can't re-ask
+    /// ESPN until the header's own interval elapses, so the response that
+    /// asked us to slow down is the one thing that can't be hammered.
+    @Test func aThrottledRetryMakesNoRequestUntilTheIntervalElapses() async {
+        let provider = DayProvider(games: [])
+        let store = ScoreboardStore(client: provider)
+        await store.load(around: day(0))
+        #expect(provider.requests.count == 1)
+
+        provider.rateLimitRetryAfter = 60
+        await store.load(around: day(0), force: true)
+        #expect(provider.requests.count == 2)
+        #expect(store.retryAvailableAt != nil)
+        #expect(store.lastError == "ESPN is asking us to slow down. Trying again shortly.")
+
+        // ESPN would answer fine now, but a 60s throttle set a moment ago
+        // rules out asking — a user mashing Retry must not re-fire it.
+        provider.rateLimitRetryAfter = nil
+        await store.load(around: day(0), force: true)
+        #expect(provider.requests.count == 2)
+        #expect(store.lastError == "ESPN is asking us to slow down. Trying again shortly.")
+        store.stopPolling()
+    }
+
+    /// Every other non-2xx keeps behaving exactly as it did before the 429
+    /// case existed: a message with the status code, and no throttle.
+    @Test func aNonRateLimitFailureIsUnaffectedByTheThrottlePath() async {
+        let provider = DayProvider(games: [])
+        let store = ScoreboardStore(client: provider)
+        await store.load(around: day(0))
+
+        provider.shouldFail = true
+        await store.load(around: day(0), force: true)
+        #expect(store.retryAvailableAt == nil)
+        #expect(store.lastError != "ESPN is asking us to slow down. Trying again shortly.")
+
+        // Unthrottled, so the very next tap goes straight back to ESPN.
+        provider.shouldFail = false
+        await store.load(around: day(0), force: true)
+        #expect(provider.requests.count == 3)
+        #expect(store.lastError == nil)
+        store.stopPolling()
+    }
+
+    /// The poll loop's own backoff: a rate-limited tick stops asking at
+    /// the normal cadence and waits out the header's interval, then
+    /// resumes on its own — no flag to clear, no second mechanism.
+    @Test func thePollLoopBacksOffDuringAThrottleThenResumes() async throws {
+        let provider = DayProvider(games: [game("kicked", on: Date().addingTimeInterval(-600))])
+        let store = ScoreboardStore(client: provider, pollInterval: .milliseconds(30))
+        await store.load(around: Date())
+        #expect(provider.requests.count == 1)
+
+        // Long enough that the loop's normal 30ms cadence would ask many
+        // more times than it's allowed to while this test's margins hold.
+        provider.rateLimitRetryAfter = 0.4
+        try await Task.sleep(for: .milliseconds(150))
+        let afterTheFailingTick = provider.requests.count
+        #expect(afterTheFailingTick > 1)
+        #expect(store.retryAvailableAt != nil)
+
+        // Still inside the 400ms window: the loop must not have asked
+        // again at its normal 30ms cadence.
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(provider.requests.count == afterTheFailingTick)
+
+        // Past the window: the loop resumes on its own, with nothing here
+        // telling it to.
+        provider.rateLimitRetryAfter = nil
+        try await Task.sleep(for: .milliseconds(300))
+        store.stopPolling()
+        #expect(provider.requests.count > afterTheFailingTick)
+        #expect(store.lastError == nil)
+        #expect(store.retryAvailableAt == nil)
     }
 
     @Test func daysFarFromTheWindowAreEvicted() async {
