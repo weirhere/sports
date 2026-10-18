@@ -398,5 +398,43 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
         #expect(Formation.unit(for: "ATH", league: .nfl) == nil)
         #expect(Formation.unit(for: "C", league: .nba) == nil)
         #expect(Formation.unit(for: nil, league: .nfl) == nil)
+        // ESPN's own unit-as-position codes name the unit and nothing more.
+        #expect(Formation.unit(for: "OFF", league: .nfl) == .offense)
+        #expect(Formation.unit(for: "DEF", league: .collegeFootball) == .defense)
+        #expect(Formation.unit(for: "ST", league: .nfl) == .specialTeams)
+    }
+
+    @Test func unitGroupsCaptionFootballBenchesAndNotTheOthers() {
+        let away = [person("1", "Pat Punter", "P", jersey: "6"),
+                    person("2", "Guard Guy", "G", jersey: "77"),
+                    person("3", "Mystery Man", "ATH", jersey: "40")]
+        let home = [person("4", "Back Up", "RB", jersey: "22"),
+                    person("5", "Corner Cat", "CB", jersey: "24"),
+                    person("6", "Snap Sam", "LS", jersey: "48")]
+        let groups = GameRoster.unitGroups(away: away, home: home, league: .nfl)
+        // Offense, defense, special teams, then the unplaced; in the order
+        // given inside each; a group neither side fills is gone.
+        #expect(groups.map(\.unit) == [.offense, .defense, .specialTeams, nil])
+        #expect(groups[0].away.map(\.name) == ["Guard Guy"])
+        #expect(groups[0].home.map(\.name) == ["Back Up"])
+        #expect(groups[1].away.isEmpty)
+        #expect(groups[1].home.map(\.name) == ["Corner Cat"])
+        #expect(groups[2].away.map(\.name) == ["Pat Punter"])
+        #expect(groups[2].home.map(\.name) == ["Snap Sam"])
+        #expect(groups[3].away.map(\.name) == ["Mystery Man"])
+        #expect(groups[3].home.isEmpty)
+        #expect(GameRoster.Unit.specialTeams.title == "Special teams")
+
+        let noDefense = GameRoster.unitGroups(away: [away[0]], home: [home[0]], league: .nfl)
+        #expect(noDefense.map(\.unit) == [.offense, .specialTeams])
+
+        // No platoons in the NBA: one group of everyone, with no unit.
+        let nba = [person("7", "Guard", "G", jersey: "3", league: .nba),
+                   person("8", "Center", "C", jersey: "15", league: .nba)]
+        let one = GameRoster.unitGroups(away: nba, home: [], league: .nba)
+        #expect(one.count == 1)
+        #expect(one[0].unit == nil)
+        #expect(one[0].away.map(\.name) == ["Guard", "Center"])
+        #expect(GameRoster.unitGroups(away: [], home: [], league: .nhl).isEmpty)
     }
 }

@@ -15,41 +15,19 @@ struct StartersListCards: View {
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
-            if isFootball {
-                ForEach(GameRoster.Unit.allCases, id: \.self) { unit in
-                    card(title: Self.title(for: unit), unit: unit)
+            ForEach(GameRoster.unitGroups(away: starters(roster.away), home: starters(roster.home),
+                                          league: league)) { group in
+                RosterSidesCard(title: isFootball ? (group.unit?.title ?? "Also starting") : nil,
+                                away: roster.away.team, home: roster.home.team,
+                                awayItems: group.away, homeItems: group.home) { person, team in
+                    GameRosterCell(person: person, team: team, league: league)
                 }
-                card(title: "Also starting", unit: nil)
-            } else {
-                card(title: nil, unit: nil)
             }
         }
     }
 
-    @ViewBuilder
-    private func card(title: String?, unit: GameRoster.Unit?) -> some View {
-        let away = starters(roster.away, unit: unit)
-        let home = starters(roster.home, unit: unit)
-        if !away.isEmpty || !home.isEmpty {
-            RosterSidesCard(title: title, away: roster.away.team, home: roster.home.team,
-                            awayItems: away, homeItems: home) { person, team in
-                GameRosterCell(person: person, team: team, league: league)
-            }
-        }
-    }
-
-    /// A side's starters in `unit` — all of them where the league has no
-    /// units — in jersey order.
-    private func starters(_ side: GameRoster.Side, unit: GameRoster.Unit?) -> [GameRoster.Person] {
-        let people = isFootball ? side.starters.filter { $0.unit == unit } : side.starters
-        return GameRoster.Side.sortedByJersey(people)
-    }
-
-    static func title(for unit: GameRoster.Unit) -> String {
-        switch unit {
-        case .offense: "Offense"
-        case .defense: "Defense"
-        case .specialTeams: "Special teams"
-        }
+    /// A side's starters in jersey order.
+    private func starters(_ side: GameRoster.Side) -> [GameRoster.Person] {
+        GameRoster.Side.sortedByJersey(side.starters)
     }
 }

@@ -226,7 +226,10 @@ nonisolated enum FootballPositions {
     static let line: Set<String> = ["LT", "LG", "C", "RG", "RT", "OT", "OG", "OL", "G", "T"]
     static let guardsAndCenters: Set<String> = ["LG", "C", "RG", "OG", "G", "OL"]
     static let backs: Set<String> = ["RB", "FB", "HB", "TB", "LHB", "RHB", "B"]
-    static let offense: Set<String> = receivers.union(line).union(backs).union(["TE", "QB"])
+    // "OFF", "DEF" and "ST" are ESPN's own unit-as-position codes (ids
+    // 70–72 in `ESPNPositions`): a player listed that way names his unit
+    // and nothing more, so he is grouped with it and drawn nowhere.
+    static let offense: Set<String> = receivers.union(line).union(backs).union(["TE", "QB", "OFF"])
 
     static let defensiveEnds: Set<String> = ["LDE", "RDE", "DE", "EDGE"]
     static let defensiveLine: Set<String> = defensiveEnds.union(["LDT", "RDT", "DT", "NT", "NG", "MG", "UT", "DL"])
@@ -234,7 +237,7 @@ nonisolated enum FootballPositions {
     static let linebackers: Set<String> = outsideLinebackers.union(["LILB", "RILB", "ILB", "MLB", "LB"])
     static let cornerbacks: Set<String> = ["LCB", "RCB", "CB", "NB", "DB"]
     static let safeties: Set<String> = ["FS", "SS", "S", "LSF", "RSF"]
-    static let defense: Set<String> = defensiveLine.union(linebackers).union(cornerbacks).union(safeties)
+    static let defense: Set<String> = defensiveLine.union(linebackers).union(cornerbacks).union(safeties).union(["DEF"])
 
-    static let specialTeams: Set<String> = ["PK", "K", "P", "LS", "KR", "PR", "H"]
+    static let specialTeams: Set<String> = ["PK", "K", "P", "LS", "KR", "PR", "H", "ST"]
 }

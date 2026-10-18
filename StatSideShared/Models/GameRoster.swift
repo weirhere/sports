@@ -25,6 +25,50 @@ nonisolated struct GameRoster: Sendable {
     /// one at a time, the other team's opposite unit facing it.
     enum Unit: Sendable, Hashable, CaseIterable {
         case offense, defense, specialTeams
+
+        /// The card's or caption's word for it.
+        var title: String {
+            switch self {
+            case .offense: "Offense"
+            case .defense: "Defense"
+            case .specialTeams: "Special teams"
+            }
+        }
+    }
+
+    /// Two sides' people under one unit's caption — how every football
+    /// list on the Roster tab that isn't the coaches, the inactives or the
+    /// injured is grouped (Andy, 2026-10-18): the starters' list cards and
+    /// the bench alike split into Offense, Defense and Special teams, so a
+    /// kicker — never one of the 22 "starters" ESPN flags — has a named
+    /// place instead of a slot somewhere in a jersey-ordered bench. The
+    /// NBA and NHL have no units, so theirs is one group with no caption.
+    struct UnitGroup: Identifiable, Sendable, Hashable {
+        /// Nil for the people no unit claims: football's unplaceable
+        /// positions, or everyone in a league without platoons.
+        let unit: Unit?
+        let away: [Person]
+        let home: [Person]
+
+        var id: String { unit.map { $0.title } ?? "other" }
+        var isEmpty: Bool { away.isEmpty && home.isEmpty }
+    }
+
+    /// `away` and `home` split by unit in the field's order — offense,
+    /// defense, special teams, then the unplaced — each side's run in the
+    /// order it came, groups neither side fills dropped. Outside football
+    /// it is the one unitless group, or nothing.
+    static func unitGroups(away: [Person], home: [Person], league: League) -> [UnitGroup] {
+        let units: [Unit?] = switch league {
+        case .collegeFootball, .nfl: Unit.allCases.map { $0 } + [nil]
+        case .nba, .nhl: [nil]
+        }
+        return units
+            .map { unit in
+                UnitGroup(unit: unit, away: away.filter { $0.unit == unit },
+                          home: home.filter { $0.unit == unit })
+            }
+            .filter { !$0.isEmpty }
     }
 
     /// Where a side's `starters` came from, which is what the card calls

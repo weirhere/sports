@@ -62,6 +62,7 @@ struct GameRosterPane: View {
     }
 
     private var layout: StartersLayout { uiState?.startersLayout ?? unsavedLayout }
+    private var isFootball: Bool { league == .collegeFootball || league == .nfl }
 
     /// Whether the first thing on the pane is the painted field.
     private var leadsWithField: Bool {
@@ -98,9 +99,19 @@ struct GameRosterPane: View {
                 GameCoachCell(coach: line, team: team, league: league)
             }
         }
-        if !away.others.isEmpty || !home.others.isEmpty {
+        // Grouped by unit in football (Andy, 2026-10-18): the kicker and
+        // the punter are never among the 22 ESPN flags as starters, so the
+        // bench is where special teams live, and "Special teams" is the
+        // caption that gives them a place. The inactives and the injured
+        // stay one list each — those cards are about why, not where.
+        let otherGroups = GameRoster.unitGroups(away: away.others, home: home.others, league: league)
+        if !otherGroups.isEmpty {
             RosterSidesCard(title: othersTitle(roster), away: away.team, home: home.team,
-                            awayItems: away.others, homeItems: home.others) { person, team in
+                            groups: otherGroups.map { group in
+                                .init(id: group.id,
+                                      caption: isFootball ? (group.unit?.title ?? "Other") : nil,
+                                      away: group.away, home: group.home)
+                            }) { person, team in
                 GameRosterCell(person: person, team: team, league: league)
             }
         }
