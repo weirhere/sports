@@ -21,6 +21,10 @@ struct FormationField: View {
     var bottomLabel: String? = nil
 
     @ScaledMetric(relativeTo: .caption2) private var rowHeight: CGFloat = 58
+    /// A wing's slot is capped, so the wings sit at the edges and the gap
+    /// between them is the field, not a share of it; a crowded wing row
+    /// gives the gap up first and spreads evenly like a line.
+    @ScaledMetric(relativeTo: .caption2) private var wingWidth: CGFloat = 74
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,11 +38,15 @@ struct FormationField: View {
     }
 
     /// One side's rows. Row 0 is the line of engagement, so the top half
-    /// lists its rows deepest-first and pins them to the midline.
+    /// lists its rows deepest-first and pins them to the midline. The team
+    /// caption is a strip of its own at the half's far end — it used to
+    /// float over the deepest row, where "JAX defense" landed on the free
+    /// safety (Andy, 2026-10-18).
     private func half(_ formation: Formation?, team: Team, label: String?, isTop: Bool) -> some View {
         let rows = formation?.rows ?? []
         let ordered = isTop ? Array(rows.reversed()) : rows
         return VStack(spacing: 0) {
+            if isTop { teamCaption(team, label: label) }
             if rows.isEmpty {
                 Text("Lineup TBA")
                     .font(.meta)
@@ -46,20 +54,36 @@ struct FormationField: View {
                     .frame(maxWidth: .infinity, minHeight: rowHeight * 2)
             } else {
                 ForEach(Array(ordered.enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: 0) {
-                        ForEach(row) { person in
-                            FormationSlot(person: person, team: team, league: league)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: rowHeight)
+                    rowView(row, team: team)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: rowHeight)
                 }
             }
+            if !isTop { teamCaption(team, label: label) }
         }
-        .frame(maxWidth: .infinity, minHeight: rowHeight * 2, alignment: isTop ? .bottom : .top)
+        .frame(maxWidth: .infinity, alignment: isTop ? .bottom : .top)
         .padding(.vertical, Spacing.xs)
-        .overlay(alignment: isTop ? .topLeading : .bottomLeading) {
-            teamCaption(team, label: label)
+    }
+
+    @ViewBuilder
+    private func rowView(_ row: Formation.Row, team: Team) -> some View {
+        switch row {
+        case .line(let players):
+            HStack(spacing: 0) {
+                ForEach(players) { person in
+                    FormationSlot(person: person, team: team, league: league)
+                }
+            }
+        case .wings(let left, let right):
+            HStack(spacing: 0) {
+                ForEach(left) { person in
+                    FormationSlot(person: person, team: team, league: league, maxWidth: wingWidth)
+                }
+                Spacer(minLength: 0)
+                ForEach(right) { person in
+                    FormationSlot(person: person, team: team, league: league, maxWidth: wingWidth)
+                }
+            }
         }
     }
 
@@ -71,7 +95,9 @@ struct FormationField: View {
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
         }
-        .padding(Spacing.sm)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }

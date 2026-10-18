@@ -7,6 +7,11 @@ struct FormationSlot: View {
     let person: GameRoster.Person
     let team: Team
     let league: League
+    /// A ceiling for a wing, so it holds the edge rather than spreading
+    /// into the field; nil shares the row evenly. A ceiling and not a
+    /// fixed width because five wings (three wideouts, two tight ends)
+    /// at a fixed width overflowed the field and shoved the page sideways.
+    var maxWidth: CGFloat? = nil
 
     @ScaledMetric(relativeTo: .caption2) private var discSize: CGFloat = 32
 
@@ -23,7 +28,7 @@ struct FormationSlot: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: maxWidth ?? .infinity)
             .padding(.horizontal, 1)
             .contentShape(Rectangle())
             .accessibilityElement(children: .ignore)

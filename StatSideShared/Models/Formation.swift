@@ -21,12 +21,39 @@ import Foundation
 /// arrangement is a picture of who is in, not a scouting report —
 /// a tackle drawn on the wrong side is still the right tackle.
 nonisolated struct Formation: Sendable, Hashable {
+    /// One row of the half. A `line` shares the row's width evenly; `wings`
+    /// are the players who line up wide of everyone else — receivers and
+    /// tight ends off the ball, cornerbacks — pinned to the two edges with
+    /// the middle left open. Nine across one row (three wideouts, a tight
+    /// end and five linemen) left every name too small to read (Andy,
+    /// 2026-10-18), and splitting the wings out is what a real formation
+    /// does anyway: only seven have to be on the line, and the slot and
+    /// the tight end are routinely a step off it.
+    enum Row: Sendable, Hashable {
+        case line([GameRoster.Person])
+        case wings(left: [GameRoster.Person], right: [GameRoster.Person])
+
+        var players: [GameRoster.Person] {
+            switch self {
+            case .line(let players): players
+            case .wings(let left, let right): left + right
+            }
+        }
+
+        var isEmpty: Bool { players.isEmpty }
+    }
+
     /// Row 0 sits on the midline; the last row is deepest in the half.
-    let rows: [[GameRoster.Person]]
+    let rows: [Row]
     /// Starters with no position the layout knows.
     let unplaced: [GameRoster.Person]
 
     var isEmpty: Bool { rows.allSatisfy(\.isEmpty) }
+
+    private init(rows: [Row], unplaced: [GameRoster.Person]) {
+        self.rows = rows.filter { !$0.isEmpty }
+        self.unplaced = unplaced
+    }
 
     static func make(starters: [GameRoster.Person], league: League,
                      unit: GameRoster.Unit? = nil) -> Formation {
@@ -78,8 +105,9 @@ nonisolated struct Formation: Sendable, Hashable {
                                    left: ["LG"], middle: ["C", "OL"], right: ["RG"], flank: ["G", "OG"])
             let tackles = split(line.filter { !P.guardsAndCenters.contains($0.position?.uppercased() ?? "") },
                                 left: ["LT"], right: ["RT"], flank: ["OT", "T"], tiesLeft: true)
-            let front = wide.left + ends.left + tackles.left + interior + tackles.right + ends.right + wide.right
-            return Formation(rows: [front, quarterbacks, backs].filter { !$0.isEmpty }, unplaced: unplaced)
+            let front = tackles.left + interior + tackles.right
+            let flankers = Row.wings(left: wide.left + ends.left, right: ends.right + wide.right)
+            return Formation(rows: [.line(front), flankers, .line(quarterbacks), .line(backs)], unplaced: unplaced)
         case .defense:
             var linemen: [GameRoster.Person] = [], linebackers: [GameRoster.Person] = []
             var corners: [GameRoster.Person] = [], safeties: [GameRoster.Person] = []
@@ -103,11 +131,13 @@ nonisolated struct Formation: Sendable, Hashable {
             let middleBackers = arrange(linebackers.filter { !P.outsideLinebackers.contains($0.position?.uppercased() ?? "") },
                                         left: ["LILB"], middle: ["MLB"], right: ["RILB"], flank: ["ILB", "LB"])
             let cornerSplit = split(corners, left: ["LCB"], right: ["RCB", "NB"], flank: ["CB", "DB"], tiesLeft: true)
-            let second = cornerSplit.left + outside.left + middleBackers + outside.right + cornerSplit.right
+            let backers = outside.left + middleBackers + outside.right
             let deep = arrange(safeties, left: ["FS", "LSF"], middle: [], right: ["SS", "RSF"], flank: ["S"])
-            return Formation(rows: [front, second, deep].filter { !$0.isEmpty }, unplaced: unplaced)
+            return Formation(rows: [.line(front), .line(backers),
+                                    .wings(left: cornerSplit.left, right: cornerSplit.right),
+                                    .line(deep)], unplaced: unplaced)
         case .specialTeams:
-            return Formation(rows: mine.isEmpty ? [] : [mine], unplaced: unplaced)
+            return Formation(rows: [.line(mine)], unplaced: unplaced)
         }
     }
 
@@ -126,7 +156,7 @@ nonisolated struct Formation: Sendable, Hashable {
         // Guards nearest half court, the center between the forwards.
         let backcourt = arrange(guards, left: ["PG"], middle: [], right: ["SG"], flank: ["G"])
         let front = arrange(frontcourt, left: ["SF"], middle: ["C", "FC"], right: ["PF"], flank: ["F", "GF"])
-        return Formation(rows: [backcourt, front].filter { !$0.isEmpty }, unplaced: unplaced)
+        return Formation(rows: [.line(backcourt), .line(front)], unplaced: unplaced)
     }
 
     // MARK: - Hockey
@@ -144,7 +174,7 @@ nonisolated struct Formation: Sendable, Hashable {
         }
         let line = arrange(forwards, left: ["LW"], middle: ["C", "F"], right: ["RW"], flank: ["W"])
         let pairing = arrange(defense, left: ["LD"], middle: [], right: ["RD"], flank: ["D"])
-        return Formation(rows: [line, pairing, goalies].filter { !$0.isEmpty }, unplaced: unplaced)
+        return Formation(rows: [.line(line), .line(pairing), .line(goalies)], unplaced: unplaced)
     }
 
     // MARK: - Placement

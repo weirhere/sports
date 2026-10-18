@@ -334,10 +334,14 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
             person("12", "Edge Rusher", "DE"),   // the other platoon
         ]
         let offense = Formation.make(starters: starters, league: .nfl, unit: .offense)
-        #expect(offense.rows.count == 3)
-        #expect(offense.rows[0].map(\.position) == ["WR", "WR", "LT", "LG", "C", "RG", "RT", "TE", "WR"])
-        #expect(offense.rows[1].map(\.position) == ["QB"])
-        #expect(offense.rows[2].map(\.position) == ["RB"])
+        #expect(offense.rows.count == 4)
+        // The line at the ball; the receivers and the tight end a row off
+        // it, split to the edges with the field open between them.
+        #expect(offense.rows[0] == .line(starters.filter { ["LT", "LG", "C", "RG", "RT"].contains($0.position) }))
+        #expect(offense.rows[1] == .wings(left: [starters[2], starters[0]], right: [starters[3], starters[1]]))
+        #expect(offense.rows[1].players.map(\.position) == ["WR", "WR", "TE", "WR"])
+        #expect(offense.rows[2].players.map(\.position) == ["QB"])
+        #expect(offense.rows[3].players.map(\.position) == ["RB"])
         #expect(offense.unplaced.isEmpty)
     }
 
@@ -350,10 +354,12 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
             person("12", "L", "ATH"),   // no unit the table knows
         ]
         let defense = Formation.make(starters: starters, league: .nfl, unit: .defense)
-        #expect(defense.rows.count == 3)
-        #expect(defense.rows[0].map(\.position) == ["DE", "DT", "DT", "DE"])
-        #expect(defense.rows[1].map(\.position) == ["CB", "OLB", "MLB", "OLB", "CB"])
-        #expect(defense.rows[2].map(\.position) == ["FS", "SS"])
+        #expect(defense.rows.count == 4)
+        #expect(defense.rows[0].players.map(\.position) == ["DE", "DT", "DT", "DE"])
+        #expect(defense.rows[1].players.map(\.position) == ["OLB", "MLB", "OLB"])
+        // Corners are wings: one at each edge, nobody between them.
+        #expect(defense.rows[2] == .wings(left: [starters[7]], right: [starters[8]]))
+        #expect(defense.rows[3].players.map(\.position) == ["FS", "SS"])
         #expect(defense.unplaced.map(\.name) == ["L"])
     }
 
@@ -361,7 +367,7 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
         let line = [person("1", "A", "OT"), person("2", "B", "G"), person("3", "C", "C"),
                     person("4", "D", "G"), person("5", "E", "OT"), person("6", "Q", "QB")]
         let offense = Formation.make(starters: line, league: .collegeFootball, unit: .offense)
-        #expect(offense.rows[0].map(\.name) == ["A", "B", "C", "D", "E"])
+        #expect(offense.rows[0].players.map(\.name) == ["A", "B", "C", "D", "E"])
     }
 
     @Test func basketballAndHockeyArrangeOneUnit() {
@@ -369,20 +375,20 @@ private func entry(_ id: String, _ short: String, jersey: String? = nil,
                     person("3", "C", "PG", league: .nba), person("4", "D", "PF", league: .nba),
                     person("5", "E", "SF", league: .nba)]
         let court = Formation.make(starters: five, league: .nba)
-        #expect(court.rows.map { $0.map(\.position) } == [["PG", "SG"], ["SF", "C", "PF"]])
+        #expect(court.rows.map { $0.players.map(\.position) } == [["PG", "SG"], ["SF", "C", "PF"]])
 
         let six = [person("1", "A", "G", league: .nhl), person("2", "B", "RD", league: .nhl),
                    person("3", "C", "LW", league: .nhl), person("4", "D", "C", league: .nhl),
                    person("5", "E", "RW", league: .nhl), person("6", "F", "LD", league: .nhl)]
         let rink = Formation.make(starters: six, league: .nhl)
-        #expect(rink.rows.map { $0.map(\.position) } == [["LW", "C", "RW"], ["LD", "RD"], ["G"]])
+        #expect(rink.rows.map { $0.players.map(\.position) } == [["LW", "C", "RW"], ["LD", "RD"], ["G"]])
         // Generic guards and forwards still land in their rows.
         let coarse = [person("1", "A", "G", league: .nba), person("2", "B", "F", league: .nba),
                       person("3", "C", "F", league: .nba), person("4", "D", "C", league: .nba),
                       person("5", "E", "G", league: .nba)]
         let rows = Formation.make(starters: coarse, league: .nba).rows
-        #expect(rows[0].count == 2)
-        #expect(rows[1].map(\.position) == ["F", "C", "F"])
+        #expect(rows[0].players.count == 2)
+        #expect(rows[1].players.map(\.position) == ["F", "C", "F"])
     }
 
     @Test func unitClassificationIsFootballOnly() {
