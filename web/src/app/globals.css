@@ -38,8 +38,8 @@
      (iOS `SurfaceColors`, 2026-09-27). Turf, maple and ice, drawn only while
      a game is live and only inside `app/(main)/game/…/gamecast/`. Nothing
      else may read these; the card around them stays monochrome. */
-  --surface-turf: #5aa865;
-  --surface-turf-alt: #52a05d;
+  --surface-turf: #2e7845; /* deep, broadcast turf — off-white names read on it (2026-10-18) */
+  --surface-turf-alt: #29703f;
   --surface-line-to-gain: #f2d024; /* one yellow, both modes: only on turf */
   --surface-chalk: #ffffff;
   --surface-ink: #121212; /* the last play; fixed so it never turns white */
@@ -72,8 +72,8 @@
   --rank-down: #ff453b;
   /* Dark deepens turf and wood rather than inverting them, so the black
      play arrow still reads; ice stays ice, a touch dimmer. */
-  --surface-turf: #3d8049;
-  --surface-turf-alt: #377543;
+  --surface-turf: #297040;
+  --surface-turf-alt: #25693b;
   --surface-maple: #9c7f52;
   --surface-paint: #8a6e44;
   --surface-ice: #dfe5ea;

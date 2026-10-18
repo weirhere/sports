@@ -22,9 +22,10 @@ struct FormationSlot: View {
         NavigationLink(value: PlayerIdentity(person: person, team: team, league: league)) {
             VStack(spacing: 2) {
                 PersonDisc(jersey: person.jersey, url: person.thumbnailURL, size: discSize)
-                    // A hairline of card color so the disc stands off the
-                    // surface it shares a gray with.
-                    .overlay(Circle().stroke(Color.bgCard, lineWidth: 1.5))
+                    // A hairline of the surface's own ink, translucent, so
+                    // the disc stands off ice it shares a gray with without
+                    // a pure-white ring on turf (Andy, 2026-10-18).
+                    .overlay(Circle().stroke(ink.opacity(0.35), lineWidth: 1))
                 Text(label)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(ink)

@@ -21,9 +21,18 @@ struct FormationField: View {
     var topLabel: String? = nil
     var bottomLabel: String? = nil
 
-    /// Ice is light in both modes, so names on it are always dark ink;
-    /// turf and maple deepen in dark mode, so `textPrimary` reads on them.
-    private var ink: Color { league == .nhl ? SurfaceColors.ink : .textPrimary }
+    /// Names take the ink their surface asks for: off-white on turf, which
+    /// is the same deep green in both modes (dark names on it read muddy
+    /// — Andy, 2026-10-18, against FotMob's pitch); fixed dark ink on
+    /// ice, which stays light in both; `textPrimary` on maple, which
+    /// deepens in dark mode the way the page does.
+    private var ink: Color {
+        switch league {
+        case .collegeFootball, .nfl: SurfaceColors.turfInk
+        case .nhl: SurfaceColors.ink
+        case .nba: .textPrimary
+        }
+    }
 
     @ScaledMetric(relativeTo: .caption2) private var rowHeight: CGFloat = 58
     /// A wing's slot is capped, so the wings sit at the edges and the gap
@@ -53,7 +62,7 @@ struct FormationField: View {
             if rows.isEmpty {
                 Text("Lineup TBA")
                     .font(.meta)
-                    .foregroundStyle(ink.opacity(0.75))
+                    .foregroundStyle(ink.opacity(0.85))
                     .frame(maxWidth: .infinity, minHeight: rowHeight * 2)
             } else {
                 ForEach(Array(ordered.enumerated()), id: \.offset) { _, row in
@@ -98,7 +107,7 @@ struct FormationField: View {
                 .frame(width: 14, height: 14)
             Text(label ?? team.abbreviation ?? team.location)
                 .font(.meta)
-                .foregroundStyle(ink.opacity(0.75))
+                .foregroundStyle(ink.opacity(0.85))
         }
         .padding(.horizontal, Spacing.sm)
         .padding(.vertical, Spacing.xs)
@@ -140,10 +149,12 @@ private struct FieldMarkings: View {
                     context.fill(Path(rect), with: .color(band.isMultiple(of: 2) ? SurfaceColors.turf
                                                                                   : SurfaceColors.turfAlternate))
                 }
+                // Faint, the way a broadcast's are: the names are the
+                // brightest thing on the field, and the lines sit under them.
                 for index in 1..<10 where index != 5 {
-                    horizontal(step * CGFloat(index), chalk.opacity(0.45))
+                    horizontal(step * CGFloat(index), chalk.opacity(0.28))
                 }
-                horizontal(midY, chalk.opacity(0.9), width: 2)
+                horizontal(midY, chalk.opacity(0.7), width: 2)
                 // Hash marks down the inboard thirds.
                 for index in 0..<40 {
                     let y = size.height / 40 * (CGFloat(index) + 0.5)
@@ -151,7 +162,7 @@ private struct FieldMarkings: View {
                         var path = Path()
                         path.move(to: CGPoint(x: x - 3, y: y))
                         path.addLine(to: CGPoint(x: x + 3, y: y))
-                        stroke(path, chalk.opacity(0.45))
+                        stroke(path, chalk.opacity(0.28))
                     }
                 }
             case .nba:

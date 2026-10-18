@@ -16,10 +16,18 @@ import UIKit
 /// 2026-10-18, when the formation field — drawn before kickoff and after
 /// the final — took the same paint (Andy's call).
 nonisolated enum SurfaceColors {
-    /// Alternating 10-yard bands. Dark mode deepens the turf rather than
-    /// inverting it, so the black play arrow still reads on it.
-    static let turf = dynamic(light: (0.353, 0.659, 0.396), dark: (0.239, 0.502, 0.286))
-    static let turfAlternate = dynamic(light: (0.322, 0.627, 0.365), dark: (0.216, 0.459, 0.263))
+    /// Alternating 10-yard bands. A broadcast's deep turf, not a lawn:
+    /// deep enough that off-white names read on it at 4.5:1 and the
+    /// chalk doesn't glare, light enough that the black play arrow still
+    /// reads (Andy, 2026-10-18, against FotMob's pitch; it was a brighter
+    /// (0.353, 0.659, 0.396) in light mode, which carried dark names
+    /// muddily). Dark mode deepens it a shade rather than inverting it.
+    static let turf = dynamic(light: (0.180, 0.470, 0.270), dark: (0.160, 0.440, 0.250))
+    static let turfAlternate = dynamic(light: (0.161, 0.439, 0.247), dark: (0.145, 0.412, 0.231))
+    /// Names and captions on turf: off-white, a step down from the chalk,
+    /// so the field has one white (the lines) and the type sits under it.
+    /// Fixed, because the turf is the same green in both modes.
+    static let turfInk = Color(white: 0.94)
     /// The broadcast's first-down line. One yellow, both modes: it only
     /// ever sits on turf.
     static let lineToGain = Color(red: 0.949, green: 0.816, blue: 0.141)
