@@ -68,6 +68,31 @@ private func fixture(_ name: String) throws -> Data {
         #expect(games.first?.isConferenceGame == false)
     }
 
+    /// BACKLOG.md E21: "The scoreboard knows where every game is played."
+    /// `competitions[].venue` ships on every event, pre-game included, so
+    /// this costs the request the row already fires — one league per
+    /// fixture, with and without a state on the address.
+    @Test func mappedGameCarriesVenue() throws {
+        let cfb = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-live"))
+        let cfbGame = try #require(ESPNMapper.scoreboard(from: cfb).games.first)
+        #expect(cfbGame.venue == "Aviva Stadium")
+        // Dublin has no `state` in the payload — the city line degrades
+        // to just the city rather than a dangling ", ".
+        #expect(cfbGame.venueCity == "Dublin")
+        #expect(cfbGame.venueIndoor == false)
+
+        let nfl = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+        let nflGame = try #require(ESPNMapper.scoreboard(from: nfl).games.first)
+        #expect(nflGame.venue == "Lumen Field")
+        #expect(nflGame.venueCity == "Seattle, WA")
+        #expect(nflGame.venueIndoor == false)
+
+        let nba = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nba-scoreboard"))
+        let nbaGame = try #require(ESPNMapper.scoreboard(from: nba).games.first)
+        #expect(nbaGame.venue == "Barclays Center")
+        #expect(nbaGame.venueIndoor == true)
+    }
+
     @Test func malformedEventIsDroppedNotFatal() throws {
         let dto = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("scoreboard-malformed"))
         let scoreboard = ESPNMapper.scoreboard(from: dto)

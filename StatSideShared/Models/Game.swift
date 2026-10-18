@@ -46,6 +46,15 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// flattens into one string, kept apart by market. Decoded, unused:
     /// `broadcast` is still every row's only network line (BACKLOG.md).
     var broadcasts: [GameBroadcast] = []
+    /// Where the game is played, read off the scoreboard's own
+    /// `competitions[].venue` rather than fetched — every row already
+    /// gets a slate request, so this costs nothing extra (BACKLOG.md
+    /// E21). No capacity: the site API's venue object never carries one.
+    var venue: String? = nil
+    var venueCity: String? = nil
+    /// Whether `venue` is a dome. Decoded, unused: nothing reads it yet
+    /// (the weather row next to this one in BACKLOG.md is what would).
+    var venueIndoor: Bool? = nil
 
     var isLive: Bool {
         if case .live = status { return true }

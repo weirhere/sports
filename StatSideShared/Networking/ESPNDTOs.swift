@@ -182,6 +182,11 @@ nonisolated struct CompetitionDTO: Decodable {
     let situation: SituationDTO?
     /// Carries `isTBDFlex`; the event-level status above doesn't.
     let status: StatusDTO?
+    /// Where the game is played. The scoreboard ships it on every
+    /// competition, pre-game included, so this costs no request —
+    /// `GameInfoDTO.venue` is the same shape read off `/summary` instead
+    /// (BACKLOG.md E21). No capacity, same as that one.
+    let venue: VenueDTO?
     /// "Bucked Up LA Bowl", "College Football Playoff Quarterfinal at the
     /// Allstate Sugar Bowl". The only thing distinguishing one postseason
     /// college-football game from another — ESPN files every bowl and every
@@ -1032,6 +1037,11 @@ nonisolated struct VenueDTO: Decodable {
     let address: VenueAddressDTO?
     let capacity: Int?
     let grass: Bool?
+    /// Whether the venue is a dome, rather than whether it has one today
+    /// — the scoreboard ships it on every competition, played or not
+    /// (BACKLOG.md E21). The weather row next to this one reads it as the
+    /// gate for "why a dome shows nothing rather than a forecast".
+    let indoor: Bool?
 }
 
 nonisolated struct VenueAddressDTO: Decodable {

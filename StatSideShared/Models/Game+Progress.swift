@@ -95,6 +95,9 @@ nonisolated extension Game {
         copy.line = line
         copy.isConferenceGame = isConferenceGame
         copy.broadcasts = broadcasts
+        copy.venue = venue
+        copy.venueCity = venueCity
+        copy.venueIndoor = venueIndoor
         return copy
     }
 
