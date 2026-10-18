@@ -990,7 +990,11 @@ nonisolated enum ESPNMapper {
                 ?? nonEmpty(broadcastName(from: competition.broadcasts)),
             line: competition.odds?.elements.first.flatMap(line(from:)),
             isConferenceGame: competition.conferenceCompetition,
-            broadcasts: geoBroadcasts(from: competition.geoBroadcasts ?? [])
+            broadcasts: geoBroadcasts(from: competition.geoBroadcasts ?? []),
+            venue: competition.venue?.fullName,
+            venueCity: TeamVenue.cityLine(city: competition.venue?.address?.city,
+                                          state: competition.venue?.address?.state),
+            venueIndoor: competition.venue?.indoor
         )
     }
 

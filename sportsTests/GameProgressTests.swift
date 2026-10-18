@@ -113,4 +113,18 @@ private func live(_ clock: String?, _ period: Int?, phase: LivePhase = .playing)
                                         awayScore: 20, awayWinner: nil)
         #expect(updated.broadcasts.first?.network == "FOX")
     }
+
+    /// Same trap, same fix, for `venue`/`venueCity`/`venueIndoor` (BACKLOG.md E21).
+    @Test func withLiveStateKeepsVenue() {
+        var acc = game("g1", status: live("1:56", 4), away: 20, home: 22)
+        acc.venue = "Lumen Field"
+        acc.venueCity = "Seattle, WA"
+        acc.venueIndoor = false
+        let updated = acc.withLiveState(status: live("0:58", 4),
+                                        homeScore: 29, homeWinner: nil,
+                                        awayScore: 20, awayWinner: nil)
+        #expect(updated.venue == "Lumen Field")
+        #expect(updated.venueCity == "Seattle, WA")
+        #expect(updated.venueIndoor == false)
+    }
 }
