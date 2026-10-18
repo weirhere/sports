@@ -74,6 +74,28 @@ nonisolated struct GameSummary: Sendable {
     /// The summary header's own `broadcasts[]`, same shape as `Game`'s
     /// scoreboard-sourced `broadcasts`. Decoded, unused.
     var broadcasts: [GameBroadcast] = []
+    /// This season's meetings between the two teams, off the summary's
+    /// `seasonseries`. Decoded, unused: college football's summary
+    /// ships none, and the only form seen so far is the regular season's
+    /// — the playoff shape is unprobed (BACKLOG.md E21).
+    var seasonSeries: SeasonSeries? = nil
+}
+
+/// `SummaryResponseDTO.seasonseries`'s one entry, unflattened. `type` is
+/// `"season"` on every meeting captured so far.
+nonisolated struct SeasonSeries: Hashable, Sendable {
+    let type: String?
+    let summary: String?
+    let completed: Bool?
+    let totalCompetitions: Int?
+    let seriesScore: String?
+    let meetings: [SeasonSeriesMeeting]
+}
+
+nonisolated struct SeasonSeriesMeeting: Hashable, Sendable {
+    let id: String?
+    /// "OT", "SO" — nil for a meeting that finished in regulation.
+    let altDetail: String?
 }
 
 /// `SummaryResponseDTO.format`, unflattened. `clock` is in seconds;

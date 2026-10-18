@@ -347,6 +347,57 @@ private func fixture(_ name: String) throws -> Data {
         let gameSummary = ESPNMapper.gameSummary(from: summary, league: .nba)
         #expect(gameSummary.broadcasts.count == 3)
     }
+
+    /// BACKLOG.md E21: "`seasonseries` is a second source for the
+    /// playoff-series problem." Both held summaries carry one regular-
+    /// season entry; college football's summary carries none at all.
+    @Test func summaryCarriesThisSeasonsSeriesRecord() throws {
+        let nba = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let nbaSeries = try #require(nba.seasonseries?.elements.first)
+        #expect(nbaSeries.type == "season")
+        #expect(nbaSeries.summary == "NY wins series 4-0")
+        #expect(nbaSeries.completed == true)
+        #expect(nbaSeries.totalCompetitions == 4)
+        #expect(nbaSeries.seriesScore == "4-0")
+        #expect(nbaSeries.events?.elements.count == 4)
+
+        let nhl = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let nhlSeries = try #require(nhl.seasonseries?.elements.first)
+        #expect(nhlSeries.completed == false)
+        #expect(nhlSeries.seriesScore == "2-0")
+
+        let cfb = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("cfb-summary-pregame"))
+        #expect(cfb.seasonseries == nil)
+    }
+
+    /// The thing this row names as genuinely unread: each meeting's own
+    /// `statusType.altDetail`, which marks an overtime or shootout
+    /// finish the series summary's prose doesn't.
+    @Test func seasonSeriesMeetingsCarryTheirOwnAltDetail() throws {
+        let nhl = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nhl-summary"))
+        let events = try #require(nhl.seasonseries?.elements.first?.events?.elements)
+        let overtimeMeeting = try #require(events.first { $0.id == "401803175" })
+        #expect(overtimeMeeting.statusType?.altDetail == "OT")
+
+        let nba = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let nbaEvents = try #require(nba.seasonseries?.elements.first?.events?.elements)
+        #expect(nbaEvents.allSatisfy { $0.statusType?.altDetail == nil })
+    }
+
+    /// End to end: `GameSummary.seasonSeries` carries the mapped record,
+    /// and a league whose summary ships none (college football) maps to
+    /// nil rather than an empty placeholder.
+    @Test func gameSummaryCarriesTheMappedSeasonSeries() throws {
+        let nba = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("nba-summary"))
+        let nbaSummary = ESPNMapper.gameSummary(from: nba, league: .nba)
+        let series = try #require(nbaSummary.seasonSeries)
+        #expect(series.seriesScore == "4-0")
+        #expect(series.meetings.count == 4)
+
+        let cfb = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("cfb-summary-pregame"))
+        let cfbSummary = ESPNMapper.gameSummary(from: cfb, league: .collegeFootball)
+        #expect(cfbSummary.seasonSeries == nil)
+    }
 }
 
 @Suite struct LivePhaseMappingTests {

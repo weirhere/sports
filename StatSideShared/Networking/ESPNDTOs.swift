@@ -567,6 +567,28 @@ nonisolated struct SummaryResponseDTO: Decodable {
     /// all live here, where the scoreboard's leaner `CompetitionDTO.format`
     /// carries only `regulation.periods`).
     let format: FormatDTO?
+    /// This season's meetings between the two teams only — ESPN's nearest
+    /// thing to a series resource and not enough of one; see
+    /// `HeadToHeadFetch.swift`'s doc comment for why the H2H tab walks
+    /// schedules instead. College football's summary ships none at all
+    /// (confirmed on the held fixture); the NBA and NHL fixtures each
+    /// carry one entry, `type: "season"` — the playoff shape is unprobed
+    /// (BACKLOG.md E21).
+    let seasonseries: LossyArray<SeasonSeriesDTO>?
+}
+
+nonisolated struct SeasonSeriesDTO: Decodable {
+    let type: String?
+    let summary: String?
+    let completed: Bool?
+    let totalCompetitions: Int?
+    let seriesScore: String?
+    let events: LossyArray<SeasonSeriesEventDTO>?
+}
+
+nonisolated struct SeasonSeriesEventDTO: Decodable {
+    let id: String?
+    let statusType: StatusTypeDTO?
 }
 
 nonisolated struct SummaryTeamInjuriesDTO: Decodable {
