@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// The Roster tab's lineup card: the two starting units on one field, and
+/// The Roster tab's lineup section — not a card: the field runs edge to
+/// edge, because eleven across a phone needs every point it can get and
+/// the card's inset and the field's own margin were costing it 40 (Andy,
+/// 2026-10-18). The title and the chips keep the cards' text margin.
+/// The two starting units on one field, and
 /// in football the chip row that decides whose offense is drawn — one
 /// team's eleven across the line from the other team's eleven, which is
 /// the picture a snap makes and the only honest one for a sport whose
@@ -23,6 +27,7 @@ struct FormationCard: View {
     var body: some View {
         VStack(spacing: 0) {
             CardHeader(title: title, subtitle: subtitle)
+                .padding(.horizontal, Spacing.sm)
             if isFootball {
                 HStack(spacing: Spacing.sm) {
                     SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
@@ -35,7 +40,7 @@ struct FormationCard: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, Spacing.md)
+                .padding(.horizontal, Spacing.sm + Spacing.md)
                 .padding(.top, Spacing.md)
             }
             FormationField(league: league,
@@ -45,9 +50,9 @@ struct FormationCard: View {
                            topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
                            bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
             unplacedRows
+                .padding(.horizontal, Spacing.sm)
         }
         .padding(.bottom, Spacing.xs)
-        .cardSurface()
     }
 
     /// Starters the layout couldn't place — a position the table doesn't

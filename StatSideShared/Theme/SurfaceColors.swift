@@ -7,13 +7,14 @@ import UIKit
 /// colors in their end zones and the broadcast's yellow line to gain;
 /// a maple court; white ice with its red lines. Team colors mark whose
 /// shot is whose. Nothing outside `DriveField`, `CourtSurface`,
-/// `RinkSurface` and `ShotMarksLayer` may use these; the rest of the card,
-/// and the app, stays monochrome.
+/// `RinkSurface`, `ShotMarksLayer` and the Roster tab's `FormationField`
+/// may use these; the rest of the card, and the app, stays monochrome.
 ///
 /// Team color has been in the app once before — TeamPage's hero, 2026-08-25
 /// to 2026-08-31 — and came out because it was chrome. This is a picture of
-/// a place, the way a logo is a picture of a mark, and it is only ever drawn
-/// while a game is live.
+/// a place, the way a logo is a picture of a mark. It was live-only until
+/// 2026-10-18, when the formation field — drawn before kickoff and after
+/// the final — took the same paint (Andy's call).
 nonisolated enum SurfaceColors {
     /// Alternating 10-yard bands. Dark mode deepens the turf rather than
     /// inverting it, so the black play arrow still reads on it.

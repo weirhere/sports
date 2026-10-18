@@ -37,16 +37,20 @@ struct GameRosterPane: View {
             case .failed:
                 StatusMessage(text: "Couldn't load the roster.", retry: onRetry)
                     .cardSurface()
+                    .padding(.horizontal, Spacing.sm)
             case .loaded(let roster):
                 if roster.isEmpty {
                     StatusMessage(text: roster.phase == .upcoming ? "Lineups TBA" : "No lineup for this game.")
                         .cardSurface()
+                        .padding(.horizontal, Spacing.sm)
                 } else {
                     cards(roster)
                 }
             }
         }
-        .padding(Spacing.sm)
+        // Vertical only: the Starters section bleeds edge to edge, so each
+        // list card insets itself (Andy, 2026-10-18).
+        .padding(.vertical, Spacing.sm)
         .onAppear { offenseTeamId = offenseTeamId ?? possessionTeamId }
     }
 
@@ -56,6 +60,14 @@ struct GameRosterPane: View {
         if !away.starters.isEmpty || !home.starters.isEmpty {
             FormationCard(roster: roster, league: league, offenseTeamId: $offenseTeamId)
         }
+        listCards(roster)
+            .padding(.horizontal, Spacing.sm)
+    }
+
+    /// The two-column cards under the field, each in its own card.
+    @ViewBuilder
+    private func listCards(_ roster: GameRoster) -> some View {
+        let away = roster.away, home = roster.home
         let awayCoaches = GameCoachLine.lines(head: away.coach, staff: coachStaff?.staff(for: away.team) ?? [],
                                               league: league)
         let homeCoaches = GameCoachLine.lines(head: home.coach, staff: coachStaff?.staff(for: home.team) ?? [],

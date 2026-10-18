@@ -7,6 +7,9 @@ struct FormationSlot: View {
     let person: GameRoster.Person
     let team: Team
     let league: League
+    /// The name's color on the surface — `textPrimary` on turf and maple,
+    /// which deepen in dark mode; fixed dark ink on ice, which doesn't.
+    var ink: Color = .textPrimary
     /// A ceiling for a wing, so it holds the edge rather than spreading
     /// into the field; nil shares the row evenly. A ceiling and not a
     /// fixed width because five wings (three wideouts, two tight ends)
@@ -24,7 +27,7 @@ struct FormationSlot: View {
                     .overlay(Circle().stroke(Color.bgCard, lineWidth: 1.5))
                 Text(label)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
