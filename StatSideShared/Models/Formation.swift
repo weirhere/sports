@@ -156,7 +156,7 @@ nonisolated struct Formation: Sendable, Hashable {
     /// left unless told otherwise — and everything else is the middle, in
     /// `middle`'s order with unknowns after.
     private static func split(_ people: [GameRoster.Person], left: [String], right: [String],
-                              flank: [String], tiesLeft: Bool)
+                              flank: Set<String>, tiesLeft: Bool)
         -> (left: [GameRoster.Person], right: [GameRoster.Person], middle: [GameRoster.Person]) {
         func code(_ person: GameRoster.Person) -> String { person.position?.uppercased() ?? "" }
         var lefts = people.filter { left.contains(code($0)) }
@@ -177,7 +177,7 @@ nonisolated struct Formation: Sendable, Hashable {
     }
 
     private static func arrange(_ people: [GameRoster.Person], left: [String], middle: [String],
-                                right: [String], flank: [String]) -> [GameRoster.Person] {
+                                right: [String], flank: Set<String>) -> [GameRoster.Person] {
         let parts = split(people, left: left, right: right, flank: flank, tiesLeft: true)
         let ordered = parts.middle.enumerated().sorted { lhs, rhs in
             let l = middle.firstIndex(of: lhs.element.position?.uppercased() ?? "") ?? middle.count
