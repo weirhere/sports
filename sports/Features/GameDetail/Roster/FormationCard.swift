@@ -3,7 +3,10 @@ import SwiftUI
 /// The Roster tab's lineup section — not a card: the field runs edge to
 /// edge, because eleven across a phone needs every point it can get and
 /// the card's inset and the field's own margin were costing it 40 (Andy,
-/// 2026-10-18). The title and the chips keep the cards' text margin.
+/// 2026-10-18). The title and the chips keep the cards' text margin and
+/// sit on the surface's own paint, with no divider under the title: the
+/// section is one painted place from its name down to the last row, not
+/// a header over a picture (Andy, same day).
 /// The two starting units on one field, and
 /// in football the chip row that decides whose offense is drawn — one
 /// team's eleven across the line from the other team's eleven, which is
@@ -23,36 +26,59 @@ struct FormationCard: View {
     private var home: GameRoster.Side { roster.home }
 
     private var awayHasBall: Bool { offenseTeamId != home.team.id }
+    private var ink: SurfaceColors.Ink { SurfaceColors.ink(for: league) }
 
     var body: some View {
         VStack(spacing: 0) {
-            CardHeader(title: title, subtitle: subtitle)
-                .padding(.horizontal, Spacing.sm)
-            if isFootball {
-                HStack(spacing: Spacing.sm) {
-                    SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
-                                    hint: "Draws \(away.team.location)'s offense against \(home.team.location)'s defense") {
-                        offenseTeamId = away.team.id
+            VStack(spacing: 0) {
+                header
+                if isFootball {
+                    HStack(spacing: Spacing.sm) {
+                        SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
+                                        hint: "Draws \(away.team.location)'s offense against \(home.team.location)'s defense",
+                                        ink: ink) {
+                            offenseTeamId = away.team.id
+                        }
+                        SlateToggleChip(title: "\(shortName(home.team)) offense", isOn: !awayHasBall,
+                                        hint: "Draws \(home.team.location)'s offense against \(away.team.location)'s defense",
+                                        ink: ink) {
+                            offenseTeamId = home.team.id
+                        }
+                        Spacer(minLength: 0)
                     }
-                    SlateToggleChip(title: "\(shortName(home.team)) offense", isOn: !awayHasBall,
-                                    hint: "Draws \(home.team.location)'s offense against \(away.team.location)'s defense") {
-                        offenseTeamId = home.team.id
-                    }
-                    Spacer(minLength: 0)
+                    .padding(.horizontal, Spacing.sm + Spacing.md)
                 }
-                .padding(.horizontal, Spacing.sm + Spacing.md)
-                .padding(.top, Spacing.md)
+                FormationField(league: league,
+                               top: formation(for: away, isOffense: awayHasBall),
+                               bottom: formation(for: home, isOffense: !awayHasBall),
+                               topTeam: away.team, bottomTeam: home.team,
+                               topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
+                               bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
             }
-            FormationField(league: league,
-                           top: formation(for: away, isOffense: awayHasBall),
-                           bottom: formation(for: home, isOffense: !awayHasBall),
-                           topTeam: away.team, bottomTeam: home.team,
-                           topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
-                           bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
+            .background(SurfaceColors.base(for: league))
             unplacedRows
                 .padding(.horizontal, Spacing.sm)
         }
         .padding(.bottom, Spacing.xs)
+    }
+
+    /// `CardHeader`'s title line in the surface's ink, without its divider:
+    /// a rule under "Starters" would cut the paint the title sits on.
+    private var header: some View {
+        HStack(spacing: Spacing.sm) {
+            Text(title)
+                .font(.sectionHeader)
+                .foregroundStyle(ink.text)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            if let subtitle {
+                Text(subtitle)
+                    .font(.meta)
+                    .foregroundStyle(ink.text.opacity(0.75))
+            }
+        }
+        .padding(Spacing.md)
+        .padding(.horizontal, Spacing.sm)
     }
 
     /// Starters the layout couldn't place — a position the table doesn't

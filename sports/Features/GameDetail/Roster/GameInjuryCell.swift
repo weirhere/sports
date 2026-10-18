@@ -42,7 +42,7 @@ struct GameInjuryCell: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.xs + 2)
+        .padding(.vertical, Spacing.sm + 2)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)

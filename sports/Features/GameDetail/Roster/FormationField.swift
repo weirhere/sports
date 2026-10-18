@@ -21,18 +21,8 @@ struct FormationField: View {
     var topLabel: String? = nil
     var bottomLabel: String? = nil
 
-    /// Names take the ink their surface asks for: off-white on turf, which
-    /// is the same deep green in both modes (dark names on it read muddy
-    /// — Andy, 2026-10-18, against FotMob's pitch); fixed dark ink on
-    /// ice, which stays light in both; `textPrimary` on maple, which
-    /// deepens in dark mode the way the page does.
-    private var ink: Color {
-        switch league {
-        case .collegeFootball, .nfl: SurfaceColors.turfInk
-        case .nhl: SurfaceColors.ink
-        case .nba: .textPrimary
-        }
-    }
+    /// Names take the ink their surface asks for — see `SurfaceColors.ink`.
+    private var ink: Color { SurfaceColors.ink(for: league).text }
 
     @ScaledMetric(relativeTo: .caption2) private var rowHeight: CGFloat = 58
     /// A wing's slot is capped, so the wings sit at the edges and the gap
