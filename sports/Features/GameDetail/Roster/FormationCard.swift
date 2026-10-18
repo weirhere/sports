@@ -4,9 +4,11 @@ import SwiftUI
 /// edge, because eleven across a phone needs every point it can get and
 /// the card's inset and the field's own margin were costing it 40 (Andy,
 /// 2026-10-18). The title and the chips keep the cards' text margin and
-/// sit on the surface's own paint, with no divider under the title: the
-/// section is one painted place from its name down to the last row, not
-/// a header over a picture (Andy, same day).
+/// sit on the surface's paint a shade deeper than the field's, with no
+/// divider under the title: the section is one painted place from its
+/// name down to the last row, not a header over a picture, and the shade
+/// change is where the field begins (Andy, same day — on a single green
+/// the heading and the first row ran together).
 /// The two starting units on one field, and
 /// in football the chip row that decides whose offense is drawn — one
 /// team's eleven across the line from the other team's eleven, which is
@@ -20,6 +22,9 @@ struct FormationCard: View {
     /// Football: the team whose offense is on the field. Owned by the pane
     /// so a chip tap survives this card re-rendering under a poll.
     @Binding var offenseTeamId: String?
+    /// The Field / List chips on the title row (Andy, 2026-10-18).
+    let layout: StartersLayout
+    let onLayoutChange: (StartersLayout) -> Void
 
     private var isFootball: Bool { league == .collegeFootball || league == .nfl }
     private var away: GameRoster.Side { roster.away }
@@ -31,7 +36,9 @@ struct FormationCard: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                header
+                StartersHeader(roster: roster, layout: layout, onLayoutChange: onLayoutChange, ink: ink)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.top, Spacing.xs)
                 if isFootball {
                     HStack(spacing: Spacing.sm) {
                         SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
@@ -48,37 +55,23 @@ struct FormationCard: View {
                     }
                     .padding(.horizontal, Spacing.sm + Spacing.md)
                 }
-                FormationField(league: league,
-                               top: formation(for: away, isOffense: awayHasBall),
-                               bottom: formation(for: home, isOffense: !awayHasBall),
-                               topTeam: away.team, bottomTeam: home.team,
-                               topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
-                               bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
             }
-            .background(SurfaceColors.base(for: league))
+            .padding(.bottom, Spacing.sm)
+            // A shade deeper than the field, so the heading reads as the
+            // section's and the field begins where the shade changes
+            // (Andy, 2026-10-18 — on one green they ran together).
+            .background(SurfaceColors.heading(for: league))
+            FormationField(league: league,
+                           top: formation(for: away, isOffense: awayHasBall),
+                           bottom: formation(for: home, isOffense: !awayHasBall),
+                           topTeam: away.team, bottomTeam: home.team,
+                           topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
+                           bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
+                .background(SurfaceColors.base(for: league))
             unplacedRows
                 .padding(.horizontal, Spacing.sm)
         }
         .padding(.bottom, Spacing.xs)
-    }
-
-    /// `CardHeader`'s title line in the surface's ink, without its divider:
-    /// a rule under "Starters" would cut the paint the title sits on.
-    private var header: some View {
-        HStack(spacing: Spacing.sm) {
-            Text(title)
-                .font(.sectionHeader)
-                .foregroundStyle(ink.text)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            if let subtitle {
-                Text(subtitle)
-                    .font(.meta)
-                    .foregroundStyle(ink.text.opacity(0.75))
-            }
-        }
-        .padding(Spacing.md)
-        .padding(.horizontal, Spacing.sm)
     }
 
     /// Starters the layout couldn't place — a position the table doesn't
@@ -125,21 +118,4 @@ struct FormationCard: View {
 
     private func shortName(_ team: Team) -> String { team.abbreviation ?? team.location }
 
-    /// What the card calls the eleven, five or six it draws.
-    private var title: String {
-        let kinds = [away.lineupKind, home.lineupKind]
-        if kinds.contains(.onIce) { return "On the ice" }
-        if kinds.contains(.declared) { return "Starters" }
-        return "Projected starters"
-    }
-
-    private var subtitle: String? {
-        let kinds = [away.lineupKind, home.lineupKind]
-        // One side declared, the other only projected: say so once.
-        if kinds.contains(.declared), kinds.contains(.projected) {
-            let projected = away.lineupKind == .projected ? away.team : home.team
-            return "\(shortName(projected)) projected"
-        }
-        return nil
-    }
 }

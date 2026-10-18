@@ -205,6 +205,23 @@ import Testing
         #expect(UIStateStore(defaults: defaults).appearance == .system)
     }
 
+    @Test func startersLayoutDefaultsToTheFieldAndPersists() {
+        let defaults = makeDefaults()
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.startersLayout == .field)
+
+        store.startersLayout = .list
+        #expect(UIStateStore(defaults: defaults).startersLayout == .list)
+        store.startersLayout = .field
+        #expect(UIStateStore(defaults: defaults).startersLayout == .field)
+    }
+
+    @Test func anUnknownStoredStartersLayoutFallsBackToTheField() {
+        let defaults = makeDefaults()
+        defaults.set("diagram", forKey: "ui.startersLayout")
+        #expect(UIStateStore(defaults: defaults).startersLayout == .field)
+    }
+
     @Test func groupingsDefaultPerLeagueAndPersist() {
         let defaults = makeDefaults()
         let store = UIStateStore(defaults: defaults)

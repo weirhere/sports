@@ -5,7 +5,9 @@ import SwiftUI
 /// each column a run of the caller's cells under the team's own mark.
 /// FotMob's bench, coach and injuries cards share this shape.
 struct RosterSidesCard<Item: Identifiable, Cell: View>: View {
-    let title: String
+    /// Nil for a card whose team columns are its whole header — the
+    /// NBA's and NHL's one starters card under the section's own title.
+    let title: String?
     var subtitle: String? = nil
     let away: Team
     let home: Team
@@ -15,7 +17,9 @@ struct RosterSidesCard<Item: Identifiable, Cell: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            CardHeader(title: title, subtitle: subtitle)
+            if let title {
+                CardHeader(title: title, subtitle: subtitle)
+            }
             HStack(alignment: .top, spacing: 0) {
                 column(away, items: awayItems)
                 column(home, items: homeItems)

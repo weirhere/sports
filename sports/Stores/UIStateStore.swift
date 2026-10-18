@@ -121,6 +121,14 @@ final class UIStateStore {
         didSet { defaults.set(appearance.rawValue, forKey: Self.appearanceKey) }
     }
 
+    /// Whether the game page's Starters section draws the field or the
+    /// list cards (Andy, 2026-10-18). One choice for every league — the
+    /// preference is about the picture, not the sport. Read once in
+    /// `init`, so a UI test can pin it with `-ui.startersLayout field`.
+    var startersLayout: StartersLayout {
+        didSet { defaults.set(startersLayout.rawValue, forKey: Self.startersLayoutKey) }
+    }
+
     /// How each league's Scores slate is broken down (Andy, 2026-10-03).
     /// Only choices that differ from the default are stored, so a league
     /// without an entry follows `SlateGrouping.defaultValue(for:)`. Read
@@ -150,6 +158,7 @@ final class UIStateStore {
     private static let slateGroupingKey = "ui.slateGrouping"
     private static let showsLinesKey = "lines.enabled"
     private static let appearanceKey = "ui.appearance"
+    private static let startersLayoutKey = "ui.startersLayout"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
     private static let liveOnlyKey = "ui.liveOnly"
     private static let tightOnlyKey = "ui.tightOnly"
@@ -179,6 +188,8 @@ final class UIStateStore {
         appearance = defaults.string(forKey: Self.appearanceKey)
             .flatMap(Appearance.init(rawValue:)) ?? .system
         pollChoice = defaults.string(forKey: Self.pollChoiceKey)
+        startersLayout = defaults.string(forKey: Self.startersLayoutKey)
+            .flatMap(StartersLayout.init(rawValue:)) ?? .field
         var groupings: [League: SlateGrouping] = [:]
         for (raw, value) in defaults.dictionary(forKey: Self.slateGroupingKey) ?? [:] {
             guard let league = League(rawValue: raw),

@@ -8,7 +8,8 @@ import UIKit
 /// a maple court; white ice with its red lines. Team colors mark whose
 /// shot is whose. Nothing outside `DriveField`, `CourtSurface`,
 /// `RinkSurface`, `ShotMarksLayer` and the Roster tab's `FormationField`
-/// may use these; the rest of the card, and the app, stays monochrome.
+/// and `FormationCard` (whose title and chips sit on the same paint) may
+/// use these; the rest of the card, and the app, stays monochrome.
 ///
 /// Team color has been in the app once before — TeamPage's hero, 2026-08-25
 /// to 2026-08-31 — and came out because it was chrome. This is a picture of
@@ -48,6 +49,53 @@ nonisolated enum SurfaceColors {
     static let rinkRed = Color.rankDown
     /// The blue lines, in gray: no blue joins the app for them (D13).
     static let blueLine = Color(white: 0.56)
+    /// What type on a surface is drawn in. `text` is the names, captions
+    /// and title; `counter` is the type on a `text`-filled chip.
+    struct Ink {
+        let text: Color
+        let counter: Color
+    }
+
+    /// Each surface's ink: off-white on turf, which is the same deep green
+    /// in both modes (dark names on it read muddy — Andy, 2026-10-18,
+    /// against FotMob's pitch); fixed dark ink on ice, which stays light in
+    /// both; `textPrimary` on maple, which deepens in dark mode the way the
+    /// page does.
+    static func ink(for league: League) -> Ink {
+        switch league {
+        case .collegeFootball, .nfl: Ink(text: turfInk, counter: ink)
+        case .nhl: Ink(text: ink, counter: chalk)
+        case .nba: Ink(text: .textPrimary, counter: .bgPrimary)
+        }
+    }
+
+    /// The surface's unmarked paint — what the field's own margin, above
+    /// its first yard line, is painted in.
+    static func base(for league: League) -> Color {
+        switch league {
+        case .collegeFootball, .nfl: turf
+        case .nba: maple
+        case .nhl: ice
+        }
+    }
+
+    /// What the Starters section's title and chips sit on above the field:
+    /// the same paint a shade deeper, so the strip reads as the section's
+    /// heading and the field starts where the shade changes (Andy,
+    /// 2026-10-18 — on one green the title and the first row ran together).
+    /// Deeper rather than lighter on turf and maple so the ink keeps its
+    /// contrast (off-white on `turfHeading` is 6.1:1); ice, which can't go
+    /// darker without stopping being ice, dims a touch instead.
+    static func heading(for league: League) -> Color {
+        switch league {
+        case .collegeFootball, .nfl: turfHeading
+        case .nba: paint
+        case .nhl: iceHeading
+        }
+    }
+    static let turfHeading = dynamic(light: (0.150, 0.400, 0.230), dark: (0.135, 0.370, 0.210))
+    static let iceHeading = dynamic(light: (0.918, 0.933, 0.945), dark: (0.835, 0.858, 0.878))
+
     /// An end zone or shot mark whose team shipped no usable color.
     static let teamMarkFallback = Color(uiColor: UIColor { traits in
         UIColor(white: traits.userInterfaceStyle == .dark ? 0.30 : 0.78, alpha: 1)

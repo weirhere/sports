@@ -22,6 +22,10 @@ struct GameRosterPane: View {
     let onRetry: () -> Void
 
     @Environment(CoachStaffStore.self) private var coachStaff: CoachStaffStore?
+    @Environment(UIStateStore.self) private var uiState: UIStateStore?
+    /// Where no store is in the environment (previews), the choice lives
+    /// for the pane's lifetime.
+    @State private var unsavedLayout: StartersLayout = .field
 
     /// Football's chip, owned here so it survives the card re-rendering.
     @State private var offenseTeamId: String?
@@ -48,17 +52,33 @@ struct GameRosterPane: View {
                 }
             }
         }
-        // Vertical only: the Starters section bleeds edge to edge, so each
-        // list card insets itself (Andy, 2026-10-18).
-        .padding(.vertical, Spacing.sm)
+        // Bottom only: the Starters field bleeds edge to edge and meets the
+        // tab row's hairline with no gap (Andy, 2026-10-18 — the 8pt of
+        // page above it read as a seam), so each list card insets itself
+        // and a pane that opens on anything else pads its own top.
+        .padding(.bottom, Spacing.sm)
+        .padding(.top, leadsWithField ? 0 : Spacing.sm)
         .onAppear { offenseTeamId = offenseTeamId ?? possessionTeamId }
+    }
+
+    private var layout: StartersLayout { uiState?.startersLayout ?? unsavedLayout }
+
+    /// Whether the first thing on the pane is the painted field.
+    private var leadsWithField: Bool {
+        guard case .loaded(let roster) = state, layout == .field else { return false }
+        return !roster.away.starters.isEmpty || !roster.home.starters.isEmpty
     }
 
     @ViewBuilder
     private func cards(_ roster: GameRoster) -> some View {
         let away = roster.away, home = roster.home
         if !away.starters.isEmpty || !home.starters.isEmpty {
-            FormationCard(roster: roster, league: league, offenseTeamId: $offenseTeamId)
+            StartersSection(roster: roster, league: league,
+                            layout: layout,
+                            onLayoutChange: { layout in
+                                if let uiState { uiState.startersLayout = layout } else { unsavedLayout = layout }
+                            },
+                            offenseTeamId: $offenseTeamId)
         }
         listCards(roster)
             .padding(.horizontal, Spacing.sm)

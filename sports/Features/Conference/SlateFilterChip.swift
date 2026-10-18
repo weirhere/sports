@@ -12,6 +12,9 @@ struct SlateToggleChip: View {
     let title: String
     let isOn: Bool
     var hint: String?
+    /// Set when the chip sits on a painted surface (the Starters field's
+    /// turf): the chip takes the surface's ink instead of the page's.
+    var ink: SurfaceColors.Ink? = nil
     let onToggle: () -> Void
 
     var body: some View {
@@ -20,10 +23,10 @@ struct SlateToggleChip: View {
                 .font(.chip)
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle(isOn ? Color.bgPrimary : Color.textPrimary)
+                .foregroundStyle(isOn ? (ink?.counter ?? Color.bgPrimary) : (ink?.text ?? Color.textPrimary))
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 8)
-                .modifier(SlateChipBackground(isActive: isOn))
+                .modifier(SlateChipBackground(isActive: isOn, ink: ink))
                 // Compact capsule, 44 pt tap target.
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
@@ -38,12 +41,21 @@ struct SlateToggleChip: View {
 }
 
 /// Shared by the toggles and the team dropdown so the row reads as one set
-/// of controls.
+/// of controls. On a painted surface (`ink` set) the active chip fills with
+/// the surface's ink and the idle one is a hairline capsule in it — no
+/// glass, which would tint with the turf under it and lose the text.
 struct SlateChipBackground: ViewModifier {
     let isActive: Bool
+    var ink: SurfaceColors.Ink? = nil
 
     func body(content: Content) -> some View {
-        if isActive {
+        if let ink {
+            if isActive {
+                content.background(Capsule().fill(ink.text))
+            } else {
+                content.overlay(Capsule().strokeBorder(ink.text.opacity(0.55), lineWidth: 1))
+            }
+        } else if isActive {
             content.background(Capsule().fill(Color.textPrimary))
         } else {
             content.glassCapsuleInteractive(fallback: Color.bgElevated)
