@@ -483,7 +483,13 @@ private func fixture(_ name: String) throws -> Data {
         #expect(category.columns.contains("PTS"))
         #expect(category.columns.contains("REB"))
         #expect(!category.players.isEmpty)
-        #expect(category.players.allSatisfy { $0.stats.count == category.columns.count })
+        // Everyone who played lines up under the header; a DNP ships with
+        // no stats at all and is kept that way (E29's inactive list reads
+        // him), rather than dropped as misaligned.
+        let played = category.players.filter { !$0.didNotPlay }
+        #expect(!played.isEmpty)
+        #expect(played.allSatisfy { $0.stats.count == category.columns.count })
+        #expect(category.players.filter(\.didNotPlay).allSatisfy { $0.stats.isEmpty })
     }
 
     /// Hockey names its groups, and ships one ("skaters") with nobody in

@@ -14,10 +14,18 @@ import SwiftUI
 /// Each league answers the question its own way. College football leads
 /// with the Top 25 row (the poll one tap down, so the conferences aren't
 /// buried under 25 rank rows) and lists its conferences. The NFL has no
-/// poll at all — `/nfl/rankings` is a 404 — so it leads with its own
-/// 32-team table and then the AFC and the NFC, with no poll row rather
+/// poll at all — `/nfl/rankings` is a 404 — so it has no poll row rather
 /// than an empty one. The tab is named for the accordions ("Leagues"),
 /// not for what they hold.
+///
+/// What an accordion lists is the rung Settings groups that league's
+/// Scores slate by (Andy, 2026-10-18): the league whole, its conferences,
+/// or its divisions, and never two rungs at once — the NFL grouped by
+/// league is one "Full league" row; by conference, the AFC and the NFC;
+/// by division, its eight. The two screens then list the same tables, so
+/// a Follow here hoists a section Scores already shows. Following cards
+/// and search still reach every table a league has, whatever rung is
+/// listed — see `followableTables(in:)`.
 ///
 /// Following is one card per followed table, reorderable (Andy, 2026-09-06):
 /// the Teams tab's shape, and the order is the order those same tables lead
@@ -64,10 +72,15 @@ struct TablesScreen: View {
     /// Groups narrowed by the query. A league survives if its own name
     /// matches — "NFL" should hand back the whole NFL card — or if any
     /// table inside it does, in which case only the matching tables show.
+    ///
+    /// A search reaches every table a league has, not only the rung its
+    /// accordion lists (2026-10-18): "AFC" finds the AFC whether or not
+    /// the NFL is grouped by conference, the way the field finds a card
+    /// that was shut.
     private var visibleGroups: [TableGroup] {
         let q = trimmedQuery
         guard !q.isEmpty else { return groups }
-        return groups.compactMap { group in
+        return groups(rows: allRows(for:)).compactMap { group in
             if group.title.localizedCaseInsensitiveContains(q) { return group }
             let rows = group.rows.filter {
                 $0.searchTitle.localizedCaseInsensitiveContains(q)
@@ -167,13 +180,15 @@ struct TablesScreen: View {
     /// Every card the hub shows, in order, skipping any whose fetch came
     /// back empty — a group that didn't load isn't there at all, rather
     /// than being there and empty.
-    private var groups: [TableGroup] {
+    private var groups: [TableGroup] { groups(rows: rows(for:)) }
+
+    private func groups(rows: (League) -> [TableRow]) -> [TableGroup] {
         League.displayOrder
             .map { TableGroup(id: Self.sectionId(for: $0),
                               title: $0.displayName,
                               logoURL: $0.logoURL,
                               league: $0,
-                              rows: rows(for: $0)) }
+                              rows: rows($0)) }
             .filter { !$0.rows.isEmpty }
     }
 
@@ -211,17 +226,56 @@ struct TablesScreen: View {
         conferences(in: league).leagueTable(in: league)
     }
 
-    /// What a league's accordion holds, league-wide row first: the whole
-    /// thing above its parts.
+    /// What a league's accordion holds: its tables at the one rung
+    /// Settings groups that league's Scores slate by (Andy, 2026-10-18).
+    /// Before this the pros listed the whole league above its conferences
+    /// (2026-09-26, which had itself replaced 2026-09-09's divisions), and
+    /// college football its two roots above their conferences.
     ///
-    /// The parts are **conferences** in every league (Andy, 2026-09-26,
-    /// reversing 2026-09-09's divisions): a division has no page of its
-    /// own, and is read stacked inside its conference's instead. The fold
-    /// in `conferences(in:)` is what turns the divisional fetch back into
-    /// the AFC and NFC.
+    /// By league, college football is FBS and FCS — its two divisions,
+    /// each a root row with a page (2026-09-09) — and a pro league is its
+    /// own table. By conference it is the conferences alone, FBS above
+    /// FCS on the tier sort, with no root or league row over them. By
+    /// division (the pros only; `SlateGrouping.options`) it is the
+    /// divisions, which still have no pages (2026-09-26): their rows open
+    /// their conference's, where they are read stacked.
     private func tables(in league: League) -> [ConferenceStandings] {
-        guard !league.hasCollegeDivisions else { return collegeFootballTables }
-        return (leagueTable(in: league).map { [$0] } ?? []) + conferences(in: league)
+        switch uiState.grouping(for: league) {
+        case .league:
+            league.hasCollegeDivisions
+                ? collegeDivisionRoots
+                : leagueTable(in: league).map { [$0] } ?? []
+        case .conference:
+            conferences(in: league).filter { !isLeagueWide($0) }
+        case .division:
+            league.hasCollegeDivisions
+                ? conferences(in: league)
+                : divisions(in: league)
+        }
+    }
+
+    /// A pro league's divisions straight off the divisional fetch, before
+    /// `conferences(in:)` folds them up — by conference, A–Z inside it
+    /// (the 2026-09-09 hub order: alphabetically the NBA's six interleave,
+    /// Northwest between Central and Pacific, with nothing on screen to
+    /// say why).
+    private func divisions(in league: League) -> [ConferenceStandings] {
+        let conferences = Conference.topLevelIds(in: league)
+        func rank(_ table: ConferenceStandings) -> Int {
+            table.parentId.flatMap(conferences.firstIndex(of:)) ?? conferences.count
+        }
+        return (standings[league] ?? [])
+            .filter { Conference.tier(for: $0.id, in: league) == .division }
+            .sorted { lhs, rhs in
+                let (l, r) = (rank(lhs), rank(rhs))
+                return l == r ? lhs.name < rhs.name : l < r
+            }
+    }
+
+    /// FBS and FCS as rows of their own, each only where its conferences
+    /// loaded — college football grouped by league.
+    private var collegeDivisionRoots: [ConferenceStandings] {
+        collegeFootballTables.filter(isDivisionRoot)
     }
 
     /// College football's list, each division led by its own root row
@@ -258,19 +312,35 @@ struct TablesScreen: View {
         Conference.isDivisionRoot(table.id, in: table.league)
     }
 
-    /// Every table a league offers that someone could be following —
-    /// since divisions left (2026-09-26), exactly what the accordion lists.
+    /// Every table a league offers that someone could be following — the
+    /// whole league, its conferences and its divisions; college football's
+    /// two roots and every conference — whatever rung the accordion lists.
+    /// A followed table keeps its Following card when Settings moves the
+    /// league off its rung, and a search can still find it.
     private func followableTables(in league: League) -> [ConferenceStandings] {
-        tables(in: league)
+        guard !league.hasCollegeDivisions else { return collegeFootballTables }
+        return (leagueTable(in: league).map { [$0] } ?? [])
+            + conferences(in: league).filter { !isLeagueWide($0) }
+            + divisions(in: league)
     }
 
-    /// What a league's accordion holds — its tables, plus the poll row
-    /// where the league has one. The count in the header is this.
+    /// What a league's accordion holds — its tables at the chosen rung,
+    /// plus the poll row where the league has one. The count in the
+    /// header is this.
     private func rows(for league: League) -> [TableRow] {
+        rows(for: league, tables: tables(in: league))
+    }
+
+    /// Every row a search can match: the poll and every followable table.
+    private func allRows(for league: League) -> [TableRow] {
+        rows(for: league, tables: followableTables(in: league))
+    }
+
+    private func rows(for league: League, tables: [ConferenceStandings]) -> [TableRow] {
         var rows: [TableRow] = []
         let polls = displayedPolls(for: league)
         if !polls.isEmpty { rows.append(.poll(polls, league)) }
-        rows += tables(in: league).map(TableRow.conference)
+        rows += tables.map(TableRow.conference)
         return rows
     }
 
@@ -332,8 +402,8 @@ struct TablesScreen: View {
                         // title (Andy, 2026-09-21) — "Leagues" under
                         // "Leagues" said nothing, and what is actually below
                         // is every table the app has: the four leagues and
-                        // their conferences. Divisions are read inside their
-                        // conference's page (2026-09-26).
+                        // their conferences — or, where Settings groups a
+                        // league by division, its divisions (2026-10-18).
                         ListSectionHeading(title: "All leagues and conferences")
                     }
                     ForEach(visibleGroups) { group in
@@ -397,6 +467,60 @@ struct TablesScreen: View {
         }
     }
 
+    /// One league's card: its lone table as a row of its own, or an
+    /// accordion over its rows.
+    @ViewBuilder
+    private func groupSection(_ group: TableGroup) -> some View {
+        if let table = surfacedTable(in: group) {
+            leagueCard(group, table: table)
+        } else {
+            accordion(group)
+        }
+    }
+
+    /// The one table a league's card *is* when there is nothing to
+    /// unfold: a pro league grouped by league, whose only row is its own
+    /// table. Nil for college football, which has the Top 25 and two
+    /// roots at that rung, and whenever a search widens the rows.
+    private func surfacedTable(in group: TableGroup) -> ConferenceStandings? {
+        guard group.rows.count == 1, case .conference(let table) = group.rows[0],
+              table.conference != nil, isLeagueWide(table) else { return nil }
+        return table
+    }
+
+    /// A league with one table wears it on the surface — mark, name,
+    /// Follow — rather than as an accordion holding a single "Full
+    /// league" row (Andy, 2026-10-18: "the following action shouldn't
+    /// get buried in the accordion, it should be on the surface"). The
+    /// row opens the table's page, as the row inside would have. Same
+    /// metrics as the accordion headers around it, so the stack stays
+    /// one size of card.
+    private func leagueCard(_ group: TableGroup, table: ConferenceStandings) -> some View {
+        HStack(spacing: Spacing.md) {
+            if let id = table.conference {
+                NavigationLink(value: ConferenceDestination(conference: id, name: table.name)) {
+                    HStack(spacing: Spacing.md) {
+                        ConferenceLogo(url: group.logoURL, league: group.league)
+                            .frame(width: markSize, height: markSize)
+                        Text(group.title)
+                            .font(.teamNameEmphasis)
+                            .foregroundStyle(.textPrimary)
+                        Spacer(minLength: Spacing.sm)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(SwipeSafeButtonStyle())
+                .accessibilityIdentifier(group.identifier)
+                .accessibilityLabel("\(group.title), full league")
+                ConferenceFollowButton(conference: id, conferenceName: table.name)
+            }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, 7)
+        .frame(minHeight: Self.headerHeight)
+        .cardSurface()
+    }
+
     /// One group's accordion: a bgHeader toggle row over its rows.
     ///
     /// **Closed until opened, and only for this run of the app** (Andy,
@@ -411,7 +535,7 @@ struct TablesScreen: View {
     /// is the hub's own header, not the Scores accordion's: `SectionAccordion`
     /// is a different view, and its rows are games, which set their own
     /// height.
-    private func groupSection(_ group: TableGroup) -> some View {
+    private func accordion(_ group: TableGroup) -> some View {
         let sectionId = group.id
         // A search expands what it matched: a filtered accordion that
         // stayed shut would hide the thing you just asked for behind one

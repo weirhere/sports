@@ -602,9 +602,20 @@ nonisolated struct SummaryTeamInjuriesDTO: Decodable {
 }
 
 nonisolated struct GameInjuryDTO: Decodable {
+    /// "Questionable", "Out", "Injured Reserve", "Day-To-Day".
     let status: String?
     let athlete: AthleteDTO?
     let type: InjuryTypeDTO?
+    let details: InjuryDetailsDTO?
+}
+
+/// What the injury is, as far as ESPN says: `type` is the body part or
+/// the ailment ("Neck", "Hamstring", "Illness"), `returnDate` a bare
+/// `yyyy-MM-dd`. `location`, `side` and `detail` are mostly "Not
+/// Specified" and stay undecoded.
+nonisolated struct InjuryDetailsDTO: Decodable {
+    let type: String?
+    let returnDate: String?
 }
 
 nonisolated struct InjuryTypeDTO: Decodable {
@@ -930,6 +941,15 @@ nonisolated struct BoxscoreAthleteDTO: Decodable {
     let athlete: AthleteDTO?
     /// Positionally paired with the group's `labels`.
     let stats: [String]?
+    /// Basketball's lineup flags, on the row rather than the athlete
+    /// (probed 2026-10-18 against `nba-summary.json`: 10 starters, 7
+    /// `didNotPlay` with a `reason` of "COACH'S DECISION"). Football and
+    /// hockey ship none of these — football's starters come off the core
+    /// API's game-day roster instead (`CompetitorRosterDTO`).
+    let starter: Bool?
+    let didNotPlay: Bool?
+    let reason: String?
+    let active: Bool?
 }
 
 nonisolated struct BoxscoreTeamDTO: Decodable {
@@ -987,9 +1007,15 @@ nonisolated struct LeaderEntryDTO: Decodable {
 nonisolated struct AthleteDTO: Decodable {
     let id: String?
     let displayName: String?
+    let fullName: String?
     let shortName: String?
     let jersey: String?
     let headshot: LogoDTO?
+    /// The NBA and NHL box scores and every league's game-day injury list
+    /// carry the athlete's position; football's box score does not.
+    let position: RosterPositionDTO?
+    /// The NHL box score's healthy scratch, on the athlete object.
+    let scratched: Bool?
 }
 
 nonisolated struct PredictorDTO: Decodable {
@@ -1101,8 +1127,19 @@ nonisolated struct CoreRefDTO: Decodable {
     }
 
     /// The team id out of a `…/seasons/2019/teams/99?lang=en` ref.
-    var teamId: String? {
-        guard let ref, let tail = ref.components(separatedBy: "/teams/").last else { return nil }
+    var teamId: String? { Self.id(in: ref, after: "/teams/") }
+
+    /// The athlete id out of a `…/seasons/2026/athletes/4430841?lang=en` ref.
+    var athleteId: String? { Self.id(in: ref, after: "/athletes/") }
+
+    /// The position id out of a `…/positions/30?lang=en` ref — resolved
+    /// against `ESPNPositions`, never fetched.
+    var positionId: String? { Self.id(in: ref, after: "/positions/") }
+
+    /// The numeric id that follows `segment` in a ref, or nil.
+    static func id(in ref: String?, after segment: String) -> String? {
+        guard let ref, let tail = ref.components(separatedBy: segment).last,
+              tail != ref else { return nil }
         let id = tail.prefix { $0.isNumber }
         return id.isEmpty ? nil : String(id)
     }
@@ -1265,4 +1302,79 @@ nonisolated struct RosterCoachDTO: Decodable {
     let id: FlexibleID?
     let firstName: String?
     let lastName: String?
+}
+
+// MARK: - Game-day roster and depth charts (the core API)
+// Probed live 2026-10-18 across all four leagues. Two resources, both
+// ref-shaped like the rest of `sports.core.api.espn.com`:
+//
+//   1. `events/{e}/competitions/{e}/competitors/{team}/roster` — who dressed
+//      for *this* game. Football (NFL and college) flags 22 `starter`s and,
+//      in the NFL, the declared inactives as `didNotPlay`, from the moment
+//      the lineup is set (an NFL game four hours out had all of it; a
+//      college game a week out 404s, so the lineup is game-day there). The
+//      NBA flags its five starters and its DNPs with a `reason`; the NHL
+//      flags `scratched` and names no starters. Positions are `$ref`s
+//      into `ESPNPositions`' table and names are the short form
+//      ("E. Greene III"), so the roster is joined to the team's own
+//      `/roster` for full names and photos.
+//   2. `seasons/{y}/teams/{team}/depthcharts` — the NBA and NHL ship one
+//      chart each (`pg`…`c`; `lw`, `c`, `rw`, `ld`, `rd`, `g`) with a
+//      `rank` per athlete, which is the only pre-game "who starts" either
+//      league publishes. The NFL ships three (base defense, special teams,
+//      a three-receiver offense) and is not asked: its game-day roster
+//      already names the starters. College football answers 400.
+
+nonisolated struct CompetitorRosterDTO: Decodable {
+    let entries: LossyArray<CompetitorRosterEntryDTO>?
+}
+
+nonisolated struct CompetitorRosterEntryDTO: Decodable {
+    /// An integer in the payload.
+    let playerId: FlexibleID?
+    /// ESPN's short form — a last name, initialed where the team has two.
+    let displayName: String?
+    let jersey: String?
+    let starter: Bool?
+    let didNotPlay: Bool?
+    /// Live only: on the field right now. False on every entry of a
+    /// final or pre-game roster, so nothing reads it yet.
+    let active: Bool?
+    /// Basketball's "COACH'S DECISION" beside `didNotPlay`.
+    let reason: String?
+    /// Hockey's healthy scratch, with "SCRATCHED" beside it.
+    let scratched: Bool?
+    let scratchReason: String?
+    let position: CoreRefDTO?
+    /// Present only on an entry that recorded a stat — college football's
+    /// only hint at who got on the field, since it declares no inactives.
+    let statistics: CoreRefDTO?
+}
+
+nonisolated struct DepthChartsDTO: Decodable {
+    let items: LossyArray<DepthChartDTO>?
+}
+
+nonisolated struct DepthChartDTO: Decodable {
+    let id: String?
+    let name: String?
+    /// Keyed by lowercase abbreviation ("pg", "lw").
+    let positions: [String: DepthChartPositionDTO]?
+}
+
+nonisolated struct DepthChartPositionDTO: Decodable {
+    let position: DepthChartPositionInfoDTO?
+    let athletes: LossyArray<DepthChartAthleteDTO>?
+}
+
+nonisolated struct DepthChartPositionInfoDTO: Decodable {
+    let id: String?
+    let abbreviation: String?
+    let displayName: String?
+}
+
+nonisolated struct DepthChartAthleteDTO: Decodable {
+    let athlete: CoreRefDTO?
+    /// 1 is the starter, or the first line.
+    let rank: Int?
 }

@@ -197,3 +197,29 @@ private func liveWithBall(_ teamId: String?) -> GameStatus {
         #expect(GameHeaderState.possessionTeamId(game(status: .pre(detail: nil)), nil) == nil)
     }
 }
+
+/// The game page's first tab is named for the game's state (E29,
+/// 2026-10-18): "Preview" until kickoff, "Facts" from then on — the same
+/// merged status the header reads, so a live scoreboard row beats a
+/// stale pre-game summary here too.
+@Suite struct FactsTabTitleTests {
+    @Test func preGameReadsPreview() {
+        #expect(GameHeaderState.factsTabTitle(preGame(date: nil), nil) == "Preview")
+        #expect(GameHeaderState.factsTabTitle(preGame(date: nil), summary(status: .pre(detail: nil))) == "Preview")
+    }
+
+    @Test func liveAndFinalReadFacts() {
+        #expect(GameHeaderState.factsTabTitle(game(status: liveQ3), nil) == "Facts")
+        #expect(GameHeaderState.factsTabTitle(game(status: .final(detail: "Final")), nil) == "Facts")
+        #expect(GameHeaderState.factsTabTitle(game(status: .other(detail: "Postponed")), nil) == "Facts")
+        // The merged-status rule: a live row beats a flaky pre-game summary.
+        #expect(GameHeaderState.factsTabTitle(game(status: liveQ3), summary(status: .pre(detail: nil))) == "Facts")
+    }
+
+    @Test func rosterPhaseFollowsTheSameStatus() {
+        #expect(GameHeaderState.rosterPhase(preGame(date: nil), nil) == .upcoming)
+        #expect(GameHeaderState.rosterPhase(game(status: liveQ3), nil) == .live)
+        #expect(GameHeaderState.rosterPhase(game(status: .final(detail: nil)), nil) == .played)
+        #expect(GameHeaderState.rosterPhase(game(status: .other(detail: "Canceled")), nil) == .played)
+    }
+}

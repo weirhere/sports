@@ -125,7 +125,13 @@ struct BoxScoreList: View {
                 ForEach(category.players) { player in
                     GridRow {
                         playerLink(player, team: team)
-                        statCells(player.stats, columns: category.columns, emphasized: false)
+                        if player.didNotPlay {
+                            // No numbers: the reason spans where they'd be.
+                            dnpCell(player)
+                                .gridCellColumns(max(category.columns.count, 1))
+                        } else {
+                            statCells(player.stats, columns: category.columns, emphasized: false)
+                        }
                     }
                 }
 
@@ -233,6 +239,16 @@ struct BoxScoreList: View {
         }
     }
 
+    /// "DNP · Coach's decision": the box score's own word for a player
+    /// who dressed and sat, in the stat columns' quiet weight.
+    private func dnpCell(_ player: BoxScore.Player) -> some View {
+        Text(["DNP", player.didNotPlayReason].compactMap { $0 }.joined(separator: " · "))
+            .font(.meta)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func statLines(_ columns: [String], values: [String]) -> some View {
         ForEach(Array(zip(columns, values)), id: \.0) { column, value in
             Text("\(column) \(value)")
@@ -249,7 +265,11 @@ struct BoxScoreList: View {
             ForEach(category.players) { player in
                 VStack(alignment: .leading, spacing: 2) {
                     playerLink(player, team: team)
-                    statLines(category.columns, values: player.stats)
+                    if player.didNotPlay {
+                        dnpCell(player)
+                    } else {
+                        statLines(category.columns, values: player.stats)
+                    }
                 }
             }
             if !category.totals.isEmpty {

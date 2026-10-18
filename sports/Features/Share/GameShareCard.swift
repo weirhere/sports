@@ -74,6 +74,25 @@ nonisolated enum GameHeaderState {
         return false
     }
 
+    /// What the game page's first tab is called: "Preview" before kickoff,
+    /// "Facts" from the first snap on (Andy, 2026-10-18 — FotMob's naming,
+    /// and the same cards either way). Postponed and cancelled games read
+    /// "Facts" too: there is no game ahead to preview.
+    static func factsTabTitle(_ game: Game, _ summary: GameSummary?) -> String {
+        if case .pre = status(game, summary) { return "Preview" }
+        return "Facts"
+    }
+
+    /// The Roster tab's phase: which of "planning to play", "playing" and
+    /// "played" the lists answer.
+    static func rosterPhase(_ game: Game, _ summary: GameSummary?) -> GameRoster.Phase {
+        switch status(game, summary) {
+        case .pre: .upcoming
+        case .live: .live
+        case .final, .other: .played
+        }
+    }
+
     /// Who has the ball, live games only. The summary's status carries no
     /// possession (only the scoreboard's does), so once a summary has
     /// arrived the answer is its current drive — polled every second —
