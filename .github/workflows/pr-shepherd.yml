@@ -1,0 +1,96 @@
+name: PR shepherd
+
+# Every 30 minutes, walk the open PRs Andy authored and keep them moving:
+# merge main into a conflicting branch (resolving docs-ledger conflicts
+# only), re-run a flaky check once, hand a real test failure to `claude -p`
+# with a tool set that can only edit tests and snapshots, make sure
+# auto-merge is on, and leave one short comment saying what happened.
+# Anything touching product code gets the `needs-human` label instead.
+# scripts/pr-shepherd.sh is the whole policy; this file only schedules it.
+#
+# Two things have to exist before the schedule does anything:
+#
+#   vars.PR_SHEPHERD_ENABLED = "true"   the switch. Until it is set, the
+#       schedule fires and the job is skipped; a manual run (workflow_dispatch)
+#       works regardless, and defaults to a dry run.
+#
+#   secrets.PR_SHEPHERD_TOKEN   a fine-grained PAT for weirhere/sports with
+#       contents: write, pull-requests: write, actions: write. Pushes made
+#       with the built-in GITHUB_TOKEN never trigger `pull_request` workflows,
+#       so a merge-main push would leave the PR with no fresh CI and auto-merge
+#       waiting forever. A PAT's pushes run CI like any other.
+#
+#   secrets.ANTHROPIC_API_KEY   for `claude -p`. Only spent on a real CI
+#       failure (never on a conflict or a flaky re-run), capped per attempt
+#       by SHEPHERD_MAX_BUDGET_USD.
+#
+# Never force-pushes, never admin-merges: the script has no code path for
+# either, and `claude` runs with `git push` and `gh` as disallowed tools.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report what would happen; push, label, re-run and comment nothing"
+        type: boolean
+        default: true
+      pr:
+        description: "Only this PR number (blank = every open PR by the author)"
+        type: string
+        default: ""
+
+# One shepherd at a time; a second trigger waits rather than racing the
+# first on the same branches.
+concurrency:
+  group: pr-shepherd
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  checks: read
+
+jobs:
+  shepherd:
+    if: github.event_name == 'workflow_dispatch' || vars.PR_SHEPHERD_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
+      # `secrets` can't be read in a step's `if`; a job-level env can read it.
+      HAS_PAT: ${{ secrets.PR_SHEPHERD_TOKEN != '' }}
+    steps:
+      - name: Refuse a live run without a PAT
+        if: env.DRY_RUN != 'true' && env.HAS_PAT != 'true'
+        run: |
+          echo "::error::PR_SHEPHERD_TOKEN is not set. Pushes with GITHUB_TOKEN don't trigger CI, so a live run would strand PRs. Add the secret or run as a dry run."
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PR_SHEPHERD_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Shepherd
+        env:
+          GH_TOKEN: ${{ secrets.PR_SHEPHERD_TOKEN || github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SHEPHERD_AUTHOR: weirhere
+          SHEPHERD_MAX_BUDGET_USD: "5"
+          GIT_AUTHOR_NAME: pr-shepherd
+          GIT_AUTHOR_EMAIL: pr-shepherd@users.noreply.github.com
+        run: |
+          args=()
+          [ "$DRY_RUN" = "true" ] && args+=(--dry-run)
+          [ -n "${{ inputs.pr }}" ] && args+=(--pr "${{ inputs.pr }}")
+          scripts/pr-shepherd.sh "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
