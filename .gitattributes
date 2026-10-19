@@ -1,0 +1,6 @@
+# Both ledgers are frozen as of 2026-10-19 (new rows go in docs/changes/,
+# one file per PR). `union` is for the branches cut before that: a merge
+# of main into one keeps both sides' trailing rows instead of stopping on
+# the conflict, and the CI check then says where the row belongs now.
+docs/decisions.md merge=union
+docs/web-parity.md merge=union

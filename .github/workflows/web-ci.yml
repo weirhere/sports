@@ -29,21 +29,33 @@ jobs:
           # history either side of it, not just the tip.
           fetch-depth: 0
       # First, and outside `web/`: the coupling between the iOS app and this
-      # one. A PR that adds a decision row to docs/decisions.md must add a row to
-      # docs/web-parity.md saying where the web stands on it. It rides this
-      # job rather than standing as its own check so it blocks a merge with
-      # no branch-protection change — the failure message says which it was.
-      - name: Web parity ledger
+      # one. Every PR with a decision writes docs/changes/<pr>.md, and the
+      # web-parity status is a required section of that file. This validates
+      # the change files and fails a branch that grows either frozen ledger.
+      # It rides this job rather than standing as its own check so it blocks
+      # a merge with no branch-protection change.
+      - name: Change files and parity
         working-directory: .
         run: |
           ./scripts/check-parity-ledger.sh \
             "${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+      # The readable tables are built, not committed: the frozen history plus
+      # one row per change file. Uploaded so a reviewer can read the whole
+      # log without assembling it.
+      - name: Assemble the decisions log and parity ledger
+        working-directory: .
+        run: python3 scripts/build-changelog.py build | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: docs/generated/
+          retention-days: 14
       # Informational, and the reason the ledger is worth keeping: parity you
       # can read a number off is parity you can notice drifting. Never fails
       # the build — the check above is the one with teeth.
       - name: Web parity status
         working-directory: .
-        run: ./scripts/parity-status.sh | tee -a "$GITHUB_STEP_SUMMARY"
+        run: ./scripts/parity-status.sh docs/generated/web-parity.md | tee -a "$GITHUB_STEP_SUMMARY"
       # v4 declared node20 and every run carried a deprecation warning for
       # it; everything from v5 up declares node24, which is what the runner
       # had been forcing these actions onto anyway. Tracking latest rather

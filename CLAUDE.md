@@ -115,7 +115,7 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 ## PRs & CI
 
 - Default PR flow: open the PR, enable auto-merge (`gh pr merge --auto --squash`), and monitor CI.
-- Conflicts with main in `docs/decisions.md` and `docs/web-parity.md` are expected: both are append-only tables that every PR adds a row to. Resolve them by merging main and keeping both sides' rows.
+- `docs/decisions.md` and `docs/web-parity.md` are frozen (2026-10-19); a PR records its decisions in its own `docs/changes/<pr>.md`, so two PRs no longer conflict there. A branch cut before the cutover that still appends to a frozen file merges clean (`merge=union` in `.gitattributes`) and then fails web CI, which says where the row belongs now.
 - Don't block on a slow main-branch baseline UI test run before opening a PR. Open it and note any pre-existing failures.
 - Don't chase pre-existing flaky test failures unless asked. Show that the test fails on main too, and move on.
 
@@ -126,19 +126,24 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 
 ## Decisions log
 
-**Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
-out of this file on 2026-09-13, when it passed the 150k-character context limit and the
-log was 92% of it.
+**Lives in two places.** [`docs/decisions.md`](docs/decisions.md) holds the first 402
+rows, oldest first, frozen on 2026-10-19 (it moved out of this file on 2026-09-13, when
+this file passed the 150k-character context limit and the log was 92% of it). Every
+decision since is one file per PR in [`docs/changes/`](docs/changes/README.md) —
+`## Decision`, `## Why`, `## Web parity` — and `scripts/build-changelog.py build`
+assembles the whole log into the gitignored `docs/generated/decisions.md`.
 
 **Read it before changing product behavior.** It is the record of *why* the app is the
 way it is, and it is load-bearing: several of its own rows exist because a session
 re-derived something the log had already settled. The § Don'ts below are its distilled
-form, not a substitute — `tail -40 docs/decisions.md` is the cheap way in, and the whole
-file is worth a read before a feature that touches an existing surface.
+form, not a substitute — `tail -40 docs/decisions.md` plus `ls -t docs/changes | head`
+is the cheap way in, and the whole log is worth a read before a feature that touches an
+existing surface.
 
-**Every decision gets a row there**, dated, with the reasoning and not just the change.
-A PR that adds one must also add a row to `docs/web-parity.md`; `scripts/check-parity-ledger.sh`
-enforces it in web CI.
+**Every decision gets an entry**, dated, with the reasoning and not just the change, in
+the PR's own `docs/changes/<pr>.md`, never in the frozen files. The entry's `## Web parity`
+section is required (`shipped` / `pending` / `n/a` / `differs`); `scripts/check-parity-ledger.sh`
+enforces the format in web CI.
 
 ## Don'ts
 

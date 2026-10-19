@@ -9,3 +9,6 @@ build/
 # unreachable and the skills stay invisible.
 .claude/*
 !.claude/skills/
+
+# Assembled decisions log + parity ledger (scripts/build-changelog.py build)
+docs/generated/

@@ -9,15 +9,17 @@ in `CLAUDE.md` — this is the record of *why* the app is the way it is, and mos
 mistakes worth avoiding here are recorded as a row that already reasoned through them.
 `CLAUDE.md`'s § Don'ts is the distilled version.
 
-**Adding a row:** append one for every decision, dated the day it was made, with the
-reasoning — not just the change. A row that says what changed and not why is what this
-file exists to prevent. Keep the table unbroken: a blank line between rows silently
-ends the markdown table, and the rows after it render as raw pipes.
+**Frozen on 2026-10-19 at 402 rows.** Decisions since then live one file per PR in
+[`docs/changes/`](changes/README.md), and `scripts/build-changelog.py build` writes
+the whole log — this file plus every row since — to `docs/generated/decisions.md`.
+Do not add rows here: every PR appending to the same table conflicted with the next
+one (31 of the 80 PRs before the cutover), and web CI now fails a branch that grows
+this file. The rules for a row — dated, with the reasoning and not just the change —
+are unchanged; they moved to the README.
 
-**Web parity:** a PR that adds a row here must also add one to `docs/web-parity.md`
-(shipped / pending / n/a / differs). `scripts/check-parity-ledger.sh` counts the rows
-and fails web CI when they don't match; `[skip-parity]` in a commit message is the
-escape hatch for work with no product surface.
+**Web parity:** each change file carries its own parity status, so the old row-count
+check and its `[skip-parity]` escape hatch are gone. `scripts/parity-status.sh`
+still reports where parity stands, read off the assembled ledger.
 
 | Date | Decision | Why |
 |---|---|---|
