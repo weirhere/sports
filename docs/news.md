@@ -101,6 +101,8 @@ FotMob runs Related news under both. ESPN's summary does carry a `news.articles`
 
 Follows from N1. If a feed ever lands, FotMob's rule is the one to take: rank by the order of your follows, with no separate interest picker.
 
+*(Superseded 2026-10-19, Andy's call: For you has a filter sheet — a checklist of followed teams, in the Teams tab's A–Z order, that keeps the follow and takes the team off the page. No interest picker still; teams only. See the PR's `docs/changes/` entry.)*
+
 ### N13 · Don't take · No news on player pages.
 **From FotMob:** R10
 

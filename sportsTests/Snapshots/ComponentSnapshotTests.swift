@@ -112,6 +112,22 @@ struct ComponentSnapshotTests {
         assert(strip, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("storyCardStack")), arguments: Variant.all)
+    func storyCardStack(_ variant: Variant) {
+        // The News tab's stacked cards (Latest, Transfers, a league on the
+        // Leagues page) on the recessed page, at the page's inset. The
+        // fixtures carry no photos, so each card is its headline and byline
+        // — in the second-rank ink, not the first: a `NavigationLink` with
+        // no `NavigationStack` above it draws disabled in an offscreen
+        // render. The layout is the baseline; the app paints them black.
+        let stack = VStack(spacing: Spacing.sm) {
+            StoryCardStack(stories: SnapshotFixtures.stories(variant.sport))
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        assert(stack, variant)
+    }
+
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

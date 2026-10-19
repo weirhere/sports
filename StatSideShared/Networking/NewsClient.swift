@@ -103,6 +103,7 @@ nonisolated enum NewsMapper {
             return NewsStory.TeamTag(id: id, name: category.description ?? "")
         }
         let eventId = categories.first { $0.type == "event" }?.eventId?.value
+        let topics = categories.compactMap { $0.type == "topic" ? $0.description?.lowercased() : nil }
         return NewsStory(
             id: String(id),
             kind: kind,
@@ -115,7 +116,8 @@ nonisolated enum NewsMapper {
             teams: teams,
             body: body,
             bodyURL: body == nil ? bodyURL : nil,
-            imageURL: imageURL(from: dto.images?.elements ?? [])
+            imageURL: imageURL(from: dto.images?.elements ?? []),
+            topics: topics
         )
     }
 

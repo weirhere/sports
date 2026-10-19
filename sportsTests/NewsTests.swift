@@ -284,4 +284,77 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(StorySection<Never>.arranged(list).map(\.id) == ["c", "a", "b", "d", "e"])
         #expect(StorySection<Never>.arranged([story("a"), story("b")]).map(\.id) == ["a", "b"])
     }
+
+    // MARK: - Transfers and the For you sheet (2026-10-19)
+
+    private func headline(_ text: String, kind: NewsStory.Kind = .headline, dek: String? = nil,
+                          topics: [String] = []) -> NewsStory {
+        NewsStory(id: text, kind: kind, league: .nba, headline: text, dek: dek,
+                  attribution: nil, published: nil, gameId: nil, teams: [], topics: topics)
+    }
+
+    @Test func transactionsAreTradesSigningsAndWaivers() {
+        // The 2026-10-19 probe's headlines, none of which ESPN tagged.
+        #expect(headline("Knicks waive Bruce Brown, keep James Wiseman ahead of opener").isTransaction)
+        #expect(headline("Still awaiting trade, Connor Hellebuyck could rejoin Jets when suspension ends").isTransaction)
+        #expect(headline("Jerry Jeudy, amid trade buzz, has clutch catch in Browns' win").isTransaction)
+        #expect(headline("Bears agree to terms with veteran kicker").isTransaction)
+        #expect(headline("Four-star QB commits to Ohio State").isTransaction)
+        #expect(headline("Star receiver enters the transfer portal").isTransaction)
+        #expect(headline("Towns, Knicks finalize four-year extension").isTransaction)
+        // The dek counts too.
+        #expect(headline("Roster moves", dek: "The Jets released their starting kicker").isTransaction)
+        // Whole words: "design" and "signal" are not "sign".
+        #expect(!headline("Designs on a title: inside the Thunder's offseason").isTransaction)
+        #expect(!headline("A signal win for the Celtics' bench").isTransaction)
+        // "deal" is every game story's word.
+        #expect(!headline("Judging overreactions to NFL Week 6: Regretting Daniel Jones, A.J. Brown deals?").isTransaction)
+        #expect(!headline("The stat that could swing every NBA team's 2026-27 season").isTransaction)
+    }
+
+    @Test func gameStoriesAreNeverTransactions() {
+        #expect(!headline("Jets trade blows with Bills in overtime thriller", kind: .recap).isTransaction)
+        #expect(!headline("Preview: Lakers sign off on new-look rotation", kind: .preview).isTransaction)
+    }
+
+    @Test func onlyUnambiguousTopicsMarkATransaction() throws {
+        #expect(headline("Deadline day", topics: ["nba trade deadline"]).isTransaction)
+        #expect(headline("Portal watch", topics: ["transfer portal"]).isTransaction)
+        // ESPN hangs "nba free agency" on a stat column; the tag alone
+        // doesn't make one.
+        #expect(!headline("The stat that could swing every NBA team's season",
+                          topics: ["daily", "nba free agency"]).isTransaction)
+        // The fixture's topics come through the mapper, lowercased.
+        let dto = try JSONDecoder().decode(NewsFeedDTO.self, from: fixtureData("nba-team-news"))
+        let stories = (dto.articles?.elements ?? []).compactMap { NewsMapper.story(from: $0, league: .nba) }
+        let graded = try #require(stories.first { $0.id == "48957095" })
+        #expect(graded.topics.contains("nba free agency"))
+        #expect(graded.topics.contains("nba trade deadline"))
+        #expect(graded.isTransaction)
+    }
+
+    @Test func theNewsTabsRunForYouLatestTransfersLeagues() {
+        #expect(NewsFeedStore.Feed.allCases.map(\.title) == ["For you", "Latest", "Transfers", "Leagues"])
+        // The Leagues page lists leagues as the Leagues tab does.
+        #expect(League.displayOrder == [.nba, .collegeFootball, .nfl, .nhl])
+    }
+
+    @MainActor
+    @Test func theForYouSheetHidesATeamAndRemembersIt() throws {
+        let name = "NewsTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let ui = UIStateStore(defaults: defaults)
+        #expect(ui.isShownInNews("nba:18"))
+        ui.setShownInNews(false, for: "nba:18")
+        #expect(!ui.isShownInNews("nba:18"))
+        #expect(ui.isShownInNews("nba:2"))
+        // The follows For you is built from drop the hidden team.
+        let keys: Set<String> = ["nba:18", "nba:2", "nfl:26"]
+        #expect(keys.filter { ui.isShownInNews($0) } == ["nba:2", "nfl:26"])
+        // And a relaunch reads it back.
+        #expect(!UIStateStore(defaults: defaults).isShownInNews("nba:18"))
+        ui.setShownInNews(true, for: "nba:18")
+        #expect(UIStateStore(defaults: defaults).isShownInNews("nba:18"))
+    }
 }

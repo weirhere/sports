@@ -58,6 +58,10 @@ nonisolated struct NewsStory: Identifiable, Hashable, Sendable {
     var bodyURL: URL? = nil
     /// The story's lead photo. Nil draws the row without one.
     var imageURL: URL? = nil
+    /// ESPN's `topic` categories, lowercased ("nba free agency"). Sparse
+    /// and loosely applied; `isTransaction` reads only the ones that can't
+    /// mean anything else.
+    var topics: [String] = []
 }
 
 /// One block of a story's text, after the HTML is gone.
@@ -90,6 +94,52 @@ extension GameSummary {
         switch (article.kind, status) {
         case (.recap, .final), (.preview, .pre): return article
         default: return nil
+        }
+    }
+}
+
+extension NewsStory {
+    /// Whether the story is a roster move — a trade, signing, waiver,
+    /// release, extension, free-agency or portal story — for the News
+    /// tab's Transfers page (Andy, 2026-10-19).
+    ///
+    /// A heuristic, and the docs say so. ESPN's `topic` categories barely
+    /// cover it: probed 2026-10-19, "Knicks waive Bruce Brown" and "Still
+    /// awaiting trade, Connor Hellebuyck…" carried no topic at all, and
+    /// "nba free agency" sat on a stat column. So the headline and dek
+    /// decide, on whole words — "design" and "signal" are not "sign" —
+    /// and a topic that can only mean a transaction counts beside them.
+    /// Recaps and previews never qualify: a game story that mentions a
+    /// trade is still a game story.
+    var isTransaction: Bool {
+        guard kind != .recap, kind != .preview else { return false }
+        if topics.contains(where: { topic in Self.transactionTopics.contains { topic.contains($0) } }) {
+            return true
+        }
+        return Self.mentionsTransaction(headline) || dek.map(Self.mentionsTransaction) == true
+    }
+
+    /// Topics that are a transaction by name. "free agency" is not here:
+    /// ESPN hangs it on columns that only mention the market.
+    static let transactionTopics = ["trade deadline", "transfer portal", "transactions"]
+
+    /// The whole-word phrases a roster move is written with, as regular
+    /// expressions. No bare "deal" (every game story has one), no bare
+    /// "cut" (a lead gets cut every night), no bare "sign".
+    static let transactionTerms: [String] = [
+        "trades?", "traded", "acquires?", "acquired",
+        "signs", "signed", "signing", "re-signs?", "re-signed",
+        "waives?", "waived", "waivers?", "releases?", "released", "cut by",
+        "free agents?", "free agency", "extensions?", "contracts?", "buyout",
+        "transfers?", "transferred", "portal", "commits? to", "decommits?",
+        "agrees? to terms", "agreed to terms", "swap",
+    ]
+
+    /// Whether `text` says a roster move happened, on whole words.
+    static func mentionsTransaction(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        return transactionTerms.contains { term in
+            lowered.range(of: "\\b\(term)\\b", options: .regularExpression) != nil
         }
     }
 }
