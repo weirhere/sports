@@ -467,7 +467,8 @@ final class LeagueScoreboards {
                   liveOnly: Bool = false,
                   tightOnly: Bool = false,
                   filter: ScoreFilter? = nil,
-                  groupings: [League: SlateGrouping] = [:]) -> [GameSection] {
+                  groupings: [League: SlateGrouping] = [:],
+                  spoiler: SpoilerGuard = .off) -> [GameSection] {
         let day = day ?? selectedDay
         // Reading every store's revision is what keeps a cache hit honest:
         // it registers the same observation the build would have, so the
@@ -479,12 +480,13 @@ final class LeagueScoreboards {
                               tightOnly: tightOnly,
                               filter: filter,
                               groupings: groupings,
+                              spoiler: spoiler,
                               revisions: all.map(\.revision))
         if let cached = sectionsMemo[key] { return cached }
         let built = buildSections(day: day, followingIds: followingIds,
                                   followedTables: followedTables,
                                   liveOnly: liveOnly, tightOnly: tightOnly, filter: filter,
-                                  groupings: groupings)
+                                  groupings: groupings, spoiler: spoiler)
         // Bounded, not LRU: the screen asks for the shown day and, mid-swipe,
         // one neighbour, so a handful of live keys is the whole working set
         // and dropping everything on overflow costs one rebuild each.
@@ -503,6 +505,9 @@ final class LeagueScoreboards {
         let tightOnly: Bool
         let filter: ScoreFilter?
         let groupings: [League: SlateGrouping]
+        /// Spoiler mode's rule (E30): the Tight filter reads it, so a
+        /// reveal has to miss the memo or a hidden game stays in Tight.
+        let spoiler: SpoilerGuard
         let revisions: [Int]
     }
 
@@ -520,7 +525,8 @@ final class LeagueScoreboards {
                                liveOnly: Bool,
                                tightOnly: Bool,
                                filter: ScoreFilter?,
-                               groupings: [League: SlateGrouping]) -> [GameSection] {
+                               groupings: [League: SlateGrouping],
+                               spoiler: SpoilerGuard) -> [GameSection] {
         var following: [Game] = []
         // Per league, the games the stack is allowed to show. Following is
         // claimed before the filter narrows anything, so a followed team
@@ -530,7 +536,11 @@ final class LeagueScoreboards {
         for league in League.allCases {
             var games = store(for: league).games(on: day)
             if liveOnly { games = games.filter(\.isLive) }
-            if tightOnly { games = games.filter(GameCloseness.isTight) }
+            // A concealed game passes Tight whatever its margin (E30):
+            // dropping it would say "not close", which is a result —
+            // the margin, or the favorite leading. Keeping it says
+            // nothing, which is what a hidden game is supposed to say.
+            if tightOnly { games = games.filter { GameCloseness.isTight($0) || spoiler.conceals($0) } }
             following += games.filter { game in
                 followingIds.contains(game.home.team.followKey)
                     || followingIds.contains(game.away.team.followKey)

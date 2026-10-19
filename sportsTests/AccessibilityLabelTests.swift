@@ -121,6 +121,41 @@ private func game(status: GameStatus,
     }
 }
 
+/// The concealed row's sentence (E30). `concealedSummary` reads the game
+/// directly, so the shape is testable without the environment that
+/// decides whether a row is concealed at all (`SpoilerGuardTests` covers
+/// that rule).
+@MainActor
+@Suite struct ConcealedGameRowAccessibilityTests {
+    @Test func aConcealedFinalSpeaksRecordsStateAndThatTheScoreIsHidden() {
+        let row = GameRow(game: game(
+            status: .final(detail: "Final/OT"),
+            homeScore: 17, awayScore: 24,
+            homeRecord: "4-2", awayRecord: "6-0",
+            homeRank: 12, awayRank: 3,
+            homeWinner: false, awayWinner: true))
+        // Pre-game shape — "at", rewound records — no score, no overtime.
+        #expect(row.concealedSummary ==
+                "number 3 Georgia 5 and 0 at number 12 Tennessee 4 and 1, final, score hidden")
+    }
+
+    @Test func aConcealedLiveGameSaysLiveAndNothingAboutTheClock() {
+        let row = GameRow(game: game(
+            status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),
+            homeScore: 17, awayScore: 24, homeRecord: "4-1", awayRecord: "5-0", broadcast: "ESPN"))
+        #expect(row.concealedSummary ==
+                "Georgia 5 and 0 at Tennessee 4 and 1, live, score hidden")
+    }
+
+    @Test func theDefaultEnvironmentConcealsNothing() {
+        // Off the view tree the guard is its default, `.off`, so the
+        // ordinary sentence still comes out of `accessibilitySummary`.
+        let row = GameRow(game: game(status: .final(detail: "Final"), homeScore: 17, awayScore: 24,
+                                     homeWinner: false, awayWinner: true))
+        #expect(row.accessibilitySummary == "Georgia 24, Tennessee 17, final")
+    }
+}
+
 @MainActor
 @Suite struct KickTimeFormatTests {
     // One anchor kickoff — Aug 29, 3:00 PM local — rendered from a series of

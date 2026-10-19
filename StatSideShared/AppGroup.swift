@@ -38,6 +38,16 @@ nonisolated enum AppGroup {
     static let followingTableOrderKey = "following.tableOrder"
 
     static let snapshotKey = "widget.snapshot"
+
+    /// Spoiler mode (E30, 2026-10-19). In the suite rather than standard
+    /// defaults from the first build, because the widget has to give the
+    /// same answer the app does: a hidden team's row on the home screen
+    /// is a score too (E30 PR 2). `spoiler.hidesFollowedScores` is the
+    /// Settings switch; `spoiler.revealed` maps a `Game.routeKey` to the
+    /// date it was revealed, so old reveals can be pruned without
+    /// fetching anything.
+    static let spoilerEnabledKey = "spoiler.hidesFollowedScores"
+    static let spoilerRevealedKey = "spoiler.revealed"
     private static let migrationKey = "migration.followingToGroup.done"
     private static let leagueMigrationKey = "migration.leagueNamespacing.done"
     private static let divisionMigrationKey = "migration.divisionFollows.done"

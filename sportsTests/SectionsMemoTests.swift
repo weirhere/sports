@@ -127,4 +127,23 @@ private func makeScoreboards(nfl: ChangingStub) async -> LeagueScoreboards {
         #expect(!scoreboards.sections(followingIds: []).isEmpty)
         #expect(scoreboards.sections(followingIds: [], liveOnly: true).isEmpty)
     }
+
+    /// Spoiler mode (E30): a concealed game passes Tight whatever its
+    /// margin, because dropping it would say "not close". And the guard
+    /// is part of the key, so revealing it misses the memo.
+    @Test func aConcealedGamePassesTightAndARevealMissesTheMemo() async {
+        // 7–3 in the second quarter: not tight by either rule.
+        let stub = ChangingStub(league: .nfl, games: [nflGame("1", live: true)])
+        let scoreboards = await makeScoreboards(nfl: stub)
+        let home = nflTeam("h1").followKey
+        #expect(scoreboards.sections(followingIds: [home], tightOnly: true).isEmpty)
+
+        let hiding = SpoilerGuard(isEnabled: true, followedKeys: [home], revealedKeys: [])
+        let tight = scoreboards.sections(followingIds: [home], tightOnly: true, spoiler: hiding)
+        #expect(tight.first?.id == GameSection.followingId)
+        #expect(tight.first?.games.map(\.id) == ["1"])
+
+        let revealed = SpoilerGuard(isEnabled: true, followedKeys: [home], revealedKeys: ["nfl:1"])
+        #expect(scoreboards.sections(followingIds: [home], tightOnly: true, spoiler: revealed).isEmpty)
+    }
 }

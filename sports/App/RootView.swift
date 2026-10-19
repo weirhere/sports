@@ -9,6 +9,7 @@ struct RootView: View {
     @State private var uiState = UIStateStore()
     @State private var notifications = NotificationScheduler()
     @State private var teamAlerts = TeamAlertStore()
+    @State private var spoiler = SpoilerStore()
     // Scoreboard and team directory live here, not in their tabs, so the
     // search cover (and any tab) sees the same loaded data, and polling
     // follows the scene's lifecycle instead of one tab's.
@@ -190,6 +191,13 @@ struct RootView: View {
         .environment(reviewPrompt)
         .environment(notifications)
         .environment(teamAlerts)
+        .environment(spoiler)
+        // Spoiler mode's rule, composed once here from the two stores it
+        // reads (E30). Every game row reads this value itself. Its inputs
+        // change on a follow, a reveal or the switch, each of which
+        // re-evaluates this body; the rows below re-render only where the
+        // value actually changes what they draw.
+        .environment(\.spoilerGuard, spoiler.guardValue(followedKeys: following.teamKeys))
         .environment(scoreboards)
         .environment(directory)
         .environment(coachStaff)

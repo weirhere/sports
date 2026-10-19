@@ -22,6 +22,7 @@ struct ScoresScreen: View {
     // Owned by RootView so the search cover shares the loaded days and
     // polling follows the scene, not this tab.
     @Environment(LeagueScoreboards.self) private var scoreboards
+    @Environment(\.spoilerGuard) private var spoilerGuard
 
     // NavigationPath, not [Game]: the stack pushes Team (game detail's
     // header links) and ConferenceDestination (a standings link from a
@@ -489,7 +490,8 @@ struct ScoresScreen: View {
                              followedTables: following.orderedTables,
                              liveOnly: uiState.liveOnly(on: shownDay),
                              tightOnly: uiState.tightOnly(on: shownDay),
-                             groupings: uiState.resolvedGroupings)
+                             groupings: uiState.resolvedGroupings,
+                             spoiler: spoilerGuard)
     }
 
     /// Turning the Live filter on goes to where live games are — today

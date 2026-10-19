@@ -30,12 +30,17 @@ struct GameHeader: View {
     let broadcast: String?
     let possessionTeamId: String?
     let glyph: String
+    /// Spoiler mode's way out (E30): set, the capsule draws in the score
+    /// slot under the status word. Nil on every header that shows its
+    /// score.
+    var onReveal: (() -> Void)? = nil
 
     private static let logoSize: CGFloat = 44
 
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.lg) {
             headerSide(away, outerEdge: .leading)
+            VStack(spacing: Spacing.sm) {
             VStack(spacing: Spacing.xs) {
                 // The merge, not the pushed snapshot: `game` is frozen at
                 // push, so a game that ends while its detail is open would
@@ -86,13 +91,19 @@ struct GameHeader: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, showsScores ? 0 : Spacing.sm)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 ([statusSpoken]
                     + (broadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
+            // Outside the element above, so VoiceOver can reach it: the
+            // status is one spoken sentence, the capsule is a control.
+            if let onReveal {
+                RevealScoreButton(action: onReveal)
+            }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, showsScores ? 0 : Spacing.sm)
             headerSide(home, outerEdge: .trailing)
         }
         .padding(.horizontal, Spacing.lg)
@@ -208,6 +219,30 @@ extension GameHeader {
                   broadcast: (isLive || kickoff != nil) ? game.broadcast : nil,
                   possessionTeamId: GameHeaderState.possessionTeamId(game, summary),
                   glyph: game.home.team.league.fallbackGlyph)
+    }
+}
+
+extension GameHeader {
+    /// The concealed header (E30): both marks with their records rewound,
+    /// the one word of status at the logos' height, and the Reveal
+    /// capsule under it. Built from the merged-and-concealed game
+    /// (`GameHeaderState.concealedGame`), so there is nothing in it to
+    /// leak — and `isLive` is false on purpose: the word says live, the
+    /// red dot would say it louder, and a concealed page is the one that
+    /// spends no live budget.
+    init(concealed game: Game, onReveal: @escaping () -> Void) {
+        let status = game.status.isFinal ? "Final" : "Live"
+        self.init(away: (game.away.team, nil, game.away.record, nil),
+                  home: (game.home.team, nil, game.home.record, nil),
+                  isLive: false,
+                  showsScores: false,
+                  kickoff: nil,
+                  statusLine: status,
+                  statusSpoken: "\(status), score hidden",
+                  broadcast: nil,
+                  possessionTeamId: nil,
+                  glyph: game.home.team.league.fallbackGlyph,
+                  onReveal: onReveal)
     }
 }
 

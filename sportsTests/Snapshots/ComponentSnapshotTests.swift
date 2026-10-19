@@ -79,6 +79,27 @@ struct ComponentSnapshotTests {
         assert(card, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("gameRow")), arguments: Variant.all)
+    func gameRow(_ variant: Variant) {
+        // The Scores row as a day section draws it (`timeOnly`), on the
+        // card surface: live with the ball, final, pre-game.
+        let row = GameRow(game: SnapshotFixtures.game(variant.sport), timeOnly: true)
+            .background(Color.bgCard)
+        assert(row, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("gameRowConcealed")), arguments: Variant.all)
+    func gameRowConcealed(_ variant: Variant) {
+        // Spoiler mode (E30): the same row with its result hidden —
+        // records at the trailing edge (rewound for the finals), "Live"
+        // or "Final" over "Tap to reveal", no dot, no bold or muted name.
+        let game = SnapshotFixtures.concealedGame(variant.sport)
+        let row = GameRow(game: game, timeOnly: true, onReveal: {})
+            .background(Color.bgCard)
+            .environment(\.spoilerGuard, SnapshotFixtures.spoilerGuard(hiding: game))
+        assert(row, variant)
+    }
+
     @Test(.enabled(if: snapshotSelected("gameHeaderExpanded")), arguments: Variant.all)
     func gameHeaderExpanded(_ variant: Variant) {
         // On the card surface, as the detail screen paints it.
@@ -94,6 +115,29 @@ struct ComponentSnapshotTests {
         // color with the hairline under it — without the system chrome
         // (back button, pin) either side, which a snapshot can't host.
         let bar = CompactGameHeader(game: SnapshotFixtures.game(variant.sport), summary: nil)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(Color.bgCard)
+            .overlay(alignment: .bottom) { Divider().overlay(Color.divider) }
+        assert(bar, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("gameHeaderConcealed")), arguments: Variant.all)
+    func gameHeaderConcealed(_ variant: Variant) {
+        // Spoiler mode (E30): the status word at the logos' height with
+        // the Reveal capsule under it; records rewound; no dot, no score.
+        let hidden = SnapshotFixtures.concealedGame(variant.sport).concealed()
+        let header = GameHeader(concealed: hidden, onReveal: {})
+            .frame(maxWidth: .infinity)
+            .background(Color.bgCard)
+        assert(header, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("gameHeaderCompactConcealed")), arguments: Variant.all)
+    func gameHeaderCompactConcealed(_ variant: Variant) {
+        // The bar's slot for a concealed game: the status word between
+        // the marks, as a postponed game draws it.
+        let hidden = SnapshotFixtures.concealedGame(variant.sport).concealed()
+        let bar = CompactGameHeader(game: hidden, summary: nil)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(Color.bgCard)
             .overlay(alignment: .bottom) { Divider().overlay(Color.divider) }

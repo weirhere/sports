@@ -107,6 +107,41 @@ enum SnapshotFixtures {
         }
     }
 
+    /// The same three matchups as finals, for spoiler mode's baselines
+    /// (E30): football and hockey are `game(_:)`'s pairs played out,
+    /// basketball is already a final. Hockey ends in overtime so the
+    /// concealed row exercises `RecordRewind`'s third-field rule: Toronto
+    /// 40-19-5 → 39-19-5, Boston's OT loss 38-20-6 → 38-20-5.
+    static func finalGame(_ sport: Sport) -> Game {
+        switch sport {
+        case .football:
+            Game(id: "snap-cfb-final", date: day(2026, 10, 17), name: nil, shortName: "UGA @ ALA",
+                 weekNumber: 8, status: .final(detail: "Final"),
+                 home: competitor(alabama, score: 17, record: "6-2", rank: 4, isHome: true, winner: false),
+                 away: competitor(georgia, score: 24, record: "8-0", rank: 1, isHome: false, winner: true),
+                 broadcast: "CBS")
+        case .basketball:
+            game(.basketball)
+        case .hockey:
+            Game(id: "snap-nhl-final", date: faceOff, name: nil, shortName: "TOR @ BOS", weekNumber: nil,
+                 status: .final(detail: "Final/OT"),
+                 home: competitor(bruins, score: 2, record: "38-20-6", isHome: true, winner: false),
+                 away: competitor(mapleLeafs, score: 3, record: "40-19-5", isHome: false, winner: true),
+                 broadcast: "ESPN+")
+        }
+    }
+
+    /// One concealed game per sport (E30), covering both hidden states:
+    /// football is the live game, basketball and hockey the finals.
+    static func concealedGame(_ sport: Sport) -> Game {
+        sport == .football ? game(.football) : finalGame(sport)
+    }
+
+    /// A guard that hides `game`: spoiler mode on, its home team followed.
+    static func spoilerGuard(hiding game: Game) -> SpoilerGuard {
+        SpoilerGuard(isEnabled: true, followedKeys: [game.home.team.followKey], revealedKeys: [])
+    }
+
     /// 7:00 PM local on the hockey day.
     private static var faceOff: Date {
         var parts = Calendar.current.dateComponents([.year, .month, .day], from: today(.hockey))

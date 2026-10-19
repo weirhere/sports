@@ -25,6 +25,11 @@ struct GameDetailScreen: View {
     /// without the app's environment.
     @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
     @Environment(\.requestReview) private var requestReview
+    /// Spoiler mode (E30): the rule, and the store the Reveal button
+    /// writes to. The store is optional like the router; the rule's
+    /// default is off, so a preview shows its score.
+    @Environment(\.spoilerGuard) private var spoilerGuard
+    @Environment(SpoilerStore.self) private var spoiler: SpoilerStore?
 
     @State private var loadedSummary: GameSummary?
     /// Which game the loaded summary and standings describe. Belt and
@@ -158,13 +163,32 @@ struct GameDetailScreen: View {
     }
 
     private func label(_ tab: Tab) -> TabLabel {
-        TabLabel(tab: tab, title: tab == .facts ? GameHeaderState.factsTabTitle(game, summary) : tab.title)
+        TabLabel(tab: tab, title: tab == .facts
+                 ? GameHeaderState.factsTabTitle(game, summary, concealed: concealed)
+                 : tab.title)
     }
+
+    /// Whether this page hides its result (E30). Decided from the merged
+    /// status, not the pushed row: a `.pre` row pushed before kickoff
+    /// whose summary has since gone live is exactly the page that must
+    /// hide, and a `.pre` game is the one the guard lets through.
+    private var concealed: Bool {
+        spoilerGuard.conceals(GameHeaderState.merged(game, summary))
+    }
+
+    /// The merge with its result taken out — what every concealed surface
+    /// on this page renders from.
+    private var concealedGame: Game { GameHeaderState.concealedGame(game, summary) }
 
     /// A tab only exists where its data does. Pre-kick games, CFBD's
     /// feed, and any game ESPN hasn't filled in show Summary alone and
     /// no tab row — exactly as they did before either tab existed.
     private var availableTabs: [Tab] {
+        // Concealed (E30): Preview alone, and so no tab row. Every other
+        // tab is the result in some form — the plays, the box score, who
+        // played, the recap — and the page's standing rule for a tab
+        // whose whole content is missing is no tab.
+        guard !concealed else { return [.facts] }
         var tabs: [Tab] = [.facts]
         // News reads the two teams' feeds, not the summary, so like H2H
         // it's there from the first frame. ESPN's only: the fixture and
@@ -347,7 +371,7 @@ struct GameDetailScreen: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                CompactGameHeader(game: game, summary: summary)
+                compactHeader
                     .opacity(showsCompactHeader ? 1 : 0)
                     .accessibilityHidden(!showsCompactHeader)
             }
@@ -363,6 +387,9 @@ struct GameDetailScreen: View {
                 }
             }
             #endif
+            // No share while concealed (E30): the card is the score.
+            // Reveal first, and the button comes back.
+            if !concealed {
             ToolbarItem(placement: .topBarTrailing) {
                 // Not a ShareLink: only UIActivityItemSource can hand
                 // Messages the score card as the link's preview image.
@@ -383,12 +410,15 @@ struct GameDetailScreen: View {
                         cardPNG: shareCardPNG))
                 }
             }
+            }
         }
         // The third of the app's three haptics: a live score changing under
         // your thumb. Detail-screen only — the scoreboard's 60-game poll
         // would machine-gun the Taptic engine.
         .sensoryFeedback(.impact(weight: .medium), trigger: currentScores) { _, _ in
-            isLiveNow
+            // Not while concealed (E30): a tap on the wrist at every score
+            // is the score, read by touch.
+            isLiveNow && !concealed
         }
         // Keyed by the game, not fire-once: a screen reused for another
         // game must fetch that game rather than sit on what it holds.
@@ -479,6 +509,10 @@ struct GameDetailScreen: View {
     private func askForReviewIfEarned() async {
         guard let reviewPrompt else { return }
         guard summary != nil, lastError == nil else { return }
+        // Not over a concealed page (E30): the ask would land on top of
+        // the Reveal button, and a page hiding its score hasn't shown
+        // the thing the reminder promised yet.
+        guard !concealed else { return }
         guard reviewPrompt.earnedByOpening(gameId: game.id) else { return }
         try? await Task.sleep(for: .seconds(1.5))
         guard !Task.isCancelled else { return }
@@ -542,8 +576,21 @@ struct GameDetailScreen: View {
     /// Renders from the scoreboard's Game immediately; the summary fills in.
     /// `GameHeader` since 2026-10-19 — its own file, so the snapshot suite
     /// can draw it without the screen.
+    @ViewBuilder
     private var header: some View {
-        GameHeader(game: game, summary: summary)
+        if concealed {
+            GameHeader(concealed: concealedGame, onReveal: { spoiler?.reveal(game) })
+        } else {
+            GameHeader(game: game, summary: summary)
+        }
+    }
+
+    /// The bar's scoreboard, or while concealed its status word alone:
+    /// `CompactGameHeader`'s own `.status` case, reached by handing it the
+    /// concealed game, whose scores are nil.
+    private var compactHeader: CompactGameHeader {
+        concealed ? CompactGameHeader(game: concealedGame, summary: nil)
+                  : CompactGameHeader(game: game, summary: summary)
     }
 
     // Delegated to GameHeaderState so the share card provably renders the
@@ -619,6 +666,9 @@ struct GameDetailScreen: View {
     /// here moved.
     @ViewBuilder
     private func summaryCards(_ summary: GameSummary) -> some View {
+        if concealed {
+            concealedCards(summary)
+        } else {
         let story = summary.story(forGame: game.id, status: GameHeaderState.status(game, summary))
         VStack(spacing: Spacing.sm) {
                     // A final leads with its recap, FotMob's match report
@@ -720,6 +770,31 @@ struct GameDetailScreen: View {
                     }
             }
             .padding(Spacing.sm)
+        }
+    }
+
+    /// The Preview a concealed game shows (E30): when and where to watch,
+    /// and the ground — the two cards with no result in them, in their
+    /// pre-game order. Everything else on Facts is the outcome in one
+    /// form or another: the recap's headline, the situation strip, the
+    /// line score, win probability, the scoring, the stats, the leaders,
+    /// a standings table that already counts this game. No betting line
+    /// either, whatever Settings says: who was favored beside a final
+    /// with no score is half the result.
+    private func concealedCards(_ summary: GameSummary) -> some View {
+        VStack(spacing: Spacing.sm) {
+            if KickoffInfoRows.hasContent(game: concealedGame, summary: summary) {
+                card(title: "Game info") {
+                    KickoffInfoRows(game: concealedGame, summary: summary)
+                }
+            }
+            if GameInfoRows.hasVenueContent(summary) {
+                card(title: "Venue") {
+                    GameInfoRows(summary: summary)
+                }
+            }
+        }
+        .padding(Spacing.sm)
     }
 
     /// The game's story as one `StoryRow`, opening the reader. The reader's
