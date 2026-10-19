@@ -12,10 +12,16 @@ import Observation
 /// argument domain the way it pins `-ui.scoreFilter`.
 @Observable
 final class SpoilerStore {
-    /// The switch: hide the result of any game involving a followed team
-    /// until it is revealed.
-    var hidesFollowedScores: Bool {
-        didSet { defaults.set(hidesFollowedScores, forKey: AppGroup.spoilerEnabledKey) }
+    /// The switch: hide results until they are revealed.
+    var hidesScores: Bool {
+        didSet { defaults.set(hidesScores, forKey: AppGroup.spoilerEnabledKey) }
+    }
+
+    /// Which games the switch reaches: My teams (the default) or All
+    /// games. Kept while the switch is off, so turning it back on finds
+    /// the choice where it was left.
+    var scope: SpoilerGuard.Scope {
+        didSet { defaults.set(scope.rawValue, forKey: AppGroup.spoilerScopeKey) }
     }
 
     /// `Game.routeKey` → when it was revealed. A reveal is the user's
@@ -32,7 +38,11 @@ final class SpoilerStore {
 
     init(defaults: UserDefaults = AppGroup.defaults, now: Date = .now) {
         self.defaults = defaults
-        hidesFollowedScores = defaults.bool(forKey: AppGroup.spoilerEnabledKey)
+        hidesScores = defaults.bool(forKey: AppGroup.spoilerEnabledKey)
+        // An unknown or missing value is My teams: the narrower reach is
+        // the one a stale or mistyped key should fall to.
+        scope = defaults.string(forKey: AppGroup.spoilerScopeKey)
+            .flatMap(SpoilerGuard.Scope.init(rawValue:)) ?? .followedTeams
         // Stored as `[String: Double]` (seconds since 1970): a dictionary
         // of dates round-trips through the argument domain as `{}` where a
         // Date would not, and the UI suite pins an empty one.
@@ -64,8 +74,8 @@ final class SpoilerStore {
     /// What `SpoilerGuard` needs from here, with the follow set it also
     /// needs from `FollowingStore`.
     func guardValue(followedKeys: Set<String>) -> SpoilerGuard {
-        SpoilerGuard(isEnabled: hidesFollowedScores, followedKeys: followedKeys,
-                     revealedKeys: revealedKeys)
+        SpoilerGuard(isEnabled: hidesScores, followedKeys: followedKeys,
+                     revealedKeys: revealedKeys, scope: scope)
     }
 
     private func persistRevealed() {

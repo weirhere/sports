@@ -20,7 +20,7 @@ final class SpoilerModeUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchFixtureApp() -> XCUIApplication {
+    private func launchFixtureApp(scope: String = "followed") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
             "-ui.onboardingSeen", "YES",
@@ -36,7 +36,8 @@ final class SpoilerModeUITests: XCTestCase {
             // Delta College, fx-fades' home side (argument-domain array
             // syntax, league-qualified).
             "-following.teamKeys", "(cfb:fx-103)",
-            "-spoiler.hidesFollowedScores", "YES",
+            "-spoiler.hidesScores", "YES",
+            "-spoiler.scope", scope,
             "-spoiler.revealed", "{}",
         ]
         app.launch()
@@ -126,5 +127,16 @@ final class SpoilerModeUITests: XCTestCase {
         let hold = app.descendants(matching: .any).matching(identifier: "scores-game-fx-hold").firstMatch
         XCTAssertTrue(scrollUntilExists(hold, in: app), "fx-hold row never appeared")
         XCTAssertFalse(hold.label.contains("score hidden"), "unfollowed row concealed: \(hold.label)")
+    }
+
+    /// All games reaches the unfollowed slate too: the same fx-hold row
+    /// hides under the wider scope.
+    @MainActor
+    func testAllGamesScopeHidesUnfollowedGames() throws {
+        let app = launchFixtureApp(scope: "all")
+        let hold = app.descendants(matching: .any).matching(identifier: "scores-game-fx-hold").firstMatch
+        XCTAssertTrue(scrollUntilExists(hold, in: app), "fx-hold row never appeared")
+        XCTAssertTrue(hold.label.contains("score hidden"), "All games left fx-hold showing: \(hold.label)")
+        XCTAssertTrue(hold.label.contains("live"), "fx-hold should still say it is live: \(hold.label)")
     }
 }

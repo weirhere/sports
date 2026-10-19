@@ -4,11 +4,15 @@ import Foundation
 /// note: *"a way to hide scores until you've watched the game"*): which
 /// games hide their result, and what a hidden game looks like.
 ///
-/// **Followed teams only.** A fan time-shifts their own team's game, not
-/// the other twenty on the slate, and this is the scope every other
-/// team-driven surface already settled on (the widget, the reminders).
-/// Team follows, not conference follows — the Following section's own
-/// test, applied to a different question.
+/// **Followed teams by default, every game by choice.** A fan time-shifts
+/// their own team's game, not the other twenty on the slate, and My
+/// teams is the scope every other team-driven surface already settled on
+/// (the widget, the reminders) — team follows, not conference follows,
+/// the Following section's own test applied to a different question.
+/// All games is pingroomio's second note the same day (*"I'd start with
+/// a global switch"*): it covers the primetime game between two teams
+/// you don't follow, at the price of the whole slate reading as a
+/// schedule, which is why it is the choice and not the default.
 ///
 /// **A final hides for seven days.** Without a window every final a
 /// followed team ever played would hide — the head-to-head pane's ten
@@ -34,6 +38,19 @@ nonisolated struct SpoilerGuard: Hashable, Sendable {
     /// `Game.routeKey`s — `"cfb:401…"`. ESPN event ids collide across
     /// leagues like team ids do, so a bare id would reveal two games.
     var revealedKeys: Set<String>
+    /// Which games the mode reaches. Declared after the sets, with a
+    /// default, so a caller that never heard of scopes still builds the
+    /// My teams guard.
+    var scope: Scope = .followedTeams
+
+    /// The two reaches of the mode. Raw values are what `SpoilerStore`
+    /// persists and what a UI suite pins (`-spoiler.scope all`).
+    enum Scope: String, CaseIterable, Hashable, Sendable {
+        /// Games with a followed team in them.
+        case followedTeams = "followed"
+        /// Every game on the slate.
+        case allGames = "all"
+    }
 
     /// How long after kickoff a final stays hidden.
     static let finalWindow: TimeInterval = 7 * 86_400
@@ -43,8 +60,10 @@ nonisolated struct SpoilerGuard: Hashable, Sendable {
     /// Whether `game`'s result is hidden right now.
     func conceals(_ game: Game, now: Date = .now) -> Bool {
         guard isEnabled else { return false }
-        guard followedKeys.contains(game.home.team.followKey)
-                || followedKeys.contains(game.away.team.followKey) else { return false }
+        if scope == .followedTeams {
+            guard followedKeys.contains(game.home.team.followKey)
+                    || followedKeys.contains(game.away.team.followKey) else { return false }
+        }
         guard !revealedKeys.contains(game.routeKey) else { return false }
         switch game.status {
         case .live:

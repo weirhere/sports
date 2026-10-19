@@ -64,6 +64,26 @@ private func guardFollowing(_ teams: Team..., revealed: Set<String> = []) -> Spo
         #expect(!guardValue.conceals(game(status: .final(detail: "Final"), date: justOutside), now: now))
     }
 
+    /// All games (pingroomio's second note): the follows check is the one
+    /// gate the scope removes; the window and the reveal still hold.
+    @Test func allGamesReachesTheUnfollowedSlate() {
+        var guardValue = guardFollowing(team("2633"))
+        guardValue.scope = .allGames
+        #expect(guardValue.conceals(game(status: liveQ3), now: now))
+        let yesterday = now.addingTimeInterval(-86_400)
+        #expect(guardValue.conceals(game(status: .final(detail: "Final"), date: yesterday), now: now))
+        let lastMonth = now.addingTimeInterval(-30 * 86_400)
+        #expect(!guardValue.conceals(game(status: .final(detail: "Final"), date: lastMonth), now: now))
+        #expect(!guardValue.conceals(game(status: .pre(detail: nil)), now: now))
+        guardValue.revealedKeys = [game(status: liveQ3).routeKey]
+        #expect(!guardValue.conceals(game(status: liveQ3), now: now))
+    }
+
+    @Test func theDefaultScopeIsMyTeams() {
+        #expect(SpoilerGuard.off.scope == .followedTeams)
+        #expect(guardFollowing(georgia).scope == .followedTeams)
+    }
+
     @Test func aFinalWithNoDateStaysConcealed() {
         #expect(guardFollowing(georgia).conceals(game(status: .final(detail: "Final"), date: nil), now: now))
     }

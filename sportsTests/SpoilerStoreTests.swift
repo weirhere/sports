@@ -24,9 +24,10 @@ private func game(_ id: String) -> Game {
         return defaults
     }
 
-    @Test func offByDefault() {
+    @Test func offByDefaultAndScopedToMyTeams() {
         let store = SpoilerStore(defaults: makeDefaults())
-        #expect(!store.hidesFollowedScores)
+        #expect(!store.hidesScores)
+        #expect(store.scope == .followedTeams)
         #expect(store.revealed.isEmpty)
         #expect(!store.guardValue(followedKeys: ["cfb:61"]).isEnabled)
     }
@@ -34,10 +35,31 @@ private func game(_ id: String) -> Game {
     @Test func theSwitchPersistsAcrossReinit() {
         let defaults = makeDefaults()
         let store = SpoilerStore(defaults: defaults)
-        store.hidesFollowedScores = true
-        #expect(SpoilerStore(defaults: defaults).hidesFollowedScores)
-        store.hidesFollowedScores = false
-        #expect(!SpoilerStore(defaults: defaults).hidesFollowedScores)
+        store.hidesScores = true
+        #expect(SpoilerStore(defaults: defaults).hidesScores)
+        store.hidesScores = false
+        #expect(!SpoilerStore(defaults: defaults).hidesScores)
+    }
+
+    @Test func theScopePersistsAndReachesTheGuard() {
+        let defaults = makeDefaults()
+        let store = SpoilerStore(defaults: defaults)
+        store.hidesScores = true
+        store.scope = .allGames
+        #expect(store.guardValue(followedKeys: []).scope == .allGames)
+        #expect(store.guardValue(followedKeys: []).conceals(game("401")))
+
+        let reloaded = SpoilerStore(defaults: defaults)
+        #expect(reloaded.scope == .allGames)
+        // Off keeps the choice for next time.
+        reloaded.hidesScores = false
+        #expect(SpoilerStore(defaults: defaults).scope == .allGames)
+    }
+
+    @Test func anUnknownScopeFallsBackToMyTeams() {
+        let defaults = makeDefaults()
+        defaults.set("everything", forKey: AppGroup.spoilerScopeKey)
+        #expect(SpoilerStore(defaults: defaults).scope == .followedTeams)
     }
 
     @Test func aRevealPersistsAcrossReinit() {

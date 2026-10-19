@@ -36,14 +36,26 @@ struct SettingsScreen: View {
                 // Spoiler mode (E30, 2026-10-19). Its own section rather than
                 // a second row under Scores, so the footer can say what it
                 // governs — and one block, so moving it beside the follow
-                // list later is a cut and paste.
+                // list later is a cut and paste. The reach (My teams / All
+                // games, pingroomio's second note) shows only while the
+                // switch is on: a choice about nothing is clutter.
                 Section {
-                    Toggle("Hide my teams' scores", isOn: $spoiler.hidesFollowedScores)
+                    Toggle("Hide scores", isOn: $spoiler.hidesScores)
                         .accessibilityIdentifier("settings.hideScores")
+                    if spoiler.hidesScores {
+                        Picker("Hide scores for", selection: $spoiler.scope) {
+                            Text("My teams").tag(SpoilerGuard.Scope.followedTeams)
+                            Text("All games").tag(SpoilerGuard.Scope.allGames)
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("settings.hideScoresScope")
+                    }
                 } header: {
                     Text("Spoilers")
                 } footer: {
-                    Text("Games with a team you follow show only Live or Final until you tap to reveal the score.")
+                    Text(spoiler.scope == .allGames
+                         ? "Every game shows only Live or Final until you tap to reveal the score."
+                         : "Games with a team you follow show only Live or Final until you tap to reveal the score.")
                 }
 
                 Section {
