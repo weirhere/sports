@@ -105,6 +105,7 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 - After any UI change, build **and install** on the simulator before asking Andy to look. Compiling alone is not enough: Xcode installs on the one device it ran on and nowhere else. `scripts/install-all-sims.sh` builds the working tree once and installs it on every booted iPhone; `--all` does every available one; a name or UDID targets one device.
 - Other Claude sessions may be driving the shared simulators. Before verifying, check `xcrun simctl list devices booted`. If another session owns the device, boot or `simctl clone` a dedicated simulator for this session (name it after the task), install only to its UDID, never `booted`, and delete it when done.
 - If the simulator shows old UI, assume a stale build first: check for compile errors and reinstall before debugging the view.
+- A Stop hook in `.claude/settings.json` runs `scripts/stop-install-hook.sh` at the end of every turn: if any Swift file is modified, staged or untracked, it builds and installs on every booted iPhone in the background (or only the device named in `STATSIDE_SIM`), logging to `$TMPDIR/statside-stop-install.log`. `.claude/` is gitignored, so a worktree session has no hook unless it adds one.
 
 ## Commits & branches
 
