@@ -267,10 +267,11 @@ If he wants the state read from outside: from a logged-in ASC tab,
 
 - Branch (`release/<version>`), PR, let CI go green, merge. Past cuts have been
   left unpushed on a release branch — check before the next one.
-- The parity-ledger check (`scripts/check-parity-ledger.sh`) only fires when
-  the PR adds a row to `docs/decisions.md`. A pure version bump adds none. If
-  the cut also carries a product decision, add both rows; use `[skip-parity]`
-  on its own line only for genuinely surfaceless work.
+- The parity check (`scripts/check-parity-ledger.sh`) validates
+  `docs/changes/<pr>.md` files and fails a branch that grows the frozen
+  `docs/decisions.md` or `docs/web-parity.md`. A pure version bump adds no
+  change file. If the cut also carries a product decision, write one, with its
+  `## Web parity` line (`n/a` is a complete answer).
 - Update the **`statside-app-store-status`** memory: version, build, archive
   path, what's in it, what was verified, what was knowingly waived, and its
   ASC state. That file is how the next cut knows what's live.

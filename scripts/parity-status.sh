@@ -16,7 +16,16 @@
 
 set -euo pipefail
 
-LEDGER_FILE="${1:-docs/web-parity.md}"
+# No argument: assemble the ledger first. docs/web-parity.md froze on
+# 2026-10-19 and the rows since live one-file-per-PR in docs/changes/, so
+# the number is only honest when read off the built file.
+if [ $# -eq 0 ] && [ -f "$(dirname "$0")/build-changelog.py" ]; then
+  GENERATED_DIR="$(mktemp -d)"
+  python3 "$(dirname "$0")/build-changelog.py" build --out "$GENERATED_DIR" >/dev/null
+  LEDGER_FILE="$GENERATED_DIR/web-parity.md"
+else
+  LEDGER_FILE="${1:-docs/web-parity.md}"
+fi
 
 if [ ! -f "$LEDGER_FILE" ]; then
   echo "No ledger at $LEDGER_FILE"

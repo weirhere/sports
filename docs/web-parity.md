@@ -6,17 +6,18 @@ iOS PR lands. This file is the coupling: one row per iOS decision that has a web
 consequence, with a status. A row is only "done" when the behavior is on
 statside.co, not when it's understood.
 
-**How to use it.** Every iOS PR that changes user-visible behavior adds a row
-here — `pending` — at the same time it adds its row to `docs/decisions.md`.
-That is the whole rule. The catch-up waves below burn the pending rows down.
+**Frozen on 2026-10-19 at 323 rows.** Since then each PR's parity status is the
+`## Web parity` section of its own file in [`docs/changes/`](changes/README.md),
+and `scripts/build-changelog.py build` appends those rows to a copy of this file
+at `docs/generated/web-parity.md`. Do not add rows here — web CI fails a branch
+that grows this file. The rule is unchanged: every decision says where the web
+stands on it, with one of the four statuses below.
 
 **Enforced.** `scripts/check-parity-ledger.sh` runs as the first step of the Web
-CI job: a branch that grows the decisions log without growing this file fails.
-It counts rows, not meaning — it cannot tell whether the row you added is the
-right one, only that you stopped and wrote one, which is the part that was
-missing. `[skip-parity]` in a commit message is the escape hatch, for iOS work
-with genuinely no product surface. It rides the existing Web CI check rather
-than standing as its own so it blocks a merge with no branch-protection change.
+CI job. It used to count rows added here against rows added to the decisions
+log; now it validates the change files, where the parity line is a required
+section, so there is nothing to count and no skip token. It still rides the Web
+CI check so it blocks a merge with no branch-protection change.
 
 **Statuses**
 - `shipped` — live on web, matching the iOS decision.
