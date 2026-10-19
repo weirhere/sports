@@ -56,6 +56,14 @@ the top and bottom 250px (500px on the 2x asset). Only the devices run under
 it. Instagram downsamples to 1080 × 1920 on upload; the 2x master is there for
 headroom.
 
+## The 14s video spot
+
+`StatSide-14s-horizontal-1920x1080.mp4` and `StatSide-14s-vertical-1080x1920.mp4`,
+built from the App Store masters in `src/video/scene.html` and rendered by
+`src/video/render.cjs`. Storyboard, copy and the rendering steps are in
+[`video.md`](video.md); the posts that run with it are in
+`launch-copy-short.md`.
+
 ## App Store screenshot set
 
 The App Store frames live in `src/as-*.html` and render to

@@ -1,0 +1,276 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>StatSide spot</title>
+<style>
+  /* Deterministic scene: nothing here animates on its own. render.cjs calls
+     window.seek(t) for every frame and screenshots the result, so a render
+     at 30 or 60 fps is the same film. Open the file in a browser and press
+     space to scrub it live (see the keyboard handler at the bottom). */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #ECECEE; }
+  body {
+    font-family: "Inter Display", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #1C1C1E;
+  }
+  .stage {
+    position: relative; overflow: hidden;
+    background: #ECECEE;
+  }
+  /* Cole's near-white stage: a soft white pool behind the device, nothing
+     else. The app's own light-mode ground is this gray, so the screen sits
+     in it rather than on it. */
+  .stage::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(70% 80% at var(--glow-x) var(--glow-y), #FFFFFF 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0) 75%);
+  }
+  .camera { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+  .scene3d { position: absolute; inset: 0; perspective: 2800px; perspective-origin: 50% 50%; }
+
+  .phone {
+    position: absolute;
+    width: var(--pw);
+    transform-style: preserve-3d;
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: calc(var(--pw) * 2868 / 1320);
+    border-radius: calc(var(--pw) * 0.125);
+    overflow: hidden;
+    background: #F2F2F7;
+    box-shadow:
+      0 80px 160px rgba(0,0,0,0.16),
+      0 20px 50px rgba(0,0,0,0.08),
+      0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .slice {
+    position: absolute; left: 0; width: 100%;
+    background-image: url("../../../appstore/screenshots/01-scores.png");
+    background-size: 100% auto;
+    background-repeat: no-repeat;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .detail {
+    position: absolute; inset: 0;
+    background-image: url("../../../appstore/screenshots/02-game-detail.png");
+    background-size: 100% auto;
+    background-repeat: no-repeat;
+    transform: translateX(100%);
+    box-shadow: -30px 0 60px rgba(0,0,0,0.12);
+  }
+  .dim { position: absolute; inset: 0; background: #000; opacity: 0; }
+  .tap {
+    position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px;
+    border-radius: 50%; border: 3px solid rgba(0,0,0,0.38);
+    background: rgba(0,0,0,0.06);
+    opacity: 0;
+  }
+
+  /* Copy. Captions and the title card share one slot; captions leave before
+     the card arrives. */
+  .copy { position: absolute; z-index: 5; }
+  .caption {
+    position: absolute; left: 0; top: 0;
+    font-size: var(--cap-size); font-weight: 500; letter-spacing: -0.015em; line-height: 1.2;
+    color: #1C1C1E; width: var(--cap-width); line-height: 1.12;
+    opacity: 0;
+  }
+  .card { position: absolute; left: 0; top: 0; width: var(--cap-width); }
+  .card > * { opacity: 0; }
+  .card img {
+    width: var(--icon); height: var(--icon); display: block;
+    border-radius: 22.5%;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06);
+  }
+  .card .name { font-size: var(--name-size); font-weight: 700; letter-spacing: -0.025em; margin-top: 0.36em; line-height: 1.05; }
+  .card .line { font-size: var(--line-size); font-weight: 400; color: #48484A; margin-top: 0.45em; letter-spacing: -0.01em; }
+  .card .plat { font-size: var(--plat-size); font-weight: 500; color: #8E8E93; margin-top: 1.4em; letter-spacing: 0.01em; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="camera" id="camera">
+    <div class="scene3d">
+      <div class="phone" id="phone">
+        <div class="screen" id="screen">
+          <!-- slices are generated -->
+          <div class="dim" id="dim"></div>
+          <div class="tap" id="tap"></div>
+          <div class="detail" id="detail"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="copy" id="copy">
+    <div class="caption" id="cap1">opens on the<br>teams you follow</div>
+    <div class="caption" id="cap2">tap a game,<br>get the whole story</div>
+    <div class="card" id="card">
+      <img src="../../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png" alt="">
+      <div class="name">StatSide</div>
+      <div class="line">Your teams, first.</div>
+      <div class="plat">for iPhone</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const MODE = /[?&]v\b/.test(location.search) ? 'v' : 'h';
+  window.DURATION = 14;
+
+  // Row boundaries on the 1320 × 2868 Scores master, found by scanning a
+  // column inside the card for the white rows and gray dividers: header and
+  // day strip, the Following card's header and three rows, the ACC card's
+  // header and rows, and the rest with the tab bar over it.
+  const CUTS = [0, 526, 652, 947, 1242, 1560, 1686, 1981, 2276, 2868];
+  const SRC_W = 1320;
+
+  const L = MODE === 'h' ? {
+    W: 1920, H: 1080, pw: 640, px: 300, py: -40,
+    rot: 'rotateX(5deg) rotateY(13deg) rotateZ(-2.5deg)',
+    glow: ['34%', '42%'],
+    copyX: 1290, copyY: 430, capSize: 48, capWidth: 560, icon: 112, name: 74, line: 32, plat: 20,
+    // [t, scale, focusX, focusY]. The phone spans scene x 276–932, so the
+    // focus x keeps its right edge left of ~1180 while a caption is up and
+    // lets it drift back to centre-left for the title card.
+    cam: [
+      [0.0, 1.70, 800, 330],
+      [6.0, 1.24, 760, 470],
+      [10.2, 1.16, 745, 520],
+      [11.9, 1.00, 960, 540],
+      [14.0, 0.985, 960, 540],
+    ],
+  } : {
+    W: 1080, H: 1920, pw: 860, px: 110, py: 620,
+    rot: 'rotateX(6deg) rotateY(12deg) rotateZ(-2.5deg)',
+    glow: ['50%', '55%'],
+    copyX: 540, copyY: 230, capSize: 56, capWidth: 900, icon: 150, name: 92, line: 40, plat: 24, center: true,
+    // Phone top sits near stage y 400 while the captions own the top band,
+    // then drops to ~780 so the title card has the band to itself.
+    cam: [
+      [0.0, 1.55, 455, 970],
+      [6.0, 1.18, 540, 1075],
+      [10.2, 1.12, 540, 1100],
+      [11.9, 0.92, 540, 800],
+      [14.0, 0.91, 540, 800],
+    ],
+  };
+
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), camera = $('camera'), phone = $('phone'), screen = $('screen');
+  const detail = $('detail'), dim = $('dim'), tap = $('tap'), copy = $('copy');
+  const cap1 = $('cap1'), cap2 = $('cap2'), card = $('card');
+  const cardParts = Array.from(card.children);
+
+  stage.style.width = L.W + 'px'; stage.style.height = L.H + 'px';
+  stage.style.setProperty('--glow-x', L.glow[0]); stage.style.setProperty('--glow-y', L.glow[1]);
+  stage.style.setProperty('--pw', L.pw + 'px');
+  stage.style.setProperty('--cap-size', L.capSize + 'px');
+  stage.style.setProperty('--cap-width', L.capWidth + 'px');
+  stage.style.setProperty('--icon', L.icon + 'px');
+  stage.style.setProperty('--name-size', L.name + 'px');
+  stage.style.setProperty('--line-size', L.line + 'px');
+  stage.style.setProperty('--plat-size', L.plat + 'px');
+  phone.style.left = L.px + 'px'; phone.style.top = L.py + 'px';
+  phone.style.transform = L.rot;
+  copy.style.left = L.copyX + 'px'; copy.style.top = L.copyY + 'px';
+  if (L.center) {
+    for (const el of [cap1, cap2, card]) { el.style.transform = 'translateX(-50%)'; el.style.textAlign = 'center'; }
+    card.querySelector('img').style.margin = '0 auto';
+  }
+
+  const k = L.pw / SRC_W;
+  const slices = [];
+  for (let i = 0; i < CUTS.length - 1; i++) {
+    const d = document.createElement('div');
+    d.className = 'slice';
+    d.style.top = (CUTS[i] * k) + 'px';
+    d.style.height = ((CUTS[i + 1] - CUTS[i]) * k + 1) + 'px';
+    d.style.backgroundPosition = '0 ' + (-CUTS[i] * k) + 'px';
+    screen.insertBefore(d, dim);
+    slices.push(d);
+  }
+  // Georgia row (the first Following row) on the master, for the tap.
+  tap.style.left = (430 * k) + 'px'; tap.style.top = (820 * k) + 'px';
+
+  const clamp01 = x => Math.max(0, Math.min(1, x));
+  const outCubic = x => 1 - Math.pow(1 - x, 3);
+  const inOutCubic = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const seg = (t, a, b, ease = outCubic) => ease(clamp01((t - a) / (b - a)));
+  const lerp = (a, b, p) => a + (b - a) * p;
+
+  function camAt(t) {
+    const kf = L.cam;
+    if (t <= kf[0][0]) return kf[0].slice(1);
+    for (let i = 1; i < kf.length; i++) {
+      if (t <= kf[i][0]) {
+        const p = inOutCubic(clamp01((t - kf[i - 1][0]) / (kf[i][0] - kf[i - 1][0])));
+        return [1, 2, 3].map(j => lerp(kf[i - 1][j], kf[i][j], p));
+      }
+    }
+    return kf[kf.length - 1].slice(1);
+  }
+
+  // in over [a, a+d], out over [b, b+d2]
+  function pulse(t, a, b, d = 0.55, d2 = 0.4) {
+    return seg(t, a, a + d) * (1 - seg(t, b, b + d2, inOutCubic));
+  }
+  function enter(el, p, rise = 22) {
+    el.style.opacity = p;
+    el.style.transform = (L.center && el !== tap ? 'translateX(-50%) ' : '') + `translateY(${(1 - p) * rise}px)`;
+  }
+
+  window.seek = function (t) {
+    // Camera: translate so the focus point lands at stage centre at scale s.
+    const [s, fx, fy] = camAt(t);
+    camera.style.transform = `translate(${L.W / 2 - s * fx}px, ${L.H / 2 - s * fy}px) scale(${s})`;
+
+    // The Scores screen builds a row at a time.
+    slices.forEach((d, i) => {
+      const a = 0.35 + i * 0.26;
+      const p = seg(t, a, a + 0.75);
+      d.style.opacity = p;
+      d.style.transform = `translateY(${(1 - p) * 44}px)`;
+    });
+
+    // Tap on Georgia, then the game page pushes in.
+    const tp = seg(t, 5.35, 5.95);
+    tap.style.opacity = tp > 0 && tp < 1 ? (1 - tp) : 0;
+    tap.style.transform = `scale(${lerp(0.5, 1.6, tp)})`;
+    const push = seg(t, 5.8, 6.55, inOutCubic);
+    detail.style.transform = `translateX(${(1 - push) * 100}%)`;
+    dim.style.opacity = push * 0.10;
+    slices.forEach(d => { if (push > 0) d.style.transform = `translateX(${-push * 28}%)`; });
+
+    // Copy.
+    enter(cap1, pulse(t, 1.1, 4.7));
+    enter(cap2, pulse(t, 6.6, 9.8));
+    cardParts.forEach((el, i) => {
+      const p = seg(t, 10.7 + i * 0.16, 10.7 + i * 0.16 + 0.7);
+      el.style.opacity = p;
+      el.style.transform = `translateY(${(1 - p) * 18}px)`;
+    });
+  };
+
+  // Scrub by hand: space plays, arrows step 0.1s.
+  let tt = 0, playing = false, last = 0;
+  function tick(now) {
+    if (playing) { tt = Math.min(window.DURATION, tt + (now - last) / 1000); window.seek(tt); if (tt >= window.DURATION) playing = false; }
+    last = now; requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  window.addEventListener('keydown', e => {
+    if (e.key === ' ') { playing = !playing; if (tt >= window.DURATION) tt = 0; }
+    if (e.key === 'ArrowRight') { tt = Math.min(window.DURATION, tt + 0.1); window.seek(tt); }
+    if (e.key === 'ArrowLeft') { tt = Math.max(0, tt - 0.1); window.seek(tt); }
+  });
+  window.seek(0);
+})();
+</script>
+</body>
+</html>

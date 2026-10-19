@@ -79,8 +79,9 @@ in the first reply or comment.
 
 ## LinkedIn (horizontal)
 
-Standalone insight first, product second. The video is the proof: it's black
-and white with 1 green dot.
+Standalone insight first, product second. The video is the proof: a gray
+stage and a screen whose only color is the logos (the 2026-10-19 cut, see
+`video.md`).
 
 **Post**
 > StatSide, the scores app I've been building solo since July, has a color budget. It's written down, and it has exactly 6 line items: team logos, the live indicator, ranking arrows, the Gamecast field (plus the court and the rink), team-colored page headers in light mode, and news photos.
