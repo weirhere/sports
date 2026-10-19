@@ -106,6 +106,11 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 - Other Claude sessions may be driving the shared simulators. Before verifying, check `xcrun simctl list devices booted`. If another session owns the device, boot or `simctl clone` a dedicated simulator for this session (name it after the task), install only to its UDID, never `booted`, and delete it when done.
 - If the simulator shows old UI, assume a stale build first: check for compile errors and reinstall before debugging the view.
 - A Stop hook in `.claude/settings.json` runs `scripts/stop-install-hook.sh` at the end of every turn: if any Swift file is modified, staged or untracked, it builds and installs on every booted iPhone in the background (or only the device named in `STATSIDE_SIM`), logging to `$TMPDIR/statside-stop-install.log`. `.claude/` is gitignored, so a worktree session has no hook unless it adds one.
+- Two failures is the budget for a simulator gesture or a UI test. If a tap, swipe or test fails twice, stop retrying and report: what was verified, what wasn't, and the exact steps for Andy to check by hand. Grinding on flaky tap injection and a UI test that kept failing is how the SEC/FBS badge session (2026-09-27) ended with Andy asking for status and verifying the fix himself.
+
+## UI changes
+
+- Before editing for a visual tweak, restate in one bullet per change which view is affected and where the change sits relative to its neighbours ("the divider goes between the Starters header and the offense chips, not under the field"). Then implement, install and screenshot. The restatement costs a line; a misplaced divider or possession icon costs a rebuild-and-verify round, which the simulator makes slow.
 
 ## Commits & branches
 
