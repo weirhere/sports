@@ -15,6 +15,10 @@ struct DayStrip: View, Equatable {
     /// Today's `DayFormat.id`, passed in rather than read from the clock so
     /// the strip's equality notices midnight — the named chips move then.
     var todayId: String = DayFormat.id(for: .now)
+    /// The clock the named chips are worked out from. The app never sets
+    /// it; the snapshot suite pins it so "Today" lands on a fixed date
+    /// (2026-10-19).
+    var now: Date = .now
     let onSelect: (Date) -> Void
 
     /// Everything but `onSelect`. The strip is eager — a season of chips —
@@ -146,8 +150,8 @@ struct DayStrip: View, Equatable {
         let calendar = Calendar.current
         var names: [String: String] = [:]
         for offset in -1...1 {
-            guard let date = calendar.date(byAdding: .day, value: offset, to: .now),
-                  let name = Self.namedDay(date, liveOnly: liveOnly, calendar: calendar)
+            guard let date = calendar.date(byAdding: .day, value: offset, to: now),
+                  let name = Self.namedDay(date, liveOnly: liveOnly, calendar: calendar, now: now)
             else { continue }
             names[DayFormat.id(for: date, calendar: calendar)] = name
         }
@@ -168,10 +172,15 @@ struct DayStrip: View, Equatable {
     /// there is empty by definition.
     nonisolated static func namedDay(_ date: Date,
                                      liveOnly: Bool,
-                                     calendar: Calendar = .current) -> String? {
-        if calendar.isDateInToday(date) { return liveOnly ? "Ongoing" : "Today" }
-        if calendar.isDateInTomorrow(date) { return "Tomorrow" }
-        if calendar.isDateInYesterday(date) { return "Yesterday" }
+                                     calendar: Calendar = .current,
+                                     now: Date = .now) -> String? {
+        func isDay(_ offset: Int) -> Bool {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: now) else { return false }
+            return calendar.isDate(date, inSameDayAs: day)
+        }
+        if isDay(0) { return liveOnly ? "Ongoing" : "Today" }
+        if isDay(1) { return "Tomorrow" }
+        if isDay(-1) { return "Yesterday" }
         return nil
     }
 }

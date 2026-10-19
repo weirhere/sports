@@ -112,6 +112,12 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 
 - Before editing for a visual tweak, restate in one bullet per change which view is affected and where the change sits relative to its neighbours ("the divider goes between the Starters header and the offense chips, not under the field"). Then implement, install and screenshot. The restatement costs a line; a misplaced divider or possession icon costs a rebuild-and-verify round, which the simulator makes slow.
 
+## UI changes and the snapshot baselines
+
+- **Every UI change runs the `/ui-change` procedure** (`.claude/skills/ui-change/SKILL.md`, Andy's standing instruction of 2026-10-19): write the expected visual outcome first, implement, re-record only the affected baselines, build the before/after page in `/tmp/ui-report`, screenshot the installed build on the dedicated simulator, and iterate up to five times against the written expectation before asking him.
+- **The baselines** are `sportsTests/Snapshots/ComponentSnapshotTests.swift` (pointfreeco/swift-snapshot-testing, the test target's only dependency): the Starters card, the game header expanded and compact, and the day strip, on an iPhone 17 Pro and an iPhone SE, light and dark, football / basketball / hockey — 48 committed PNGs under `__Snapshots__/`, recorded on the iOS 26.5 iPhone 17 Pro simulator. `scripts/snapshot-tests.sh [--record] [--filter <test>]` runs them on the "iPhone 17 Pro snapshot-tests" simulator it owns; the suite is gated on `STATSIDE_SNAPSHOTS=1` (the script sets it) so CI's runner skips it. Never a bare `--record` for a change: a baseline that moved unexpectedly is a finding.
+- `scripts/ui-report.py` writes `/tmp/ui-report/index.html` (before = committed PNG, after = working tree, magenta difference); `scripts/verify-sim.sh` builds, installs, launches and screenshots on the same simulator. The decision behind all of it is `docs/changes/281.md`.
+
 ## Commits & branches
 
 - When Andy says "commit", commit **all** related uncommitted changes on the current branch, including earlier edits from this session and his own work. Don't commit only the latest hunk, and don't treat his uncommitted work as separate, unless he asks for a scoped commit.
