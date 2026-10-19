@@ -52,7 +52,7 @@ export function ScoresHeaderControls({ focus, onSelectFocus }: ScoresHeaderProps
         }))}
       />
       <span id="scores-tight-hint" className="sr-only">
-        Tight: live games that are close late, or where the underdog leads
+        Tight: live and close, late in the game, or an upset brewing
       </span>
     </div>
   );

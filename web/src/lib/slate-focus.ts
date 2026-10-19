@@ -20,5 +20,5 @@ export function slateFocus(liveOnly: boolean, tightOnly: boolean): SlateFocus {
  *  (Andy, 2026-10-19): Tight is a coined word; All games and Live say what
  *  they are. */
 export function slateFocusDescription(focus: SlateFocus): string | undefined {
-  return focus === "tight" ? "Live and close late, or an upset brewing" : undefined;
+  return focus === "tight" ? "Live and close, late in the game, or an upset brewing" : undefined;
 }

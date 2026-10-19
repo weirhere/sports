@@ -24,7 +24,7 @@ enum SlateFocus: String, CaseIterable, Identifiable {
     var detail: String? {
         switch self {
         case .all, .live: nil
-        case .tight: "Live and close late, or an upset brewing"
+        case .tight: "Live and close, late in the game, or an upset brewing"
         }
     }
 

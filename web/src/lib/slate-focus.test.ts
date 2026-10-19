@@ -16,7 +16,7 @@ describe("the Scores focus menu (2026-10-19)", () => {
     expect(SLATE_FOCUSES.map(slateFocusDescription)).toEqual([
       undefined,
       undefined,
-      "Live and close late, or an upset brewing",
+      "Live and close, late in the game, or an upset brewing",
     ]);
   });
 });
