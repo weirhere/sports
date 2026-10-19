@@ -98,9 +98,15 @@ def main():
 
     out = os.path.abspath(args.out)
     images = os.path.join(out, "img")
-    if os.path.isdir(out):
-        shutil.rmtree(out)
+    # Only this script's own output is cleared: the simulator screenshots
+    # `verify-sim.sh` drops in the same folder stay, since they are what
+    # `--sim` points at (the first run deleted them before copying them).
+    if os.path.isdir(images):
+        shutil.rmtree(images)
     os.makedirs(images)
+    index = os.path.join(out, "index.html")
+    if os.path.exists(index):
+        os.remove(index)
 
     current = working_pngs()
     committed = committed_pngs(args.base)
