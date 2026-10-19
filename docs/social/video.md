@@ -38,7 +38,7 @@ Both cuts run the same 14 seconds. Times are the keyframes in `scene.html`.
 | 5.35–5.95 | A tap ring on the Georgia row. | |
 | 5.8–6.55 | The game page pushes in from the right; the Scores screen slides 28% left and dims 10%, iOS style. | |
 | 6.6–10.2 | Camera drifts, almost still; the phone eases toward upright (rotateX 28°, rotateZ -16°). | **tap a game, get the whole story** |
-| 10.2–11.9 | Pull back to centre-left; the phone settles to a mild tilt (rotateX 10°, rotateY 14°, rotateZ -4°). | |
+| 10.2–11.9 | Pull back to centre-left; the phone settles to a mild tilt (rotateX 12°, rotateY 22°, rotateZ -4°), enough to keep the burgundy rail in frame. | |
 | 10.7–12.2 | | Icon, **StatSide**, **Your teams, first.**, *for iPhone*, each 0.16s after the last. |
 | 14.0 | Hold. | |
 
@@ -54,7 +54,8 @@ at these angles:
 - **Body.** 29 copies of the same rounded rectangle, each 1/28 of the body's
   thickness further back (`translateZ`), so a steep tilt shows a solid rail.
   The front copy is the bezel (near-black, a 1.5px light chamfer ring); the
-  rest wear a graphite gradient; the back one is matte. Thickness is 11.5% of
+  rest wear a burgundy gradient, after the new iPhone's finish; the back one
+  is a darker wine. Thickness is 11.5% of
   the width, the bezel 2.4%, the body radius concentric with the screen's.
 - **Screen.** Inset by the bezel, the slices and the game page inside it, a
   diagonal glare pass on top and the Dynamic Island (32% of the screen's
@@ -65,10 +66,11 @@ at these angles:
 - **Shadow.** A blurred black copy of the body 60px behind it, offset down
   and right.
 
-Graphite rather than Carlos's orange: the body is chrome around the app's
-screen, and the stage is the thread graphics' black, so the only color in
-frame stays the logos and the icon's dot. The body colors are the `.shell`
-gradients in `scene.html` if that ever changes.
+Burgundy was Andy's call (2026-10-19), after the new iPhone; the first pass
+was graphite. The body colors are the `.shell` and `.btn` gradients in
+`scene.html`. It is a device render, not app chrome, so the color budget
+doesn't govern it, but it's worth knowing the frame now carries 1 color the
+app doesn't.
 
 ## The copy, before and after
 
@@ -84,8 +86,8 @@ are what a person would type:
 | Game page pushes in | any game 1 tap from the full story | tap a game, get the whole story |
 | Closer | StatSide · Football, basketball and hockey · Free on iPhone | StatSide · Your teams, first. · for iPhone |
 
-Lowercase captions on purpose: they read as typed, like Cole's post. The
-closer is sentence case because it's the only line that is a title.
+Sentence case throughout. The first pass had the captions in lowercase to
+read as typed, like Cole's post; Andy asked for proper case.
 
 Dropped on purpose: "refreshed every second". The masters are all finals (shot
 2026-09-05 before kickoff), so there's no live row to show it on, and a caption
@@ -116,9 +118,9 @@ take a few minutes. Inter has to be installed system-wide here; this scene
 doesn't use `social.css`'s absolute-path `@font-face`.
 
 The stage is dark gray (`#141416`) with a neutral radial key light behind the
-device. The monochrome rule holds: the only color in frame is the
-screenshots' own, which is logos and the icon's red dot. The first cut of the
-day (commit e47575b) was the same storyboard on a near-white stage with a
+device. Inside the screen the monochrome rule holds; outside it the phone's
+burgundy body is the one color the app itself doesn't carry. The first cut of
+the day (commit e47575b) was the same storyboard on a near-white stage with a
 flat, frameless screen, if a lighter version is ever wanted.
 
 ## Masters
