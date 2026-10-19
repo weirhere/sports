@@ -9,6 +9,7 @@
 // - Standings keep ESPN's order (it encodes tiebreakers) unless a complete,
 //   unique playoffSeed set says otherwise. Never sorted from records.
 
+import { transformInjuries, transformOnIce } from "./game-roster-transformers";
 import type {
   Team,
   Game,
@@ -1563,6 +1564,14 @@ export function transformBoxScore(
           jersey: nonEmpty(athlete.jersey),
           headshotUrl: nonEmpty(athlete.headshot?.href),
           stats: row.stats,
+          position: nonEmpty(athlete.position?.abbreviation),
+          positionName:
+            nonEmpty(athlete.position?.displayName) ?? nonEmpty(athlete.position?.name),
+          // Basketball's lineup flags (E29): undefined where the payload
+          // never says, so football's rows don't read as "not a starter".
+          isStarter: row.starter,
+          didNotPlay: row.didNotPlay ?? false,
+          didNotPlayReason: sentenceCased(nonEmpty(row.reason)),
         });
       }
       // ESPN ships every category for every game whether or not anyone
@@ -1785,7 +1794,16 @@ export function transformGameSummary(
       game.homeTeam.team,
     ]),
     article: summary.article ? newsStory(summary.article, league) : undefined,
+    injuries: transformInjuries(summary.injuries ?? []),
+    onIce: transformOnIce(summary.onIce ?? []),
   };
+}
+
+/** "COACH'S DECISION" → "Coach's decision". */
+export function sentenceCased(text: string | undefined): string | undefined {
+  if (text === undefined) return undefined;
+  const lowered = text.toLowerCase();
+  return lowered.charAt(0).toUpperCase() + lowered.slice(1);
 }
 
 // --- Roster ---

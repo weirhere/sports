@@ -5,11 +5,15 @@
 // leaders. Live games poll every 1s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
-// **Summary / News / Plays / Box score / H2H**, and a tab only exists where its data
-// does: a game ESPN hasn't filled in shows Summary and the series alone. Plays
-// sits in the middle because chronology comes before rosters, and the Drives
-// card lives inside it: leaving it on Summary would print the same rows in two
-// tabs.
+// **Preview or Facts / News / Plays / Box score / Roster / H2H**, and a tab
+// only exists where its data does: a game ESPN hasn't filled in shows the
+// first tab and the series alone. The first tab is "Preview" before kickoff
+// and "Facts" from the first snap on — the same cards, renamed by state
+// (iOS, 2026-10-18). Plays sits in the middle because chronology comes before
+// rosters, and the Drives card lives inside it: leaving it on Summary would
+// print the same rows in two tabs. Roster (E29) sits after the box score,
+// which is the rosters' nearest neighbour; it reads its own endpoints, so
+// like News it is there from the first frame.
 //
 // H2H reads the pushed row rather than the summary, so it is offered from the
 // first frame — which is the point: before kickoff it is the only other tab
@@ -30,7 +34,9 @@ import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getHeadToHead, getTeamsNews } from "@/lib/api";
+import { getGameRosterSources, getHeadToHead, getTeamsNews } from "@/lib/api";
+import { factsTabTitle, rosterPhase } from "@/lib/game-roster";
+import { GameRosterPane } from "./roster/game-roster-pane";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { forYou } from "@/lib/espn/news";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
@@ -115,10 +121,11 @@ export function GameDetailView({
   const homeId = game.homeTeam.team.id;
   const hasHeadToHead = awayId !== "" && homeId !== "" && awayId !== homeId;
   const tabs: HeroTab[] = [
-    { id: "summary", label: "Summary" },
+    { id: "summary", label: factsTabTitle(game.status) },
     ...(hasHeadToHead ? [{ id: "news", label: "News" }] : []),
     ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
     ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
+    ...(hasHeadToHead ? [{ id: "roster", label: "Roster" }] : []),
     ...(hasHeadToHead ? [{ id: "h2h", label: "H2H" }] : []),
   ];
   // A tab whose data went away between polls falls back rather than
@@ -131,10 +138,12 @@ export function GameDetailView({
   // asked for it stays asked for, so flipping back costs nothing.
   const [seriesRequested, setSeriesRequested] = useState(false);
   const [newsRequested, setNewsRequested] = useState(false);
+  const [rosterRequested, setRosterRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "h2h") setSeriesRequested(true);
     if (id === "news") setNewsRequested(true);
+    if (id === "roster") setRosterRequested(true);
   };
   const series = useOnDemand(
     seriesRequested ? `${game.league}:${game.id}` : undefined,
@@ -147,6 +156,14 @@ export function GameDetailView({
         { league: game.league, teamId: awayId },
         { league: game.league, teamId: homeId },
       ])
+  );
+  // The Roster tab's sources, on the same terms — and asked again when the
+  // game's phase changes under an open tab: a lineup moves at kickoff and at
+  // the final, so the phase rides the key (iOS, E29).
+  const phase = rosterPhase(game.status);
+  const rosterSources = useOnDemand(
+    rosterRequested ? `${game.league}:${game.id}:${phase}` : undefined,
+    () => getGameRosterSources(game.league, game.id)
   );
   const hasScoringPlays =
     drives.length > 0
@@ -422,6 +439,17 @@ export function GameDetailView({
             );
           })()
         ))}
+
+      {activeTab === "roster" && (
+        <GameRosterPane
+          league={game.league}
+          game={game}
+          detail={data}
+          state={rosterSources.state}
+          onRetry={rosterSources.reload}
+          possessionTeamId={possessionTeamId}
+        />
+      )}
 
       {activeTab === "h2h" && (
         <HeadToHeadPane

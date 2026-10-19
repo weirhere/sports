@@ -14,6 +14,9 @@ export {
   teamTrophyCase,
   conferenceGames,
   gameSummary,
+  gameLineup,
+  depthChart,
+  gameRosterSources,
   EspnApiError,
   EspnDataError,
 } from "./provider";

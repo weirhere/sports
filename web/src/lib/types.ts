@@ -460,6 +460,19 @@ export interface BoxScorePlayer {
   headshotUrl?: string;
   /** Positionally paired with the owning category's `columns`. */
   stats: string[];
+  /** "G", "F" — the athlete's position where the row carries one. */
+  position?: string;
+  positionName?: string;
+  /**
+   * Basketball's lineup flags, on the row rather than the athlete (probed
+   * 2026-10-18): five starters a side, and a `didNotPlay` with a sentence-
+   * cased reason ("Coach's decision"). Football and hockey ship none of
+   * these — football's starters come off the core API's game-day roster.
+   * `isStarter` is undefined, not false, where the payload never says.
+   */
+  isStarter?: boolean;
+  didNotPlay: boolean;
+  didNotPlayReason?: string;
 }
 
 export interface GameLine {
@@ -508,6 +521,91 @@ export interface GameDetail {
   /** The game's own story, text included — the recap once final, the
    *  preview before kickoff (iOS E25, docs/news.md N2 and N3). */
   article?: NewsStory;
+  /**
+   * The game-day injury list, one entry per team — the NFL, NBA and NHL
+   * ship it in every state; college football's summary has none, which is
+   * what hides the Roster tab's Injuries card there (E29, 2026-10-18).
+   */
+  injuries?: TeamInjuries[];
+  /** The NHL's skaters in play right now, by team id (`onIce[]`, "In Play"
+   *  whereabouts only). Live only; empty everywhere else. */
+  onIce?: Record<string, string[]>;
+}
+
+// --- The game page's Roster tab (E29, 2026-10-18) ---
+
+/** One name on the game-day injury list (iOS `GameInjury`). */
+export interface GameInjury {
+  /** ESPN's athlete id, or `${teamId}-${name}` where ESPN sent none — a
+   *  synthesized id is a list key and never a navigation target. */
+  id: string;
+  name: string;
+  jersey?: string;
+  position?: string;
+  headshotUrl?: string;
+  /** "Questionable", "Out", "Injured Reserve", "Day-To-Day". */
+  status: string;
+  /** "Neck", "Hamstring", "Illness" — undefined where ESPN said nothing. */
+  detail?: string;
+  /** ESPN's bare `yyyy-MM-dd`, kept as sent. */
+  returnDate?: string;
+}
+
+export interface TeamInjuries {
+  teamId: string;
+  injuries: GameInjury[];
+}
+
+/**
+ * One entry of the core API's game-day roster, mapped (iOS `LineupEntry`).
+ * Football flags 22 starters and, in the NFL, the declared inactives; the
+ * NBA its five starters and DNPs with a reason; the NHL its scratches.
+ */
+export interface LineupEntry {
+  athleteId: string;
+  /** ESPN's short form — "E. Greene III" — or undefined. */
+  shortName?: string;
+  jersey?: string;
+  position?: { abbreviation: string; name: string };
+  isStarter: boolean;
+  didNotPlay: boolean;
+  isScratched: boolean;
+  /** "Coach's decision", "Scratched" — the payload's reason, cased for a row. */
+  note?: string;
+  /** Whether the entry links a stat line, which in college football is the
+   *  only record of who played. */
+  recordedStat: boolean;
+}
+
+/** One rung of a depth chart: an athlete's rank at a position. */
+export interface DepthSlot {
+  /** "PG", "LW" — the chart's key, uppercased. */
+  position: string;
+  positionName?: string;
+  rank: number;
+  athleteId: string;
+}
+
+/**
+ * Everything one side's Roster tab lists can be built from, as the
+ * `/api/game/{id}/roster` route serves it. Every source is optional; the
+ * assembly (`makeGameRoster`) uses what arrived. The summary's own
+ * contributions — the box score, the injuries, the skaters on the ice —
+ * ride the page's live summary instead, so the lists follow the poll.
+ */
+export interface GameRosterSideSources {
+  /** The team's own current roster. Skipped for past seasons, whose
+   *  rosters ESPN can't serve. */
+  roster?: TeamRoster;
+  /** The core API's game-day roster, when the league publishes one. */
+  lineup: LineupEntry[];
+  /** The NBA's and NHL's depth chart, pre-game only. */
+  depthChart: DepthSlot[];
+}
+
+export interface GameRosterSources {
+  away: GameRosterSideSources;
+  home: GameRosterSideSources;
 }
 
 /**

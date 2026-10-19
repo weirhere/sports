@@ -269,6 +269,28 @@ function coreLeagueBase(league: League): string {
 }
 
 /**
+ * The core API's game-day roster: who dressed for *this* game, with
+ * football's starters and the NFL's inactives flagged (E29, 2026-10-18).
+ * The event id doubles as the competition id on every ESPN game the app has
+ * met — the scoreboard's `competitions[0].id` equals the event's.
+ */
+export function gameLineupUrl(league: League, eventId: string, teamId: string): string {
+  return (
+    `${CORE_BASE}/${leaguePath(league)}/events/${eventId}` +
+    `/competitions/${eventId}/competitors/${teamId}/roster`
+  );
+}
+
+/**
+ * A team's depth chart for a season — the NBA's and NHL's only pre-game
+ * "who starts". The NFL's three charts aren't asked (its game-day roster
+ * names the starters) and college football answers 400.
+ */
+export function depthChartUrl(league: League, teamId: string, year: number): string {
+  return `${coreLeagueBase(league)}/${espnSeason(league, year)}/teams/${teamId}/depthcharts`;
+}
+
+/**
  * One published ranking table. `rankingId` is the poll: 1 AP, 2 Coaches,
  * 21 CFP.
  *

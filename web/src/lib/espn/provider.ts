@@ -14,7 +14,12 @@ import type {
   Team,
   TeamRoster,
   TeamScheduleData,
+  DepthSlot,
+  GameRosterSources,
+  LineupEntry,
 } from "@/lib/types";
+import type { GameRosterPhase } from "@/lib/game-roster";
+import { transformDepthChart, transformLineup } from "./game-roster-transformers";
 import {
   SEASON_FLOOR,
   belongsToSeason,
@@ -47,6 +52,8 @@ import type {
   EspnScheduleResponse,
   EspnGameSummaryResponse,
   EspnRosterResponse,
+  EspnCompetitorRoster,
+  EspnDepthCharts,
 } from "./types";
 import {
   coreRankingUrl,
@@ -65,6 +72,8 @@ import {
   teamRosterUrl,
   teamScheduleUrl,
   teamsUrl,
+  gameLineupUrl,
+  depthChartUrl,
 } from "./endpoints";
 import { FBS_GROUP_ID } from "@/lib/conferences";
 import {
@@ -114,6 +123,10 @@ const REVALIDATE = {
   standings: 300,
   schedule: 3600,
   roster: 3600,
+  // A lineup moves at kickoff and at a scratch; the tab re-asks on a phase
+  // flip, so between those a short lifetime is plenty.
+  lineup: 30,
+  depthChart: 3600,
   conferenceGames: 3600,
   conferences: 86400,
 } as const;
@@ -801,6 +814,92 @@ async function seasonWindowEvents(
     REVALIDATE.conferenceGames
   );
   return data.events ?? [];
+}
+
+/**
+ * The core API's game-day roster for one side (E29). A 404 is "not
+ * published yet" — college football, before game day — and answers an empty
+ * list: the lists have other sources, and asking again next visit is right.
+ */
+export async function gameLineup(
+  league: League,
+  eventId: string,
+  teamId: string
+): Promise<LineupEntry[]> {
+  try {
+    const data = await fetchJson<EspnCompetitorRoster>(
+      gameLineupUrl(league, eventId, teamId),
+      REVALIDATE.lineup
+    );
+    return transformLineup(data, league);
+  } catch (err) {
+    if (err instanceof EspnApiError && err.status === 404) return [];
+    throw err;
+  }
+}
+
+/** A team's depth chart for the current season, flattened to slots. College
+ *  football's answer (400) is no chart, not an error. */
+export async function depthChart(league: League, teamId: string): Promise<DepthSlot[]> {
+  try {
+    const data = await fetchJson<EspnDepthCharts>(
+      depthChartUrl(league, teamId, leagueSeasonYear(league)),
+      REVALIDATE.depthChart
+    );
+    return transformDepthChart(data);
+  } catch (err) {
+    if (err instanceof EspnApiError && (err.status === 400 || err.status === 404)) return [];
+    throw err;
+  }
+}
+
+/**
+ * The Roster tab's sources, assembled by the client against the summary it
+ * already holds (iOS `GameRosterFetch.swift`), because ESPN has no one
+ * resource that answers "who is in this game" for American sports the way
+ * its soccer `rosters` block does.
+ *
+ * Per side, up to three requests: the team's own `/roster` (names, photos,
+ * the head coach — current season only, since ESPN serves no other), the
+ * core API's game-day roster, and, before an NBA or NHL game, the depth
+ * chart. Each request is allowed to fail alone: a roster that 404s leaves
+ * the box score to name the players, a depth chart that errors leaves the
+ * roster with no starters on top. Only a game where *every* request failed
+ * throws, because an empty tab and a broken one look the same on screen and
+ * only one of them should offer Retry.
+ */
+export async function gameRosterSources(
+  league: League,
+  game: Game,
+  options: { phase: GameRosterPhase; currentSeason: boolean }
+): Promise<GameRosterSources> {
+  const wantsDepthChart =
+    options.phase === "upcoming" && (league === "nba" || league === "nhl");
+  const side = async (teamId: string) => {
+    const [roster, lineup, depth] = await Promise.allSettled([
+      options.currentSeason ? teamRoster(league, teamId) : Promise.reject(new Error("skipped")),
+      gameLineup(league, game.id, teamId),
+      wantsDepthChart ? depthChart(league, teamId) : Promise.reject(new Error("skipped")),
+    ]);
+    const answered =
+      roster.status === "fulfilled" || lineup.status === "fulfilled" || depth.status === "fulfilled";
+    return {
+      answered,
+      sources: {
+        roster: roster.status === "fulfilled" ? roster.value : undefined,
+        lineup: lineup.status === "fulfilled" ? lineup.value : [],
+        depthChart: depth.status === "fulfilled" ? depth.value : [],
+      },
+    };
+  };
+  const [away, home] = await Promise.all([
+    side(String(game.awayTeam.team.espnId)),
+    side(String(game.homeTeam.team.espnId)),
+  ]);
+  if (!away.answered && !home.answered) {
+    throw new EspnDataError(`No roster sources answered for game ${game.id}`);
+  }
+  return { away: away.sources, home: home.sources };
 }
 
 export async function gameSummary(

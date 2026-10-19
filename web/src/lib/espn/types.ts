@@ -333,6 +333,48 @@ export interface EspnGameSummaryResponse {
   /** The game's own story: AP's preview before kickoff, its recap once
    *  final, nothing live (iOS E25, docs/news.md N2 and N3). */
   article?: EspnNewsArticle;
+  /** The game's inactives, one entry per team — the NBA and NHL ship it,
+   *  the NFL too; shaped nothing like the roster's season-long list nested
+   *  inside an athlete, this is the game-day list keyed by team with the
+   *  athlete nested inside instead (E29, 2026-10-18). */
+  injuries?: EspnSummaryTeamInjuries[];
+  /** The NHL's live lineup, one entry per team, by athlete id. */
+  onIce?: EspnOnIceTeam[];
+}
+
+export interface EspnSummaryTeamInjuries {
+  team?: EspnTeam;
+  injuries?: EspnGameInjury[];
+}
+
+export interface EspnGameInjury {
+  /** "Questionable", "Out", "Injured Reserve", "Day-To-Day". */
+  status?: string;
+  athlete?: {
+    id?: string;
+    displayName?: string;
+    fullName?: string;
+    jersey?: string;
+    headshot?: { href?: string };
+    position?: { abbreviation?: string; displayName?: string; name?: string };
+  };
+  /** `description` is the lowercase status code ("out"). */
+  type?: { description?: string };
+  /** What the injury is, as far as ESPN says: `type` is the body part or the
+   *  ailment ("Neck", "Hamstring", "Illness"), `returnDate` a bare
+   *  `yyyy-MM-dd`. */
+  details?: { type?: string; returnDate?: string };
+}
+
+export interface EspnOnIceTeam {
+  teamId?: string;
+  entries?: EspnOnIceEntry[];
+}
+
+export interface EspnOnIceEntry {
+  athleteid?: string;
+  /** Only "In Play" counts: the payload also lists the bench and the box. */
+  whereabouts?: { description?: string };
 }
 
 export interface EspnPredictor {
@@ -430,8 +472,17 @@ export interface EspnBoxscoreAthlete {
     shortName?: string;
     jersey?: string;
     headshot?: { href?: string };
+    position?: { abbreviation?: string; displayName?: string; name?: string };
   };
   stats?: string[];
+  /** Basketball's lineup flags, on the row rather than the athlete (probed
+   *  2026-10-18: 10 starters, 7 `didNotPlay` with a `reason` of "COACH'S
+   *  DECISION"). Football and hockey ship none of these — football's
+   *  starters come off the core API's game-day roster instead. */
+  starter?: boolean;
+  didNotPlay?: boolean;
+  reason?: string;
+  active?: boolean;
 }
 
 /** One play, in a drive or in the flat feed. */
@@ -718,4 +769,77 @@ export interface EspnSearchContent {
   date?: string | null;
   /** An article's photos, in the feeds' shape. */
   images?: { type?: string; url?: string }[] | null;
+}
+
+// --- Game-day roster and depth charts (the core API) ---
+// Probed live 2026-10-18 across all four leagues (iOS `CompetitorRosterDTO`,
+// `DepthChartsDTO`). Two resources, both ref-shaped like the rest of
+// `sports.core.api.espn.com`:
+//
+//   1. `events/{e}/competitions/{e}/competitors/{team}/roster` — who dressed
+//      for *this* game. Football (NFL and college) flags 22 `starter`s and,
+//      in the NFL, the declared inactives as `didNotPlay`, from the moment
+//      the lineup is set (an NFL game four hours out had all of it; a
+//      college game a week out 404s, so the lineup is game-day there). The
+//      NBA flags its five starters and its DNPs with a `reason`; the NHL
+//      flags `scratched` and names no starters. Positions are `$ref`s into
+//      the positions table and names are the short form ("E. Greene III"),
+//      so the roster is joined to the team's own `/roster` for full names
+//      and photos.
+//   2. `seasons/{y}/teams/{team}/depthcharts` — the NBA and NHL ship one
+//      chart each (`pg`…`c`; `lw`, `c`, `rw`, `ld`, `rd`, `g`) with a `rank`
+//      per athlete, which is the only pre-game "who starts" either league
+//      publishes. The NFL ships three and is not asked: its game-day roster
+//      already names the starters. College football answers 400.
+
+export interface EspnCoreRef {
+  $ref?: string;
+}
+
+export interface EspnCompetitorRoster {
+  entries?: EspnCompetitorRosterEntry[];
+}
+
+export interface EspnCompetitorRosterEntry {
+  /** An integer in the payload. */
+  playerId?: number | string;
+  /** ESPN's short form — a last name, initialed where the team has two. */
+  displayName?: string;
+  jersey?: string;
+  starter?: boolean;
+  didNotPlay?: boolean;
+  /** Live only: on the field right now. False on every entry of a final or
+   *  pre-game roster, so nothing reads it yet. */
+  active?: boolean;
+  /** Basketball's "COACH'S DECISION" beside `didNotPlay`. */
+  reason?: string;
+  /** Hockey's healthy scratch, with "SCRATCHED" beside it. */
+  scratched?: boolean;
+  scratchReason?: string;
+  position?: EspnCoreRef;
+  /** Present only on an entry that recorded a stat — college football's
+   *  only hint at who got on the field, since it declares no inactives. */
+  statistics?: EspnCoreRef;
+}
+
+export interface EspnDepthCharts {
+  items?: EspnDepthChart[];
+}
+
+export interface EspnDepthChart {
+  id?: string;
+  name?: string;
+  /** Keyed by lowercase abbreviation ("pg", "lw"). */
+  positions?: Record<string, EspnDepthChartPosition>;
+}
+
+export interface EspnDepthChartPosition {
+  position?: { id?: string; abbreviation?: string; displayName?: string };
+  athletes?: EspnDepthChartAthlete[];
+}
+
+export interface EspnDepthChartAthlete {
+  athlete?: EspnCoreRef;
+  /** 1 is the starter, or the first line. */
+  rank?: number;
 }
