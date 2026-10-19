@@ -106,6 +106,11 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 - Other Claude sessions may be driving the shared simulators. Before verifying, check `xcrun simctl list devices booted`. If another session owns the device, boot or `simctl clone` a dedicated simulator for this session (name it after the task), install only to its UDID, never `booted`, and delete it when done.
 - If the simulator shows old UI, assume a stale build first: check for compile errors and reinstall before debugging the view.
 
+## Commits & branches
+
+- When Andy says "commit", commit **all** related uncommitted changes on the current branch, including earlier edits from this session and his own work. Don't commit only the latest hunk, and don't treat his uncommitted work as separate, unless he asks for a scoped commit.
+- Before committing, run `git status` and read the branch it names: Andy switches branches alongside the session, so the branch from the start of the conversation may not be the one checked out now (a 2026-10-18 commit meant for a feature branch landed on main this way). If the work is already committed, say so and stop.
+
 ## Decisions log
 
 **Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
