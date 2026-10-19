@@ -54,9 +54,10 @@ reading you took here rather than discovering it in the screenshot.
 
 ## Phase 1 — Implement
 
-As usual: `docs/decisions.md` first if the surface has history, one view per
-file, the color budget, `docs/web-parity.md` row with the decisions row.
-Check the web needs the same change and say so.
+As usual: `docs/decisions.md` (and `ls -t docs/changes | head`) first if the
+surface has history, one view per file, the color budget, and the PR's own
+`docs/changes/<pr>.md` with its `## Web parity` line — the two ledgers are
+frozen as of 2026-10-19. Check the web needs the same change and say so.
 
 ## Phase 2 — Re-record only the affected baselines
 
@@ -129,8 +130,8 @@ change plus Phases 2–4, not a re-read of the same screenshot.
 ## Phase 6 — Commit
 
 The baselines go in the same commit as the change that moved them, so a
-`git log` on a PNG explains it. The decisions row, the parity row and the
-report's expected-outcome text agree with each other.
+`git log` on a PNG explains it. The change file's decision, its parity line
+and the report's expected-outcome text agree with each other.
 
 ## Ground facts
 

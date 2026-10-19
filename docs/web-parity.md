@@ -6,17 +6,18 @@ iOS PR lands. This file is the coupling: one row per iOS decision that has a web
 consequence, with a status. A row is only "done" when the behavior is on
 statside.co, not when it's understood.
 
-**How to use it.** Every iOS PR that changes user-visible behavior adds a row
-here — `pending` — at the same time it adds its row to `docs/decisions.md`.
-That is the whole rule. The catch-up waves below burn the pending rows down.
+**Frozen on 2026-10-19 at 323 rows.** Since then each PR's parity status is the
+`## Web parity` section of its own file in [`docs/changes/`](changes/README.md),
+and `scripts/build-changelog.py build` appends those rows to a copy of this file
+at `docs/generated/web-parity.md`. Do not add rows here — web CI fails a branch
+that grows this file. The rule is unchanged: every decision says where the web
+stands on it, with one of the four statuses below.
 
 **Enforced.** `scripts/check-parity-ledger.sh` runs as the first step of the Web
-CI job: a branch that grows the decisions log without growing this file fails.
-It counts rows, not meaning — it cannot tell whether the row you added is the
-right one, only that you stopped and wrote one, which is the part that was
-missing. `[skip-parity]` in a commit message is the escape hatch, for iOS work
-with genuinely no product surface. It rides the existing Web CI check rather
-than standing as its own so it blocks a merge with no branch-protection change.
+CI job. It used to count rows added here against rows added to the decisions
+log; now it validates the change files, where the parity line is a required
+section, so there is nothing to count and no skip token. It still rides the Web
+CI check so it blocks a merge with no branch-protection change.
 
 **Statuses**
 - `shipped` — live on web, matching the iOS decision.
@@ -953,4 +954,3 @@ sibling below it.
 | 2026-10-19 | **The Roster tab reaches the web** (E29 parity): `/api/game/{id}/roster` serves the sources and the client assembles them against the live summary, so the bench and the on-ice lineup follow the 1s poll with no second request; the Coaches card reads `public/coaches.json` for the coordinators | **differs** — iOS assembles once per phase with the summary it had at the time and the route re-reads the summary for the teams, phase and season (the H2H route's rule); the lists are the same, they just refresh with the poll on web |
 | 2026-10-19 | The web's Starters field sits in a card, not full-bleed | **differs** — web-originated; see the decisions row. The 2026-10-18 full-bleed row above records the iOS side |
 | 2026-10-19 | Web Get-the-app link opens the store in the same tab (no `target="_blank"`); `SearchField` input at 16px (`type-field`) so Mobile Safari and in-app webviews don't zoom on focus | **shipped** — web-only; iOS has no browser-opened store link, and its `SearchField` is a native text field with no zoom rule to dodge |
-| 2026-10-19 | Component snapshot baselines (`ComponentSnapshotTests`), the `GameHeader` extraction and `DayStrip.now`, the `ui-change` skill and its three scripts | **n/a** — iOS test infrastructure and a working procedure; nothing on a screen changed. The web has no snapshot suite; if it grows one it would be its own decision |
