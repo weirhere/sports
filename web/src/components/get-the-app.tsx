@@ -30,15 +30,18 @@ import { APP_STORE_URL } from "@/lib/app-store";
 const LABEL = "Get StatSide for iPhone on the App Store";
 
 /**
- * A new tab, not this one: the visitor is mid-slate, and on a desktop
- * browser an App Store link is a full navigation away from the game they
- * were reading. On iOS it hands off to the App Store app and the tab it
- * opened closes itself.
+ * This tab, not a new one. The link shipped as `target="_blank"` so a
+ * desktop visitor mid-slate kept their game open behind the store — and
+ * that is exactly what a shared link's first tap never gets: Threads,
+ * Instagram and the rest open links in a WKWebView that doesn't implement
+ * new-window requests, so a `_blank` link there does nothing at all (Nate
+ * Tharp, 2026-10-19: "only worked after I opened it in Chrome"). A plain
+ * navigation works in every browser; on iOS the system hands apps.apple.com
+ * to the App Store app regardless of tab, and on desktop the back button
+ * restores the slate.
  */
 const LINK_PROPS = {
   href: APP_STORE_URL,
-  target: "_blank",
-  rel: "noreferrer",
   "aria-label": LABEL,
 } as const;
 

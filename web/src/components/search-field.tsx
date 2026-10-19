@@ -4,6 +4,11 @@
 // of the iOS `SearchField` (sports/Features/Teams/SearchField.swift).
 // Escape clears before it blurs; the clear button never steals focus from
 // the input.
+//
+// The input is `type-field` (16px), not the `type-chip` (14px) the rest of
+// the row wears: iOS Safari zooms the page into any field under 16px the
+// moment it takes focus, and the page stays zoomed after the keyboard
+// goes. Reported from Threads' in-app browser on 2026-10-19.
 
 import { useRef } from "react";
 import { Search, X } from "lucide-react";
@@ -53,7 +58,7 @@ export function SearchField({
         autoCapitalize="none"
         spellCheck={false}
         enterKeyHint="search"
-        className="w-full rounded-[10px] bg-bg-elevated py-2.5 pl-9 pr-9 type-chip text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        className="w-full rounded-[10px] bg-bg-elevated py-2.5 pl-9 pr-9 type-field text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
       />
       {value.length > 0 && (
         <button

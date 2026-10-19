@@ -255,6 +255,16 @@
   font-size: 14px;
   font-weight: 600;
 }
+/* A text field. Mobile Safari (and every iOS in-app webview, which is
+   Safari underneath) zooms the whole page in when a field it focuses is
+   set below 16px, and nothing in markup short of disabling pinch-zoom
+   stops it — which is an accessibility cost, not a fix. So fields hold
+   16 while the chips beside them stay 14 (Nate Tharp's field report,
+   2026-10-19). */
+@utility type-field {
+  font-size: 16px;
+  font-weight: 500;
+}
 @utility type-hero-title {
   font-size: 24px;
   font-weight: 800;
