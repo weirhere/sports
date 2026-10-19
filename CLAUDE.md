@@ -100,6 +100,12 @@ Response shapes were verified live on 2026-07-21 — see ARCHITECTURE.md § API 
 
 Because the data is live, assertions must not encode calendar facts. Don't wait on a specific poll (the AP Top 25 doesn't exist until mid-August, and `RankingsScreen` hides the picker entirely when only one poll came back) or on a specific week's games. Shared helpers for the recurring traps — retrying a tab tap that a navigation transition swallowed, scrolling the week strip without oscillating — live in `sportsUITests/UITestSupport.swift`.
 
+## Simulator workflow
+
+- After any UI change, build **and install** on the simulator before asking Andy to look. Compiling alone is not enough: Xcode installs on the one device it ran on and nowhere else. `scripts/install-all-sims.sh` builds the working tree once and installs it on every booted iPhone; `--all` does every available one; a name or UDID targets one device.
+- Other Claude sessions may be driving the shared simulators. Before verifying, check `xcrun simctl list devices booted`. If another session owns the device, boot or `simctl clone` a dedicated simulator for this session (name it after the task), install only to its UDID, never `booted`, and delete it when done.
+- If the simulator shows old UI, assume a stale build first: check for compile errors and reinstall before debugging the view.
+
 ## Decisions log
 
 **Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
