@@ -187,20 +187,26 @@ handle_conflicts() {
 
 # ---------------------------------------------------------------------- 2. CI
 
-# Failing test identifiers from a run's failed-step log. Two dialects:
-# xcodebuild ("Test Case '-[sportsTests.X testY]' failed") and vitest
-# (" × path > name" / "FAIL  path > name"). Anything else — a build error, a
-# dead simulator — yields no ids, which the caller treats differently.
+# Failing test identifiers from a run's failed-step log. Three dialects,
+# all seen in this repo's logs: XCTest ("Test Case '-[sportsTests.X testY]'
+# failed"), Swift Testing ("✘ Test theThing() failed after 2.0 seconds"),
+# and vitest ("FAIL  src/lib/x.test.ts > suite > name", ANSI-coloured).
+# Anything else — a build error, a dead simulator — yields no ids, which
+# the caller treats differently.
 failing_tests_in_run() {
   local run_id="$1"
   gh run view "$run_id" --repo "$REPO" --log-failed 2>/dev/null \
     | python3 -I -c '
 import re, sys
+ansi = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 ids = set()
-for line in sys.stdin:
+for raw in sys.stdin:
+    line = ansi.sub("", raw).rstrip()
     m = re.search(r"Test Case .-\[(\S+) (\S+)\]. failed", line)
     if m: ids.add("%s/%s" % (m.group(1), m.group(2)))
-    m = re.search(r"(?:^|\s)(?:×|✗|FAIL)\s+(\S+\.test\.\w+)\s*>\s*(.+?)\s*(?:\d+ms)?$", line)
+    m = re.search(r"✘ Test (\S+\(\)) failed after", line)
+    if m: ids.add(m.group(1))
+    m = re.search(r"\bFAIL\s+(\S+\.test\.\w+)\s*>\s*(.+?)\s*$", line)
     if m: ids.add("%s > %s" % (m.group(1), m.group(2).strip()))
 for i in sorted(ids): print(i)
 '
@@ -318,9 +324,9 @@ handle_ci() {
   local checks
   checks="$(gh pr view "$pr" --repo "$REPO" --json statusCheckRollup --jq '
     .statusCheckRollup[]? | select(.__typename == "CheckRun")
-    | "\(.conclusion // .status)\t\(.workflowName // "")\t\(.name)\t\(.detailsUrl // "")"')"
+    | "\((.conclusion // "") | if . == "" then "PENDING" else . end)\t\(.workflowName // "")\t\(.name)\t\(.detailsUrl // "")"')"
   if [ -z "$checks" ]; then note "no checks reported yet"; return 0; fi
-  local pending; pending="$(printf '%s\n' "$checks" | grep -cE '^(IN_PROGRESS|QUEUED|PENDING|WAITING|)\s' || true)"
+  local pending; pending="$(printf '%s\n' "$checks" | grep -cE '^(IN_PROGRESS|QUEUED|PENDING|WAITING|REQUESTED)\s' || true)"
   local failed; failed="$(printf '%s\n' "$checks" | grep -E '^(FAILURE|TIMED_OUT)\s' || true)"
   if [ -z "$failed" ]; then
     if [ "$pending" -gt 0 ]; then note "CI: $pending check(s) still running"; else note "CI green"; fi

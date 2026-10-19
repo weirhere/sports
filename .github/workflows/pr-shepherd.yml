@@ -60,9 +60,11 @@ jobs:
     timeout-minutes: 45
     env:
       DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
+      # `secrets` can't be read in a step's `if`; a job-level env can read it.
+      HAS_PAT: ${{ secrets.PR_SHEPHERD_TOKEN != '' }}
     steps:
       - name: Refuse a live run without a PAT
-        if: env.DRY_RUN != 'true' && !secrets.PR_SHEPHERD_TOKEN
+        if: env.DRY_RUN != 'true' && env.HAS_PAT != 'true'
         run: |
           echo "::error::PR_SHEPHERD_TOKEN is not set. Pushes with GITHUB_TOKEN don't trigger CI, so a live run would strand PRs. Add the secret or run as a dry run."
           exit 1
