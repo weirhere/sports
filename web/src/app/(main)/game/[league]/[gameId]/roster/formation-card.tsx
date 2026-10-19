@@ -1,12 +1,15 @@
 "use client";
 
-// The Roster tab's lineup section — not a card (iOS `FormationCard`): the
-// field runs edge to edge, because eleven across a phone needs every pixel
-// it can get and a card's inset was costing it 40 (Andy, 2026-10-18). The
-// title and the chips keep the cards' text margin and sit on the surface's
-// paint a shade deeper than the field's, with no divider under the title:
-// the section is one painted place from its name down to the last row, and
-// the shade change is where the field begins.
+// The Roster tab's lineup section, in a card (iOS `FormationCard`, which is
+// not one). iOS runs the field edge to edge because eleven across a phone
+// needs every point it can get; on the web the section sits in a column of
+// cards and a square-cornered band between them read as a seam, so it takes
+// the card surface like its neighbours (Andy, 2026-10-19 — "looks weird
+// next to all the other cards"). Inside the card nothing changes: the title
+// and the chips keep the cards' text margin and sit on the surface's paint
+// a shade deeper than the field's, with no divider under the title — the
+// section is one painted place from its name down to the last row, and the
+// shade change is where the field begins.
 //
 // The two starting units on one field, and in football the chip row that
 // decides whose offense is drawn — one team's eleven across the line from
@@ -66,7 +69,7 @@ export function FormationCard({
   const homeUnplaced = homeFormation?.unplaced ?? [];
 
   return (
-    <section className="-mx-4 pb-1 md:mx-0">
+    <section className="card-surface">
       {/* A shade deeper than the field, so the heading reads as the
           section's and the field begins where the shade changes (Andy,
           2026-10-18 — on one green they ran together). */}
@@ -116,7 +119,7 @@ export function FormationCard({
       {/* Starters the layout couldn't place — a position the table doesn't
           know — named under the field rather than dropped. */}
       {(awayUnplaced.length > 0 || homeUnplaced.length > 0) && (
-        <div className="flex items-start px-2 pb-1">
+        <div className="flex items-start pb-1">
           <UnplacedColumn people={awayUnplaced} team={away.team} league={league} />
           <UnplacedColumn people={homeUnplaced} team={home.team} league={league} />
         </div>

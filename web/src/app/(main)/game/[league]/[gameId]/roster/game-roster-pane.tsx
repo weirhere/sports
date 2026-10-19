@@ -35,7 +35,6 @@ import {
   type GameRosterPerson,
 } from "@/lib/game-roster";
 import type { GameInjury } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { StartersSection } from "./starters-section";
 import { RosterSidesCard } from "./roster-sides-card";
 import { GameCoachCell, GameInjuryCell, GameRosterCell } from "./roster-cells";
@@ -132,10 +131,6 @@ export function GameRosterPane({
   }
 
   const hasStarters = roster.away.starters.length > 0 || roster.home.starters.length > 0;
-  // Whether the first thing on the pane is the painted field — which then
-  // meets the tab row with no gap above it (Andy, 2026-10-18: the 8px of
-  // page above it read as a seam).
-  const leadsWithField = hasStarters && layout === "field";
   const football = isFootball(league);
 
   const awayCoaches = coachLines(roster.away.coach, staffFor(coachFile, league, away.id));
@@ -148,7 +143,7 @@ export function GameRosterPane({
   const otherGroups = unitGroups(roster.away.others, roster.home.others, league);
 
   return (
-    <div className={cn("flex flex-col gap-2", leadsWithField && "-mt-2")}>
+    <div className="flex flex-col gap-2">
       {hasStarters && (
         <StartersSection
           roster={roster}
