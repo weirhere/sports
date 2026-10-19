@@ -9,43 +9,84 @@
      at 30 or 60 fps is the same film. Open the file in a browser and press
      space to scrub it live (see the keyboard handler at the bottom). */
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #ECECEE; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0A0A0B; }
   body {
     font-family: "Inter Display", "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    color: #1C1C1E;
+    color: #F2F2F7;
   }
+  /* Carlos's stage: a dark gray gradient with one soft key light, the phone
+     in macro. Neutral grays only; no blue in the shadows. */
   .stage {
     position: relative; overflow: hidden;
-    background: #ECECEE;
+    background: #141416;
   }
-  /* Cole's near-white stage: a soft white pool behind the device, nothing
-     else. The app's own light-mode ground is this gray, so the screen sits
-     in it rather than on it. */
   .stage::before {
     content: ""; position: absolute; inset: 0;
     background:
-      radial-gradient(70% 80% at var(--glow-x) var(--glow-y), #FFFFFF 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0) 75%);
+      radial-gradient(75% 70% at var(--glow-x) var(--glow-y), #4A4A50 0%, #26262A 45%, rgba(20,20,22,0) 80%);
   }
   .camera { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; }
-  .scene3d { position: absolute; inset: 0; perspective: 2800px; perspective-origin: 50% 50%; }
+  .scene3d { position: absolute; inset: 0; perspective: 2200px; perspective-origin: 50% 50%; }
 
+  /* The device. A real body in CSS 3D: the front face carries the bezel and
+     the screen, and the rail is a stack of thin layers behind it, each the
+     same rounded rectangle a fraction of a pixel further back, so a steep
+     tilt shows a solid titanium edge. */
   .phone {
     position: absolute;
-    width: var(--pw);
+    width: var(--pw); height: var(--ph);
     transform-style: preserve-3d;
+    transform-origin: 50% 50%;
+  }
+  .shell {
+    position: absolute; inset: 0;
+    border-radius: var(--body-r);
+    background: linear-gradient(150deg, #7A7A80 0%, #3C3C41 28%, #1E1E21 55%, #4A4A4F 100%);
+  }
+  .shell.front {
+    background: #050506;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.22);
+  }
+  .shell.back {
+    background: linear-gradient(150deg, #2A2A2E, #141416);
+  }
+  .shadow {
+    position: absolute; inset: 0;
+    border-radius: var(--body-r);
+    background: #000;
+    filter: blur(70px);
+    opacity: 0.75;
+  }
+  .btn {
+    position: absolute;
+    height: var(--btn-len);
+    width: calc(var(--thick) * 0.66);
+    background: linear-gradient(180deg, #8A8A90, #3A3A3F 50%, #6A6A70);
+    border-radius: 3px;
+    transform-origin: left center;
+  }
+  .btn.left  { left: -1px; transform: translateZ(calc(var(--thick) * -0.17)) rotateY(90deg); }
+  .btn.right { left: calc(100% + 1px); transform: translateZ(calc(var(--thick) * -0.17)) rotateY(90deg); }
+  .island {
+    position: absolute; left: 50%; top: calc(var(--sw) * 0.026);
+    width: calc(var(--sw) * 0.32); height: calc(var(--sw) * 0.094);
+    margin-left: calc(var(--sw) * -0.16);
+    border-radius: 999px; background: #000; z-index: 6;
+  }
+  .glare {
+    position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    background: linear-gradient(118deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 28%, rgba(255,255,255,0) 46%);
   }
   .screen {
-    position: relative;
-    width: 100%;
-    height: calc(var(--pw) * 2868 / 1320);
-    border-radius: calc(var(--pw) * 0.125);
+    position: absolute;
+    left: var(--bezel); top: var(--bezel);
+    width: var(--sw);
+    height: calc(var(--sw) * 2868 / 1320);
+    border-radius: calc(var(--sw) * 0.125);
     overflow: hidden;
     background: #F2F2F7;
-    box-shadow:
-      0 80px 160px rgba(0,0,0,0.16),
-      0 20px 50px rgba(0,0,0,0.08),
-      0 0 0 1px rgba(0,0,0,0.05);
+    transform: translateZ(0.5px);
   }
   .slice {
     position: absolute; left: 0; width: 100%;
@@ -63,7 +104,8 @@
     transform: translateX(100%);
     box-shadow: -30px 0 60px rgba(0,0,0,0.12);
   }
-  .dim { position: absolute; inset: 0; background: #000; opacity: 0; }
+  .dim { position: absolute; inset: 0; background: #000; opacity: 0; z-index: 3; }
+  .detail { z-index: 4; }
   .tap {
     position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px;
     border-radius: 50%; border: 3px solid rgba(0,0,0,0.38);
@@ -76,8 +118,8 @@
   .copy { position: absolute; z-index: 5; }
   .caption {
     position: absolute; left: 0; top: 0;
-    font-size: var(--cap-size); font-weight: 500; letter-spacing: -0.015em; line-height: 1.2;
-    color: #1C1C1E; width: var(--cap-width); line-height: 1.12;
+    font-size: var(--cap-size); font-weight: 500; letter-spacing: -0.015em;
+    color: #F2F2F7; width: var(--cap-width); line-height: 1.12;
     opacity: 0;
   }
   .card { position: absolute; left: 0; top: 0; width: var(--cap-width); }
@@ -85,10 +127,10 @@
   .card img {
     width: var(--icon); height: var(--icon); display: block;
     border-radius: 22.5%;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.10), 0 20px 50px rgba(0,0,0,0.5);
   }
   .card .name { font-size: var(--name-size); font-weight: 700; letter-spacing: -0.025em; margin-top: 0.36em; line-height: 1.05; }
-  .card .line { font-size: var(--line-size); font-weight: 400; color: #48484A; margin-top: 0.45em; letter-spacing: -0.01em; }
+  .card .line { font-size: var(--line-size); font-weight: 400; color: #C7C7CC; margin-top: 0.45em; letter-spacing: -0.01em; }
   .card .plat { font-size: var(--plat-size); font-weight: 500; color: #8E8E93; margin-top: 1.4em; letter-spacing: 0.01em; }
 </style>
 </head>
@@ -97,11 +139,14 @@
   <div class="camera" id="camera">
     <div class="scene3d">
       <div class="phone" id="phone">
+        <!-- shell layers and buttons are generated -->
         <div class="screen" id="screen">
           <!-- slices are generated -->
           <div class="dim" id="dim"></div>
           <div class="tap" id="tap"></div>
           <div class="detail" id="detail"></div>
+          <div class="glare"></div>
+          <div class="island"></div>
         </div>
       </div>
     </div>
@@ -131,33 +176,44 @@
   const SRC_W = 1320;
 
   const L = MODE === 'h' ? {
-    W: 1920, H: 1080, pw: 640, px: 300, py: -40,
-    rot: 'rotateX(5deg) rotateY(13deg) rotateZ(-2.5deg)',
-    glow: ['34%', '42%'],
+    W: 1920, H: 1080, pw: 600, px: 380, py: -120,
+    glow: ['38%', '40%'],
     copyX: 1290, copyY: 430, capSize: 48, capWidth: 560, icon: 112, name: 74, line: 32, plat: 20,
-    // [t, scale, focusX, focusY]. The phone spans scene x 276–932, so the
-    // focus x keeps its right edge left of ~1180 while a caption is up and
-    // lets it drift back to centre-left for the title card.
+    // Device attitude: [t, rotateX, rotateY, rotateZ]. Steep and diagonal
+    // while the rows build (Carlos's macro), easing to a mild Cole-like tilt
+    // for the title card.
+    rot: [
+      [0.0, 48, -10, -32],
+      [6.0, 34, -4, -22],
+      [10.2, 28, 0, -16],
+      [11.9, 10, 14, -4],
+      [14.0, 9, 15, -3.5],
+    ],
+    // Camera: [t, scale, focusX, focusY] in scene coordinates.
     cam: [
-      [0.0, 1.70, 800, 330],
-      [6.0, 1.24, 760, 470],
-      [10.2, 1.16, 745, 520],
+      [0.0, 1.55, 760, 420],
+      [6.0, 1.28, 740, 500],
+      [10.2, 1.22, 740, 520],
       [11.9, 1.00, 960, 540],
       [14.0, 0.985, 960, 540],
     ],
   } : {
-    W: 1080, H: 1920, pw: 860, px: 110, py: 620,
-    rot: 'rotateX(6deg) rotateY(12deg) rotateZ(-2.5deg)',
-    glow: ['50%', '55%'],
+    W: 1080, H: 1920, pw: 820, px: 130, py: 640,
+    glow: ['50%', '58%'],
     copyX: 540, copyY: 230, capSize: 56, capWidth: 900, icon: 150, name: 92, line: 40, plat: 24, center: true,
-    // Phone top sits near stage y 400 while the captions own the top band,
-    // then drops to ~780 so the title card has the band to itself.
+    rot: [
+      [0.0, 46, -8, -30],
+      [6.0, 32, -3, -20],
+      [10.2, 26, 0, -14],
+      [11.9, 9, 12, -3],
+      [14.0, 8, 13, -2.5],
+    ],
     cam: [
-      [0.0, 1.55, 455, 970],
-      [6.0, 1.18, 540, 1075],
-      [10.2, 1.12, 540, 1100],
-      [11.9, 0.92, 540, 800],
-      [14.0, 0.91, 540, 800],
+      [0.0, 1.45, 500, 1330],
+      [6.0, 1.18, 540, 1260],
+      [10.2, 1.12, 540, 1280],
+      [11.9, 0.90, 540, 830],
+      [14.0, 0.89, 540, 830],
     ],
   };
 
@@ -176,15 +232,45 @@
   stage.style.setProperty('--name-size', L.name + 'px');
   stage.style.setProperty('--line-size', L.line + 'px');
   stage.style.setProperty('--plat-size', L.plat + 'px');
+  // Device geometry from the screen width. iPhone proportions: a 2.4% bezel,
+  // a body 11.5% of its width thick, corner radii concentric with the screen's.
+  const bezel = L.pw * 0.024;
+  const sw = L.pw - 2 * bezel;
+  const ph = sw * 2868 / 1320 + 2 * bezel;
+  const thick = L.pw * 0.115;
+  stage.style.setProperty('--ph', ph + 'px');
+  stage.style.setProperty('--sw', sw + 'px');
+  stage.style.setProperty('--bezel', bezel + 'px');
+  stage.style.setProperty('--thick', thick + 'px');
+  stage.style.setProperty('--body-r', (sw * 0.125 + bezel) + 'px');
   phone.style.left = L.px + 'px'; phone.style.top = L.py + 'px';
-  phone.style.transform = L.rot;
+
+  const LAYERS = 28;
+  const shadow = document.createElement('div');
+  shadow.className = 'shadow';
+  shadow.style.transform = `translateZ(${-thick - 60}px) translate(40px, 90px) scale(1.04)`;
+  phone.insertBefore(shadow, screen);
+  for (let i = LAYERS; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.className = 'shell' + (i === 0 ? ' front' : i === LAYERS ? ' back' : '');
+    d.style.transform = `translateZ(${-(thick * i / LAYERS)}px)`;
+    phone.insertBefore(d, screen);
+  }
+  // Side buttons: action, volume up, volume down on the left; power on the right.
+  for (const [side, top, len] of [['left', 0.165, 0.045], ['left', 0.235, 0.085], ['left', 0.335, 0.085], ['right', 0.26, 0.14]]) {
+    const b = document.createElement('div');
+    b.className = 'btn ' + side;
+    b.style.top = (ph * top) + 'px';
+    b.style.setProperty('--btn-len', (ph * len) + 'px');
+    phone.insertBefore(b, screen);
+  }
   copy.style.left = L.copyX + 'px'; copy.style.top = L.copyY + 'px';
   if (L.center) {
     for (const el of [cap1, cap2, card]) { el.style.transform = 'translateX(-50%)'; el.style.textAlign = 'center'; }
     card.querySelector('img').style.margin = '0 auto';
   }
 
-  const k = L.pw / SRC_W;
+  const k = sw / SRC_W;
   const slices = [];
   for (let i = 0; i < CUTS.length - 1; i++) {
     const d = document.createElement('div');
@@ -204,17 +290,17 @@
   const seg = (t, a, b, ease = outCubic) => ease(clamp01((t - a) / (b - a)));
   const lerp = (a, b, p) => a + (b - a) * p;
 
-  function camAt(t) {
-    const kf = L.cam;
+  function kfAt(kf, t) {
     if (t <= kf[0][0]) return kf[0].slice(1);
     for (let i = 1; i < kf.length; i++) {
       if (t <= kf[i][0]) {
         const p = inOutCubic(clamp01((t - kf[i - 1][0]) / (kf[i][0] - kf[i - 1][0])));
-        return [1, 2, 3].map(j => lerp(kf[i - 1][j], kf[i][j], p));
+        return kf[i].slice(1).map((_, j) => lerp(kf[i - 1][j + 1], kf[i][j + 1], p));
       }
     }
     return kf[kf.length - 1].slice(1);
   }
+  const camAt = t => kfAt(L.cam, t);
 
   // in over [a, a+d], out over [b, b+d2]
   function pulse(t, a, b, d = 0.55, d2 = 0.4) {
@@ -229,6 +315,8 @@
     // Camera: translate so the focus point lands at stage centre at scale s.
     const [s, fx, fy] = camAt(t);
     camera.style.transform = `translate(${L.W / 2 - s * fx}px, ${L.H / 2 - s * fy}px) scale(${s})`;
+    const [rx, ry, rz] = kfAt(L.rot, t);
+    phone.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
 
     // The Scores screen builds a row at a time.
     slices.forEach((d, i) => {
