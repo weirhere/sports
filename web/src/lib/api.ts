@@ -1,4 +1,4 @@
-import type { Game, GameDetail, Scoreboard } from "./types";
+import type { Game, GameDetail, GameRosterSources, Scoreboard } from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
@@ -129,6 +129,20 @@ export async function getHeadToHead(
   gameId: string
 ): Promise<HeadToHead> {
   return fetchJson(`${BASE}/game/${gameId}/head-to-head?league=${league}`);
+}
+
+/**
+ * The Roster tab's sources (E29): the two team rosters, the two game-day
+ * rosters and, before an NBA or NHL game, the two depth charts — six
+ * requests at most, spent on the tab's first open and again when the
+ * game's phase flips, never polled. The client assembles them against the
+ * live summary it already holds.
+ */
+export async function getGameRosterSources(
+  league: League,
+  gameId: string
+): Promise<GameRosterSources> {
+  return fetchJson(`${BASE}/game/${gameId}/roster?league=${league}`);
 }
 
 /**

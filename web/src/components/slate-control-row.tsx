@@ -21,28 +21,53 @@ import type { Team } from "@/lib/types";
 import { MenuChip } from "./menu-chip";
 import { cn } from "@/lib/utils";
 
+/**
+ * What type on a painted surface is drawn in (iOS `SurfaceColors.Ink`):
+ * `text` is the names, captions and an idle chip's outline; `counter` is the
+ * type on a `text`-filled chip. CSS color values, so a token works.
+ */
+export interface SurfaceInk {
+  text: string;
+  counter: string;
+}
+
 export function SlateToggleChip({
   title,
   isOn,
   hint,
   onToggle,
+  ink,
 }: {
   title: string;
   isOn: boolean;
   hint?: string;
   onToggle: () => void;
+  /**
+   * Set when the chip sits on a Gamecast surface rather than the page: it
+   * then fills or outlines in the surface's ink instead of the page's
+   * chrome (iOS, 2026-10-18 — the Starters section's chips on the turf).
+   */
+  ink?: SurfaceInk;
 }) {
+  const style: React.CSSProperties | undefined = ink
+    ? isOn
+      ? { backgroundColor: ink.text, color: ink.counter }
+      : { color: ink.text, boxShadow: `inset 0 0 0 1px ${ink.text}` }
+    : undefined;
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={isOn}
       title={hint}
+      style={style}
       className={cn(
         "inline-flex min-h-9 items-center whitespace-nowrap rounded-full px-3 py-1.5 type-chip transition-colors",
-        isOn
-          ? "bg-text-primary text-bg-primary"
-          : "bg-bg-elevated text-text-primary hover:bg-divider"
+        ink
+          ? "bg-transparent"
+          : isOn
+            ? "bg-text-primary text-bg-primary"
+            : "bg-bg-elevated text-text-primary hover:bg-divider"
       )}
     >
       {title}

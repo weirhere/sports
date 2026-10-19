@@ -35,11 +35,23 @@
   --shadow-card: 0 2px 8px rgb(0 0 0 / 0.06);
 
   /* The Gamecast surfaces' paint — the color budget's fourth exception
-     (iOS `SurfaceColors`, 2026-09-27). Turf, maple and ice, drawn only while
-     a game is live and only inside `app/(main)/game/…/gamecast/`. Nothing
-     else may read these; the card around them stays monochrome. */
+     (iOS `SurfaceColors`, 2026-09-27). Turf, maple and ice, drawn only
+     inside `app/(main)/game/…/gamecast/` and, since 2026-10-18 (Andy's
+     call, amending the live-only clause), the Roster tab's Starters field
+     in `app/(main)/game/…/roster/` — pre-game and final too. Nothing else
+     may read these; the card around them stays monochrome. */
   --surface-turf: #2e7845; /* deep, broadcast turf — off-white names read on it (2026-10-18) */
   --surface-turf-alt: #29703f;
+  /* The Starters section's heading strip: the same paint a shade deeper, so
+     the title reads as the section's and the field starts where the shade
+     changes (iOS `SurfaceColors.heading(for:)`, 2026-10-18). Ice can't go
+     darker without stopping being ice, so it dims a touch instead. */
+  --surface-turf-heading: #26663b;
+  --surface-ice-heading: #eaeef1;
+  /* Names and captions on turf: off-white, a step down from the chalk, so
+     the field has one white (the lines) and the type sits under it. Fixed,
+     because the turf is the same green in both modes. */
+  --surface-turf-ink: #f0f0f0;
   --surface-line-to-gain: #f2d024; /* one yellow, both modes: only on turf */
   --surface-chalk: #ffffff;
   --surface-ink: #121212; /* the last play; fixed so it never turns white */
@@ -74,6 +86,8 @@
      play arrow still reads; ice stays ice, a touch dimmer. */
   --surface-turf: #297040;
   --surface-turf-alt: #25693b;
+  --surface-turf-heading: #225e36;
+  --surface-ice-heading: #d5dbe0;
   --surface-maple: #9c7f52;
   --surface-paint: #8a6e44;
   --surface-ice: #dfe5ea;
