@@ -17,12 +17,13 @@ enum SlateFocus: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The line under the title in the menu (Andy, 2026-10-19): Tight is
-    /// a coined word, and one description makes the other two want theirs.
-    var detail: String {
+    /// The line under the title in the menu, for the one row that needs
+    /// it (Andy, 2026-10-19): Tight is a coined word; All games and Live
+    /// say what they are, and their lines came out the same day they went
+    /// in.
+    var detail: String? {
         switch self {
-        case .all: "Everything on the day"
-        case .live: "In progress now"
+        case .all, .live: nil
         case .tight: "Live and close late, or an upset brewing"
         }
     }

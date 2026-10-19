@@ -17,20 +17,22 @@ struct SlateFocusChip: View {
 
     var body: some View {
         Menu {
-            // Buttons, not a Picker: a picker row is one line, and each
-            // choice here carries its description under its name. Two bare
-            // `Text`s and an `Image` is the form a menu reads as title,
-            // subtitle and icon — wrapped in a `Label` the subtitle was
-            // dropped (iOS 26.5). The check the picker would have drawn is
-            // the row's icon.
+            // Buttons, not a Picker: a picker row is one line, and Tight
+            // carries its description under its name. Two bare `Text`s is
+            // the form a menu reads as title and subtitle — wrapped in a
+            // `Label` the subtitle was dropped (iOS 26.5). The check is a
+            // glyph at the end of the title, not an `Image`: iOS 26 menus
+            // put a row's image at the leading edge, which indented the
+            // chosen row alone (Andy, 2026-10-19: "put the checkmark at
+            // the end so there is no weird indentation").
             ForEach(SlateFocus.allCases) { choice in
                 Button {
                     onSelect(choice)
                 } label: {
-                    Text(choice.title)
-                    Text(choice.detail)
-                    if choice == focus { Image(systemName: "checkmark") }
+                    Text(choice == focus ? "\(choice.title)  ✓" : choice.title)
+                    if let detail = choice.detail { Text(detail) }
                 }
+                .accessibilityLabel(choice.title)
                 .accessibilityAddTraits(choice == focus ? .isSelected : [])
             }
         } label: {

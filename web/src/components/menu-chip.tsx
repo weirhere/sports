@@ -9,7 +9,7 @@
 // choice (the same teams, arranged differently) stays quiet.
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MenuChipOption {
@@ -94,15 +94,22 @@ export function MenuChip({
               }}
               aria-current={option.label === label ? "true" : undefined}
               className={cn(
-                "block w-full px-3 py-2 text-left type-chip transition-colors hover:bg-bg-header",
+                "flex w-full items-start gap-3 px-3 py-2 text-left type-chip transition-colors hover:bg-bg-header",
                 option.label === label
                   ? "text-text-primary"
                   : "text-text-secondary"
               )}
             >
-              {option.label}
-              {option.description && (
-                <span className="block type-meta text-text-secondary">{option.description}</span>
+              <span className="min-w-0 flex-1">
+                {option.label}
+                {option.description && (
+                  <span className="block type-meta text-text-secondary">{option.description}</span>
+                )}
+              </span>
+              {/* The check trails (iOS, 2026-10-19), so a row with one
+                  lines up with the rows without. */}
+              {option.label === label && (
+                <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
             </button>
           ))}

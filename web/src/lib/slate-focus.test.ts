@@ -11,8 +11,12 @@ describe("the Scores focus menu (2026-10-19)", () => {
     expect(slateFocus(true, true)).toBe("live");
   });
 
-  it("names the three rows, each with a line under it", () => {
+  it("names the three rows, and explains only Tight", () => {
     expect(SLATE_FOCUSES.map(slateFocusTitle)).toEqual(["All games", "Live", "Tight"]);
-    for (const focus of SLATE_FOCUSES) expect(slateFocusDescription(focus)).not.toBe("");
+    expect(SLATE_FOCUSES.map(slateFocusDescription)).toEqual([
+      undefined,
+      undefined,
+      "Live and close late, or an upset brewing",
+    ]);
   });
 });

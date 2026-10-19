@@ -16,12 +16,9 @@ export function slateFocus(liveOnly: boolean, tightOnly: boolean): SlateFocus {
   return liveOnly ? "live" : tightOnly ? "tight" : "all";
 }
 
-/** The row under each choice in the menu (Andy, 2026-10-19): Tight is a
- *  coined word, and one description makes the other two want theirs. */
-export function slateFocusDescription(focus: SlateFocus): string {
-  return focus === "all"
-    ? "Everything on the day"
-    : focus === "live"
-      ? "In progress now"
-      : "Live and close late, or an upset brewing";
+/** The line under a choice in the menu, for the one row that needs it
+ *  (Andy, 2026-10-19): Tight is a coined word; All games and Live say what
+ *  they are. */
+export function slateFocusDescription(focus: SlateFocus): string | undefined {
+  return focus === "tight" ? "Live and close late, or an upset brewing" : undefined;
 }
