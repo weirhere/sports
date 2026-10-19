@@ -304,15 +304,16 @@ function FollowedTableCard({
             className="flex shrink-0 overflow-hidden"
             {...controlMotion("leading")}
           >
-            {/* Gray, not red: the app's one red is the live accent, and a
-                removal one star below undoes doesn't need an alarm. */}
+            {/* Red, the app's one (Andy, 2026-10-19): the system's own color
+                for a remove control, and `rank-down` is a token the budget
+                already carries. Gray until then. */}
             <button
               type="button"
               onClick={onUnfollow}
               aria-label={`Unfollow ${spoken}`}
               className="-mr-2 ml-1 flex h-10 w-10 items-center justify-center"
             >
-              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-text-secondary text-bg-card">
+              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-rank-down text-bg-card">
                 <Minus aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
               </span>
             </button>

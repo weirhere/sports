@@ -61,6 +61,74 @@ export interface NewsStory {
   /** The lead photo — the color budget's sixth exception (2026-09-27),
    *  drawn only in story cards, rows and the reader's hero. */
   imageUrl?: string;
+  /** ESPN's `topic` categories, lowercased ("nba free agency"). Sparse and
+   *  loosely applied; `isTransaction` reads only the ones that can't mean
+   *  anything else. */
+  topics?: string[];
+}
+
+// --- Transfers (2026-10-19) ---
+
+/** Topics that are a transaction by name. "free agency" is not here: ESPN
+ *  hangs it on columns that only mention the market. */
+export const TRANSACTION_TOPICS = ["trade deadline", "transfer portal", "transactions"] as const;
+
+/**
+ * The whole-word phrases a roster move is written with, as regular
+ * expressions. No bare "deal" (every game story has one), no bare "cut" (a
+ * lead gets cut every night), no bare "sign". A copy of iOS
+ * `NewsStory.transactionTerms` — keep the two lists identical.
+ */
+export const TRANSACTION_TERMS: readonly string[] = [
+  "trades?", "traded", "acquires?", "acquired",
+  "signs", "signed", "signing", "re-signs?", "re-signed",
+  "waives?", "waived", "waivers?", "releases?", "released", "cut by",
+  "free agents?", "free agency", "extensions?", "contracts?", "buyout",
+  "transfers?", "transferred", "portal", "commits? to", "decommits?",
+  "agrees? to terms", "agreed to terms", "swap",
+];
+
+const TRANSACTION_PATTERN = new RegExp(`\\b(?:${TRANSACTION_TERMS.join("|")})\\b`, "i");
+
+/** Whether `text` says a roster move happened, on whole words. */
+export function mentionsTransaction(text: string): boolean {
+  return TRANSACTION_PATTERN.test(text);
+}
+
+/**
+ * Whether the story is a roster move — a trade, signing, waiver, release,
+ * extension, free-agency or portal story — for the News tab's Transfers
+ * page (iOS `NewsStory.isTransaction`, Andy, 2026-10-19).
+ *
+ * A heuristic, and the docs say so. ESPN's `topic` categories barely cover
+ * it: probed 2026-10-19, "Knicks waive Bruce Brown" and "Still awaiting
+ * trade, Connor Hellebuyck…" carried no topic at all, and "nba free agency"
+ * sat on a stat column. So the headline and dek decide, on whole words —
+ * "design" and "signal" are not "sign" — and a topic that can only mean a
+ * transaction counts beside them. Recaps and previews never qualify: a game
+ * story that mentions a trade is still a game story.
+ */
+export function isTransaction(story: NewsStory): boolean {
+  if (story.kind === "recap" || story.kind === "preview") return false;
+  if (story.topics?.some((topic) => TRANSACTION_TOPICS.some((term) => topic.includes(term)))) {
+    return true;
+  }
+  return mentionsTransaction(story.headline) || (!!story.dek && mentionsTransaction(story.dek));
+}
+
+/** Latest is full-width photo cards; past this it's a scroll nobody
+ *  finishes (iOS `NewsFeedStore.latestCap`). */
+export const LATEST_CAP = 30;
+
+/** The News tab's Latest page: the merged league list, capped. */
+export function latestStories(merged: readonly NewsStory[]): NewsStory[] {
+  return merged.slice(0, LATEST_CAP);
+}
+
+/** The News tab's Transfers page: the roster moves in the merged league
+ *  list. Thin by nature, so uncapped. */
+export function transferStories(merged: readonly NewsStory[]): NewsStory[] {
+  return merged.filter(isTransaction);
 }
 
 /**
@@ -215,6 +283,12 @@ export function storyMeta(story: NewsStory, time: string | undefined): string | 
 /** A section's size: the featured story and the four under it (iOS
  *  `NewsFeedStore.sectionSize`, 2026-09-27). */
 export const SECTION_SIZE = 5;
+
+/** For you's Trending: the newest real stories across the leagues —
+ *  recency, not popularity, which ESPN doesn't publish. */
+export function trendingStories(merged: readonly NewsStory[]): NewsStory[] {
+  return merged.filter((story) => story.kind !== "preview").slice(0, SECTION_SIZE);
+}
 
 /** A section's stories in the order it draws them: the featured spot goes
  *  to the newest story with a photo, so the full-width card always has one;

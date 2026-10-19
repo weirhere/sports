@@ -40,6 +40,11 @@ import {
   storyForGame,
   storyKind,
   type NewsStory,
+  isTransaction,
+  latestStories,
+  transferStories,
+  trendingStories,
+  LATEST_CAP,
 } from "./news";
 
 const recap = newsStory(summaryJson.article as EspnNewsArticle, "nba")!;
@@ -324,5 +329,76 @@ describe("photos (2026-09-27)", () => {
       ],
     };
     expect(leagueFeed(feed, "nba")[0].imageUrl).toBe("https://a.espncdn.com/photo/x.jpg");
+  });
+});
+
+describe("Transfers and the For you sheet (2026-10-19)", () => {
+  const headline = (
+    text: string,
+    extra: Partial<Pick<NewsStory, "kind" | "dek" | "topics">> = {}
+  ): NewsStory => ({
+    id: text,
+    kind: "headline",
+    league: "nba",
+    headline: text,
+    teams: [],
+    ...extra,
+  });
+
+  it("marks trades, signings and waivers by their words", () => {
+    // The 2026-10-19 probe's headlines, none of which ESPN tagged.
+    expect(isTransaction(headline("Knicks waive Bruce Brown, keep James Wiseman ahead of opener"))).toBe(true);
+    expect(isTransaction(headline("Still awaiting trade, Connor Hellebuyck could rejoin Jets when suspension ends"))).toBe(true);
+    expect(isTransaction(headline("Bears agree to terms with veteran kicker"))).toBe(true);
+    expect(isTransaction(headline("Four-star QB commits to Ohio State"))).toBe(true);
+    expect(isTransaction(headline("Star receiver enters the transfer portal"))).toBe(true);
+    expect(isTransaction(headline("Towns, Knicks finalize four-year extension"))).toBe(true);
+    // The dek counts too.
+    expect(isTransaction(headline("Roster moves", { dek: "The Jets released their starting kicker" }))).toBe(true);
+    // Whole words: "design" and "signal" are not "sign".
+    expect(isTransaction(headline("Designs on a title: inside the Thunder's offseason"))).toBe(false);
+    expect(isTransaction(headline("A signal win for the Celtics' bench"))).toBe(false);
+    // "deal" is every game story's word.
+    expect(isTransaction(headline("Judging overreactions to NFL Week 6: Regretting Daniel Jones, A.J. Brown deals?"))).toBe(false);
+  });
+
+  it("never counts a game story", () => {
+    expect(isTransaction(headline("Jets trade blows with Bills in overtime thriller", { kind: "recap" }))).toBe(false);
+    expect(isTransaction(headline("Preview: Lakers sign off on new-look rotation", { kind: "preview" }))).toBe(false);
+  });
+
+  it("counts only the topics that can't mean anything else", () => {
+    expect(isTransaction(headline("Deadline day", { topics: ["nba trade deadline"] }))).toBe(true);
+    expect(isTransaction(headline("Portal watch", { topics: ["transfer portal"] }))).toBe(true);
+    // ESPN hangs "nba free agency" on a stat column; the tag alone doesn't
+    // make one.
+    expect(
+      isTransaction(
+        headline("The stat that could swing every NBA team's season", {
+          topics: ["daily", "nba free agency"],
+        })
+      )
+    ).toBe(false);
+    // The fixture's topics come through the mapper, lowercased.
+    const stories = (feedJson as EspnNewsFeed).articles!
+      .map((article) => newsStory(article, "nba"))
+      .filter((story): story is NewsStory => story !== undefined);
+    const graded = stories.find((story) => story.id === "48957095")!;
+    expect(graded.topics).toContain("nba free agency");
+    expect(graded.topics).toContain("nba trade deadline");
+    expect(isTransaction(graded)).toBe(true);
+  });
+
+  it("cuts Latest, Transfers and Trending from one merged list", () => {
+    const merged = [
+      headline("Knicks waive Bruce Brown"),
+      headline("Celtics rout the Nets", { kind: "recap" }),
+      ...Array.from({ length: 40 }, (_, i) => headline(`story ${i}`)),
+      headline("Next week's slate", { kind: "preview" }),
+    ];
+    expect(latestStories(merged)).toHaveLength(LATEST_CAP);
+    expect(transferStories(merged).map((story) => story.id)).toEqual(["Knicks waive Bruce Brown"]);
+    expect(trendingStories(merged)).toHaveLength(5);
+    expect(trendingStories(merged.slice(-1))).toEqual([]);
   });
 });

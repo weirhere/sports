@@ -9,12 +9,15 @@
 // choice (the same teams, arranged differently) stays quiet.
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MenuChipOption {
   id: string;
   label: string;
+  /** A second line under the label — the Scores focus menu's rows
+   *  (2026-10-19), where "Tight" is a coined word. */
+  description?: string;
   onSelect: () => void;
 }
 
@@ -22,11 +25,18 @@ export function MenuChip({
   label,
   options,
   isActive = false,
+  activeClassName,
+  leading,
   ariaLabel,
 }: {
   label: string;
   options: MenuChipOption[];
   isActive?: boolean;
+  /** What an active chip wears instead of the ink fill — the Scores focus
+   *  chip's live tint (2026-10-19). */
+  activeClassName?: string;
+  /** An ornament before the label: the live dot. */
+  leading?: React.ReactNode;
   ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,12 +67,13 @@ export function MenuChip({
         aria-expanded={open}
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 type-chip transition-colors",
+          "inline-flex min-h-9 items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 type-chip transition-colors",
           isActive
-            ? "bg-text-primary text-bg-primary"
+            ? (activeClassName ?? "bg-text-primary text-bg-primary")
             : "bg-bg-elevated text-text-primary hover:bg-divider"
         )}
       >
+        {leading}
         <span className="whitespace-nowrap">{label}</span>
         <ChevronsUpDown aria-hidden="true" className="h-3 w-3 shrink-0" />
       </button>
@@ -81,14 +92,25 @@ export function MenuChip({
                 option.onSelect();
                 setOpen(false);
               }}
+              aria-current={option.label === label ? "true" : undefined}
               className={cn(
-                "block w-full px-3 py-2 text-left type-chip transition-colors hover:bg-bg-header",
+                "flex w-full items-start gap-3 px-3 py-2 text-left type-chip transition-colors hover:bg-bg-header",
                 option.label === label
                   ? "text-text-primary"
                   : "text-text-secondary"
               )}
             >
-              {option.label}
+              <span className="min-w-0 flex-1">
+                {option.label}
+                {option.description && (
+                  <span className="block type-meta text-text-secondary">{option.description}</span>
+                )}
+              </span>
+              {/* The check trails (iOS, 2026-10-19), so a row with one
+                  lines up with the rows without. */}
+              {option.label === label && (
+                <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
             </button>
           ))}
         </div>

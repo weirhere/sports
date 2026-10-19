@@ -193,4 +193,31 @@ enum SnapshotFixtures {
         ("2", "CB", "Zabien Brown"), ("3", "CB", "Domani Jackson"),
         ("1", "FS", "Keon Sabb"), ("9", "SS", "Malachi Moore"),
     ]
+
+    // MARK: - Stories
+
+    /// Three headlines a league page might lead with. No photo and no
+    /// date — the meta line would otherwise be "2h ago" relative to the
+    /// run — so the card is the headline over its byline.
+    static func stories(_ sport: Sport) -> [NewsStory] {
+        let headlines: [(String, String)] = switch sport {
+        case .football:
+            [("Georgia holds off Alabama in overtime to stay unbeaten", "AP"),
+             ("Transfer portal tracker: the quarterbacks on the move", "ESPN"),
+             ("Week 9 bowl projections: who's in, who's out", "ESPN")]
+        case .basketball:
+            [("Knicks waive Bruce Brown, keep James Wiseman ahead of opener", "ESPN"),
+             ("Celtics' bench carries a rout of the Nets", "AP"),
+             ("NBA preseason buzz: the latest on trades, news and intel", "ESPN")]
+        case .hockey:
+            [("Maple Leafs edge Bruins in a shootout", "AP"),
+             ("Still awaiting trade, Hellebuyck could rejoin Jets when suspension ends", "ESPN"),
+             ("Power rankings: the Atlantic is a two-team race", "ESPN")]
+        }
+        return headlines.enumerated().map { index, pair in
+            NewsStory(id: "\(sport.rawValue)-\(index)", kind: .headline, league: sport.league,
+                      headline: pair.0, dek: nil, attribution: pair.1, published: nil,
+                      gameId: nil, teams: [])
+        }
+    }
 }

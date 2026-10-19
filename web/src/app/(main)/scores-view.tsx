@@ -11,6 +11,7 @@
 // slate.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { slateFocus, type SlateFocus } from "@/lib/slate-focus";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   buildSections,
@@ -148,6 +149,19 @@ export function ScoresView({ seed }: ScoresViewProps) {
     if (!isOnToday) selectToday();
   };
 
+  /** The focus menu's choice (2026-10-19), in the pills' terms: Live and
+   *  Tight go through their toggles, so choosing one off today is still the
+   *  trip home; All games clears whichever is on and stays put. */
+  const handleSelectFocus = (focus: SlateFocus) => {
+    if (focus === "live") {
+      if (!liveOnly) handleToggleLive();
+    } else if (focus === "tight") {
+      if (!tightOnly) handleToggleTight();
+    } else {
+      clearFilters();
+    }
+  };
+
   const clearFilters = () => {
     uiState.setLiveOnly(false);
     uiState.setTightOnly(false);
@@ -274,10 +288,8 @@ export function ScoresView({ seed }: ScoresViewProps) {
             onSelectDay={selectDay}
             onOpenCalendar={() => setCalendarOpen(true)}
             narrowsToNow={uiState.narrowsToNow}
-            liveOnly={liveOnly}
-            onToggleLive={handleToggleLive}
-            tightOnly={tightOnly}
-            onToggleTight={handleToggleTight}
+            focus={slateFocus(liveOnly, tightOnly)}
+            onSelectFocus={handleSelectFocus}
             allCollapsed={allCollapsed}
             onToggleCollapseAll={
               sectionIds.length > 0

@@ -27,8 +27,12 @@ struct PageHeader<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
+            // 28 bold, up from the wordmark's 21 heavy (Andy, 2026-10-19;
+            // 32 for an hour first, "they need to be 28", then "drop the
+            // weight … by one"). The Scores wordmark keeps its own size and
+            // weight; the page names grew, the brand didn't.
             Text(title)
-                .font(.system(size: 21, weight: .heavy))
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Color.textPrimary)
                 .lineLimit(1)
             Spacer(minLength: 0)

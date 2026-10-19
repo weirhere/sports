@@ -155,6 +155,20 @@ final class UIStateStore {
         Dictionary(uniqueKeysWithValues: League.allCases.map { ($0, grouping(for: $0)) })
     }
 
+    /// Followed teams kept off the News tab's For you (Andy, 2026-10-19):
+    /// the sheet's unchecked rows, by follow key. The follow itself is
+    /// untouched; a team unfollowed later just stops being consulted.
+    private(set) var newsHiddenTeams: Set<String> {
+        didSet { defaults.set(newsHiddenTeams.sorted(), forKey: Self.newsHiddenTeamsKey) }
+    }
+
+    func isShownInNews(_ key: String) -> Bool { !newsHiddenTeams.contains(key) }
+
+    func setShownInNews(_ shown: Bool, for key: String) {
+        if shown { newsHiddenTeams.remove(key) } else { newsHiddenTeams.insert(key) }
+    }
+
+    private static let newsHiddenTeamsKey = "news.hiddenTeams"
     private static let slateGroupingKey = "ui.slateGrouping"
     private static let showsLinesKey = "lines.enabled"
     private static let appearanceKey = "ui.appearance"
@@ -176,6 +190,7 @@ final class UIStateStore {
         }
         collapsedConferences = Set(defaults.stringArray(forKey: Self.collapsedConferencesKey) ?? [])
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
+        newsHiddenTeams = Set(defaults.stringArray(forKey: Self.newsHiddenTeamsKey) ?? [])
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
         let savedLive = defaults.bool(forKey: Self.liveOnlyKey)
         liveOnly = savedLive

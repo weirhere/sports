@@ -87,9 +87,17 @@ struct SearchScreen: View {
             VStack(spacing: 0) {
                 PageHeader("Search")
                 SearchScopePills(selection: scope) { scope = $0 }
+                // The results run under the field's bar and fade out as
+                // they go (Andy, 2026-10-19), the Leagues masthead's rule
+                // at the other edge.
                 content
+                    .overlay(alignment: .bottom) { ScrollEdgeFade(edge: .bottom) }
             }
-            .background(Color.bgRecessed)
+            // Through the safe areas, so the strip the keyboard rises over
+            // is the page's ground and not the scene's white (Andy,
+            // 2026-10-19: "behind the keyboard the background is a
+            // different color").
+            .background(Color.bgRecessed.ignoresSafeArea())
             // The field rides the bottom, above the keyboard rather than a
             // screen away from it (Andy, 2026-09-21). `safeAreaInset` is
             // what makes that true of the keyboard as well as the home
@@ -169,7 +177,11 @@ struct SearchScreen: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
-        .background(.bar)
+        // The page's own ground, not a lighter bar (Andy, 2026-10-19): the
+        // field's shadow lifts it, and the fade above does the separating.
+        // Through the bottom safe area too, for the same reason as the
+        // page's: the keyboard rises over this bar.
+        .background(Color.bgRecessed.ignoresSafeArea(edges: .bottom))
     }
 
     @ViewBuilder

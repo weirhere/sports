@@ -34,11 +34,12 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: "season-chip").firstMatch
     }
 
-    /// The Scores header's Live chip — the one control left there, and so
-    /// the stable "Scores has rendered" marker. It replaced the
-    /// view-options funnel, which retired with its sheet.
-    var scoresLiveChip: XCUIElement {
-        descendants(matching: .any).matching(identifier: "scores-live-chip").firstMatch
+    /// The Scores header's focus chip (All games · Live · Tight) — the one
+    /// control left there, and so the stable "Scores has rendered" marker.
+    /// It replaced the Live pill (2026-10-19), which had replaced the
+    /// view-options funnel.
+    var scoresFocusChip: XCUIElement {
+        descendants(matching: .any).matching(identifier: "scores-focus-chip").firstMatch
     }
 
     /// Any section accordion on the Scores screen, by identifier prefix.

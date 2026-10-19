@@ -373,8 +373,11 @@ export function SearchView() {
           lifts it on the keyboard with `safeAreaInset`; a browser has no
           keyboard inset to ride, so here it is a sticky footer bar — pinned
           to the viewport's foot above the tab bar while the list scrolls
-          under it. Below `sm` it rides on top of the fixed tab bar. */}
-      <div className="sticky bottom-[calc(3.375rem+env(safe-area-inset-bottom))] z-40 -mx-4 flex items-center gap-3 border-t border-divider bg-bg-primary px-4 py-2 sm:bottom-0">
+          under it. Below `sm` it rides on top of the fixed tab bar. On the
+          page's own ground, not a lighter bar, with the list fading out
+          under it (Andy, 2026-10-19) — the Leagues masthead's rule at the
+          other edge; the field's shadow is what lifts it. */}
+      <div className="sticky bottom-[calc(3.375rem+env(safe-area-inset-bottom))] z-40 -mx-4 flex items-center gap-3 bg-bg-recessed px-4 py-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-5 before:bg-gradient-to-t before:from-bg-recessed before:to-transparent sm:bottom-0">
         <SearchField
           value={query}
           onChange={setQuery}

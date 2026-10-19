@@ -223,7 +223,10 @@ struct FollowedTablesList: View {
         } label: {
             Image(systemName: "minus.circle.fill")
                 .font(.system(size: 18))
-                .foregroundStyle(.textSecondary)
+                // The app's one red (Andy, 2026-10-19): a remove control
+                // in the system's own color for it, and the ranking-drop
+                // token is the red the budget already carries.
+                .foregroundStyle(.rankDown)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
