@@ -5,6 +5,10 @@
 // Escape clears before it blurs; the clear button never steals focus from
 // the input.
 //
+// Card-colored with its own shadow (2026-10-19): the field sits on the page's
+// own ground on Leagues and Search now, not on a lighter bar, so the lift is
+// the shadow's to give — iOS `SearchField`'s rule.
+//
 // The input is `type-field` (16px), not the `type-chip` (14px) the rest of
 // the row wears: iOS Safari zooms the page into any field under 16px the
 // moment it takes focus, and the page stays zoomed after the keyboard
@@ -58,7 +62,7 @@ export function SearchField({
         autoCapitalize="none"
         spellCheck={false}
         enterKeyHint="search"
-        className="w-full rounded-[10px] bg-bg-elevated py-2.5 pl-9 pr-9 type-field text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        className="w-full rounded-[10px] bg-bg-card py-2.5 pl-9 pr-9 shadow-field type-field text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
       />
       {value.length > 0 && (
         <button

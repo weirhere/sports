@@ -272,18 +272,27 @@ export function LeaguesHub({
 
   return (
     <>
-      {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21). */}
-      <PageHeader title="Leagues" />
-      <div className="flex flex-col gap-3">
+      {/* The root tabs' one masthead (iOS `PageHeader`, 2026-09-21), pinned
+          with the field under the nav bar on the page's own ground, the
+          list fading out as it runs under them (Andy, 2026-10-19) — the
+          iOS Leagues tab's fixed head. `-mx-4 px-4` so the ground and the
+          fade span the column's gutters. */}
+      <div className="sticky top-14 z-30 -mx-4 bg-bg-recessed px-4 pb-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-bg-recessed after:to-transparent sm:top-16">
+        <PageHeader title="Leagues" />
         {/* Under the title, above everything it filters (iOS, 2026-09-21).
             At the head of the list, not its foot: it narrows a list you are
             already reading, where the Search tab's field is that screen's
             whole purpose. */}
+        {/* Above the fade in z, so the field's shadow bleeds past the
+            masthead's edge instead of being cut at it (Andy, 2026-10-19). */}
         <SearchField
           value={query}
           onChange={setQuery}
           placeholder="Find a league"
+          className="z-10"
         />
+      </div>
+      <div className="flex flex-col gap-3">
         {visibleFollowed.length > 0 && (
           <>
             <SectionHeading

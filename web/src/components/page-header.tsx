@@ -9,6 +9,9 @@
 // names the page; iOS settled that a tab names itself, left-aligned, in one
 // row, and the web follows it.
 //
+// The name prints at `type-page-heading`, 28px, since 2026-10-19 (Andy);
+// the Games wordmark stays at `type-page-title`.
+//
 // **The row floor is the rule; the value is the web's own.** iOS states 52pt
 // because that is its Games capsule's height (a 44pt tap target plus the
 // capsule's padding). What the floor is *for* is that every tab's row comes
@@ -37,7 +40,7 @@ export function PageHeader({ title, trailing }: PageHeaderProps) {
       <div className="flex min-h-11 items-center gap-2">
         {/* One line, always: a masthead that wraps is two rows tall on one
             tab and one on the next, which is the jog this exists to stop. */}
-        <h1 className="min-w-0 truncate type-page-title text-text-primary">
+        <h1 className="min-w-0 truncate type-page-heading text-text-primary">
           {title}
         </h1>
         {trailing !== undefined && (

@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { SlidersHorizontal, ChevronRight } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import { StorySection, StorySectionSkeleton } from "@/components/story-section";
@@ -28,19 +28,13 @@ import { useOnDemand } from "@/lib/hooks/use-on-demand";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useNewsHiddenTeams } from "@/lib/hooks/use-news-hidden-teams";
 import { getForYouTeams, getLeaguePages, type ForYouTeams, type LeaguePages } from "@/lib/api";
-import { LEAGUE_DISPLAY_ORDER, displayName, leagueLogoUrl, shortName } from "@/lib/leagues";
+import { LEAGUE_DISPLAY_ORDER, leagueLogoUrl, shortName } from "@/lib/leagues";
 import { leagueWideId } from "@/lib/conferences";
 import { followKey, followedLeagues, parseFollowKey } from "@/lib/refs";
 import { conferencePath, pollPath, teamPath } from "@/lib/routes";
 import { teamFullName } from "@/lib/team-name";
 import { visibleFollowKeys } from "@/lib/news-filter";
-import {
-  SECTION_SIZE,
-  latestStories,
-  transferStories,
-  trendingStories,
-  type NewsStory,
-} from "@/lib/news";
+import { latestStories, transferStories, trendingStories, type NewsStory } from "@/lib/news";
 import type { Team } from "@/lib/types";
 
 const TABS: HeroTab[] = [
@@ -196,9 +190,11 @@ function Heading({
 }) {
   return (
     <div className="flex items-baseline gap-2 px-1 pt-3">
-      <h2 className="flex min-w-0 flex-1 items-center gap-2 type-team-name-em text-text-primary">
+      {/* 20px (Andy, 2026-10-19), up from the list heading's 15; iOS
+          `NewsSectionHeading`. */}
+      <h2 className="flex min-w-0 flex-1 items-center gap-2 type-news-section text-text-primary">
         {logo}
-        {children}
+        <span className="truncate">{children}</span>
       </h2>
       {trailing}
     </div>
@@ -208,10 +204,12 @@ function Heading({
 /**
  * The Leagues page (2026-10-19): the four league pages that were four tabs,
  * stacked on one, in the order the Leagues tab lists them. Each league is a
- * heading with "See more" to its own News tab — the Top 25 for college
- * football, the league-wide conference page for the rest — and its five
- * newest stories as full-width cards; a league with nothing says so in its
- * place rather than vanishing from the order.
+ * heading and one section — the newest story with a photo at full width,
+ * four rows under it, and "See more" to the league's own News tab (the Top
+ * 25 for college football, the league-wide conference page for the rest):
+ * the same shape as a For you team section (Andy, 2026-10-19: "1 featured,
+ * 4 standard, See more"). A league with nothing says so in its place rather
+ * than vanishing from the order.
  */
 function LeaguesPage({ pages }: { pages: LeaguePages["pages"] }) {
   return (
@@ -227,21 +225,7 @@ function LeaguesPage({ pages }: { pages: LeaguePages["pages"] }) {
               : undefined;
         return (
           <div key={league} className="flex flex-col gap-2">
-            <Heading
-              logo={<ConferenceLogo src={leagueLogoUrl(league)} name="" className="h-6 w-6" />}
-              trailing={
-                stories.length > 0 && seeMoreHref ? (
-                  <Link
-                    href={seeMoreHref}
-                    aria-label={`See more ${displayName(league)} stories`}
-                    className="flex shrink-0 items-center gap-1 type-meta text-text-secondary transition-colors hover:text-text-primary"
-                  >
-                    See more
-                    <ChevronRight aria-hidden="true" className="h-3 w-3" />
-                  </Link>
-                ) : undefined
-              }
-            >
+            <Heading logo={<ConferenceLogo src={leagueLogoUrl(league)} name="" className="h-5 w-5" />}>
               {/* "NCAAF", as the Leagues tab and iOS print it; `displayName`
                   is the spoken form. */}
               {shortName(league)}
@@ -249,7 +233,7 @@ function LeaguesPage({ pages }: { pages: LeaguePages["pages"] }) {
             {stories.length === 0 ? (
               <Empty>No {shortName(league)} stories right now.</Empty>
             ) : (
-              <StoryCardStack stories={stories.slice(0, SECTION_SIZE)} priority={index === 0} />
+              <StorySection stories={stories} seeMoreHref={seeMoreHref} priority={index === 0} />
             )}
           </div>
         );

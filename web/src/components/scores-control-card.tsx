@@ -1,8 +1,8 @@
 "use client";
 
 // Everything that scopes the day, in one card at the top of the slate
-// column: the day strip and its calendar, then the Live and Tight toggles
-// and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
+// column: the day strip and its calendar, then the focus menu (All games ·
+// Live · Tight) and the collapse-all (Andy, 2026-09-10, from FotMob, which puts
 // its date nav and its filter row in exactly this container).
 //
 // These three controls used to live in three places — the strip as fixed
@@ -20,6 +20,7 @@
 
 import { DayStrip } from "@/components/day-strip";
 import { ScoresHeaderControls } from "@/components/scores-header";
+import type { SlateFocus } from "@/lib/slate-focus";
 
 interface ScoresControlCardProps {
   days: Date[];
@@ -31,11 +32,9 @@ interface ScoresControlCardProps {
    * the strip, on every day, since the strip is how you get back to it.
    */
   narrowsToNow: boolean;
-  /** The selected day's effective Live and Tight filters, for the pills. */
-  liveOnly: boolean;
-  onToggleLive: () => void;
-  tightOnly: boolean;
-  onToggleTight: () => void;
+  /** The selected day's effective focus, for the chip. */
+  focus: SlateFocus;
+  onSelectFocus: (focus: SlateFocus) => void;
   /**
    * The iOS pinch analog. Null when the day has no sections to act on —
    * an empty slate offers no "collapse all", the way the pinch has nothing
@@ -51,10 +50,8 @@ export function ScoresControlCard({
   onSelectDay,
   onOpenCalendar,
   narrowsToNow,
-  liveOnly,
-  onToggleLive,
-  tightOnly,
-  onToggleTight,
+  focus,
+  onSelectFocus,
   allCollapsed,
   onToggleCollapseAll,
 }: ScoresControlCardProps) {
@@ -71,12 +68,7 @@ export function ScoresControlCard({
         liveOnly={narrowsToNow}
       />
       <div className="flex items-center gap-2 border-t border-divider px-2 py-2">
-        <ScoresHeaderControls
-          liveOnly={liveOnly}
-          onToggleLive={onToggleLive}
-          tightOnly={tightOnly}
-          onToggleTight={onToggleTight}
-        />
+        <ScoresHeaderControls focus={focus} onSelectFocus={onSelectFocus} />
         {onToggleCollapseAll !== null && (
           <button
             type="button"

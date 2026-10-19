@@ -351,7 +351,9 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
         #expect(ui.isShownInNews("nba:2"))
         // The follows For you is built from drop the hidden team.
         let keys: Set<String> = ["nba:18", "nba:2", "nfl:26"]
-        #expect(keys.filter { ui.isShownInNews($0) } == ["nba:2", "nfl:26"])
+        // Sorted: a Set's order is the hash's, and CI's differed from the
+        // Mac's the first time this ran.
+        #expect(keys.filter { ui.isShownInNews($0) }.sorted() == ["nba:2", "nfl:26"])
         // And a relaunch reads it back.
         #expect(!UIStateStore(defaults: defaults).isShownInNews("nba:18"))
         ui.setShownInNews(true, for: "nba:18")

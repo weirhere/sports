@@ -180,6 +180,11 @@ extension Font {
     /// outrank everything beside it on a card a fan reads at arm's length.
     static var activityHero: Font { scaled(22, .semibold, relativeTo: .title3).monospacedDigit() }
     static var teamName: Font { scaled(15, .regular, relativeTo: .subheadline) }
+    /// A News page's section title — a team's name on For you, a league's on
+    /// the Leagues page (Andy, 2026-10-19: up from 15; 24 for an hour, then
+    /// "they should be 20"). Bold, not heavy: it names a run of cards, it
+    /// isn't the page's name.
+    static var newsSectionTitle: Font { scaled(20, .bold, relativeTo: .title3) }
     static var teamNameEmphasis: Font { scaled(15, .semibold, relativeTo: .subheadline) }
     static var meta: Font { scaled(12, .regular, relativeTo: .caption1) }
     static var metaEmphasis: Font { scaled(12, .semibold, relativeTo: .caption1) }

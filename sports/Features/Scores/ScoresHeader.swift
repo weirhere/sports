@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// The chrome row above the day strip: the `Wordmark` left, then the
-/// Live toggle and the calendar button. The Live chip is permanent (Andy,
-/// 2026-08-29): a stable home beats appearing mid-Saturday, and an empty
-/// live day explains itself instead of hiding the toggle.
+/// slate's focus menu (All games · Live · Tight) and the calendar button.
+/// The control is permanent (Andy, 2026-08-29): a stable home beats
+/// appearing mid-Saturday, and an empty live day explains itself instead
+/// of hiding the toggle. One menu chip since 2026-10-19, where the Live
+/// and Tight pills stood: two pills took more of the row than Andy wanted,
+/// and they were already exclusive.
 ///
 /// The calendar joins it inside the same grouped capsule (Andy, 2026-09-06,
 /// from FotMob, which puts its own calendar in exactly this slot). Two
@@ -16,10 +19,8 @@ import SwiftUI
 /// same day. Live is the day's only scope now: "which ranked teams play"
 /// is a question the Leagues tab's poll already answers.
 struct ScoresHeader: View {
-    let liveOnly: Bool
-    var tightOnly: Bool = false
-    let onToggleLive: () -> Void
-    var onToggleTight: () -> Void = {}
+    let focus: SlateFocus
+    let onSelectFocus: (SlateFocus) -> Void
     let onOpenCalendar: () -> Void
     var onOpenSettings: () -> Void = {}
 
@@ -38,8 +39,7 @@ struct ScoresHeader: View {
             // 2026-09-25): the capsule's round ends curve in on the pills,
             // so an even 4 read tight at the sides.
             HStack(spacing: 0) {
-                LiveFilterChip(liveOnly: liveOnly, onToggle: onToggleLive)
-                TightFilterChip(tightOnly: tightOnly, onToggle: onToggleTight)
+                SlateFocusChip(focus: focus, onSelect: onSelectFocus)
                 calendarButton
             }
             .padding(.vertical, Spacing.xs)
@@ -104,8 +104,9 @@ struct ScoresHeader: View {
 
 #Preview {
     VStack(spacing: Spacing.lg) {
-        ScoresHeader(liveOnly: false, onToggleLive: {}, onOpenCalendar: {})
-        ScoresHeader(liveOnly: true, onToggleLive: {}, onOpenCalendar: {})
+        ScoresHeader(focus: .all, onSelectFocus: { _ in }, onOpenCalendar: {})
+        ScoresHeader(focus: .live, onSelectFocus: { _ in }, onOpenCalendar: {})
+        ScoresHeader(focus: .tight, onSelectFocus: { _ in }, onOpenCalendar: {})
     }
     .background(Color.bgPrimary)
 }

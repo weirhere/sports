@@ -8,7 +8,7 @@ import SwiftUI
 /// Four pages (Andy, 2026-10-19): **For you**, Trending and a section per
 /// followed team you've kept on it; **Latest**, every league newest first;
 /// **Transfers**, the roster moves among them; and **Leagues**, each
-/// league's own stories in the Leagues tab's order. The last three are the
+/// league's own section in the Leagues tab's order. The last three are the
 /// same four feeds read three ways, and `NewsFeedStore` fetches them once.
 struct NewsScreen: View {
     @Environment(FollowingStore.self) private var following
@@ -159,7 +159,7 @@ struct NewsScreen: View {
         let sections = teamSections
         return LazyVStack(spacing: Spacing.sm) {
             if !trending.isEmpty {
-                ListSectionHeading(title: "Trending")
+                NewsSectionHeading(title: "Trending")
                 StorySection(stories: trending)
             }
             ForEach(sections, id: \.team.followKey) { section in

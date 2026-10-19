@@ -304,10 +304,9 @@ struct ScoresScreen: View {
                 // the chip says so (Andy, 2026-09-12). Keyed to the selected
                 // day rather than `shownDay` because the header moves with
                 // the thumb, not with the slate sliding out behind it.
-                ScoresHeader(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
-                             tightOnly: uiState.tightOnly(on: scoreboards.selectedDay),
-                             onToggleLive: { toggleLive() },
-                             onToggleTight: { toggleTight() },
+                ScoresHeader(focus: SlateFocus(liveOnly: uiState.liveOnly(on: scoreboards.selectedDay),
+                                               tightOnly: uiState.tightOnly(on: scoreboards.selectedDay)),
+                             onSelectFocus: { select(focus: $0) },
                              onOpenCalendar: { showsCalendar = true },
                              onOpenSettings: { showsSettings = true })
                 DayStrip(days: scoreboards.days(),
@@ -502,6 +501,24 @@ struct ScoresScreen: View {
     /// always a request to turn it on — including off today, where the
     /// filter is suspended rather than forgotten (Andy, 2026-09-12). That
     /// tap may change no state at all: the trip home is the whole action.
+    /// The focus menu's choice (2026-10-19), in the pills' terms: Live and
+    /// Tight go through their toggles, so choosing one off today is still
+    /// the trip home; All games clears whichever is on and stays put.
+    private func select(focus: SlateFocus) {
+        switch focus {
+        case .live:
+            if !uiState.liveOnly(on: scoreboards.selectedDay) { toggleLive() }
+        case .tight:
+            if !uiState.tightOnly(on: scoreboards.selectedDay) { toggleTight() }
+        case .all:
+            liveCollapse = scoreboards.isOnToday
+            withAnimation(Self.filterAnimation) {
+                uiState.liveOnly = false
+                uiState.tightOnly = false
+            }
+        }
+    }
+
     private func toggleLive() {
         // Only on today does the filter change the slate without changing
         // the day; off today the tap is a trip home and slides like one.

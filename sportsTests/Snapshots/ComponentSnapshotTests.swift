@@ -128,6 +128,39 @@ struct ComponentSnapshotTests {
         assert(stack, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("newsLeagueSection")), arguments: Variant.all)
+    func newsLeagueSection(_ variant: Variant) {
+        // One league on the News tab's Leagues page (2026-10-19): the 20pt
+        // heading, then a section card — featured story, rows, See more.
+        // No photos in the fixtures, so the featured card is its headline,
+        // and no mark on the heading: a league's logo is a real URL, and
+        // the first two recordings disagreed on whether it had loaded.
+        let section = VStack(spacing: Spacing.sm) {
+            NewsLeagueSection(league: variant.sport.league,
+                              stories: SnapshotFixtures.stories(variant.sport),
+                              showsLogo: false)
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        assert(section, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("scoresHeader")), arguments: Variant.all)
+    func scoresHeader(_ variant: Variant) {
+        // The Scores masthead with the focus chip (2026-10-19), one state per
+        // sport row of the matrix: football All games, basketball Live,
+        // hockey Tight — the three fills the chip can wear.
+        let focus: SlateFocus = switch variant.sport {
+        case .football: .all
+        case .basketball: .live
+        case .hockey: .tight
+        }
+        let header = ScoresHeader(focus: focus, onSelectFocus: { _ in }, onOpenCalendar: {})
+            .padding(.bottom, Spacing.sm)
+            .background(Color.bgPrimary)
+        assert(header, variant)
+    }
+
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

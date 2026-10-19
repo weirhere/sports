@@ -33,6 +33,7 @@
   --live-tint: #e3f5e8;
   --live-edge: rgb(0 133 56 / 0.28);
   --shadow-card: 0 2px 8px rgb(0 0 0 / 0.06);
+  --shadow-field: 0 2px 10px rgb(0 0 0 / 0.10); /* a search field on the page's own ground */
 
   /* The Gamecast surfaces' paint — the color budget's fourth exception
      (iOS `SurfaceColors`, 2026-09-27). Turf, maple and ice, drawn only
@@ -96,6 +97,7 @@
   --live-tint: #0e2a18;
   --live-edge: rgb(51 209 102 / 0.38);
   --shadow-card: none; /* dark elevation is luminance, not shadow */
+  --shadow-field: none;
 }
 
 @theme inline {
@@ -143,6 +145,7 @@
   --color-destructive: var(--rank-down);
 
   --shadow-card: var(--shadow-card);
+  --shadow-field: var(--shadow-field);
 }
 
 @layer base {
@@ -246,6 +249,24 @@
   font-size: 21px;
   font-weight: 800;
   line-height: 1.2;
+}
+/* A root tab's name — News, Leagues, Teams, Search — at 28 (Andy,
+   2026-10-19; 32 for an hour first, "they need to be 28"). The Games
+   wordmark keeps `type-page-title`: the page names grew, the brand didn't. */
+@utility type-page-heading {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+/* A News page's section title — a team's name on For you, a league's on
+   the Leagues page (Andy, 2026-10-19, up from 15; 24 for an hour first).
+   Bold, not heavy: it names a run of cards, it isn't the page's name. */
+@utility type-news-section {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 @utility type-chip {
   font-size: 14px;
