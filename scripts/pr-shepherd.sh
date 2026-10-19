@@ -32,7 +32,8 @@
 #   - `claude` runs with `--permission-mode dontAsk` and an explicit allow
 #     list; `git push`, `gh`, and anything destructive are disallowed tools
 #   - a `needs-human` label stops the shepherd from touching that PR again
-#     until a person removes it
+#     until a person removes it; so do a draft, a `no-shepherd` label, and a
+#     title containing "do not merge", "DNM", "WIP" or "[skip shepherd]"
 #
 # Usage:
 #   scripts/pr-shepherd.sh [--dry-run] [--pr <number>] [--author <login>]
@@ -42,6 +43,7 @@
 #   ANTHROPIC_API_KEY         for claude -p (or a logged-in claude locally)
 #   SHEPHERD_AUTHOR           PR author to shepherd (default: the gh user)
 #   SHEPHERD_LABEL            default `needs-human`
+#   SHEPHERD_OPT_OUT_LABEL    default `no-shepherd`
 #   SHEPHERD_MODEL            model for claude -p (default: claude's default)
 #   SHEPHERD_MAX_BUDGET_USD   per fix attempt (default 5)
 #   SHEPHERD_REPO             owner/name (default: from the checkout)
@@ -84,6 +86,13 @@ DOCS_CONFLICT_RE='^docs/(decisions\.md|web-parity\.md|changes/[^/]+\.md)$'
 FIX_ALLOWED_RE='^(sportsTests/|sportsUITests/|web/src/.*\.test\.(ts|tsx|js|jsx)$|web/.*/__snapshots__/|web/.*\.snap$|web/src/test/)'
 
 MARK='<!-- pr-shepherd -->'
+
+# Ways to tell the shepherd to leave a PR alone, short of a draft: a label,
+# or a title that says so. The first dry run (2026-10-19) found a sibling
+# session's "Dry run of the /ship skill (do not merge)" PR and would have
+# turned auto-merge on for it.
+OPT_OUT_LABEL="${SHEPHERD_OPT_OUT_LABEL:-no-shepherd}"
+OPT_OUT_TITLE_RE='do not merge|don.t merge|\bDNM\b|\bWIP\b|\[skip shepherd\]'
 
 cleanup() {
   for wt in "$WORK"/wt-*; do
@@ -423,6 +432,8 @@ for pr in $prs; do
   say "  branch $branch @ ${sha:0:7} · mergeable=$mergeable state=$state auto-merge=$auto labels=[${labels}]"
   if [ "$draft" = "true" ]; then say "  · draft — skipped"; continue; fi
   if printf '%s' ",$labels," | grep -q ",$LABEL,"; then say "  · carries '$LABEL' — waiting on a person, skipped"; continue; fi
+  if printf '%s' ",$labels," | grep -q ",$OPT_OUT_LABEL,"; then say "  · carries '$OPT_OUT_LABEL' — skipped"; continue; fi
+  if printf '%s' "$title" | grep -qiE "$OPT_OUT_TITLE_RE"; then say "  · title says not to — skipped"; continue; fi
 
   if [ "$mergeable" = "CONFLICTING" ]; then
     handle_conflicts "$pr" "$branch"
