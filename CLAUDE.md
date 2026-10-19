@@ -111,6 +111,13 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 - When Andy says "commit", commit **all** related uncommitted changes on the current branch, including earlier edits from this session and his own work. Don't commit only the latest hunk, and don't treat his uncommitted work as separate, unless he asks for a scoped commit.
 - Before committing, run `git status` and read the branch it names: Andy switches branches alongside the session, so the branch from the start of the conversation may not be the one checked out now (a 2026-10-18 commit meant for a feature branch landed on main this way). If the work is already committed, say so and stop.
 
+## PRs & CI
+
+- Default PR flow: open the PR, enable auto-merge (`gh pr merge --auto --squash`), and monitor CI.
+- Conflicts with main in `docs/decisions.md` and `docs/web-parity.md` are expected: both are append-only tables that every PR adds a row to. Resolve them by merging main and keeping both sides' rows.
+- Don't block on a slow main-branch baseline UI test run before opening a PR. Open it and note any pre-existing failures.
+- Don't chase pre-existing flaky test failures unless asked. Show that the test fails on main too, and move on.
+
 ## Decisions log
 
 **Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
