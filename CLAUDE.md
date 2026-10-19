@@ -118,6 +118,11 @@ Because the data is live, assertions must not encode calendar facts. Don't wait 
 - Don't block on a slow main-branch baseline UI test run before opening a PR. Open it and note any pre-existing failures.
 - Don't chase pre-existing flaky test failures unless asked. Show that the test fails on main too, and move on.
 
+## Cross-platform parity
+
+- This repo ships iOS (SwiftUI) and web (TypeScript, under `web/`). For any UI or behavior change, check whether the web app needs the same change, and say so even when you don't implement it. The ledger for this is `docs/web-parity.md`; `scripts/parity-status.sh` reports what's pending.
+- For SF Symbols and icons, always use the real asset (`football.fill`, `basketball.fill`, `hockey.puck.fill`). Never hand-draw a stand-in.
+
 ## Decisions log
 
 **Lives in [`docs/decisions.md`](docs/decisions.md)** — 311 rows, oldest first. Moved
