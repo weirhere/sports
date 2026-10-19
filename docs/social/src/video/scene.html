@@ -180,7 +180,7 @@
   const L = MODE === 'h' ? {
     W: 1920, H: 1080, pw: 600, px: 380, py: -120,
     glow: ['38%', '40%'],
-    copyX: 1290, copyY: 430, capSize: 48, capWidth: 560, icon: 112, name: 74, line: 32, plat: 20,
+    copyX: 1360, copyY: 430, capSize: 48, capWidth: 520, icon: 112, name: 74, line: 32, plat: 20,
     // Device attitude: [t, rotateX, rotateY, rotateZ]. Steep and diagonal
     // while the rows build (Carlos's macro), easing to a mild Cole-like tilt
     // for the title card.
@@ -192,12 +192,14 @@
       [14.0, 11, 23, -3.5],
     ],
     // Camera: [t, scale, focusX, focusY] in scene coordinates.
+    // Focus x keeps the phone's near corner at least ~200px clear of the
+    // copy column while a caption is up.
     cam: [
-      [0.0, 1.55, 760, 420],
-      [6.0, 1.28, 740, 500],
-      [10.2, 1.22, 740, 520],
-      [11.9, 1.00, 960, 540],
-      [14.0, 0.985, 960, 540],
+      [0.0, 1.55, 870, 420],
+      [6.0, 1.28, 840, 500],
+      [10.2, 1.22, 830, 520],
+      [11.9, 1.00, 990, 540],
+      [14.0, 0.985, 990, 540],
     ],
   } : {
     W: 1080, H: 1920, pw: 820, px: 130, py: 640,
@@ -210,12 +212,13 @@
       [11.9, 10, 18, -3],
       [14.0, 9, 19, -2.5],
     ],
+    // Focus y keeps the phone's top corner ~120px under the caption band.
     cam: [
-      [0.0, 1.45, 500, 1330],
-      [6.0, 1.18, 540, 1260],
-      [10.2, 1.12, 540, 1280],
-      [11.9, 0.90, 540, 830],
-      [14.0, 0.89, 540, 830],
+      [0.0, 1.45, 500, 1245],
+      [6.0, 1.18, 540, 1165],
+      [10.2, 1.12, 540, 1185],
+      [11.9, 0.90, 540, 800],
+      [14.0, 0.89, 540, 800],
     ],
   };
 
