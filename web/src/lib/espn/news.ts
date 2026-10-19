@@ -139,6 +139,10 @@ export function newsStory(dto: EspnNewsArticle, league: League): NewsStory | und
     teams.push({ id: teamId, name: category.description ?? "" });
   }
   const eventId = idString(categories.find((category) => category.type === "event")?.eventId);
+  const topics = categories
+    .filter((category) => category.type === "topic")
+    .map((category) => category.description?.trim().toLowerCase())
+    .filter((topic): topic is string => !!topic);
   const body = dto.story ? storyBlocks(dto.story) : [];
   // AP deks open with the same stray dash the dateline carries.
   const dek = dto.description?.trim().replace(/^[—–\s]+/, "");
@@ -155,6 +159,7 @@ export function newsStory(dto: EspnNewsArticle, league: League): NewsStory | und
     teams,
     body: body.length > 0 ? body : undefined,
     imageUrl: storyImage(dto.images),
+    ...(topics.length > 0 ? { topics } : {}),
   };
 }
 
