@@ -18,18 +18,18 @@ struct SlateFocusChip: View {
     var body: some View {
         Menu {
             // Buttons, not a Picker: a picker row is one line, and each
-            // choice here carries its description under its name. The check
-            // the picker would have drawn is the row's icon.
+            // choice here carries its description under its name. Two bare
+            // `Text`s and an `Image` is the form a menu reads as title,
+            // subtitle and icon — wrapped in a `Label` the subtitle was
+            // dropped (iOS 26.5). The check the picker would have drawn is
+            // the row's icon.
             ForEach(SlateFocus.allCases) { choice in
                 Button {
                     onSelect(choice)
                 } label: {
-                    Label {
-                        Text(choice.title)
-                        Text(choice.detail)
-                    } icon: {
-                        if choice == focus { Image(systemName: "checkmark") }
-                    }
+                    Text(choice.title)
+                    Text(choice.detail)
+                    if choice == focus { Image(systemName: "checkmark") }
                 }
                 .accessibilityAddTraits(choice == focus ? .isSelected : [])
             }
