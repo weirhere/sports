@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="social.css">
+<script>if (location.search.indexOf("69") >= 0) document.documentElement.classList.add("as69");</script>
+<style>
+  .stage::before {
+    background:
+      radial-gradient(100% 52% at 50% 74%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.035) 36%, rgba(0,0,0,0) 70%),
+      radial-gradient(80% 30% at 50% 8%, rgba(255,255,255,0.055) 0%, rgba(0,0,0,0) 62%);
+  }
+  .stage::after {
+    -webkit-mask-image: radial-gradient(72% 40% at 50% 66%, #000 0%, rgba(0,0,0,0) 80%);
+    mask-image: radial-gradient(72% 40% at 50% 66%, #000 0%, rgba(0,0,0,0) 80%);
+  }
+
+  /* The hidden game's header: marks, the word Live, records, and the
+     Reveal score row — source y 300-830 of 12-hide-scores-page. */
+  .crop.follow {
+    width: 880px; height: 338px;
+    left: 100px; top: 800px;
+    z-index: 2;
+  }
+  .crop.follow img { width: 880px; left: 0; top: -215px; }
+
+  /* The Following card with both rows hidden, source y 530-1310. */
+  .crop.section {
+    width: 880px; height: 500px;
+    left: 100px; top: 1210px;
+    z-index: 3;
+  }
+  .crop.section img { width: 880px; left: 0; top: -353px; }
+</style>
+<style>
+  /* App Store 1284x2778 reflow. */
+  .stage { height: 2337px; zoom: 1.18889; }
+  .stage9 .head { top: 430px; }
+  .crop.follow { width: 980px; height: 376px; left: 50px; top: 960px; }
+  .crop.follow img { width: 980px; left: 0; top: -240px; }
+  .crop.section { width: 980px; height: 556px; left: 50px; top: 1410px; }
+  .crop.section img { width: 980px; left: 0; top: -393px; }
+</style>
+</head>
+<body>
+<div class="stage stage9">
+  <div class="content">
+    <div class="head">
+      <div class="brand">
+        <img src="../../../sports/Assets.xcassets/AppIcon.appiconset/AppIcon.png">
+        <div class="wordmark">StatSide</div>
+      </div>
+      <div class="kicker">Spoiler mode</div>
+      <div class="headline">Watching later?<br>Hide the score.</div>
+      <div class="sub">Your teams’ games show Live or Final and nothing more until you tap to reveal. Or hide every game, if you want the whole slate quiet.</div>
+    </div>
+
+    <div class="crop follow"><img src="../../appstore/screenshots/12-hide-scores-page.png"></div>
+    <div class="crop section"><img src="../../appstore/screenshots/11-hide-scores.png"></div>
+  </div>
+</div>
+</body>
+</html>
