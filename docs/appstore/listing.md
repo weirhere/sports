@@ -30,6 +30,9 @@ Alternates:
 - `Live scores for your teams` (26) — says what the app does, not what it
   covers
 
+Audited at 2.9.0 and unchanged. Spoiler mode, the Roster tab and the News
+pages are new surfaces for the same three sports.
+
 Audited at 2.8.0 and unchanged. Slate grouping and the header color are
 ways of showing the same sports, not new ones.
 
@@ -67,6 +70,42 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 2.9.0 (build 24)
+
+> • Hide scores until you've watched. Turn it on in Settings and your teams'
+>   games show only Live or Final on the Games tab, with Tap to reveal under
+>   it. The game page opens on the preview with a Reveal score button, and
+>   nothing else on it gives the result away until you tap. A hidden final
+>   stays hidden for a week. Choose My teams or All games. Team pages and
+>   standings still show the result for now.
+> • Who's playing. Every game page has a Roster tab: the starters drawn on
+>   the field, court or rink (football flips between each side's offense),
+>   the coaches, the bench grouped by unit, who's inactive and who's hurt,
+>   away on the left and home on the right. Prefer a list? There's a switch
+>   on the Starters row.
+> • The first game-page tab is Preview before the game and Facts once it's on
+>   or over. Same cards, honest name.
+> • News has four pages: For you, Latest, Transfers and Leagues. Transfers is
+>   just the roster moves. Leagues lists every league's newest stories in one
+>   scroll. For you has a filter so you can pick which of your teams show up
+>   there.
+> • Live and Tight are one menu on the Games header: All games, Live or Tight.
+> • Group games by moved out of Settings and onto each league's heading on
+>   the Leagues tab, next to the tables it changes.
+> • Bigger page titles on News, Leagues, Teams and Search, and the Leagues and
+>   Search fields sit on their own ground.
+> • If the scores source asks the app to slow down, it waits it out instead
+>   of retrying, so a brief limit doesn't turn into a long one.
+
+2.8.0 (23) was archived 2026-10-11 and had not been uploaded at that cut. If
+it never went up, paste 2.8.0's bullets under these, minus its first one:
+Group games by no longer lives in Settings. Three of the seven iOS commits
+since the 2.8.0 bump are groundwork (the snapshot baselines and two
+decode-only reads) and have no line here. The spoiler-mode line says what it
+doesn't cover yet on purpose: team pages, standings, rankings, news and the
+widget are E30's second half. Nothing here names a league (§ 4.1(a)
+rejection).
 
 ### 2.8.0 (build 23)
 
@@ -469,6 +508,14 @@ history" with the concrete "30 minutes" — a vaguer hook for a better-sounding
 one. If it wants to carry H2H and trophies later, it can: this is the one
 field that changes without a review.
 
+Audited at 2.9.0 and left alone. Every clause is still true. A candidate
+worth writing down, since Hide scores is the first feature in a while that
+a browsing reader would recognise from the TV apps: *"Four leagues, one
+screen. Follow your football, basketball and hockey teams, college and pro,
+hide the scores until you've watched, and get a reminder before they play.
+No ads."* (164). It spends the "30 minutes" on it, which is the same trade
+every candidate since 2.3.0 has lost on. No review needed if Andy wants it.
+
 Audited at 2.8.0 and left alone. Nothing 2.8.0 changes is in the line.
 
 Audited at 2.7.0 and left alone. Every clause is still true, and the bell
@@ -508,15 +555,20 @@ leagues ever stop being the thing worth saying first; no review needed.
 >   or division
 > • Live games get a pulsing dot, heavier type on the score, and possession
 >   where the sport has it
-> • One tap filters to live games, or to the tight ones: close late, or the
->   underdog ahead
+> • A focus menu narrows the day to live games, or to the tight ones: live
+>   and close, late in the game, or an upset brewing
+> • Hide scores until you've watched. Your teams' games show Live or Final
+>   and nothing more until you tap to reveal, or hide every game if you want
+>   the whole slate quiet
 >
 > YOUR TEAMS, EVERYWHERE
 > • A Home Screen and Lock Screen widget with your teams' live score or next
 >   game, from every league you follow
 > • Reminders 30 minutes before your teams play, switched on team by team
-> • News from the teams you follow, with photos, read right in the app — and
->   a News tab on every team, game, player and league page
+> • News from the teams you follow, with photos, read right in the app, plus
+>   the latest from every league, a page of league-by-league headlines and a
+>   Transfers page for the roster moves, and a News tab on every team, game,
+>   player and league page
 > • Ask Siri "What's my next game?" — or share a score straight from any game
 > • Long-press any game to follow a team or share the score
 >
@@ -524,9 +576,13 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • The college football Top 25 polls, with movement arrows
 > • Every college conference, and every pro conference and division — each
 >   table in its own league's terms
-> • Game pages: line score, box score, scoring plays, team stats, leaders,
->   win probability, the head-to-head series, and the plays themselves —
->   drives for football, periods for basketball and hockey
+> • Game pages: a preview before the game and the facts after, line score,
+>   box score, scoring plays, team stats, leaders, win probability, the
+>   head-to-head series, and the plays themselves — drives for football,
+>   periods for basketball and hockey
+> • Who's playing, on every game page: the starters drawn on the field, court
+>   or rink, the coaches, the bench, the inactives and the injured, away on
+>   the left and home on the right
 > • Team pages: the record, season stats and leaders, the full season, bye
 >   weeks, the roster, the home ground, and the trophies the team has won
 > • Player pages: this season's numbers, every game, and the career, reached
@@ -558,6 +614,16 @@ and pro conference and division, where it used to list the FBS, FCS, AFC,
 NFC, NBA and NHL), and the disclaimer. The disclaimer used to name the
 NFL, NBA, NHL and NCAA; it still disclaims every one of them, it just
 doesn't print their marks to do it. Features are untouched.
+
+Changed for 2.9.0, in four places. The live-filter bullet says "a focus
+menu" instead of "one tap", because Live and Tight are one menu chip now,
+and borrows Andy's wording for Tight. A Hide scores bullet follows it (the
+release's headline, and the one feature a reader deciding whether to install
+can't infer from "scores"). The News bullet names Latest, the league pages
+and Transfers. Game pages name Preview / Facts, and a Who's playing bullet
+follows them for the Roster tab. The Group games by control moving from
+Settings to the Leagues tab changes nothing here: the bullet never said where
+the control was.
 
 Changed for 2.8.0, in one place: the "every league stacked" bullet. It
 described a fixed split (college by conference, each pro league one
@@ -625,6 +691,11 @@ data" paragraph is unchanged, because nothing in this release collects any.
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
 `college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops,news` (100)
+
+Audited at 2.9.0 and unchanged. `hide scores` (11 with the comma) is the
+one 2.9.0 term people type, since the TV apps call it that, and it would
+have to push out two terms. `roster` (7) and `lineup` (7) are 2.9.0's
+other words; neither fits either. Nothing here stopped being true.
 
 Audited at 2.8.0 and unchanged. At 100 of 100 a term in has to push one
 out, and nothing 2.8.0 adds is something people search for.
@@ -858,6 +929,20 @@ Resolution Center reply).
 exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
 `docs/social/README.md` § Regenerating before upload if the glyphs need to
 match frames 02–07 exactly.
+
+### 2.9.0: carried forward an eighth time
+
+Nothing in the frames became false, and the chrome under three of them
+moved: `01-hero` and `03-saturdays` show the Games header with separate
+Live and Tight chips, which are one focus menu chip now, and `06-boxscore`
+shows the game page's tab row with its first tab still named Summary (it
+reads Facts on a played game). 2.9.0's headline appears in no frame: a
+hidden row with "Tap to reveal", the Roster tab's starters on the field, and
+the News Transfers page are all unshot. Same constraints as before for any
+reshoot (`-screenshot.neutralLogos YES`, no league names in a caption), plus
+one new one: don't shoot a frame with Hide scores on unless the frame is
+about it, since a slate of "Tap to reveal" reads as broken. The marketing
+PNGs in this folder are still the real-logo set, not what cleared 4.1(a).
 
 ### 2.8.0: carried forward a seventh time
 
@@ -1120,6 +1205,28 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 2.9.0: one paste-in paragraph, and a new timing line.**
+2.9.0 adds no entitlement, account, data collection or web view: the Roster
+tab, the News pages and spoiler mode are screens and a Settings switch. One
+feature is worth saying before a reviewer trips on it, because with it on a
+score column reading "Tap to reveal" looks like missing data. It goes in the
+submission after the demo paragraph as:
+
+> Settings (the gear at the top of the Games tab) has a "Hide scores"
+> switch, off by default, for fans who record a game and watch it later.
+> When on, games involving the user's followed teams (or every game, by
+> choice) show only "Live" or "Final" with a "Tap to reveal" control in
+> place of the score, and the game page opens on its Preview tab with a
+> "Reveal score" button. Tapping either shows the score in place. Nothing is
+> hidden unless the switch is on.
+
+Timing line for the submission, if Andy wants one: *"Hockey is in season;
+the basketball regular season opens in the last ten days of October, so its
+slates may show preseason games or none."* Demo paths for the release: any
+game page → Roster (an in-season pro game shows the starters on the field);
+News → Transfers; Games → the gear → Hide scores, then back to Games with a
+team followed.
 
 **Notes audit at 2.8.0: no change to the paste-in block; the timing note
 above is stale.** 2.8.0 adds no entitlement, account, data collection or
