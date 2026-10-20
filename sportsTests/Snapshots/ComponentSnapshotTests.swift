@@ -123,8 +123,10 @@ struct ComponentSnapshotTests {
 
     @Test(.enabled(if: snapshotSelected("gameHeaderConcealed")), arguments: Variant.all)
     func gameHeaderConcealed(_ variant: Variant) {
-        // Spoiler mode (E30): the status word at the logos' height with
-        // the Reveal capsule under it; records rewound; no dot, no score.
+        // Spoiler mode (E30): the status word at the logos' height, the
+        // live dot inline before it while the game is on, and the Reveal
+        // capsule a full-width row under the records (283); records
+        // rewound; no score.
         let hidden = SnapshotFixtures.concealedGame(variant.sport).concealed()
         let header = GameHeader(concealed: hidden, onReveal: {})
             .frame(maxWidth: .infinity)
