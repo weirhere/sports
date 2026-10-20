@@ -112,6 +112,53 @@ private let liveQ3 = GameStatus.live(displayClock: "5:24", period: 3, detail: ni
                                        summary(status: liveQ3)))
     }
 
+    // MARK: - Spoiler mode (E30)
+
+    /// The merge as one `Game`, so the guard can be asked about the page
+    /// rather than the pushed row: a `.pre` row whose summary has gone
+    /// live is the page that has to hide.
+    @Test func thePageConcealsFromTheMergedStatusNotThePushedRow() {
+        let pushedPre = game(status: .pre(detail: nil))
+        let guardValue = SpoilerGuard(isEnabled: true,
+                                      followedKeys: [pushedPre.home.team.followKey],
+                                      revealedKeys: [])
+        #expect(!guardValue.conceals(pushedPre))
+        #expect(guardValue.conceals(GameHeaderState.merged(pushedPre, summary(status: liveQ3))))
+    }
+
+    @Test func theConcealedGameCarriesTheSummarysStatusAndNoScore() {
+        let live = game(status: liveQ3)
+        let hidden = GameHeaderState.concealedGame(live, summary(status: .final(detail: "Final/OT")))
+        guard case .final(let detail) = hidden.status else {
+            Issue.record("the summary's final should win, then be stripped")
+            return
+        }
+        #expect(detail == nil)
+        #expect(hidden.home.score == nil && hidden.away.score == nil)
+        #expect(hidden.home.winner == nil && hidden.away.winner == nil)
+        #expect(hidden.id == live.id && hidden.routeKey == live.routeKey)
+    }
+
+    @Test func aConcealedPageIsAPreviewWhateverTheClockSays() {
+        let live = game(status: liveQ3)
+        #expect(GameHeaderState.factsTabTitle(live, nil) == "Facts")
+        #expect(GameHeaderState.factsTabTitle(live, nil, concealed: true) == "Preview")
+        #expect(GameHeaderState.factsTabTitle(live, summary(status: .final(detail: "Final")),
+                                              concealed: true) == "Preview")
+        #expect(GameHeaderState.factsTabTitle(live, nil, concealed: false) == "Facts")
+    }
+
+    /// The bar's scoreboard for a concealed game is its status word alone:
+    /// `CompactGameHeader`'s own `.status` case, reached because the
+    /// concealed game's scores are nil.
+    @Test func theCompactHeaderOfAConcealedGameIsItsStatusWord() {
+        let hiddenFinal = GameHeaderState.concealedGame(game(status: liveQ3),
+                                                        summary(status: .final(detail: "Final/OT")))
+        #expect(CompactGameHeader(game: hiddenFinal, summary: nil).middle == .status("Final"))
+        let hiddenLive = GameHeaderState.concealedGame(game(status: liveQ3), nil)
+        #expect(CompactGameHeader(game: hiddenLive, summary: nil).middle == .status("Live"))
+    }
+
     /// The detail header's pre-game split: time in the headline slot, date
     /// beneath it, so the two never need an "at" joining them.
     @Test func kickoffSplitsTimeFromDate() {

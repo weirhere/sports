@@ -30,17 +30,43 @@ struct GameHeader: View {
     let broadcast: String?
     let possessionTeamId: String?
     let glyph: String
+    /// Spoiler mode's way out (E30): set, the header is concealed — the
+    /// Reveal capsule is a full-width row of its own under the records
+    /// (2026-10-19, Andy's call from the first installed build: in the
+    /// middle column it had a third of the header and wrapped on every
+    /// device), and a live dot sits inline before the status word rather
+    /// than above a score there isn't. Nil on every header that shows
+    /// its score.
+    var onReveal: (() -> Void)? = nil
+
+    private var concealed: Bool { onReveal != nil }
 
     private static let logoSize: CGFloat = 44
 
     var body: some View {
+        VStack(spacing: Spacing.sm) {
+            matchupRow
+            // Outside the status element, so VoiceOver can reach it: the
+            // status is one spoken sentence, the capsule is a control.
+            if let onReveal {
+                RevealScoreButton(action: onReveal)
+            }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.lg)
+    }
+
+    /// Both marks with the headline between them: the score, the kickoff,
+    /// or the bare status word.
+    private var matchupRow: some View {
         HStack(alignment: .top, spacing: Spacing.lg) {
             headerSide(away, outerEdge: .leading)
             VStack(spacing: Spacing.xs) {
                 // The merge, not the pushed snapshot: `game` is frozen at
                 // push, so a game that ends while its detail is open would
-                // keep a pulsing dot above the word "Final".
-                if isLive { LiveDot() }
+                // keep a pulsing dot above the word "Final". Concealed, the
+                // dot moves inline with the word instead (below).
+                if isLive && !concealed { LiveDot() }
                 // With scores in play the matchup's number is the page's
                 // headline: one big centered score between the logos
                 // (FotMob's full-time layout), status demoted beneath it.
@@ -64,16 +90,24 @@ struct GameHeader: View {
                             .multilineTextAlignment(.center)
                     }
                 } else {
-                    Text(statusLine)
-                        .font(.metaEmphasis)
-                        .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
-                        .multilineTextAlignment(.center)
-                        // With no score and no kickoff ("Postponed") the
-                        // status is all the middle has, and it centers on
-                        // the logos rather than hanging off the top of the
-                        // row. A frame rather than a padding so it stays
-                        // centered at every text size.
-                        .frame(minHeight: hasScoreLine ? nil : Self.logoSize)
+                    HStack(spacing: Spacing.xs) {
+                        // A hidden live game keeps its dot (283): the word
+                        // says live, and the dot is how every other live
+                        // surface says it, so leaving it off made the
+                        // hidden header the one live thing that didn't
+                        // look live.
+                        if isLive && concealed { LiveDot() }
+                        Text(statusLine)
+                            .font(.metaEmphasis)
+                            .foregroundStyle(showsScores ? .textSecondary : .textPrimary)
+                            .multilineTextAlignment(.center)
+                    }
+                    // With no score and no kickoff ("Postponed") the
+                    // status is all the middle has, and it centers on
+                    // the logos rather than hanging off the top of the
+                    // row. A frame rather than a padding so it stays
+                    // centered at every text size.
+                    .frame(minHeight: hasScoreLine ? nil : Self.logoSize)
                 }
                 // Live is the one state with no other network surface —
                 // pre-game has the info card, finals have nothing left to
@@ -86,17 +120,15 @@ struct GameHeader: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, showsScores ? 0 : Spacing.sm)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 ([statusSpoken]
                     + (broadcast.map { ["on \($0)"] } ?? []))
                     .joined(separator: ", "))
+            .frame(maxWidth: .infinity)
+            .padding(.top, showsScores ? 0 : Spacing.sm)
             headerSide(home, outerEdge: .trailing)
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.lg)
     }
 
     /// The centered "24 – 17", semibold and in ink in every state (Andy's
@@ -208,6 +240,31 @@ extension GameHeader {
                   broadcast: (isLive || kickoff != nil) ? game.broadcast : nil,
                   possessionTeamId: GameHeaderState.possessionTeamId(game, summary),
                   glyph: game.home.team.league.fallbackGlyph)
+    }
+}
+
+extension GameHeader {
+    /// The concealed header (E30): both marks with their records rewound,
+    /// the one word of status at the logos' height — with the live dot
+    /// inline before it while the game is on — and the Reveal capsule as
+    /// a full-width row under the records. Built from the
+    /// merged-and-concealed game (`GameHeaderState.concealedGame`), so
+    /// there is nothing in it to leak: the dot says the game is on, which
+    /// the word already does, and nothing more. (Part one kept the dot off
+    /// a hidden page; 283 put it back — see `docs/changes/283.md`.)
+    init(concealed game: Game, onReveal: @escaping () -> Void) {
+        let status = game.status.isFinal ? "Final" : "Live"
+        self.init(away: (game.away.team, nil, game.away.record, nil),
+                  home: (game.home.team, nil, game.home.record, nil),
+                  isLive: !game.status.isFinal,
+                  showsScores: false,
+                  kickoff: nil,
+                  statusLine: status,
+                  statusSpoken: "\(status), score hidden",
+                  broadcast: nil,
+                  possessionTeamId: nil,
+                  glyph: game.home.team.league.fallbackGlyph,
+                  onReveal: onReveal)
     }
 }
 

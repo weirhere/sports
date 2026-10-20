@@ -34,6 +34,23 @@ struct GameRow: View {
     /// so an inter-conference game says which side the section is about
     /// (2026-09-26). Nil everywhere else.
     var sectionConference: ConferenceID? = nil
+    /// Spoiler mode's in-place reveal (E30, 2026-10-19). Set by a caller
+    /// that can reveal this game where it sits — `SectionGameRow` — and
+    /// nil everywhere else, where the row's tap already opens the game
+    /// page and its own Reveal button. Drawn only while concealed.
+    var onReveal: (() -> Void)? = nil
+
+    @Environment(\.spoilerGuard) private var spoilerGuard
+
+    /// Whether this row hides its result (E30). The row reads the rule
+    /// itself, so none of its seven callers can forget to.
+    private var isConcealed: Bool { spoilerGuard.conceals(game) }
+
+    /// What the row draws: the game as pushed, or its result-free copy
+    /// (`Game.concealed()`). Every render path reads `shown`, never
+    /// `game`, so a concealed row can't print a number it was never
+    /// handed; `game` is kept for identity alone.
+    private var shown: Game { isConcealed ? game.concealed() : game }
 
     /// The visitor tag for one side, if it's a guest in this section.
     func guestTag(_ competitor: Competitor) -> String? {
@@ -48,7 +65,7 @@ struct GameRow: View {
         return game.line
     }
 
-    private var rowLine: GameLine? { Self.line(for: game, showsLines: showsLine) }
+    private var rowLine: GameLine? { Self.line(for: shown, showsLines: showsLine) }
 
     /// Narrowest last: the whole line, then the total without its label,
     /// then the spread alone. The spread is the one that never truncates.
@@ -108,8 +125,8 @@ struct GameRow: View {
     private var compactBody: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
             VStack(alignment: .leading, spacing: 2) {
-                teamRow(game.away)
-                teamRow(game.home)
+                teamRow(shown.away)
+                teamRow(shown.home)
             }
             Rectangle()
                 .fill(Color.divider)
@@ -123,20 +140,14 @@ struct GameRow: View {
         HStack(spacing: Spacing.sm) {
             teamIdentity(competitor)
             Spacer(minLength: Spacing.sm)
-            switch game.status {
-            case .pre:
-                // The record is upcoming-only information — a final row's
-                // trailing edge belongs to the score alone.
-                if let record = competitor.record {
-                    Text(record)
-                        .font(.rowMetaMedium)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                }
-            case .live, .final:
+            // The record is upcoming-only information — a final row's
+            // trailing edge belongs to the score alone. A concealed result
+            // wears the pre-game shape (E30): the record, rewound one game,
+            // where the score would be.
+            if wearsRecord {
+                recordText(competitor)
+            } else if showsScores {
                 scoreText(competitor, font: scoreFont)
-            case .other:
-                EmptyView()
             }
         }
     }
@@ -166,7 +177,7 @@ struct GameRow: View {
                 }
             }
             if hasPossession(competitor) {
-                Image(systemName: game.home.team.league.fallbackGlyph)
+                Image(systemName: shown.home.team.league.fallbackGlyph)
                     .font(.system(size: 8))
                     .foregroundStyle(.textSecondary)
             }
@@ -177,8 +188,8 @@ struct GameRow: View {
 
     private var stackedBody: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            stackedTeamLine(game.away)
-            stackedTeamLine(game.home)
+            stackedTeamLine(shown.away)
+            stackedTeamLine(shown.home)
             stackedStatus
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,14 +200,11 @@ struct GameRow: View {
     private func stackedTeamLine(_ competitor: Competitor) -> some View {
         HStack(spacing: Spacing.sm) {
             teamIdentity(competitor)
-            if case .pre = game.status, let record = competitor.record {
-                Text(record)
-                    .font(.rowMetaMedium)
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
+            if wearsRecord {
+                recordText(competitor)
             }
             Spacer(minLength: Spacing.sm)
-            if showsScores {
+            if showsScores, !isConcealed {
                 scoreText(competitor, font: scoreFont)
             }
         }
@@ -212,7 +220,10 @@ struct GameRow: View {
 
     @ViewBuilder
     private var stackedStatusLines: some View {
-        switch game.status {
+        if isConcealed {
+            concealedStatusLines
+        } else {
+        switch shown.status {
         case .pre:
             // Kick time and network ride one line while they fit; past that
             // they stack, rather than the network truncating away.
@@ -255,6 +266,7 @@ struct GameRow: View {
                 .font(.meta)
                 .foregroundStyle(.textSecondary)
         }
+        }
     }
 
     private func logo(_ team: Team) -> some View {
@@ -291,20 +303,23 @@ struct GameRow: View {
 
     @ViewBuilder
     private var statusLines: some View {
-        switch game.status {
+        if isConcealed {
+            concealedStatusLines
+        } else {
+        switch shown.status {
         case .pre:
             VStack(alignment: .leading, spacing: 2) {
-                if let date = game.date {
+                if let date = shown.date {
                     if timeOnly {
                         // A day section's header names the day; the row
                         // spends its lines on time and network only.
-                        Text(game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()))
+                        Text(shown.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()))
                             .font(.rowMetaMedium)
                             .foregroundStyle(.textPrimary)
                             .lineLimit(1)
                     } else {
                         let kick = Self.relativeKickParts(date, weekday: .abbreviated,
-                                                          timeTBD: game.timeTBD)
+                                                          timeTBD: shown.timeTBD)
                         Text(kick.day)
                             .font(.rowMetaMedium)
                             .foregroundStyle(.textPrimary)
@@ -331,7 +346,7 @@ struct GameRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: Spacing.xs) {
                     LiveDot()
-                    Text(game.status.liveStatusText(in: game.home.team.league) ?? "Live")
+                    Text(shown.status.liveStatusText(in: shown.home.team.league) ?? "Live")
                         .font(.rowMetaMedium)
                         .foregroundStyle(.textPrimary)
                         .lineLimit(1)
@@ -350,7 +365,7 @@ struct GameRow: View {
                 Text(finalLabel(detail))
                     .font(.rowMetaMedium)
                     .foregroundStyle(.textPrimary)
-                if let date = game.date, !timeOnly {
+                if let date = shown.date, !timeOnly {
                     Text(showsYear
                          ? date.formatted(.dateTime.year().month(.defaultDigits).day())
                          : date.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))
@@ -363,6 +378,53 @@ struct GameRow: View {
             Text(detail ?? "—")
                 .font(.rowMeta)
                 .foregroundStyle(.textSecondary)
+        }
+        }
+    }
+
+    /// The concealed row's status column (E30): the one word the fan
+    /// needs — is it on, is it over — with the live dot before it while
+    /// the game is on (283: the dot is how every other live row says it,
+    /// and part one's dot-less "Live" was the one live thing that didn't
+    /// look live), and the way out. No clock, no network: "where do I
+    /// watch" is a question about a game you haven't started, and a
+    /// clock is a result's silhouette. A button when the caller can
+    /// reveal here (`onReveal`), so the tap stays on these words while
+    /// the rest of the row still opens the game. Both layouts share it;
+    /// the stacked one gives it a full line.
+    @ViewBuilder
+    private var concealedStatusLines: some View {
+        let lines = VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: Spacing.xs) {
+                if !shown.status.isFinal { LiveDot() }
+                Text(shown.status.isFinal ? "Final" : "Live")
+                    .font(.rowMetaMedium)
+                    .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+            }
+            Text("Tap to reveal")
+                .font(.rowMeta)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
+        }
+        if let onReveal {
+            Button(action: onReveal) { lines }
+                // The row's own link style, for the row's own reason: a
+                // day swipe that ends on these words must not reveal.
+                .buttonStyle(SwipeSafeButtonStyle())
+        } else {
+            lines
+        }
+    }
+
+    /// The trailing-edge record, pre-game and concealed.
+    @ViewBuilder
+    private func recordText(_ competitor: Competitor) -> some View {
+        if let record = competitor.record {
+            Text(record)
+                .font(.rowMetaMedium)
+                .foregroundStyle(.textSecondary)
+                .lineLimit(1)
         }
     }
 
@@ -387,7 +449,7 @@ struct GameRow: View {
     private var liveClockLine: some View {
         HStack(spacing: Spacing.sm) {
             LiveDot()
-            Text(game.status.liveStatusText(in: game.home.team.league) ?? "Live")
+            Text(shown.status.liveStatusText(in: shown.home.team.league) ?? "Live")
                 .font(.metaEmphasis)
                 .foregroundStyle(.textPrimary)
         }
@@ -401,9 +463,17 @@ struct GameRow: View {
 
     // MARK: - Status helpers
 
+    /// Whether the trailing edge of a team line carries the record: before
+    /// kickoff, and while the result is concealed.
+    private var wearsRecord: Bool {
+        if isConcealed { return true }
+        if case .pre = shown.status { return true }
+        return false
+    }
+
     /// Pre and unscheduled rows have no numbers to show yet.
     private var showsScores: Bool {
-        switch game.status {
+        switch shown.status {
         case .live, .final: true
         case .pre, .other: false
         }
@@ -411,17 +481,20 @@ struct GameRow: View {
 
     private var scoreFont: Font {
         // Live spends weight, per the budget — semibold at the row scale.
-        if case .live = game.status { return .rowNameEmphasis.monospacedDigit() }
+        if case .live = shown.status { return .rowNameEmphasis.monospacedDigit() }
         return .rowName.monospacedDigit()
     }
 
     /// First network only: "ESPN Unlmtd/The CW Network" otherwise swallows
     /// the row.
-    private var network: String? { game.primaryBroadcast }
+    private var network: String? { shown.primaryBroadcast }
 
     /// Final rows put the winner in heavier type; live rows emphasize both.
     private func emphasize(_ competitor: Competitor) -> Bool {
-        switch game.status {
+        // A concealed row stays quiet whatever its state: live weight on
+        // the names would say "live" louder than the one word that does.
+        guard !isConcealed else { return false }
+        return switch shown.status {
         case .live: true
         case .final: competitor.winner == true
         default: false
@@ -431,27 +504,27 @@ struct GameRow: View {
     /// The loser of a final fades to secondary; if ESPN omits the winner
     /// flag, nobody fades.
     private func mute(_ competitor: Competitor) -> Bool {
-        if case .final = game.status {
+        if case .final = shown.status {
             return otherSide(of: competitor).winner == true
         }
         return false
     }
 
     private func otherSide(of competitor: Competitor) -> Competitor {
-        competitor.isHome ? game.away : game.home
+        competitor.isHome ? shown.away : shown.home
     }
 
     private func hasPossession(_ competitor: Competitor) -> Bool {
-        if case .live(_, _, _, _, let possessionTeamId) = game.status {
+        if case .live(_, _, _, _, let possessionTeamId) = shown.status {
             return possessionTeamId == competitor.team.id
         }
         return false
     }
 
     private var kickTime: String {
-        guard let date = game.date else { return "TBD" }
-        if timeOnly { return game.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()) }
-        return Self.relativeKick(date, weekday: .abbreviated, timeTBD: game.timeTBD)
+        guard let date = shown.date else { return "TBD" }
+        if timeOnly { return shown.timeTBD ? "TBD" : date.formatted(.dateTime.hour().minute()) }
+        return Self.relativeKick(date, weekday: .abbreviated, timeTBD: shown.timeTBD)
     }
 
     /// How far out the kick is decides how much of the date the row spends:
@@ -519,20 +592,18 @@ struct GameRow: View {
     // Internal, not private, so the label shapes are unit-testable.
 
     var accessibilitySummary: String {
-        switch game.status {
+        if isConcealed { return concealedSummary }
+        switch shown.status {
         case .pre:
-            func side(_ competitor: Competitor) -> String {
-                [sideName(competitor), spokenRecord(competitor)].compactMap(\.self).joined(separator: " ")
-            }
-            var parts = ["\(side(game.away)) at \(side(game.home))"]
-            if let date = game.date {
-                if game.timeTBD {
+            var parts = ["\(preSide(shown.away)) at \(preSide(shown.home))"]
+            if let date = shown.date {
+                if shown.timeTBD {
                     parts.append("\(Self.relativeKickParts(date, weekday: .wide).day), kickoff time to be determined")
                 } else {
                     parts.append(Self.relativeKick(date, weekday: .wide))
                 }
             }
-            if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
+            if let broadcast = shown.broadcast { parts.append("on \(broadcast)") }
             if let rowLine { parts.append("line, \(rowLine.accessibilityText)") }
             return parts.joined(separator: ", ")
         case .live(let clock, let period, _, let phase, let possessionTeamId):
@@ -547,10 +618,10 @@ struct GameRow: View {
                 if let clock { parts.append("\(clock) left") }
             }
             if let possessionTeamId,
-               let holder = [game.away, game.home].first(where: { $0.team.id == possessionTeamId }) {
+               let holder = [shown.away, shown.home].first(where: { $0.team.id == possessionTeamId }) {
                 parts.append("\(holder.team.location) has the ball")
             }
-            if let broadcast = game.broadcast { parts.append("on \(broadcast)") }
+            if let broadcast = shown.broadcast { parts.append("on \(broadcast)") }
             return parts.joined(separator: ", ")
         case .final(let detail):
             let overtime = detail?.localizedCaseInsensitiveContains("OT") == true
@@ -558,13 +629,29 @@ struct GameRow: View {
             // A final row normally says nothing about when it was played —
             // the slate around it already does. In a list spanning seasons
             // nothing does, so the row says it itself.
-            if showsYear, let date = game.date {
+            if showsYear, let date = shown.date {
                 parts.append(date.formatted(.dateTime.year().month(.wide).day()))
             }
             return parts.joined(separator: ", ")
         case .other(let detail):
-            return "\(sideName(game.away)) at \(sideName(game.home)), \(detail ?? "status unavailable")"
+            return "\(sideName(shown.away)) at \(sideName(shown.home)), \(detail ?? "status unavailable")"
         }
+    }
+
+    /// The concealed row's sentence (E30): the pre-game shape — "at", the
+    /// rewound records — then the state and the fact that the score is
+    /// being withheld, so nobody mistakes it for a game with no score.
+    /// Reads the game directly rather than `shown`, so the label shape is
+    /// testable without the environment.
+    var concealedSummary: String {
+        let hidden = game.concealed()
+        return "\(preSide(hidden.away)) at \(preSide(hidden.home)), "
+            + "\(hidden.status.isFinal ? "final" : "live"), score hidden"
+    }
+
+    /// "number 3 Georgia 5 and 0" — the pre-game side, record and all.
+    private func preSide(_ competitor: Competitor) -> String {
+        [sideName(competitor), spokenRecord(competitor)].compactMap(\.self).joined(separator: " ")
     }
 
     private func sideName(_ competitor: Competitor) -> String {
@@ -580,8 +667,8 @@ struct GameRow: View {
     }
 
     private var scoreSummary: String {
-        "\(sideName(game.away)) \(game.away.score.map(String.init) ?? "no score"), "
-            + "\(sideName(game.home)) \(game.home.score.map(String.init) ?? "no score")"
+        "\(sideName(shown.away)) \(shown.away.score.map(String.init) ?? "no score"), "
+            + "\(sideName(shown.home)) \(shown.home.score.map(String.init) ?? "no score")"
     }
 
     private func spokenPeriod(_ period: Int) -> String {

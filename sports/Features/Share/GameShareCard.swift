@@ -83,6 +83,35 @@ nonisolated enum GameHeaderState {
         return "Facts"
     }
 
+    /// The same title with spoiler mode in the room (E30): a concealed
+    /// page is a Preview whatever the clock says, because a Preview is
+    /// the one tab with no result in it.
+    static func factsTabTitle(_ game: Game, _ summary: GameSummary?, concealed: Bool) -> String {
+        concealed ? "Preview" : factsTabTitle(game, summary)
+    }
+
+    /// The pushed row with the summary's fresher state merged over it —
+    /// status (by the rule above), scores, winner flags and records — as
+    /// one `Game`, so a question asked of a `Game` can be asked of the
+    /// merge. `withLiveState` keeps the row's records; the summary's are
+    /// the ones that have moved on a final, which is what a rewind needs.
+    static func merged(_ game: Game, _ summary: GameSummary?) -> Game {
+        let away = competitor(game.away, summary?.away)
+        let home = competitor(game.home, summary?.home)
+        return game.withLiveState(status: status(game, summary),
+                                  homeScore: home.score, homeWinner: home.winner,
+                                  awayScore: away.score, awayWinner: away.winner)
+            .withRecords(home: home.record, away: away.record)
+    }
+
+    /// The merge with its result taken out (E30, `Game.concealed()`).
+    /// Merged first, then concealed: a `.pre` row pushed before kickoff
+    /// whose summary has since gone live is exactly the page that has to
+    /// hide, and a `.pre` game is the one the guard lets through.
+    static func concealedGame(_ game: Game, _ summary: GameSummary?) -> Game {
+        merged(game, summary).concealed()
+    }
+
     /// The Roster tab's phase: which of "planning to play", "playing" and
     /// "played" the lists answer.
     static func rosterPhase(_ game: Game, _ summary: GameSummary?) -> GameRoster.Phase {
