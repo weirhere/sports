@@ -432,6 +432,35 @@
      }
     ]
    },
+   "204": {
+    "source": "https://en.wikipedia.org/wiki/2026_Oregon_State_Beavers_football_team",
+    "staff": [
+     {
+      "name": "Mitch Dahlen",
+      "role": "Offensive coordinator/quarterbacks"
+     },
+     {
+      "name": "Ryan Wallace",
+      "role": "Co-offensive coordinator/tight ends"
+     },
+     {
+      "name": "Mike MacIntyre",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Cort Dennison",
+      "role": "Co-defensive coordinator/linebackers"
+     },
+     {
+      "name": "Ricky Brumfield",
+      "role": "Special teams coordinator/cornerbacks"
+     },
+     {
+      "name": "Lee Marks",
+      "role": "Associate head coach/running backs"
+     }
+    ]
+   },
    "213": {
     "source": "https://en.wikipedia.org/wiki/2026_Penn_State_Nittany_Lions_football_team",
     "staff": [
@@ -692,10 +721,6 @@
     "source": "https://en.wikipedia.org/wiki/2026_North_Dakota_State_Bison_football_team",
     "staff": [
      {
-      "name": "Dan Larson",
-      "role": "Offensive coordinator/tight ends/fullbacks"
-     },
-     {
       "name": "Grant Olson",
       "role": "Defensive coordinator/linebackers"
      },
@@ -734,6 +759,31 @@
      },
      {
       "name": "Joey Lynch",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
+   "2483": {
+    "source": "https://en.wikipedia.org/wiki/2026_Oregon_Ducks_football_team",
+    "staff": [
+     {
+      "name": "Drew Mehringer",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Chris Hampton",
+      "role": "Defensive coordinator/safeties"
+     },
+     {
+      "name": "Joe Lorig",
+      "role": "Special teams coordinator"
+     },
+     {
+      "name": "Ra'Shaad Samples",
+      "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Koa Ka'ai",
       "role": "Quarterbacks coach"
      }
     ]
@@ -850,6 +900,23 @@
      }
     ]
    },
+   "2534": {
+    "source": "https://en.wikipedia.org/wiki/2026_Sam_Houston_Bearkats_football_team",
+    "staff": [
+     {
+      "name": "Zack Patterson",
+      "role": "Offensive coordinator"
+     },
+     {
+      "name": "Freddie Aughtry-Lindsay",
+      "role": "Defensive coordinator"
+     },
+     {
+      "name": "Eric Raisbeck",
+      "role": "Associate head coach/special teams coordinator/slot receivers"
+     }
+    ]
+   },
    "254": {
     "source": "https://en.wikipedia.org/wiki/2026_Utah_Utes_football_team",
     "staff": [
@@ -868,6 +935,10 @@
      {
       "name": "Mark Atuaia",
       "role": "Assistant head coach/running backs"
+     },
+     {
+      "name": "Ryan Gunderson",
+      "role": "Quarterbacks coach"
      }
     ]
    },
@@ -1164,6 +1235,23 @@
      }
     ]
    },
+   "277": {
+    "source": "https://en.wikipedia.org/wiki/2026_West_Virginia_Mountaineers_football_team",
+    "staff": [
+     {
+      "name": "Zac Alley",
+      "role": "Assistant head coach/defensive coordinator/linebackers"
+     },
+     {
+      "name": "Pat Kirkland",
+      "role": "Special teams coordinator/defensive assistant coach"
+     },
+     {
+      "name": "Rhett Rodriguez",
+      "role": "Quarterbacks coach"
+     }
+    ]
+   },
    "278": {
     "source": "https://en.wikipedia.org/wiki/2026_Fresno_State_Bulldogs_football_team",
     "staff": [
@@ -1362,6 +1450,10 @@
      {
       "name": "John Jones",
       "role": "Special teams coordinator/defensive ends"
+     },
+     {
+      "name": "Danny Mitchell",
+      "role": "Quarterbacks coach"
      }
     ]
    },
@@ -2111,7 +2203,7 @@
      },
      {
       "name": "Chris Foerster",
-      "role": "Interim head coach/assistant head coach/offensive line"
+      "role": "Assistant head coach/offensive line"
      },
      {
       "name": "Matt Eberflus",
@@ -2468,6 +2560,6 @@
   }
  },
  "license": "Text from Wikipedia, CC BY-SA 4.0",
- "updated": "2026-10-03",
+ "updated": "2026-10-20",
  "version": 1
 }
