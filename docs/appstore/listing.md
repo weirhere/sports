@@ -788,12 +788,15 @@ reviewer's first visual evidence of native functionality, put it second.
 The plain shots above are the masters; the store listing uses the *marketing*
 frames built from them — device on a black stage, one headline apiece:
 
-- `docs/appstore/screenshots-marketing-1284x2778/` — the 6.5" slot, ten PNGs
-- `docs/appstore/screenshots-marketing-1320x2868/` — the same ten at 6.9"
+- `docs/appstore/screenshots-marketing-1284x2778/` — the 6.5" slot, eleven PNGs
+- `docs/appstore/screenshots-marketing-1320x2868/` — the same eleven at 6.9"
 
-Reshot 2026-10-19 for 2.9.0 (§ 2.9.0: reshot below): ten frames, upload
-order `01-hero`, `02-follow`, `03-saturdays`, `09-roster`, `10-hide`,
-`04-week`, `06-boxscore`, `05-rankings`, `07-quiet`, `08-closer`. The
+Reshot 2026-10-19 for 2.9.0 (§ 2.9.0: reshot below): eleven frames, and
+**App Store Connect takes ten per device size**, so one sits out at upload.
+Upload order `01-hero`, `02-follow`, `03-saturdays`, `09-roster`, `10-hide`,
+`11-news`, `04-week`, `06-boxscore`, `05-rankings`, `08-closer`, with
+`07-quiet` the one to leave out if nothing else is cut: its four pills
+("No banner ads", "No account"…) are already the hero's pill line. The
 numbers are file names, not the order.
 
 Reshot 2026-09-06 for 2.0 against a live Saturday. Still eight frames; what
@@ -942,14 +945,14 @@ exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
 `docs/social/README.md` § Regenerating before upload if the glyphs need to
 match frames 02–07 exactly.
 
-### 2.9.0: reshot, ten frames, real logos (Andy's call)
+### 2.9.0: reshot, eleven frames, real logos (Andy's call)
 
 **Reshot 2026-10-19**, the evening of the 2.9.0 cut, on an iPhone 17 Pro
 Max simulator (iOS 26.5) against the live Monday slate: pro football in the
 third quarter and four hockey games, two of them live. The set had carried
 forward eight times and the chrome under three frames had drifted (the
-Games header's two chips, the game page's Summary tab). All ten frames are
-new renders; eight of the masters under them are new captures.
+Games header's two chips, the game page's Summary tab). All eleven frames
+are new renders; nine of the masters under them are new captures.
 
 **The logos are real, and that is a decision, not an oversight.** The
 capture suite still draws gray discs by default; Andy said during the
@@ -957,12 +960,13 @@ reshoot that the frames "can be the actual logos", so every run passed
 `TEST_RUNNER_SCREENSHOT_NEUTRAL_LOGOS=NO`. The second 4.1(a) rejection
 (2026-09-29) was for exactly this, so the risk is known and accepted: if it
 bounces again, the gray-disc fallback is one env knob away and the
-`as-*.html` sources don't change. One frame goes further than logos and is
-**held out for that reason**: the News Transfers page (`10-news-transfers.png`)
-is full-bleed press photography of players in uniform, which is a different
-class of third-party content from a mark in a row. The master is in the
-folder and no `as-*` frame uses it; add one only if Andy wants the photos
-in the listing too.
+`as-*.html` sources don't change. One frame goes further than logos, and
+Andy chose it knowingly the same evening: `as-11-news` is the News
+Transfers page, full-bleed press photography of players in uniform, a
+different class of third-party content from a mark in a row. It was held
+out of the first render for that reason and added on his word ("Add an
+as-11 Transfers frame with the press photos"). If review objects to the
+photos and not the logos, it is the one frame to pull.
 
 The frames:
 
@@ -973,11 +977,12 @@ The frames:
 | 3 | `03-saturdays` | One screen, whole season. | `01-scores`; the last bullet now says one menu narrows to live or tight |
 | 4 | `09-roster` | The lineup, on the field. | `09-roster`: the live game's Roster tab, starters on turf |
 | 5 | `10-hide` | Watching later? Hide the score. | `12-hide-scores-page` header crop over `11-hide-scores` Following card |
-| 6 | `04-week` | Saturday. Sunday. Every night. | `08-nfl-sunday`: Sunday's finals, strip then slate from the league header |
-| 7 | `06-boxscore` | Every player, every stat. | `03-box-score`: a football final's Passing and Rushing |
-| 8 | `05-rankings` | Polls, plays, whole seasons. | `04-rankings`: the week 8 poll |
-| 9 | `07-quiet` | Nothing between you and the scores. | typographic |
+| 6 | `11-news` | The stories, without the noise. | `10-news-transfers`: the Transfers page, two stacked story cards |
+| 7 | `04-week` | Saturday. Sunday. Every night. | `08-nfl-sunday`: Sunday's finals, strip then slate from the league header |
+| 8 | `06-boxscore` | Every player, every stat. | `03-box-score`: a football final's Passing and Rushing |
+| 9 | `05-rankings` | Polls, plays, whole seasons. | `04-rankings`: the week 8 poll |
 | 10 | `08-closer` | Fast. Focused. Four leagues, done right. | typographic |
+| (11) | `07-quiet` | Nothing between you and the scores. | typographic; the one to leave out, since ASC takes ten |
 
 What the frames don't show: basketball. Its regular season had not opened on
 the shoot day (zero events), and college football doesn't play Mondays, so

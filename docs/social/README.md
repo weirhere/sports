@@ -62,10 +62,10 @@ The App Store frames live in `src/as-*.html` and render to
 `docs/appstore/screenshots-marketing-1284x2778/` (6.5") and
 `docs/appstore/screenshots-marketing-1320x2868/` (6.9").
 
-Ten beats as of 2.9.0 (2026-10-19): box scores landed in 1.4.0 and earned a
-frame, and 2.9.0 added the Roster tab and spoiler mode. The file numbers
-are names, not the upload order — that is in
-`docs/appstore/listing.md` § 2.9.0: reshot.
+Eleven beats as of 2.9.0 (2026-10-19): box scores landed in 1.4.0 and earned
+a frame, and 2.9.0 added the Roster tab, spoiler mode and News. App Store
+Connect takes ten, so one sits out; the file numbers are names, not the
+upload order — both are in `docs/appstore/listing.md` § 2.9.0: reshot.
 
 | File | What it shows |
 |---|---|
@@ -79,6 +79,7 @@ are names, not the upload order — that is in
 | `08-closer.png` | Icon, wordmark, tagline, disclaimer |
 | `09-roster.png` | The Roster tab: starters on the field, phone device |
 | `10-hide.png` | Spoiler mode: the Reveal score header over two hidden Following rows |
+| `11-news.png` | The News tab's Transfers page, phone device, press photos and all |
 
 **`as-08-closer.html` and `07-closer.html` say different things now.** Apple
 rejected the 2.3.0 submission under Guideline 2.3.7 on 2026-09-19 because the
