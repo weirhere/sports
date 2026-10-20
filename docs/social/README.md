@@ -62,19 +62,24 @@ The App Store frames live in `src/as-*.html` and render to
 `docs/appstore/screenshots-marketing-1284x2778/` (6.5") and
 `docs/appstore/screenshots-marketing-1320x2868/` (6.9").
 
-Eight beats, not the thread's seven — box scores landed in 1.4.0 and earned a
-frame of their own, which pushed "designed quiet" and the closer to 07 and 08.
+Eleven beats as of 2.9.0 (2026-10-19): box scores landed in 1.4.0 and earned
+a frame, and 2.9.0 added the Roster tab, spoiler mode and News. App Store
+Connect takes ten, so one sits out; the file numbers are names, not the
+upload order — both are in `docs/appstore/listing.md` § 2.9.0: reshot.
 
-| Frame | File | What it shows |
-|---|---|---|
-| 1 | `01-hero.png` | Three devices — Scores, Rankings, Game detail |
-| 2 | `02-follow.png` | The team-page hero and the Following section it feeds |
-| 3 | `03-saturdays.png` | The five bullets, Scores device alongside |
-| 4 | `04-week.png` | The day strip, and the Sunday slate it controls |
-| 5 | `05-rankings.png` | The poll |
-| 6 | `06-boxscore.png` | Box score tab, both teams, real stat lines |
-| 7 | `07-quiet.png` | Typographic — the four things the app doesn't do |
-| 8 | `08-closer.png` | Icon, wordmark, tagline, disclaimer |
+| File | What it shows |
+|---|---|
+| `01-hero.png` | Three devices — Scores (a live Monday, football and hockey), Rankings, Game detail |
+| `02-follow.png` | The team-page hero and the Following section it feeds |
+| `03-saturdays.png` | The five bullets, Scores device alongside |
+| `04-week.png` | The day strip, and the Sunday slate it controls |
+| `05-rankings.png` | The poll |
+| `06-boxscore.png` | Box score tab, a football final, real stat lines |
+| `07-quiet.png` | Typographic — the four things the app doesn't do |
+| `08-closer.png` | Icon, wordmark, tagline, disclaimer |
+| `09-roster.png` | The Roster tab: starters on the field, phone device |
+| `10-hide.png` | Spoiler mode: the Reveal score header over two hidden Following rows |
+| `11-news.png` | The News tab's Transfers page, phone device, press photos and all |
 
 **`as-08-closer.html` and `07-closer.html` say different things now.** Apple
 rejected the 2.3.0 submission under Guideline 2.3.7 on 2026-09-19 because the
@@ -94,11 +99,14 @@ one. The thread and Story graphics keep their league names; same reasoning
 as "Free." above. Keep league, conference, poll and team names out of every
 `as-*.html` caption.
 
-**And the device masters under them show no logos.** A second 4.1(a)
-rejection (2026-09-29) followed the text fix, so `AppStoreScreenshots` now
-launches with `-screenshot.neutralLogos YES`, which draws every team,
-conference and league mark and every headshot as a gray disc. Masters shot
-before that date carry real logos and mustn't go back into an `as-*` frame.
+**The device masters under them: gray discs cleared review, real logos are
+the 2.9.0 call.** A second 4.1(a) rejection (2026-09-29) followed the text
+fix, so `AppStoreScreenshots` launches with `-screenshot.neutralLogos YES`
+by default, which draws every team, conference and league mark and every
+headshot as a gray disc. The 2026-10-19 reshoot passed
+`TEST_RUNNER_SCREENSHOT_NEUTRAL_LOGOS=NO` on Andy's instruction, so the
+committed masters and frames carry real marks again; the gray-disc default
+is the fallback if that bounces. See listing.md § 2.9.0: reshot.
 
 
 Each `as-*.html` is its `story-*.html` counterpart plus a trailing `<style>`
@@ -196,6 +204,12 @@ file that matters.
   to a fixed width while the radii scale.
 - Absolute positioning inside `.content` can silently drop content in headless
   renders — keep copy in normal flow and let the flex column stack it.
-- Screens are a live Week 1 Saturday of the 2026 season, shot 2026-09-05:
-  two games in progress, USC–San José State final, and a preseason AP poll.
-  Reshoot the App Store screenshots and re-render to move them forward.
+- The App Store masters are Monday 2026-10-19 (`01-scores`, `09`–`12`: pro
+  football in the third quarter, hockey live and final) and Sunday
+  2026-10-18 (`08-nfl-sunday`, `02-game-detail`, `03-box-score`). Regions on
+  them: the day strip `y 400-490`, Scores' Following card `y 530-1310` (two
+  rows), the Sunday slate's league header `y 947`, the team-page hero
+  through its first card `y 170-1170`, the hidden game's header `y 300-830`
+  of `12-hide-scores-page`. The thread and Story graphics still crop the
+  2026-09-05 masters by their old offsets and were not re-rendered; their
+  PNGs are committed, so they stand until someone re-aims them.

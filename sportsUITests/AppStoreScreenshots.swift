@@ -16,14 +16,20 @@ import XCTest
 /// and `TEST_RUNNER_SCREENSHOT_DAY="Saturday, November 8"` (the day chip's
 /// spoken label) to shoot a completed Saturday.
 final class AppStoreScreenshots: XCTestCase {
+    /// The launch every frame shares. `extra` is appended last, so a
+    /// frame can switch a mode on (spoiler mode's keys, for one).
     @MainActor
-    func testCaptureStoreScreenshots() throws {
+    private func launchApp(extra: [String] = []) -> XCUIApplication {
+        let env = ProcessInfo.processInfo.environment
         let app = XCUIApplication()
         app.launchArguments += ["-ui.appearance", "system",
-                                // Every logo and headshot as a gray disc:
-                                // the listing carries no third party's
-                                // marks (4.1(a), 2026-09-29).
-                                "-screenshot.neutralLogos", "YES",
+                                // Every logo and headshot as a gray disc
+                                // by default: the listing carries no third
+                                // party's marks (4.1(a), 2026-09-29).
+                                // SCREENSHOT_NEUTRAL_LOGOS=NO shoots the
+                                // real marks (Andy's call, 2026-10-19).
+                                "-screenshot.neutralLogos",
+                                env["SCREENSHOT_NEUTRAL_LOGOS"] ?? "YES",
                                 "-ui.onboardingSeen", "YES",
                                 "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", "",
@@ -37,10 +43,18 @@ final class AppStoreScreenshots: XCTestCase {
                                 // both-leagues frame needs a follow in each
                                 // league that actually played that day.
                                 "-following.teamKeys",
-                                ProcessInfo.processInfo.environment["SCREENSHOT_FOLLOWS"]
+                                env["SCREENSHOT_FOLLOWS"]
                                     ?? "(cfb:61, cfb:130, cfb:251)"]
+        app.launchArguments += extra
         app.launch()
+        return app
+    }
 
+    /// Walks the day strip to `SCREENSHOT_DAY` when it is set, then waits
+    /// for the slate: a row with a score on it, or under
+    /// `SCREENSHOT_PREGAME` any row at all.
+    @MainActor
+    private func landOnSlate(_ app: XCUIApplication) -> XCUIElementQuery {
         let env = ProcessInfo.processInfo.environment
         // No SCREENSHOT_SEASON any more: Scores carries no season control
         // since the view-options sheet retired — the day strip is bounded
@@ -76,6 +90,14 @@ final class AppStoreScreenshots: XCTestCase {
             XCTAssertTrue(anyRow.waitForExistence(timeout: 20),
                           "The day should show its slate")
         }
+        return played
+    }
+
+    @MainActor
+    func testCaptureStoreScreenshots() throws {
+        let env = ProcessInfo.processInfo.environment
+        let app = launchApp()
+        let played = landOnSlate(app)
         snapshot(app, "01-scores")
 
         // Pre-game mode shoots the slate and stops. Everything below needs
@@ -87,9 +109,19 @@ final class AppStoreScreenshots: XCTestCase {
         // treatment is already the Scores shot's job; what the detail and box
         // score need is a game with a full stat line behind it, and a game in
         // the first quarter has almost nothing to show.
+        // `SCREENSHOT_GAME` names the game by a word of its row label
+        // ("Houston") so the box-score frame can be a football one
+        // whatever sport the first final on the slate happens to be.
         let final = app.scrollViews.buttons.matching(NSPredicate(
             format: "label CONTAINS[c] %@", "final")).firstMatch
-        let game = final.exists ? final : played.firstMatch
+        let game: XCUIElement
+        if let word = env["SCREENSHOT_GAME"] {
+            game = app.scrollViews.buttons.matching(NSPredicate(
+                format: "label CONTAINS[c] %@", word)).firstMatch
+            XCTAssertTrue(scrollUntilExists(game, in: app), "\(word) should be on the slate")
+        } else {
+            game = final.exists ? final : played.firstMatch
+        }
         game.tap()
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
         // Let line score / leaders finish loading before the shot.
@@ -122,6 +154,67 @@ final class AppStoreScreenshots: XCTestCase {
         XCTAssertTrue(openTeamPage("Georgia Bulldogs", in: app),
                       "Search should land on the Georgia team page")
         snapshot(app, "06-team-page")
+    }
+
+    /// 2.9.0's surfaces (2026-10-19): the Roster tab's starters on the
+    /// field, the News tab's Transfers page, and spoiler mode on the slate
+    /// and the game page. `SCREENSHOT_GAME` names the game to open for the
+    /// Roster frame by a word of its row label ("49ers"); without it the
+    /// first played game is used, whatever sport it is.
+    @MainActor
+    func testCaptureFeatureFrames() throws {
+        let env = ProcessInfo.processInfo.environment
+        let app = launchApp()
+        let played = landOnSlate(app)
+
+        // Roster tab, on the named game.
+        let target: XCUIElement
+        if let word = env["SCREENSHOT_GAME"] {
+            target = app.scrollViews.buttons.matching(NSPredicate(
+                format: "label CONTAINS[c] %@", word)).firstMatch
+        } else {
+            target = played.firstMatch
+        }
+        XCTAssertTrue(scrollUntilExists(target, in: app), "The Roster frame's game should be on the slate")
+        target.tap()
+        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
+        let roster = app.buttons["Roster"]
+        XCTAssertTrue(roster.waitForExistence(timeout: 10), "The game page should offer a Roster tab")
+        roster.tap()
+        let starters = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "starters")).firstMatch
+        XCTAssertTrue(starters.waitForExistence(timeout: 20), "The Starters card should load")
+        // Headshots land after the card does.
+        Thread.sleep(forTimeInterval: 4)
+        snapshot(app, "09-roster")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // News → Transfers.
+        let transfers = app.buttons["Transfers"]
+        if openTab("News", in: app, until: transfers) {
+            transfers.tap()
+            Thread.sleep(forTimeInterval: 5)
+            snapshot(app, "10-news-transfers")
+        } else {
+            XCTFail("News should offer a Transfers page")
+        }
+
+        // Spoiler mode: relaunch with the switch on for the followed
+        // teams, nothing revealed. The followed rows read "score hidden".
+        app.terminate()
+        let hidden = launchApp(extra: ["-spoiler.hidesScores", "YES",
+                                       "-spoiler.scope", "followed",
+                                       "-spoiler.revealed", "{}"])
+        _ = landOnSlate(hidden)
+        let concealed = hidden.scrollViews.buttons.matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "score hidden")).firstMatch
+        XCTAssertTrue(concealed.waitForExistence(timeout: 20), "A followed team's row should hide its score")
+        snapshot(hidden, "11-hide-scores")
+        concealed.tap()
+        let reveal = hidden.buttons["game-reveal-score"]
+        XCTAssertTrue(reveal.waitForExistence(timeout: 10), "The hidden game's page should offer Reveal score")
+        Thread.sleep(forTimeInterval: 2)
+        snapshot(hidden, "12-hide-scores-page")
     }
 
     @MainActor
