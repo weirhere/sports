@@ -61,8 +61,8 @@ struct GameRow: View {
     /// ESPN drops `odds` from a final, but a live game may still carry one,
     /// and a line under a running clock is a question already answered.
     static func line(for game: Game, showsLines: Bool) -> GameLine? {
-        guard showsLines, case .pre = shown.status else { return nil }
-        return shown.line
+        guard showsLines, case .pre = game.status else { return nil }
+        return game.line
     }
 
     private var rowLine: GameLine? { Self.line(for: shown, showsLines: showsLine) }
@@ -488,7 +488,7 @@ struct GameRow: View {
         // A concealed row stays quiet whatever its state: live weight on
         // the names would say "live" louder than the one word that does.
         guard !isConcealed else { return false }
-        switch shown.status {
+        return switch shown.status {
         case .live: true
         case .final: competitor.winner == true
         default: false
