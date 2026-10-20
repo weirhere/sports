@@ -383,19 +383,25 @@ struct GameRow: View {
     }
 
     /// The concealed row's status column (E30): the one word the fan
-    /// needs — is it on, is it over — and the way out. No dot, no clock,
-    /// no network: "where do I watch" is a question about a game you
-    /// haven't started, and a clock is a result's silhouette. A button
-    /// when the caller can reveal here (`onReveal`), so the tap stays on
-    /// these words while the rest of the row still opens the game. Both
-    /// layouts share it; the stacked one gives it a full line.
+    /// needs — is it on, is it over — with the live dot before it while
+    /// the game is on (283: the dot is how every other live row says it,
+    /// and part one's dot-less "Live" was the one live thing that didn't
+    /// look live), and the way out. No clock, no network: "where do I
+    /// watch" is a question about a game you haven't started, and a
+    /// clock is a result's silhouette. A button when the caller can
+    /// reveal here (`onReveal`), so the tap stays on these words while
+    /// the rest of the row still opens the game. Both layouts share it;
+    /// the stacked one gives it a full line.
     @ViewBuilder
     private var concealedStatusLines: some View {
         let lines = VStack(alignment: .leading, spacing: 2) {
-            Text(shown.status.isFinal ? "Final" : "Live")
-                .font(.rowMetaMedium)
-                .foregroundStyle(.textPrimary)
-                .lineLimit(1)
+            HStack(spacing: Spacing.xs) {
+                if !shown.status.isFinal { LiveDot() }
+                Text(shown.status.isFinal ? "Final" : "Live")
+                    .font(.rowMetaMedium)
+                    .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+            }
             Text("Tap to reveal")
                 .font(.rowMeta)
                 .foregroundStyle(.textSecondary)

@@ -91,8 +91,9 @@ struct ComponentSnapshotTests {
     @Test(.enabled(if: snapshotSelected("gameRowConcealed")), arguments: Variant.all)
     func gameRowConcealed(_ variant: Variant) {
         // Spoiler mode (E30): the same row with its result hidden —
-        // records at the trailing edge (rewound for the finals), "Live"
-        // or "Final" over "Tap to reveal", no dot, no bold or muted name.
+        // records at the trailing edge (rewound for the finals), the live
+        // dot and "Live" — or "Final" alone — over "Tap to reveal", no
+        // bold or muted name.
         let game = SnapshotFixtures.concealedGame(variant.sport)
         let row = GameRow(game: game, timeOnly: true, onReveal: {})
             .background(Color.bgCard)
