@@ -13,7 +13,6 @@ final class ScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-ui.appearance", "system",
                                 "-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", ""]
         app.launch()
 

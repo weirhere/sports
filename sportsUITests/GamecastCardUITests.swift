@@ -18,7 +18,8 @@ final class GamecastCardUITests: XCTestCase {
         app.launchArguments += [
             "-ui.onboardingSeen", "YES",
             // Live games only: fewer rows, so the list shifts less under
-            // the tap while the fixture churns.
+            // the tap while the fixture churns. Live is session-only
+            // (2026-10-22); this is the DEBUG-only launch hook for it.
             "-ui.liveOnly", "YES",
             "-ui.followPromptDismissed", "YES",
             "-ui.scoreFilter", "none",

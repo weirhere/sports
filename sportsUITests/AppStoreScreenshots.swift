@@ -31,7 +31,6 @@ final class AppStoreScreenshots: XCTestCase {
                                 "-screenshot.neutralLogos",
                                 env["SCREENSHOT_NEUTRAL_LOGOS"] ?? "YES",
                                 "-ui.onboardingSeen", "YES",
-                                "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
                                 "-ui.scoreFilter", "",
                                 // Seed follows so the Following section leads
                                 // with content (argument-domain array syntax).

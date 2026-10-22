@@ -119,7 +119,6 @@ final class SurfaceScreenshotTests: XCTestCase {
             "-ui.appearance", "system",
             "-ui.onboardingSeen", "YES",
             "-ui.followPromptDismissed", "YES",
-            "-ui.liveOnly", "NO", "-ui.tightOnly", "NO",
             "-ui.scoreFilter", "none",
             "-review.prompt", "off",
         ]

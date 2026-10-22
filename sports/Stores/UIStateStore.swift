@@ -34,25 +34,25 @@ final class UIStateStore {
     /// always what the slate on screen is narrowed by. Anywhere a day is in
     /// hand, read it through `liveOnly(on:)` instead.
     ///
-    /// Persisted (Andy, 2026-08-29): "you should be able to customize it to
-    /// the way you want it and keep it" — the permanent chip and the
-    /// explanatory empty state make a saved filter legible on a quiet
-    /// Tuesday.
+    /// Session-only (Josh Vertucci via Andy, 2026-10-22, superseding the
+    /// 2026-08-29 persistence call): "Live" is a question about right now,
+    /// and a fresh launch answers it fresh, the way FotMob does. A Live
+    /// left on after Saturday's last whistle used to greet Tuesday with
+    /// "No live games right now". The funnel filter is a preference and
+    /// still persists — `scoreFilter` below.
     var liveOnly: Bool {
         didSet {
-            defaults.set(liveOnly, forKey: Self.liveOnlyKey)
             if liveOnly, tightOnly { tightOnly = false }
         }
     }
 
     /// The Scores Tight toggle (Coard Miller, 2026-09-24): live games that
     /// are late and close, or where the underdog leads. `GameCloseness`
-    /// holds the rule. Persisted and suspended off today exactly like
+    /// holds the rule. Session-only and suspended off today exactly like
     /// `liveOnly`, and the two are exclusive, since Tight is already a
     /// narrower Live. Turning one on turns the other off.
     var tightOnly: Bool {
         didSet {
-            defaults.set(tightOnly, forKey: Self.tightOnlyKey)
             if tightOnly, liveOnly { liveOnly = false }
         }
     }
@@ -83,9 +83,11 @@ final class UIStateStore {
         self.liveOnly && calendar.isDateInToday(day)
     }
 
-    /// The Scores slate filter. Persisted like `liveOnly` (same call,
-    /// superseding the session-only first cut); the funnel chip's label
-    /// keeps a saved filter visible.
+    /// The Scores slate filter. Persisted (Andy, 2026-08-29, superseding
+    /// the session-only first cut): "you should be able to customize it to
+    /// the way you want it and keep it" — "SEC" is how you want the slate
+    /// every day, and the funnel chip's label keeps a saved filter visible.
+    /// Live and Tight stopped persisting on 2026-10-22; this did not.
     var scoreFilter: ScoreFilter? {
         didSet {
             if let scoreFilter {
@@ -98,8 +100,8 @@ final class UIStateStore {
 
     /// The Hide all/Show all control's state: true collapses every Scores
     /// section that isn't Following or a followed table to the one-line
-    /// control, false shows the full stack. Persisted like `liveOnly` and
-    /// `scoreFilter` (Andy, 2026-09-22) — a crowded slate you've hidden once
+    /// control, false shows the full stack. Persisted like `scoreFilter`
+    /// (Andy, 2026-09-22) — a crowded slate you've hidden once
     /// should stay hidden until you ask to see it again, not reopen itself
     /// on the next launch.
     var hideOtherSections: Bool {
@@ -174,6 +176,10 @@ final class UIStateStore {
     private static let appearanceKey = "ui.appearance"
     private static let startersLayoutKey = "ui.startersLayout"
     private static let followPromptDismissedKey = "ui.followPromptDismissed"
+    /// Live and Tight's old persistence keys. No longer written; `init`
+    /// clears what an earlier build saved, and in DEBUG reads them once
+    /// from the argument domain so a fixture suite can launch on a live
+    /// slate (`-ui.liveOnly YES`).
     private static let liveOnlyKey = "ui.liveOnly"
     private static let tightOnlyKey = "ui.tightOnly"
     private static let scoreFilterKey = "ui.scoreFilter"
@@ -192,10 +198,21 @@ final class UIStateStore {
         collapsedDays = Set(defaults.stringArray(forKey: Self.collapsedDaysKey) ?? [])
         newsHiddenTeams = Set(defaults.stringArray(forKey: Self.newsHiddenTeamsKey) ?? [])
         followPromptDismissed = defaults.bool(forKey: Self.followPromptDismissedKey)
-        let savedLive = defaults.bool(forKey: Self.liveOnlyKey)
-        liveOnly = savedLive
-        // Exclusive by construction; if both were ever saved on, Live wins.
-        tightOnly = defaults.bool(forKey: Self.tightOnlyKey) && !savedLive
+        // Live and Tight start off on every launch (2026-10-22). A value
+        // written by a build that persisted them is cleared here, before
+        // the read below, so it can't come back on a DEBUG build either.
+        defaults.removeObject(forKey: Self.liveOnlyKey)
+        defaults.removeObject(forKey: Self.tightOnlyKey)
+        #if DEBUG
+        // Only the argument domain can answer now: the UI-test hook for
+        // launching on a live slate. Exclusive by construction; Live wins.
+        let launchLive = defaults.bool(forKey: Self.liveOnlyKey)
+        liveOnly = launchLive
+        tightOnly = defaults.bool(forKey: Self.tightOnlyKey) && !launchLive
+        #else
+        liveOnly = false
+        tightOnly = false
+        #endif
         scoreFilter = defaults.string(forKey: Self.scoreFilterKey)
             .flatMap(ScoreFilter.init(token:))
         hideOtherSections = defaults.bool(forKey: Self.hideOtherSectionsKey)

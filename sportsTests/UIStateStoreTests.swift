@@ -118,23 +118,45 @@ import Testing
         #expect(store.isExpanded(leagueId))
     }
 
-    @Test func filtersPersistAndDefaultToOff() {
+    /// The funnel filter is a preference and survives a relaunch; Live is a
+    /// question about right now and does not (Josh Vertucci via Andy,
+    /// 2026-10-22, superseding the 2026-08-29 call that persisted both).
+    @Test func theSlateFilterPersistsAndLiveDoesNot() {
         let defaults = makeDefaults()
         let store = UIStateStore(defaults: defaults)
         #expect(store.liveOnly == false)
+        #expect(store.tightOnly == false)
         #expect(store.scoreFilter == nil)
 
         store.liveOnly = true
         store.scoreFilter = .top25
         let reloaded = UIStateStore(defaults: defaults)
-        #expect(reloaded.liveOnly == true)
+        #expect(reloaded.liveOnly == false)
         #expect(reloaded.scoreFilter == .top25)
+
+        reloaded.tightOnly = true
+        #expect(UIStateStore(defaults: defaults).tightOnly == false)
 
         reloaded.scoreFilter = nil
         #expect(UIStateStore(defaults: defaults).scoreFilter == nil)
     }
 
-    /// Same persisted-intent shape as `liveOnly`/`scoreFilter`: a slate
+    /// A Live or Tight that a build before 2026-10-22 wrote to disk is
+    /// cleared on the first launch after, not read back — in DEBUG too,
+    /// where the launch-argument hook reads the same keys.
+    @Test func aSavedLiveFromAnOlderBuildIsClearedNotRestored() {
+        let defaults = makeDefaults()
+        defaults.set(true, forKey: "ui.liveOnly")
+        defaults.set(true, forKey: "ui.tightOnly")
+
+        let store = UIStateStore(defaults: defaults)
+        #expect(store.liveOnly == false)
+        #expect(store.tightOnly == false)
+        #expect(defaults.object(forKey: "ui.liveOnly") == nil)
+        #expect(defaults.object(forKey: "ui.tightOnly") == nil)
+    }
+
+    /// Same persisted-intent shape as `scoreFilter`: a slate
     /// hidden once should stay hidden past a relaunch, not reopen itself.
     @Test func hideOtherSectionsPersistsAndDefaultsToShown() {
         let defaults = makeDefaults()
