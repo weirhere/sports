@@ -1,14 +1,19 @@
 "use client";
 
-// Persisted Scores UI state — the web `UIStateStore` (iOS
-// sports/Stores/UIStateStore.swift). One localStorage key carries the Live,
-// Tight and slate filters (persisted per the 2026-08-29 decision), the Hide
-// all/Show all state, collapsed section ids, the followed-table order, and
-// the follow-prompt dismissal.
+// Scores UI state — the web `UIStateStore` (iOS
+// sports/Stores/UIStateStore.swift). One localStorage key carries the slate
+// filter (persisted per the 2026-08-29 decision), the Hide all/Show all
+// state, collapsed section ids, the followed-table order, and the
+// follow-prompt dismissal.
 //
-// Live and Tight are stored as *intent*. What narrows a given day is
-// `liveOnlyOn`/`tightOnlyOn` below: both apply to today and nowhere else
-// (iOS, 2026-09-12).
+// Live and Tight are *session-only* (Josh Vertucci via Andy, 2026-10-22,
+// superseding 2026-08-29): "Live" is a question about right now, and a fresh
+// page load answers it fresh, the way FotMob does. The funnel filter is a
+// preference and still persists. A `liveOnly`/`tightOnly` an older build
+// wrote to storage is ignored on read and dropped on the next write.
+//
+// Live and Tight are held as *intent*. What narrows a given day is
+// `narrowsOn` below: both apply to today and nowhere else (iOS, 2026-09-12).
 //
 // COLLAPSED ids are stored, not expanded ones, so a section never seen
 // before defaults open — the iOS "Following + Top 25 open by default"
@@ -25,14 +30,9 @@ import { foldDivisionTokens } from "@/lib/favorites-migration";
 
 const STORAGE_KEY = "statside.ui.v1";
 
-interface StoredUIState {
+/** What reaches localStorage. */
+export interface StoredUIState {
   collapsedSections: string[];
-  liveOnly: boolean;
-  /**
-   * The Tight filter (iOS, 2026-09-24). Exclusive with `liveOnly` — Tight is
-   * already a narrower Live — so turning one on turns the other off.
-   */
-  tightOnly: boolean;
   /**
    * Hide all/Show all (iOS, 2026-09-22): true collapses every Scores section
    * that isn't Following or a followed table to the one control. Persisted
@@ -51,7 +51,17 @@ interface StoredUIState {
   followPromptDismissed: boolean;
 }
 
-const DEFAULTS: StoredUIState = {
+/** The stored state plus the two session-only filters. */
+export interface UIState extends StoredUIState {
+  liveOnly: boolean;
+  /**
+   * The Tight filter (iOS, 2026-09-24). Exclusive with `liveOnly` — Tight is
+   * already a narrower Live — so turning one on turns the other off.
+   */
+  tightOnly: boolean;
+}
+
+const DEFAULTS: UIState = {
   collapsedSections: [],
   liveOnly: false,
   tightOnly: false,
@@ -61,7 +71,11 @@ const DEFAULTS: StoredUIState = {
   followPromptDismissed: false,
 };
 
-function sanitize(raw: unknown): StoredUIState {
+/**
+ * What an older build saved for Live and Tight never comes back: the read
+ * keeps the session defaults (both off) whatever storage says.
+ */
+export function sanitize(raw: unknown): UIState {
   if (typeof raw !== "object" || raw === null) return DEFAULTS;
   const record = raw as Record<string, unknown>;
   const collapsed = Array.isArray(record.collapsedSections)
@@ -82,12 +96,10 @@ function sanitize(raw: unknown): StoredUIState {
         "conf-"
       )
     : [];
-  const liveOnly = record.liveOnly === true;
   return {
     collapsedSections: collapsed,
-    liveOnly,
-    // Exclusive by construction; if both were ever saved on, Live wins.
-    tightOnly: record.tightOnly === true && !liveOnly,
+    liveOnly: false,
+    tightOnly: false,
     hideOtherSections: record.hideOtherSections === true,
     scoreFilter: filter,
     tableOrder,
@@ -95,8 +107,19 @@ function sanitize(raw: unknown): StoredUIState {
   };
 }
 
+/** The slice that is written: everything but the session-only filters. */
+export function toStored(state: UIState): StoredUIState {
+  return {
+    collapsedSections: state.collapsedSections,
+    hideOtherSections: state.hideOtherSections,
+    scoreFilter: state.scoreFilter,
+    tableOrder: state.tableOrder,
+    followPromptDismissed: state.followPromptDismissed,
+  };
+}
+
 export function useUIState() {
-  const [state, setState] = useState<StoredUIState>(DEFAULTS);
+  const [state, setState] = useState<UIState>(DEFAULTS);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -115,12 +138,12 @@ export function useUIState() {
   }, []);
 
   const update = useCallback(
-    (patch: Partial<StoredUIState> | ((prev: StoredUIState) => StoredUIState)) => {
+    (patch: Partial<UIState> | ((prev: UIState) => UIState)) => {
       setState((prev) => {
         const next =
           typeof patch === "function" ? patch(prev) : { ...prev, ...patch };
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toStored(next)));
         } catch {
           // Ignore storage errors — in-memory state still updates.
         }

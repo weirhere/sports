@@ -23,7 +23,6 @@ final class LiveDetailHoldUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [
             "-ui.onboardingSeen", "YES",
-            "-ui.liveOnly", liveOnly ? "YES" : "NO",
             "-ui.followPromptDismissed", "YES",
             // Pin the slate filter: it persists across launches by design
             // (2026-08-29), so without this a suite inherits whatever the
@@ -36,6 +35,11 @@ final class LiveDetailHoldUITests: XCTestCase {
             "-data.provider", "fixture",
             "-poll.interval", "0.5",
         ]
+        if liveOnly {
+            // Live is session-only (2026-10-22); this is the DEBUG-only
+            // launch hook that starts the app on a live slate.
+            app.launchArguments += ["-ui.liveOnly", "YES"]
+        }
         if summaryFlicker {
             app.launchArguments += ["-fixture.summaryFlicker", "YES"]
         }

@@ -24,8 +24,6 @@ final class SpoilerModeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [
             "-ui.onboardingSeen", "YES",
-            "-ui.liveOnly", "NO",
-            "-ui.tightOnly", "NO",
             "-ui.followPromptDismissed", "YES",
             "-ui.scoreFilter", "none",
             "-data.provider", "fixture",
