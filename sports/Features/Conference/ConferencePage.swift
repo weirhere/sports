@@ -860,7 +860,7 @@ struct ConferencePage: View {
                         }
                         StandingsList(
                             entries: table.entries,
-                            highlightTeamId: destination.highlightTeamId,
+                            highlightTeamIds: Set([destination.highlightTeamId].compactMap { $0 }),
                             // A division's top two are not the conference's:
                             // in a divisional format the division winners
                             // meet, so the cut claims nothing here.

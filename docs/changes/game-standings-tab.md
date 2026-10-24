@@ -1,0 +1,20 @@
+---
+pr: TBD
+date: 2026-10-24
+---
+
+## Decision
+
+**The game page gets a Standings tab: every table either side is in, with both teams' rows tinted.** It sits between Roster and H2H. The NFL, NBA and NHL get the team page's League / Conference / Division chip and open on Conference; a divisional game is one table with two tinted rows, a cross-conference game is two tables with one each, away's first. College football has no chip and shows each side's conference table, with the championship cut where the conference page draws it. Fetched when the tab first opens (the shipped standings request, plus the divisional one only if the chip asks for Division), held for the visit in `GameStandingsModel`, never polled; a past game's page reads that season's tables. ESPN-only, offered from the first frame like News and Roster, and hidden on a spoiler-concealed page with every other result-bearing tab.
+
+**The highlight is `bgElevated`, one step stronger than the entity pages' `bgHeader`.** `StandingsList` now takes a set of highlighted team ids and a fill. The team and conference pages keep their whisper for their one anchored row; the game page needs two rows to be *found* in a 32-team table, and #F8F8F8 on white isn't findable. Monochrome, so the color budget is untouched. Highlighted rows also carry VoiceOver's selected trait, on every page, since the tint alone said nothing to it.
+
+**The NFL's pinned table moves its gutters inside the rows.** A tinted row now runs unbroken from the name across the seam to the last number, and the row dividers no longer break at the seam. Same scroll extent; visible on the team and conference pages' NFL tables too.
+
+## Why
+
+Andy, 2026-10-24, from a Buccaneers at Panthers preview: *"Let's add to the game detail page a Standings tab with their respective league, conference and division standings with the two teams indicated somehow with a different color background on the rows or something similar."* The Facts tab's two-row standings card answers "where are they" and stops; the tab answers "what's at stake". The team page's Standings tab already had every piece (scopes, fetches, the shared list), so this widens it from one team to two rather than building a third table. Conference first because that's the team page's default and the matchup sits mid-hierarchy; Division and League are one tap either side. Tables are found by membership, not by the teams' `conferenceId`, the `MatchupStandings` rule, so a scoreboard that omits the id costs nothing. The tab swipe stands down on the NFL's tab because its columns scroll on the same axis, the team page's rule.
+
+## Web parity
+
+pending — the web game page has the same tabs and the same standings endpoints; the port is a Standings tab reusing the web's standings table with two highlighted rows.

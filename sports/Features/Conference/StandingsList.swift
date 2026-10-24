@@ -15,7 +15,10 @@ import SwiftUI
 /// FotMob both do with a table this wide.
 struct StandingsList: View {
     let entries: [ConferenceStanding]
-    let highlightTeamId: String?
+    /// The rows to tint: the team page's own team, the conference page's
+    /// anchored one, or both sides of a game (the game page's Standings
+    /// tab, 2026-10-24). Empty tints nothing.
+    let highlightTeamIds: Set<String>
     /// Whether this table's top two reach a title game — the caller's
     /// knowledge (`Conference.titleGameIsTopTwo` plus its season).
     let showsTitleGameCut: Bool
@@ -23,6 +26,11 @@ struct StandingsList: View {
     /// 2026-08-29). Callers pass the scoreboard's live slate for the
     /// current season and nothing for past ones.
     var liveGames: [Game] = []
+    /// The highlighted rows' fill. The entity pages keep `bgHeader`'s
+    /// whisper for their one anchored row; the game page passes
+    /// `bgElevated`, because two rows somewhere in a 32-team table have
+    /// to be found, not just confirmed.
+    var highlightFill: Color = .bgHeader
 
     /// The cut renders only when the top two are knowably the top two:
     /// seed-backed placement (ESPN's `playoffSeed` — payload order alone
@@ -102,6 +110,14 @@ struct StandingsList: View {
         liveGames.lazy.compactMap { $0.liveResult(for: teamId) }.first
     }
 
+    private func isHighlighted(_ standing: ConferenceStanding) -> Bool {
+        highlightTeamIds.contains(standing.team.id)
+    }
+
+    private func fill(for standing: ConferenceStanding) -> Color {
+        isHighlighted(standing) ? highlightFill : Color.clear
+    }
+
     private func qualifies(_ index: Int) -> Bool {
         cutIsVisible && index < Self.championshipPlaces
     }
@@ -129,7 +145,9 @@ struct StandingsList: View {
                                       qualifies: qualifies(index))
             }
             .buttonStyle(.plain)
-            .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
+            .background(fill(for: standing))
+            // The tint is decorative, so VoiceOver hears it as selection.
+            .accessibilityAddTraits(isHighlighted(standing) ? .isSelected : [])
             // FotMob's promotion/relegation mechanism (Andy, 2026-09-06):
             // a bar down the leading edge of every qualifying row, keyed by
             // a legend under the table. It marks *which* teams are in, where
@@ -179,7 +197,7 @@ struct StandingsList: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
+                    .background(fill(for: standing))
                     .overlay(alignment: .leading) {
                         if qualifies(index) {
                             cutBar(bridgesDivider: index < Self.championshipPlaces - 1)
@@ -193,6 +211,7 @@ struct StandingsList: View {
                         standing, columns: columns, position: index + 1,
                         liveResult: liveResult(for: standing.team.id),
                         qualifies: qualifies(index)))
+                    .accessibilityAddTraits(isHighlighted(standing) ? .isSelected : [])
                     .id(standing.id)
                     if standing.id != entries.last?.id {
                         Divider().overlay(Color.divider).padding(.leading, Spacing.lg)
@@ -200,27 +219,32 @@ struct StandingsList: View {
                 }
             }
             ScrollView(.horizontal, showsIndicators: false) {
+                // The gutters sit inside each row rather than around the
+                // column, so a highlighted row's fill runs unbroken from the
+                // name across the seam to the last number — two rows have to
+                // read as bands on the game page's 32-team table.
                 VStack(alignment: .leading, spacing: 0) {
                     StandingsNumbersCaption(columns: columns)
+                        .padding(.leading, Spacing.md)
                         .captionCell(height: captionHeight)
                     ForEach(Array(entries.enumerated()), id: \.element.id) { index, standing in
                         NavigationLink(value: standing.team) {
                             StandingsNumbersCell(standing: standing, columns: columns)
+                                .padding(.leading, Spacing.md)
+                                .padding(.trailing, Spacing.lg)
                                 .frame(height: rowHeight)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .background(standing.team.id == highlightTeamId ? Color.bgHeader : Color.clear)
+                        .background(fill(for: standing))
                         .accessibilityHidden(true)
                         if standing.id != entries.last?.id {
                             Divider().overlay(Color.divider)
                         }
                     }
                 }
-                .frame(width: numbersWidth, alignment: .leading)
-                .padding(.leading, Spacing.md)
-                .padding(.trailing, Spacing.lg)
+                .frame(width: numbersWidth + Spacing.md + Spacing.lg, alignment: .leading)
             }
         }
     }
