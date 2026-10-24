@@ -100,6 +100,11 @@ struct GameDetailScreen: View {
     /// so the lists are rebuilt once it does.
     @State private var rosterHadSummary = false
 
+    /// The Standings tab's tables and scope. A model rather than more
+    /// `@State` here because it carries its own fetch-once rules per
+    /// scope; keyed by the game inside, like everything above.
+    @State private var standingsTab = GameStandingsModel()
+
     /// The summary, but only if it belongs to the game on screen. Every
     /// card on the page reads through here, so a screen handed a new game
     /// falls back to what the pushed row already knows — the header it has
@@ -134,9 +139,12 @@ struct GameDetailScreen: View {
     /// second (Andy, 2026-09-27, E26), the entity pages' order: what's
     /// being written about the matchup, one swipe from the score. Roster
     /// (E29, 2026-10-18) sits after the box score, which is the rosters'
-    /// place that comment always reserved.
+    /// place that comment always reserved. Standings (2026-10-24) sits
+    /// between Roster and H2H, FotMob's Table-before-H2H order: where the
+    /// two sides stand this season comes before how they have fared
+    /// against each other across all of them.
     private enum Tab: Int, HeroTabItem {
-        case facts, news, plays, boxScore, roster, headToHead
+        case facts, news, plays, boxScore, roster, standings, headToHead
 
         /// The bar reads `TabLabel.title`, not this: the first tab's name
         /// follows the game's state. This is the static name the rest of
@@ -148,6 +156,7 @@ struct GameDetailScreen: View {
             case .plays: "Plays"
             case .boxScore: "Box score"
             case .roster: "Roster"
+            case .standings: "Standings"
             case .headToHead: "H2H"
             }
         }
@@ -202,6 +211,11 @@ struct GameDetailScreen: View {
         // first frame, and ESPN-only for the same reason: the fixture and
         // CFBD feeds have no roster to ask for (E29).
         if hasHeadToHead, client.providesRoster { tabs.append(.roster) }
+        // Standings read the league's tables, not the summary, so they are
+        // there from the first frame too. ESPN-only on News' and Roster's
+        // proxy: the fixture feed answers no tables and CFBD's are FBS
+        // only, and a tab that could only ever say "TBA" is no tab.
+        if hasHeadToHead, client.providesRoster { tabs.append(.standings) }
         // H2H reads the pushed row, not the summary, so it is offered from
         // the first frame — which is the point: before kickoff it is the
         // only other tab there is, and "who usually wins this" is the
@@ -290,7 +304,8 @@ struct GameDetailScreen: View {
                 // flight and — the case that matters — when the summary
                 // failed outright. A page that can't reach one endpoint
                 // shouldn't hide a tab that doesn't use it.
-                if summary != nil || tab == .headToHead || tab == .news || tab == .roster {
+                if summary != nil || tab == .headToHead || tab == .news || tab == .roster
+                    || tab == .standings {
                     Group {
                         // A tab whose data went away between polls falls
                         // back rather than rendering an empty pane.
@@ -311,6 +326,8 @@ struct GameDetailScreen: View {
                             GameRosterPane(league: gameLeague, state: rosterState,
                                            possessionTeamId: possessionTeamId,
                                            onRetry: { Task { await loadRoster(force: true) } })
+                        case .standings:
+                            standingsPane
                         case .facts:
                             if let summary { summaryCards(summary) }
                         }
@@ -329,7 +346,7 @@ struct GameDetailScreen: View {
                             .onEnded { value in
                                 let dx = value.translation.width
                                 let tabs = availableTabs
-                                guard showsTabs, abs(dx) > 50,
+                                guard showsTabs, !tabOwnsHorizontalAxis, abs(dx) > 50,
                                       abs(dx) > abs(value.translation.height) * 1.5,
                                       let here = tabs.firstIndex(of: tab)
                                 else { return }
@@ -446,6 +463,13 @@ struct GameDetailScreen: View {
             guard tab == .news else { return }
             await loadNews()
         }
+        // The Standings tab's tables, on the same terms — and again when
+        // the chip changes scope, since Division is a request of its own.
+        // The load is idempotent, so a scope already fetched costs nothing.
+        .task(id: "\(game.routeKey):\(tab == .standings):\(standingsTab.scope)") {
+            guard tab == .standings else { return }
+            await standingsTab.load(for: game, client: client)
+        }
         // The Roster tab's sources, on the same terms — and asked again
         // when the game's phase changes under an open tab (the pre-game
         // projection becomes the lineup at kickoff) or when the summary
@@ -476,10 +500,18 @@ struct GameDetailScreen: View {
         .refreshable {
             await load(force: true)
             if tab == .roster { await loadRoster(force: true) }
+            if tab == .standings { await standingsTab.load(for: game, client: client, force: true) }
         }
     }
 
     private var isLiveNow: Bool { GameHeaderState.isLive(game, summary) }
+
+    /// Whether the pane is using the horizontal axis itself, so the tab
+    /// swipe stands down — the team page's rule. Only the NFL's standings
+    /// table does: its twelve columns scroll under a pinned name column.
+    private var tabOwnsHorizontalAxis: Bool {
+        tab == .standings && gameLeague.standingsScrollsHorizontally
+    }
 
     /// Where the header's score line ends: 16pt of padding, the live
     /// dot's row and the 41pt score. Past it, the bar takes over.
@@ -858,6 +890,23 @@ struct GameDetailScreen: View {
             }
         }
         .padding(Spacing.sm)
+    }
+
+    /// The Standings tab: both sides' tables at the chip's scope.
+    private var standingsPane: some View {
+        GameStandingsPane(
+            game: game,
+            state: standingsTab.state(for: game),
+            scope: standingsTab.scope,
+            // Live dots are current-season only: a past game's tables are
+            // that season's, and tonight's scores mean nothing on them.
+            liveGames: isCurrentSeason
+                ? (scoreboards?.store(for: gameLeague).boardGames.filter(\.isLive) ?? []) : [],
+            onSelectScope: { value in
+                withAnimation(.default) { standingsTab.select(scope: value) }
+            },
+            onRetry: { Task { await standingsTab.load(for: game, client: client, force: true) } }
+        )
     }
 
     /// The H2H tab: the series tally and the meetings behind it.

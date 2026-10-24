@@ -988,7 +988,7 @@ struct TeamPage: View {
                         }
                         StandingsList(
                             entries: table.entries,
-                            highlightTeamId: team.id,
+                            highlightTeamIds: [team.id],
                             // A division's top two are not the conference's.
                             showsTitleGameCut: !standingsAreDivisional
                                 && Conference.titleGameIsTopTwo(
