@@ -130,7 +130,7 @@ struct BoxScoreList: View {
                             dnpCell(player)
                                 .gridCellColumns(max(category.columns.count, 1))
                         } else {
-                            statCells(player.stats, columns: category.columns, emphasized: false)
+                            statCells(player.stats, category: category, emphasized: false)
                         }
                     }
                 }
@@ -149,7 +149,7 @@ struct BoxScoreList: View {
                             .foregroundStyle(.textSecondary)
                             // Under the names, not the avatars.
                             .padding(.leading, avatarSize + Spacing.sm)
-                        statCells(category.totals, columns: category.columns, emphasized: true)
+                        statCells(category.totals, category: category, emphasized: true)
                     }
                 }
             }
@@ -225,17 +225,18 @@ struct BoxScoreList: View {
         }
     }
 
-    /// Each cell speaks its own column, so a VoiceOver swipe through the
-    /// row says "yards, 118" rather than a bare number — the grid's
-    /// visual header can't carry that.
-    private func statCells(_ values: [String], columns: [String], emphasized: Bool) -> some View {
+    /// Each cell speaks its own column in plain English, so a VoiceOver
+    /// swipe through the row says "Yards Per Pass Attempt, 7.4" rather
+    /// than "AVG, 7.4" — the grid's visual header can't carry that, and
+    /// a bare abbreviation read aloud means nothing.
+    private func statCells(_ values: [String], category: BoxScore.Category, emphasized: Bool) -> some View {
         ForEach(Array(values.enumerated()), id: \.offset) { index, value in
             Text(value)
                 .font((emphasized ? Font.metaEmphasis : .meta).monospacedDigit())
                 .foregroundStyle(emphasized ? Color.textPrimary : Color.textSecondary)
                 .lineLimit(1)
                 .frame(minWidth: statColumnWidth, alignment: .trailing)
-                .accessibilityLabel("\(columns.indices.contains(index) ? columns[index] : ""), \(value)")
+                .accessibilityLabel(category.accessibilityLabel(forColumnAt: index, value: value))
         }
     }
 
@@ -249,11 +250,16 @@ struct BoxScoreList: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func statLines(_ columns: [String], values: [String]) -> some View {
-        ForEach(Array(zip(columns, values)), id: \.0) { column, value in
+    /// The visible line stays the terse header ("AVG 7.4") — the stacked
+    /// layout has no room to spell "Yards Per Pass Attempt" on every row —
+    /// but VoiceOver gets the plain-English label, the same as the table.
+    private func statLines(_ values: [String], category: BoxScore.Category) -> some View {
+        ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+            let column = category.columns.indices.contains(index) ? category.columns[index] : ""
             Text("\(column) \(value)")
                 .font(.meta.monospacedDigit())
                 .foregroundStyle(.textSecondary)
+                .accessibilityLabel(category.accessibilityLabel(forColumnAt: index, value: value))
         }
     }
 
@@ -268,7 +274,7 @@ struct BoxScoreList: View {
                     if player.didNotPlay {
                         dnpCell(player)
                     } else {
-                        statLines(category.columns, values: player.stats)
+                        statLines(player.stats, category: category)
                     }
                 }
             }
@@ -277,7 +283,7 @@ struct BoxScoreList: View {
                     Text("Total")
                         .font(.rowName)
                         .foregroundStyle(.textSecondary)
-                    statLines(category.columns, values: category.totals)
+                    statLines(category.totals, category: category)
                 }
             }
         }
