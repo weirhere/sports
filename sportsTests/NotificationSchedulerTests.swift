@@ -314,4 +314,40 @@ private func preGame(_ id: String, home: String, away: String, kickoff: Date?,
         #expect(body.hasPrefix("Team 2 at Team 1 kicks off at "))
         #expect(body.hasSuffix(" on CBS"))
     }
+
+    /// The body's clock time is frozen when the request is added, so a
+    /// zone change has to rewrite it: scheduled in Honolulu, the reminder
+    /// read "7:00 AM" for a 1pm ET kickoff back home (2026-10-25).
+    @Test func aTimeZoneChangeRewritesTheReminder() async {
+        let kickoff = Date.now.addingTimeInterval(7 * 86_400)
+        let honolulu = TimeZone(identifier: "Pacific/Honolulu")!
+        let eastern = TimeZone(identifier: "America/New_York")!
+        let center = FakeCenter()
+        let defaults = makeDefaults()
+        let games = ["1": [preGame("g1", home: "1", away: "2", kickoff: kickoff)]]
+
+        let away = NotificationScheduler(
+            center: center, client: ScheduleStub(schedules: games), defaults: defaults,
+            timeZone: { honolulu }
+        )
+        await away.requestAndEnable(followedKeys: ["cfb:1"])
+        let awayId = NotificationScheduler.requestId(gameId: "g1", kickoff: kickoff, timeZone: honolulu)
+        #expect(await center.pending == [awayId])
+
+        let home = NotificationScheduler(
+            center: center, client: ScheduleStub(schedules: games), defaults: defaults,
+            timeZone: { eastern }
+        )
+        await home.refreshAuthorization()
+        await home.resync(followedKeys: ["cfb:1"])
+
+        let homeId = NotificationScheduler.requestId(gameId: "g1", kickoff: kickoff, timeZone: eastern)
+        #expect(await center.removed == [awayId])
+        #expect(await center.pending == [homeId])
+        let game = games["1"]![0]
+        #expect(await center.added.last?.body
+                == NotificationScheduler.reminderBody(for: game, timeZone: eastern))
+        #expect(NotificationScheduler.reminderBody(for: game, timeZone: eastern)
+                != NotificationScheduler.reminderBody(for: game, timeZone: honolulu))
+    }
 }

@@ -51,7 +51,10 @@ nonisolated struct SystemNotificationCenter: NotificationCentering {
 /// 30 minutes before kickoff, capped well under iOS's 64-pending limit.
 /// Request ids encode the kickoff instant, so moved kickoffs, cancellations,
 /// and TBD-times-becoming-real all fall out of a pending-vs-desired diff
-/// with zero special cases.
+/// with zero special cases. They encode the time zone too: the body's
+/// "kicks off at 1:00 PM" is frozen when the request is added, so a phone
+/// that changes zone must rewrite it (2026-10-25, a 1pm ET kickoff that
+/// read "7:00 AM" weeks after it was scheduled).
 @Observable
 final class NotificationScheduler {
     static let leadTime: TimeInterval = 30 * 60
@@ -70,22 +73,29 @@ final class NotificationScheduler {
     /// a single stub for both.
     private let makeClient: @Sendable (League) -> any ScoresProviding
     private let defaults: UserDefaults
+    /// Read once per resync, so a zone change is picked up on the next
+    /// scene-active. Injected so tests can travel.
+    private let timeZone: @Sendable () -> TimeZone
 
     init(center: any NotificationCentering = SystemNotificationCenter(),
          makeClient: @escaping @Sendable (League) -> any ScoresProviding = {
              DataProvider.makeClient(league: $0)
          },
-         defaults: UserDefaults = .standard) {
+         defaults: UserDefaults = .standard,
+         timeZone: @escaping @Sendable () -> TimeZone = { .current }) {
         self.center = center
         self.makeClient = makeClient
         self.defaults = defaults
+        self.timeZone = timeZone
     }
 
     /// Convenience for tests and previews that only care about one backend.
     convenience init(center: any NotificationCentering = SystemNotificationCenter(),
                      client: any ScoresProviding,
-                     defaults: UserDefaults = .standard) {
-        self.init(center: center, makeClient: { _ in client }, defaults: defaults)
+                     defaults: UserDefaults = .standard,
+                     timeZone: @escaping @Sendable () -> TimeZone = { .current }) {
+        self.init(center: center, makeClient: { _ in client }, defaults: defaults,
+                  timeZone: timeZone)
     }
 
     /// Re-checks system authorization — called on scene-active so the bell
@@ -167,10 +177,11 @@ final class NotificationScheduler {
             .sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
             .prefix(Self.maxScheduled)
 
+        let zone = timeZone()
         var desired: [String: Game] = [:]
         for game in upcoming {
             guard let date = game.date else { continue }
-            desired[Self.requestId(gameId: game.id, kickoff: date)] = game
+            desired[Self.requestId(gameId: game.id, kickoff: date, timeZone: zone)] = game
         }
 
         let pending = await pendingKickoffIds()
@@ -196,20 +207,25 @@ final class NotificationScheduler {
             try? await center.add(
                 id: id,
                 title: "\(game.home.team.league.startNoun) soon",
-                body: Self.reminderBody(for: game),
+                body: Self.reminderBody(for: game, timeZone: zone),
                 fireDate: date.addingTimeInterval(-Self.leadTime),
                 gameId: game.id
             )
         }
     }
 
-    static func requestId(gameId: String, kickoff: Date) -> String {
-        "\(idPrefix)\(gameId).\(Int(kickoff.timeIntervalSince1970))"
+    /// Ids from before the zone was encoded (`kickoff.<game>.<instant>`)
+    /// never match a desired id, so the first full resync after updating
+    /// rewrites them like any other stale request.
+    static func requestId(gameId: String, kickoff: Date, timeZone: TimeZone = .current) -> String {
+        "\(idPrefix)\(gameId).\(Int(kickoff.timeIntervalSince1970)).\(timeZone.identifier)"
     }
 
-    static func reminderBody(for game: Game) -> String {
+    static func reminderBody(for game: Game, timeZone: TimeZone = .current) -> String {
         let matchup = "\(game.away.team.location) at \(game.home.team.location)"
-        let time = game.date.map { $0.formatted(date: .omitted, time: .shortened) }
+        var style = Date.FormatStyle(date: .omitted, time: .shortened)
+        style.timeZone = timeZone
+        let time = game.date.map { $0.formatted(style) }
         // A football game kicks off, a basketball game tips off, and a
         // hockey game drops the puck. The request-id prefix stays
         // `kickoff.` — that's a persistence token, not copy.
