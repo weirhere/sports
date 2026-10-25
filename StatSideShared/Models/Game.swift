@@ -55,6 +55,11 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// Whether `venue` is a dome. Decoded, unused: nothing reads it yet
     /// (the weather row next to this one in BACKLOG.md is what would).
     var venueIndoor: Bool? = nil
+    /// The NFL's flag that a kickoff is TBD *because of flex scheduling*,
+    /// off the competition's own `status.isTBDFlex` — `timeTBD` above
+    /// already says a kickoff is TBD, this says why. Decoded, unused
+    /// (BACKLOG.md).
+    var isTBDFlex: Bool? = nil
 
     var isLive: Bool {
         if case .live = status { return true }

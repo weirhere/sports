@@ -98,6 +98,7 @@ nonisolated extension Game {
         copy.venue = venue
         copy.venueCity = venueCity
         copy.venueIndoor = venueIndoor
+        copy.isTBDFlex = isTBDFlex
         return copy
     }
 

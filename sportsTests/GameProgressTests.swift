@@ -127,4 +127,14 @@ private func live(_ clock: String?, _ period: Int?, phase: LivePhase = .playing)
         #expect(updated.venueCity == "Seattle, WA")
         #expect(updated.venueIndoor == false)
     }
+
+    /// Same trap, same fix, for `isTBDFlex` (BACKLOG.md).
+    @Test func withLiveStateKeepsIsTBDFlex() {
+        var acc = game("g1", status: live("1:56", 4), away: 20, home: 22)
+        acc.isTBDFlex = true
+        let updated = acc.withLiveState(status: live("0:58", 4),
+                                        homeScore: 29, homeWinner: nil,
+                                        awayScore: 20, awayWinner: nil)
+        #expect(updated.isTBDFlex == true)
+    }
 }
