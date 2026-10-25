@@ -444,8 +444,7 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
         let columns: [String]   // "C/ATT", "YDS", "AVG", ...
         /// Plain-English meaning of each column ("Yards Per Pass Attempt"
         /// for "AVG"), positionally paired with `columns`. Empty when
-        /// ESPN's `descriptions[]` didn't match the header count. Decoded
-        /// for VoiceOver; `BoxScoreList` doesn't read this yet.
+        /// ESPN's `descriptions[]` didn't match the header count.
         let columnDescriptions: [String]
         let players: [Player]
         /// ESPN's team totals row. Empty when it doesn't match `columns`.
@@ -459,6 +458,13 @@ nonisolated struct BoxScore: Identifiable, Hashable, Sendable {
                 return columnDescriptions[index]
             }
             return columns[index]
+        }
+
+        /// A stat cell's VoiceOver label: the column's plain-English
+        /// meaning (its terse header when ESPN sent no description) plus
+        /// the value — "Yards Per Pass Attempt, 7.4" rather than "AVG, 7.4".
+        func accessibilityLabel(forColumnAt index: Int, value: String) -> String {
+            "\(columnAccessibilityLabel(at: index) ?? ""), \(value)"
         }
     }
 

@@ -252,6 +252,9 @@ private func fixture(_ name: String) throws -> Data {
             "Touchdowns", "Interceptions", "Adjusted QBR",
         ])
         #expect(passing.columnAccessibilityLabel(at: 2) == "Yards Per Pass Attempt")
+        // The stat-cell label `BoxScoreList` now reads aloud: plain
+        // English, not the terse "AVG" header.
+        #expect(passing.accessibilityLabel(forColumnAt: 2, value: "7.4") == "Yards Per Pass Attempt, 7.4")
 
         let defensive = try #require(box.categories.first { $0.id == "defensive" })
         #expect(defensive.players.count == 16)
@@ -334,6 +337,10 @@ private func fixture(_ name: String) throws -> Data {
         #expect(category.columnDescriptions.isEmpty)
         #expect(category.columnAccessibilityLabel(at: 0) == "C/ATT")
         #expect(category.columnAccessibilityLabel(at: 5) == nil)
+        // Falls back to the terse header rather than a dangling comma.
+        #expect(category.accessibilityLabel(forColumnAt: 0, value: "10/14") == "C/ATT, 10/14")
+        // An out-of-range index still reads the value, not nothing.
+        #expect(category.accessibilityLabel(forColumnAt: 5, value: "118") == ", 118")
     }
 
     /// A totals row that doesn't match the header is dropped the same way,
