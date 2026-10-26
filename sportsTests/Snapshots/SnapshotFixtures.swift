@@ -283,6 +283,34 @@ enum SnapshotFixtures {
                                           seasonLabel: league.seasonLabel(2026))
     }
 
+    /// One player leader card's table per sport (2026-10-26): a half-sack
+    /// count, a percentage, and hockey's signed plus/minus — no headshots,
+    /// so each disc is the placeholder.
+    static func playerStatRanking(_ sport: Sport) -> PlayerStatRankingDestination {
+        let (definitionId, entries): (String, [(String, String, Team, Double)]) = switch sport {
+        case .football: ("sacks", [("Jalon Walker", "LB", georgia, 9.5),
+                                   ("Arvell Reese", "LB", ohioState, 8),
+                                   ("LT Overton", "DE", alabama, 6.5)])
+        case .basketball: ("fieldGoalPct", [("Jalen Brunson", "G", knicks, 54.2),
+                                            ("Jayson Tatum", "F", celtics, 49.8),
+                                            ("LeBron James", "F", lakers, 48.1)])
+        case .hockey: ("plusMinus", [("Charlie McAvoy", "D", bruins, 14),
+                                     ("Adam Fox", "D", rangers, 9),
+                                     ("Morgan Rielly", "D", mapleLeafs, 7)])
+        }
+        let league = sport.league
+        let definition = league.playerStatDefinitions.first { $0.id == definitionId }!
+        let rows = entries.enumerated().map { index, entry in
+            PlayerStatRanking.Row(rank: index + 1,
+                                  player: LeaguePlayer(athleteId: "\(index)", name: entry.0, headshotURL: nil,
+                                                       position: entry.1, team: entry.2, league: league),
+                                  value: entry.3, display: definition.format.string(entry.3))
+        }
+        return PlayerStatRankingDestination(ranking: PlayerStatRanking(definition: definition, rows: rows),
+                                            scopeName: league.shortName,
+                                            seasonLabel: league.seasonLabel(2026))
+    }
+
     /// A follow list with nobody in it, so no row draws emphasized.
     static var noFollows: FollowingStore {
         let defaults = UserDefaults(suiteName: "snapshot-no-follows")!

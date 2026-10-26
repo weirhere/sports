@@ -31,12 +31,13 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, teamStats, news, postseason
+        case standings, games, news, playerStats, teamStats, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .playerStats: "Player stats"
             case .teamStats: "Team stats"
             case .news: "News"
             case .postseason: "Postseason"
@@ -83,7 +84,7 @@ struct PollScreen: View {
     @State private var newsFailed = false
     /// The Team stats tab's tables and the StatSide rating's standings
     /// (2026-10-25), fetched on the tab's first visit.
-    @State private var teamStats = LeagueTeamStatsModel(league: .collegeFootball)
+    @State private var leagueStats = LeagueStatsModel(league: .collegeFootball)
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -149,6 +150,7 @@ struct PollScreen: View {
                 switch tab {
                 case .standings: standingsSection
                 case .games: gamesSection(scrollInset: headerHeight)
+                case .playerStats: playerStatsSection
                 case .teamStats: teamStatsSection
                 case .news: newsSection
                 case .postseason: postseasonSection
@@ -420,9 +422,9 @@ struct PollScreen: View {
     private func controlRow(for tab: Tab) -> some View {
         SeasonControlRow(season: seasonChip) {
             switch tab {
-            // Team stats ranks the poll's teams, so it carries the same
-            // week and poll chips: they are what decides who's on it.
-            case .standings, .teamStats:
+            // The stats tabs rank the poll's teams, so they carry the
+            // same week and poll chips: they decide who's on them.
+            case .standings, .playerStats, .teamStats:
                 if let shownWeek, seasonWeeks.count > 1 {
                     PollWeekMenuChip(weeks: seasonWeeks, current: shownWeek,
                                      onSelect: { select(week: $0) })
@@ -443,6 +445,33 @@ struct PollScreen: View {
         }
     }
 
+    // MARK: - Player stats
+
+    /// The Top 25's player leaderboards: players on the teams in the poll
+    /// and week the page shows (2026-10-26), Team stats' scope. Season to
+    /// date, like every `byathlete` number.
+    private var playerStatsSection: some View {
+        let year = year
+        let poll = selectedPoll
+        let rankedIds = poll.map { Set($0.ranks.map(\.team.id)) }
+        let known = (poll?.ranks.map(\.team) ?? [])
+            + (leagueStats.standingsByYear[year] ?? []).flatMap(\.entries).map(\.team)
+        let weekLabel = poll?.occurrenceLabel ?? shownWeek?.label
+        return LeaguePlayerStatsPane(
+            stats: rankedIds == nil ? nil : leagueStats.players(for: year)?.resolvingTeams(known),
+            failed: leagueStats.playersFailed(year) || (poll == nil && tableFailed),
+            retry: {
+                Task {
+                    await leagueStats.loadPlayers(year: year, force: true)
+                    if poll == nil { await retryTable() }
+                }
+            },
+            teamIds: rankedIds,
+            scopeName: poll?.shortName ?? poll?.name ?? "Top 25",
+            seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "))
+            .task(id: year) { await leagueStats.loadPlayers(year: year) }
+    }
+
     // MARK: - Team stats
 
     /// The Top 25's Team stats: the teams in the poll the Standings tab
@@ -458,25 +487,25 @@ struct PollScreen: View {
         let poll = selectedPoll
         let rankedIds = poll.map { Set($0.ranks.map(\.team.id)) }
         let known = (poll?.ranks.map(\.team) ?? [])
-            + (teamStats.standingsByYear[year] ?? []).flatMap(\.entries).map(\.team)
+            + (leagueStats.standingsByYear[year] ?? []).flatMap(\.entries).map(\.team)
         let weekLabel = poll?.occurrenceLabel ?? shownWeek?.label
         return LeagueTeamStatsPane(
             // The poll decides who's ranked, so the cards wait for it.
-            stats: rankedIds == nil ? nil : teamStats.stats(for: year)?.resolvingTeams(known),
-            failed: teamStats.failed(year) || (poll == nil && tableFailed),
+            stats: rankedIds == nil ? nil : leagueStats.stats(for: year)?.resolvingTeams(known),
+            failed: leagueStats.failed(year) || (poll == nil && tableFailed),
             retry: {
                 Task {
-                    await teamStats.load(year: year, force: true)
+                    await leagueStats.load(year: year, force: true)
                     if poll == nil { await retryTable() }
                 }
             },
             teamIds: rankedIds,
             scopeName: poll?.shortName ?? poll?.name ?? "Top 25",
             seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "),
-            rating: StatSideRating.ranking(from: teamStats.standingsByYear[year] ?? []))
+            rating: StatSideRating.ranking(from: leagueStats.standingsByYear[year] ?? []))
             .task(id: year) {
-                async let stats: Void = teamStats.load(year: year)
-                async let standings: Void = teamStats.loadRatingStandings(year: year)
+                async let stats: Void = leagueStats.load(year: year)
+                async let standings: Void = leagueStats.loadRatingStandings(year: year)
                 _ = await (stats, standings)
             }
     }
@@ -631,12 +660,13 @@ struct PollScreen: View {
     /// it, because a bowl slate is the division's, not the Top 25's, and a
     /// postseason narrowed to ranked teams would drop most of the bowls.
     private var availableTabs: [Tab] {
-        // News after Games (Andy, 2026-09-27, E26); Team stats between
-        // them (2026-10-25), ESPN-gated like ConferencePage's so the
+        // News after Games (Andy, 2026-09-27, E26), then the stats tabs
+        // (2026-10-26), ESPN-gated like ConferencePage's so the
         // fixture-backed UI suites never reach the network.
-        var tabs: [Tab] = [.standings, .games]
-        if DataProvider.makeClient(league: league).providesRoster { tabs.append(.teamStats) }
-        tabs.append(.news)
+        var tabs: [Tab] = [.standings, .games, .news]
+        if DataProvider.makeClient(league: league).providesRoster {
+            tabs.append(contentsOf: [.playerStats, .teamStats])
+        }
         if !postseasonRounds.isEmpty { tabs.append(.postseason) }
         return tabs
     }

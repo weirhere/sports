@@ -1,27 +1,33 @@
 import Foundation
 import Observation
 
-/// One league page's Team stats tab: the league's `byteam` table per
-/// season, fetched on the tab's first visit and kept for the page — so
-/// flipping the season chip back to a year already seen costs nothing
-/// (ConferencePage's per-year caching rule).
+/// One league page's Team stats and Player stats tabs: the league's
+/// `byteam` table and its `byathlete` pools per season, each fetched on its
+/// tab's first visit and kept for the page — so flipping the season chip
+/// back to a year already seen costs nothing (ConferencePage's per-year
+/// caching rule).
 ///
 /// College football's StatSide rating rides alongside where a page asks
 /// for it. It's computed from FBS standings, which a conference or FBS
 /// page already holds and the Top 25 page fetches here, once per season.
 @Observable
 @MainActor
-final class LeagueTeamStatsModel {
+final class LeagueStatsModel {
     let league: League
 
     private(set) var statsByYear: [Int: LeagueTeamStats] = [:]
     private(set) var failedYears: Set<Int> = []
     private var loadingYears: Set<Int> = []
 
+    private(set) var playersByYear: [Int: LeaguePlayerStats] = [:]
+    private(set) var playersFailedYears: Set<Int> = []
+    private var playersLoadingYears: Set<Int> = []
+
     private(set) var standingsByYear: [Int: [ConferenceStandings]] = [:]
     private var standingsLoadingYears: Set<Int> = []
 
     @ObservationIgnored private let client = TeamStatsClient()
+    @ObservationIgnored private let playerClient = LeaguePlayerStatsClient()
 
     init(league: League) {
         self.league = league
@@ -43,6 +49,24 @@ final class LeagueTeamStatsModel {
         } catch {
             guard !Task.isCancelled else { return }
             failedYears.insert(year)
+        }
+    }
+
+    func players(for year: Int) -> LeaguePlayerStats? { playersByYear[year] }
+    func playersFailed(_ year: Int) -> Bool { playersFailedYears.contains(year) }
+
+    func loadPlayers(year: Int, force: Bool = false) async {
+        guard playersByYear[year] == nil || force, !playersLoadingYears.contains(year) else { return }
+        playersLoadingYears.insert(year)
+        defer { playersLoadingYears.remove(year) }
+        do {
+            let players = try await playerClient.stats(league: league, season: league.espnSeason(for: year))
+            guard !Task.isCancelled else { return }
+            playersByYear[year] = players
+            playersFailedYears.remove(year)
+        } catch {
+            guard !Task.isCancelled else { return }
+            playersFailedYears.insert(year)
         }
     }
 

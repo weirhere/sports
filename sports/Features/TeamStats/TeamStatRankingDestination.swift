@@ -14,3 +14,10 @@ struct StatSideRatingDestination: Hashable {
     let rows: [StatSideRating.Row]
     let seasonLabel: String
 }
+
+/// A pushed player stat table, carrying its ranking like the team one.
+struct PlayerStatRankingDestination: Hashable {
+    let ranking: PlayerStatRanking
+    let scopeName: String
+    let seasonLabel: String
+}

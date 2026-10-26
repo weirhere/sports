@@ -8,7 +8,7 @@ import Foundation
 /// block, so its defence is what its own payload already says about goals
 /// and shots against. Keys verified live against all four leagues'
 /// `byteam` payloads; one ESPN stops sending just hides its card.
-extension League {
+nonisolated extension League {
     var teamStatDefinitions: [TeamStatDefinition] {
         switch self {
         case .collegeFootball, .nfl: Self.footballDefinitions(isNFL: self == .nfl)

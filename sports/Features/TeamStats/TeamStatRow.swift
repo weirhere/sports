@@ -4,9 +4,7 @@ import SwiftUI
 /// three of these and the full list shows them all, with a place column in
 /// front (2026-10-25).
 ///
-/// The leader's number sits in a filled capsule — FotMob's blue pill made
-/// monochrome. The capsule is ink, not color: the budget is unchanged.
-/// Columns follow `RankRow`'s, so a team stat table reads like every other
+/// The leader's number sits in `StatValueLabel`'s capsule. Columns follow `RankRow`'s, so a team stat table reads like every other
 /// table in the app.
 struct TeamStatRow: View {
     let team: Team
@@ -37,7 +35,7 @@ struct TeamStatRow: View {
                 .foregroundStyle(.textPrimary)
                 .lineLimit(1)
             Spacer(minLength: Spacing.sm)
-            valueLabel
+            StatValueLabel(value: value, isLeader: isLeader, isEmphasized: isFollowed)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 10)
@@ -46,25 +44,5 @@ struct TeamStatRow: View {
         .accessibilityLabel(rank.map { "Number \($0), \(team.location), \(value)" }
                             ?? "\(team.location), \(value)")
         .accessibilityHint("View team page")
-    }
-
-    @ViewBuilder
-    private var valueLabel: some View {
-        let text = Text(value)
-            .font((isLeader || isFollowed ? Font.teamNameEmphasis : .teamName).monospacedDigit())
-            .lineLimit(1)
-        if isLeader {
-            text
-                .foregroundStyle(Color.bgCard)
-                .padding(.horizontal, Spacing.sm)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(Color.textPrimary))
-        } else {
-            text
-                .foregroundStyle(.textPrimary)
-                // The capsule's own inset, so the leader's number and the
-                // rows under it share a trailing edge.
-                .padding(.horizontal, Spacing.sm)
-        }
     }
 }

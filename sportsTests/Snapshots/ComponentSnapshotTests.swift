@@ -225,6 +225,20 @@ struct ComponentSnapshotTests {
         assert(card, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("playerStatLeaderCard")), arguments: Variant.all)
+    func playerStatLeaderCard(_ variant: Variant) {
+        // The Player stats tab's card (2026-10-26): headshot disc, name
+        // over team and position, the leader's number in the capsule.
+        // Disabled ink offscreen, as with the team card.
+        let card = VStack(spacing: Spacing.sm) {
+            PlayerStatLeaderCard(destination: SnapshotFixtures.playerStatRanking(variant.sport))
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        .environment(SnapshotFixtures.noFollows)
+        assert(card, variant)
+    }
+
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

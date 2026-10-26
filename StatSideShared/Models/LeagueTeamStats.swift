@@ -180,6 +180,8 @@ nonisolated struct TeamStatDefinition: Sendable, Hashable, Identifiable {
         /// Hockey's save percentage, which ESPN sends as 0–1 and the sport
         /// writes without its zero: ".925".
         case fraction
+        /// A count that can be a half — a shared sack: "10.5", but "8".
+        case trimmed
 
         func string(_ value: Double) -> String {
             switch self {
@@ -196,6 +198,8 @@ nonisolated struct TeamStatDefinition: Sendable, Hashable, Identifiable {
             case .fraction:
                 let digits = String(format: "%.3f", value)
                 return digits.hasPrefix("0") ? String(digits.dropFirst()) : digits
+            case .trimmed:
+                return value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
             }
         }
     }
