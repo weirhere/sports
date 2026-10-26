@@ -399,6 +399,7 @@ struct ScoresScreen: View {
                 ConferencePage(destination: destination)
                     .id(destination)
             }
+            .teamStatsDestinations()
             // The Top 25 section header's push. Unlike the tables hub,
             // Scores holds no polls — the page fetches the season in
             // progress itself, so the value is just the league.

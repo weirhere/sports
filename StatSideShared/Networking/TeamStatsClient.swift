@@ -52,6 +52,22 @@ nonisolated struct TeamStatsClient {
         return TeamStatsMapper.leaders(from: dto, league: league)
     }
 
+    /// Every team in the league with its regular-season numbers for ESPN
+    /// season `season` — the Team stats tab's one request (2026-10-25).
+    /// `byteam` answers the whole league at once: 32 NFL teams, 138 FBS
+    /// (it ignores `groups=`, so never FCS), 30 NBA, 32 NHL. Unlike the
+    /// per-team path it honours `season=`, so the season chip works.
+    @concurrent
+    func leagueTeamStats(league: League, season: Int) async throws -> LeagueTeamStats {
+        let string = "https://site.web.api.espn.com/apis/common/v3/sports/"
+            + "\(league.sportSegment)/\(league.pathSegment)/statistics/byteam"
+            + "?region=us&lang=en&contentorigin=espn&limit=500&season=\(season)&seasontype=2"
+        guard let url = URL(string: string) else { throw URLError(.badURL) }
+        let (data, _) = try await session.data(from: url)
+        let dto = try JSONDecoder().decode(ByTeamResponseDTO.self, from: data)
+        return LeagueTeamStatsMapper.stats(from: dto, league: league)
+    }
+
     /// A name and a headshot for an athlete the roster couldn't place — a
     /// player traded away since the season the leaders describe. One small
     /// request each, only for the few rows the card shows.
@@ -155,6 +171,60 @@ nonisolated enum TeamStatsMapper {
     }
 }
 
+/// `byteam`'s positional payload, made keyed. A team's blocks carry
+/// values only; the names live once, on the top-level categories, and a
+/// block lines up with the first top-level category of its name that has
+/// any (the NBA ships each category twice, the second nameless). Names
+/// repeat inside a category — `rushingYards` twice — and the first is the
+/// fact, the per-team mapper's rule.
+nonisolated enum LeagueTeamStatsMapper {
+    static func stats(from dto: ByTeamResponseDTO, league: League) -> LeagueTeamStats {
+        var names: [String: [String]] = [:]
+        for category in dto.categories ?? [] {
+            guard let name = category.name, let list = category.names, !list.isEmpty,
+                  names[name] == nil else { continue }
+            names[name] = list
+        }
+        let lines = (dto.teams ?? []).compactMap { entry -> TeamStatLine? in
+            guard let team = team(from: entry.team, league: league) else { return nil }
+            var values: [TeamStatKey: Double] = [:]
+            for block in entry.categories ?? [] {
+                guard let category = block.name, let list = names[category] else { continue }
+                // "900" is everyone who played this team; anything else —
+                // "0", or the NBA's split-less differential block — is
+                // the team's own.
+                let split: TeamStatKey.Split = block.splitId == "900" ? .opponents : .team
+                for (name, value) in zip(list, block.values ?? []) {
+                    guard let value else { continue }
+                    let key = TeamStatKey(split, category, name)
+                    if values[key] == nil { values[key] = value }
+                }
+            }
+            return TeamStatLine(team: team, values: values)
+        }
+        return LeagueTeamStats(league: league, lines: lines)
+    }
+
+    /// `byteam`'s team object has no `location`, so it's the display name
+    /// with the nickname taken off the end — "Arizona Cardinals" less
+    /// "Cardinals". A pro team's division comes from the registry, as on
+    /// the scoreboard; a college team's stays nil until a page swaps in
+    /// the standings' own identity (`LeagueTeamStats.resolvingTeams`).
+    static func team(from dto: ByTeamTeamDTO?, league: League) -> Team? {
+        guard let dto, let id = dto.id else { return nil }
+        let display = dto.displayName ?? dto.name ?? "—"
+        var location = display
+        if let name = dto.name, display.hasSuffix(" " + name) {
+            location = String(display.dropLast(name.count + 1))
+        }
+        return Team(id: id, location: location, name: dto.name, abbreviation: dto.abbreviation,
+                    displayName: dto.displayName, shortDisplayName: dto.shortDisplayName,
+                    logoURL: dto.logos?.first?.href.flatMap(URL.init(string:)),
+                    conferenceId: Conference.division(forTeamId: id, in: league),
+                    league: league)
+    }
+}
+
 // MARK: - DTOs
 
 nonisolated struct TeamStatsResponseDTO: Decodable {
@@ -214,4 +284,32 @@ nonisolated struct CoreAthleteDTO: Decodable {
 
 nonisolated struct CoreHeadshotDTO: Decodable {
     let href: String?
+}
+
+nonisolated struct ByTeamResponseDTO: Decodable {
+    let categories: [ByTeamCategoryDTO]?
+    let teams: [ByTeamEntryDTO]?
+}
+
+/// A top-level category carries the names; a team's carries the values.
+nonisolated struct ByTeamCategoryDTO: Decodable {
+    let name: String?
+    let names: [String]?
+    let splitId: String?
+    /// Nullable per value: the NHL sends `null` for a shootout nobody took.
+    let values: [Double?]?
+}
+
+nonisolated struct ByTeamEntryDTO: Decodable {
+    let team: ByTeamTeamDTO?
+    let categories: [ByTeamCategoryDTO]?
+}
+
+nonisolated struct ByTeamTeamDTO: Decodable {
+    let id: String?
+    let name: String?
+    let abbreviation: String?
+    let displayName: String?
+    let shortDisplayName: String?
+    let logos: [LogoDTO]?
 }

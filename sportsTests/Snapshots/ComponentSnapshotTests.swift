@@ -208,6 +208,23 @@ struct ComponentSnapshotTests {
         assert(header, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("teamStatLeaderCard")), arguments: Variant.all)
+    func teamStatLeaderCard(_ variant: Variant) {
+        // A league page's Team stats card (2026-10-25): the stat's title
+        // with its chevron, then the top three, the leader's number in the
+        // filled capsule. On the recessed page at the pane's inset. As
+        // with the story cards, a `NavigationLink` with no stack above it
+        // draws its rows in the disabled ink offscreen; the layout is the
+        // baseline.
+        let card = VStack(spacing: Spacing.sm) {
+            TeamStatLeaderCard(destination: SnapshotFixtures.teamStatRanking(variant.sport))
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        .environment(SnapshotFixtures.noFollows)
+        assert(card, variant)
+    }
+
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

@@ -31,12 +31,13 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, news, postseason
+        case standings, games, teamStats, news, postseason
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .teamStats: "Team stats"
             case .news: "News"
             case .postseason: "Postseason"
             }
@@ -80,6 +81,9 @@ struct PollScreen: View {
     /// tab's first visit and held for the page.
     @State private var news: [NewsStory]?
     @State private var newsFailed = false
+    /// The Team stats tab's tables and the StatSide rating's standings
+    /// (2026-10-25), fetched on the tab's first visit.
+    @State private var teamStats = LeagueTeamStatsModel(league: .collegeFootball)
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -145,6 +149,7 @@ struct PollScreen: View {
                 switch tab {
                 case .standings: standingsSection
                 case .games: gamesSection(scrollInset: headerHeight)
+                case .teamStats: teamStatsSection
                 case .news: newsSection
                 case .postseason: postseasonSection
                 }
@@ -415,7 +420,9 @@ struct PollScreen: View {
     private func controlRow(for tab: Tab) -> some View {
         SeasonControlRow(season: seasonChip) {
             switch tab {
-            case .standings:
+            // Team stats ranks the poll's teams, so it carries the same
+            // week and poll chips: they are what decides who's on it.
+            case .standings, .teamStats:
                 if let shownWeek, seasonWeeks.count > 1 {
                     PollWeekMenuChip(weeks: seasonWeeks, current: shownWeek,
                                      onSelect: { select(week: $0) })
@@ -434,6 +441,44 @@ struct PollScreen: View {
                 EmptyView()
             }
         }
+    }
+
+    // MARK: - Team stats
+
+    /// The Top 25's Team stats: the teams in the poll the Standings tab
+    /// shows, for the week it shows (Andy, 2026-10-26, superseding the
+    /// day-old all-of-FBS scope) — so the cards change as the poll does.
+    /// The numbers are ESPN's season to date; `byteam` has no week axis,
+    /// so a past week's 25 are ranked on today's totals.
+    ///
+    /// The StatSide rating keeps all of FBS: it's a ranking of its own,
+    /// not a stat the poll's teams are ranked on.
+    private var teamStatsSection: some View {
+        let year = year
+        let poll = selectedPoll
+        let rankedIds = poll.map { Set($0.ranks.map(\.team.id)) }
+        let known = (poll?.ranks.map(\.team) ?? [])
+            + (teamStats.standingsByYear[year] ?? []).flatMap(\.entries).map(\.team)
+        let weekLabel = poll?.occurrenceLabel ?? shownWeek?.label
+        return LeagueTeamStatsPane(
+            // The poll decides who's ranked, so the cards wait for it.
+            stats: rankedIds == nil ? nil : teamStats.stats(for: year)?.resolvingTeams(known),
+            failed: teamStats.failed(year) || (poll == nil && tableFailed),
+            retry: {
+                Task {
+                    await teamStats.load(year: year, force: true)
+                    if poll == nil { await retryTable() }
+                }
+            },
+            teamIds: rankedIds,
+            scopeName: poll?.shortName ?? poll?.name ?? "Top 25",
+            seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "),
+            rating: StatSideRating.ranking(from: teamStats.standingsByYear[year] ?? []))
+            .task(id: year) {
+                async let stats: Void = teamStats.load(year: year)
+                async let standings: Void = teamStats.loadRatingStandings(year: year)
+                _ = await (stats, standings)
+            }
     }
 
     // MARK: - News
@@ -586,8 +631,14 @@ struct PollScreen: View {
     /// it, because a bowl slate is the division's, not the Top 25's, and a
     /// postseason narrowed to ranked teams would drop most of the bowls.
     private var availableTabs: [Tab] {
-        // News after Games (Andy, 2026-09-27, E26).
-        postseasonRounds.isEmpty ? [.standings, .games, .news] : [.standings, .games, .news, .postseason]
+        // News after Games (Andy, 2026-09-27, E26); Team stats between
+        // them (2026-10-25), ESPN-gated like ConferencePage's so the
+        // fixture-backed UI suites never reach the network.
+        var tabs: [Tab] = [.standings, .games]
+        if DataProvider.makeClient(league: league).providesRoster { tabs.append(.teamStats) }
+        tabs.append(.news)
+        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
+        return tabs
     }
 
     private var postseasonRounds: [PostseasonRound] {

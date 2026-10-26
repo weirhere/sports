@@ -149,6 +149,7 @@ struct SearchScreen: View {
             .navigationDestination(for: ConferenceDestination.self) { destination in
                 ConferencePage(destination: destination).id(destination)
             }
+            .teamStatsDestinations()
             .navigationDestination(for: Game.self) { game in
                 GameDetailScreen(game: game).id(game.id)
             }

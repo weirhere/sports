@@ -13,12 +13,13 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, news, postseason, trades
+        case standings, games, teamStats, news, postseason, trades
 
         var title: String {
             switch self {
             case .standings: "Standings"
             case .games: "Games"
+            case .teamStats: "Team stats"
             case .news: "News"
             case .postseason: "Postseason"
             case .trades: "Trades"
@@ -80,6 +81,9 @@ struct ConferencePage: View {
     @State private var news: [NewsStory]?
     @State private var newsKey: String?
     @State private var newsFailed = false
+    /// The Team stats tab's `byteam` tables, per season (2026-10-25),
+    /// fetched on the tab's first visit.
+    @State private var teamStats: LeagueTeamStatsModel
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
     @State private var tabSlideEdge: Edge = .trailing
@@ -170,6 +174,7 @@ struct ConferencePage: View {
         // the league page, its 16 on a conference page.
         _scope = State(initialValue: StandingsScope.default(for: destination.conference))
         _selectedYear = State(initialValue: SeasonYear.year(for: destination.league))
+        _teamStats = State(initialValue: LeagueTeamStatsModel(league: destination.league))
         // Weeks is a football clock. The NBA and NHL send `week: null` on
         // every event, so a Weeks toggle there files a whole season under
         // one unheaded card — Date leads instead.
@@ -339,6 +344,7 @@ struct ConferencePage: View {
                     switch tab {
                     case .standings: standingsCard
                     case .games: gamesSection(scrollInset: headerHeight)
+                    case .teamStats: teamStatsSection
                     case .news: newsSection
                     case .postseason: postseasonSection
                     case .trades: tradesSection
@@ -549,6 +555,7 @@ struct ConferencePage: View {
     /// slate in every league we cover.
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.standings, .games]
+        if showsTeamStatsTab { tabs.append(.teamStats) }
         // After Games (Andy, 2026-09-27, E26). ESPN-gated like the Trades
         // tab, so the fixture-backed UI suites never reach the network.
         if client.providesRoster { tabs.append(.news) }
@@ -565,6 +572,16 @@ struct ConferencePage: View {
         destination.league != .collegeFootball
             && destination.conferenceId == Conference.leagueWideId(in: destination.league)
             && client.providesRoster
+    }
+
+    /// Team stats wherever ESPN's `byteam` table has the page's teams:
+    /// every pro page, and FBS and its conferences. `byteam` ignores
+    /// `groups=` and answers FBS only, so FCS pages never offer it.
+    /// ESPN-gated like News, so the fixture-backed UI suites never reach
+    /// the network.
+    private var showsTeamStatsTab: Bool {
+        client.providesRoster
+            && Conference.division(for: destination.conferenceId, in: destination.league) != .fcs
     }
 
     /// The tab one step along the *visible* row. Postseason comes and goes
@@ -670,6 +687,43 @@ struct ConferencePage: View {
         Task { @MainActor in
             withAnimation(.default) { tab = value }
         }
+    }
+
+    // MARK: - Team stats
+
+    /// The league's tables, ranked among this page's teams (2026-10-25).
+    /// A college-football conference learns its members from its own
+    /// standings — `byteam` names no conference — so its cards wait for
+    /// them; every other page can rank as soon as the stats land.
+    private var teamStatsSection: some View {
+        let standings = standingsByYear[selectedYear]
+        let needsStandings = destination.league == .collegeFootball && !isLeagueWide
+        let stats = needsStandings && standings == nil
+            ? nil
+            : teamStats.stats(for: selectedYear)?
+                .resolvingTeams((standings ?? []).flatMap(\.entries).map(\.team))
+        let teamIds = stats.flatMap { stats in
+            LeagueTeamStats.teamIds(on: destination.conference, standings: standings ?? [],
+                                    candidates: stats.lines.map(\.team))
+        }
+        // The rating is FBS's, so it leads FBS's own page — the Top 25
+        // carries it too, from a fetch of its own.
+        let showsRating = Conference.isDivisionRoot(destination.conferenceId, in: destination.league)
+            && Conference.division(for: destination.conferenceId, in: destination.league) == .fbs
+        return LeagueTeamStatsPane(
+            stats: stats,
+            failed: teamStats.failed(selectedYear) || (needsStandings && failedYears.contains(selectedYear)),
+            retry: {
+                Task {
+                    await teamStats.load(year: selectedYear, force: true)
+                    if needsStandings { await loadStandings(year: selectedYear, force: true) }
+                }
+            },
+            teamIds: teamIds,
+            scopeName: destination.name,
+            seasonLabel: destination.league.seasonLabel(selectedYear),
+            rating: showsRating ? StatSideRating.ranking(from: standings ?? []) : nil)
+            .task(id: selectedYear) { await teamStats.load(year: selectedYear) }
     }
 
     // MARK: - Trades

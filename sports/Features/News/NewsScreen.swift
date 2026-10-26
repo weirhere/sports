@@ -78,6 +78,7 @@ struct NewsScreen: View {
                 ConferencePage(destination: destination)
                     .id(destination)
             }
+            .teamStatsDestinations()
             // College football's "See more": its league page is the Top 25.
             .navigationDestination(for: PollDestination.self) { destination in
                 PollScreen(polls: destination.polls, league: destination.league,

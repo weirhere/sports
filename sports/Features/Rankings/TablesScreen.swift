@@ -147,6 +147,7 @@ struct TablesScreen: View {
                     ConferencePage(destination: destination)
                         .id(destination)
                 }
+                .teamStatsDestinations()
                 // Identity follows the team (2026-09-10). Search and the
                 // widget route by *replacing* the value at this path position
                 // rather than pushing a second page, and a destination whose
