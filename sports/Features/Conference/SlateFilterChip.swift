@@ -15,6 +15,9 @@ struct SlateToggleChip: View {
     /// Set when the chip sits on a painted surface (the Starters field's
     /// turf): the chip takes the surface's ink instead of the page's.
     var ink: SurfaceColors.Ink? = nil
+    /// What VoiceOver calls the chip when the title alone is ambiguous —
+    /// the Starters strips' "Offense" appears once per team.
+    var accessibilityName: String? = nil
     let onToggle: () -> Void
 
     var body: some View {
@@ -25,14 +28,19 @@ struct SlateToggleChip: View {
                 .fixedSize()
                 .foregroundStyle(isOn ? (ink?.counter ?? Color.bgPrimary) : (ink?.text ?? Color.textPrimary))
                 .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
+                .frame(minHeight: 32)
                 .modifier(SlateChipBackground(isActive: isOn, ink: ink))
-                // Compact capsule, 44 pt tap target.
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
+                // Compact capsule, 44 pt tap target. On a painted surface
+                // the capsule's 32pt is its whole height in the layout, so
+                // the Starters strips keep their 16pt above and below it
+                // (the Figma sheet, 2026-10-27), and the tap target reaches
+                // past it instead.
+                .frame(minHeight: ink == nil ? 44 : nil)
+                .contentShape(Rectangle().inset(by: ink == nil ? 0 : -6))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        .accessibilityLabel(accessibilityName ?? title)
         .accessibilityValue(isOn ? "on" : "off")
         .accessibilityHint(hint ?? "")
         .accessibilityAddTraits(isOn ? .isSelected : [])
@@ -42,7 +50,8 @@ struct SlateToggleChip: View {
 
 /// Shared by the toggles and the team dropdown so the row reads as one set
 /// of controls. On a painted surface (`ink` set) the active chip fills with
-/// the surface's ink and the idle one is a hairline capsule in it — no
+/// the surface's ink and the idle one is a hairline capsule in it, at full
+/// strength (the Figma sheet, 2026-10-27; it was 55%) — no
 /// glass, which would tint with the turf under it and lose the text.
 struct SlateChipBackground: ViewModifier {
     let isActive: Bool
@@ -53,7 +62,7 @@ struct SlateChipBackground: ViewModifier {
             if isActive {
                 content.background(Capsule().fill(ink.text))
             } else {
-                content.overlay(Capsule().strokeBorder(ink.text.opacity(0.55), lineWidth: 1))
+                content.overlay(Capsule().strokeBorder(ink.text, lineWidth: 1))
             }
         } else if isActive {
             content.background(Capsule().fill(Color.textPrimary))

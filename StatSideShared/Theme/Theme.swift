@@ -202,6 +202,9 @@ extension Font {
     static var chip: Font { scaled(14, .medium, relativeTo: .callout) }
     /// Live-game counterpart to `chip`: same size, weight carries the emphasis.
     static var chipEmphasis: Font { scaled(14, .semibold, relativeTo: .callout) }
+    /// A team's name in the bar under the Starters court or rink: a chip's
+    /// size at regular weight, beside a 32pt logo.
+    static var surfaceCaption: Font { scaled(14, .regular, relativeTo: .callout) }
     /// Between meta and metaEmphasis: the widget's card rows want records and
     /// times a step stronger than regular against the bgHeader card fill.
     static var metaMedium: Font { scaled(12, .medium, relativeTo: .caption1) }

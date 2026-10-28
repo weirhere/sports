@@ -6,9 +6,9 @@ import SwiftUI
 /// are looking at when you decide you'd rather have the list (Andy,
 /// 2026-10-18). On the field the row sits on the surface's paint in its
 /// ink; over the list cards it sits on the page in the page's. It pads
-/// itself only sideways: the 8pt above and below it is the card's or the
-/// pane's, once, not the row's own on top of theirs (Andy, 2026-10-18 —
-/// "it doesn't need to be that tall").
+/// itself only sideways: the margin above and below it is the card's or
+/// the pane's, once, not the row's own on top of theirs (Andy, 2026-10-18
+/// — "it doesn't need to be that tall").
 struct StartersHeader: View {
     let roster: GameRoster
     let league: League
