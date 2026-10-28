@@ -198,8 +198,12 @@ struct TablesScreen: View {
 
     /// The page's settings — how each league's Scores slate is grouped
     /// (Andy, 2026-10-26: off the cards "to clean up the ui a bit"). The
-    /// Scores header's gear: the same glass circle, opening a sheet, so
-    /// it holds no state and paints no fill.
+    /// Scores header's gear, drawn flat: on Scores' white page the glass
+    /// circle's own shadow all but vanishes, but on this page's gray one it
+    /// read as a dark halo (Andy, same day), and glass has no shadow
+    /// switch. A card-white circle with none matches what the Scores gear
+    /// looks like, and the search field beside it, which also rests
+    /// shadowless at the top of the page.
     private var settingsButton: some View {
         Button { showsSettings = true } label: {
             Image(systemName: "gearshape")
@@ -209,7 +213,7 @@ struct TablesScreen: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .glassCircleInteractive(fallback: Color.bgElevated)
+        .background(Circle().fill(Color.bgCard))
         .accessibilityLabel("Leagues settings")
         .accessibilityIdentifier("leagues-settings-button")
     }
