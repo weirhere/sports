@@ -16,16 +16,29 @@ struct FormationSlot: View {
     /// at a fixed width overflowed the field and shoved the page sideways.
     var maxWidth: CGFloat? = nil
 
-    @ScaledMetric(relativeTo: .caption2) private var discSize: CGFloat = 32
+    /// The hairline's strength on the disc: a touch firmer on maple, where
+    /// the disc's gray sits closest to the wood (the Figma sheet).
+    var hairline: Double = 0.08
+
+    /// 48pt, the number about 16pt in it (the Figma sheet, 2026-10-27; it
+    /// was 32): a name the field is for should be found at a glance.
+    @ScaledMetric(relativeTo: .caption2) private var discSize: CGFloat = 48
+
+    /// The disc keeps its light-mode grays in dark mode — a light chip with
+    /// a gray number on every surface, so a player reads the same on gray
+    /// turf as on green (the Figma sheet, 2026-10-27).
+    private static let discFill = Color(white: 0.93)
+    private static let discNumber = Color(white: 0.42)
 
     var body: some View {
         NavigationLink(value: PlayerIdentity(person: person, team: team, league: league)) {
-            VStack(spacing: 2) {
-                PersonDisc(jersey: person.jersey, url: person.thumbnailURL, size: discSize)
-                    // A hairline of the surface's own ink, translucent, so
-                    // the disc stands off ice it shares a gray with without
-                    // a pure-white ring on turf (Andy, 2026-10-18).
-                    .overlay(Circle().stroke(ink.opacity(0.35), lineWidth: 1))
+            VStack(spacing: Spacing.xs) {
+                PersonDisc(jersey: person.jersey, url: person.thumbnailURL, size: discSize,
+                           fill: Self.discFill, numberColor: Self.discNumber)
+                    // A hairline of the surface's own ink, faint, so the
+                    // disc stands off ice it shares a gray with without a
+                    // ring on turf (Andy, 2026-10-18).
+                    .overlay(Circle().strokeBorder(ink.opacity(hairline), lineWidth: 1.5))
                 Text(label)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(ink)

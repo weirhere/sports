@@ -8,13 +8,17 @@ struct PersonDisc: View {
     let jersey: String?
     let url: URL?
     let size: CGFloat
+    /// The disc and its number. The page's grays by default; the Starters
+    /// field pins them (`FormationSlot`).
+    var fill: Color = .bgElevated
+    var numberColor: Color = .textSecondary
 
     var body: some View {
         ZStack {
-            Circle().fill(Color.bgElevated)
+            Circle().fill(fill)
             Text(jersey ?? "")
                 .font(.system(size: size * 0.34, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.textSecondary)
+                .foregroundStyle(numberColor)
             if let url {
                 LogoImage(url: url, placeholder: nil, contentMode: .fill)
             }

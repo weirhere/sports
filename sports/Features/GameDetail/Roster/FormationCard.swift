@@ -3,19 +3,23 @@ import SwiftUI
 /// The Roster tab's lineup section — not a card: the field runs edge to
 /// edge, because eleven across a phone needs every point it can get and
 /// the card's inset and the field's own margin were costing it 40 (Andy,
-/// 2026-10-18). The title and the chips keep the cards' text margin and
+/// 2026-10-18). The title and the strips keep the cards' text margin and
 /// sit on the surface's paint a shade deeper than the field's, with no
 /// divider under the title: the section is one painted place from its
-/// name down to the last row, not a header over a picture, and the shade
-/// change is where the field begins (Andy, same day — on a single green
-/// the heading and the first row ran together).
-/// The two starting units on one field, and
-/// in football the chip row that decides whose offense is drawn — one
-/// team's eleven across the line from the other team's eleven, which is
-/// the picture a snap makes and the only honest one for a sport whose
-/// "lineup" changes every change of possession. The chips say "HOU
-/// offense": a "HOU has the ball" wording was tried and reverted the same
-/// day — the unit's name felt better (Andy, 2026-10-18).
+/// name down to its last strip, not a header over a picture, and the
+/// shade change is where the field begins (Andy, same day — on a single
+/// green the heading and the first row ran together).
+///
+/// In football a strip at each end names its team and holds the chips
+/// that decide whose offense is drawn — one team's eleven across the line
+/// from the other team's eleven, which is the picture a snap makes and
+/// the only honest one for a sport whose "lineup" changes every change of
+/// possession. The top team's strip sits under the title and the bottom
+/// team's under the field, each reading its own unit, so the two always
+/// disagree (the Figma sheet "↳ Roster variants", 2026-10-27; until then
+/// one row of "HOU offense" chips under the title, and a caption at each
+/// end of the field). The court and the rink, whose lineups don't change
+/// with the ball, name their teams in plain bars, one at each end.
 struct FormationCard: View {
     let roster: GameRoster
     let league: League
@@ -36,39 +40,17 @@ struct FormationCard: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                // The same `sm` the pane pads above the list layout's title
-                // row, so the title sits at one height whichever chip is on
-                // and a Field / List tap doesn't shift the section (Andy,
-                // 2026-10-18 — it was `xs`, 4pt higher than the list's).
-                // This is the row's whole margin: the header pads no
-                // vertical of its own (same day, halving the strip).
+                // 16pt above and below a row of 32pt chips: a 64pt title
+                // row (the Figma sheet, 2026-10-27). The header pads no
+                // vertical of its own; this is its whole margin.
                 StartersHeader(roster: roster, league: league, layout: layout,
                                onLayoutChange: onLayoutChange, ink: ink)
                     .padding(.horizontal, Spacing.sm)
-                    .padding(.vertical, Spacing.sm)
+                    .padding(.vertical, Spacing.lg)
                 if isFootball {
-                    // Two rows, not one block: the title row and the
-                    // possession chips each keep their own 8pt above and
-                    // below, with a hairline between them in the surface's
-                    // ink — fainter than the idle chip's outline — so the
-                    // chips read as their own section under the title and
-                    // not as its second line (Andy, 2026-10-18).
-                    Divider().overlay(ink.text.opacity(0.3))
-                    HStack(spacing: Spacing.sm) {
-                        SlateToggleChip(title: "\(shortName(away.team)) offense", isOn: awayHasBall,
-                                        hint: "Draws \(away.team.location)'s offense against \(home.team.location)'s defense",
-                                        ink: ink) {
-                            offenseTeamId = away.team.id
-                        }
-                        SlateToggleChip(title: "\(shortName(home.team)) offense", isOn: !awayHasBall,
-                                        hint: "Draws \(home.team.location)'s offense against \(away.team.location)'s defense",
-                                        ink: ink) {
-                            offenseTeamId = home.team.id
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, Spacing.sm + Spacing.md)
-                    .padding(.vertical, Spacing.sm)
+                    strip(for: away.team, opponent: home.team, isOffense: awayHasBall)
+                } else {
+                    SurfaceCaptionBar(team: away.team, league: league)
                 }
             }
             // A shade deeper than the field, so the heading reads as the
@@ -78,14 +60,27 @@ struct FormationCard: View {
             FormationField(league: league,
                            top: formation(for: away, isOffense: awayHasBall),
                            bottom: formation(for: home, isOffense: !awayHasBall),
-                           topTeam: away.team, bottomTeam: home.team,
-                           topLabel: unitLabel(for: away.team, isOffense: awayHasBall),
-                           bottomLabel: unitLabel(for: home.team, isOffense: !awayHasBall))
+                           topTeam: away.team, bottomTeam: home.team)
                 .background(SurfaceColors.base(for: league))
+            Group {
+                if isFootball {
+                    strip(for: home.team, opponent: away.team, isOffense: !awayHasBall)
+                } else {
+                    SurfaceCaptionBar(team: home.team, league: league)
+                }
+            }
+            .background(SurfaceColors.heading(for: league))
             unplacedRows
                 .padding(.horizontal, Spacing.sm)
         }
-        .padding(.bottom, Spacing.xs)
+    }
+
+    /// A team's strip; picking its Offense puts its offense on the field,
+    /// picking its Defense puts the other team's there.
+    private func strip(for team: Team, opponent: Team, isOffense: Bool) -> some View {
+        UnitStrip(team: team, opponent: opponent, league: league, isOffense: isOffense, ink: ink) { offense in
+            offenseTeamId = offense ? team.id : opponent.id
+        }
     }
 
     /// Starters the layout couldn't place — a position the table doesn't
@@ -124,12 +119,4 @@ struct FormationCard: View {
         return Formation.make(starters: side.starters, league: league,
                               unit: isFootball ? (isOffense ? .offense : .defense) : nil)
     }
-
-    private func unitLabel(for team: Team, isOffense: Bool) -> String? {
-        guard isFootball else { return nil }
-        return "\(shortName(team)) \(isOffense ? "offense" : "defense")"
-    }
-
-    private func shortName(_ team: Team) -> String { team.abbreviation ?? team.location }
-
 }

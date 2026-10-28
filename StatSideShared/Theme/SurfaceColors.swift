@@ -56,16 +56,45 @@ nonisolated enum SurfaceColors {
         let counter: Color
     }
 
-    /// Each surface's ink: off-white on turf, which is the same deep green
-    /// in both modes (dark names on it read muddy — Andy, 2026-10-18,
-    /// against FotMob's pitch); fixed dark ink on ice, which stays light in
-    /// both; `textPrimary` on maple, which deepens in dark mode the way the
-    /// page does.
+    /// Each Starters surface's ink: off-white on turf, green in light mode
+    /// and dark gray in dark (dark names on the green read muddy — Andy,
+    /// 2026-10-18, against FotMob's pitch); `textPrimary` on maple and ice,
+    /// which are light in light mode and the page's grays in dark. The ice
+    /// had fixed dark ink until its dark mode turned gray (2026-10-27).
     static func ink(for league: League) -> Ink {
         switch league {
         case .collegeFootball, .nfl: Ink(text: turfInk, counter: ink)
-        case .nhl: Ink(text: ink, counter: chalk)
-        case .nba: Ink(text: .textPrimary, counter: .bgPrimary)
+        case .nba, .nhl: Ink(text: .textPrimary, counter: .bgPrimary)
+        }
+    }
+
+    /// The Starters field's paint. Light mode is the Gamecast's, a picture
+    /// of the place; dark mode is the page's own grays — the field
+    /// `bgElevated` with `bgHeader` bands, the heading and the lines
+    /// `divider` — so the section reads as a darker card with markings
+    /// rather than a lit pitch on a black page, and the rink's red line
+    /// goes gray with the rest (the Figma sheet's Theme/Dark mode, Andy,
+    /// 2026-10-27: "Implement the updated figma designs into the
+    /// codebase"). The live Gamecast surfaces keep their colors in dark.
+    enum Starters {
+        static let turf = grayInDark(SurfaceColors.turf, white: 0.17)
+        static let turfAlternate = grayInDark(SurfaceColors.turfAlternate, white: 0.15)
+        static let turfHeading = grayInDark(SurfaceColors.turfHeading, white: 0.20)
+        static let maple = grayInDark(SurfaceColors.maple, white: 0.15)
+        static let paint = grayInDark(SurfaceColors.paint, white: 0.20)
+        static let ice = grayInDark(SurfaceColors.ice, white: 0.15)
+        static let iceHeading = grayInDark(SurfaceColors.iceHeading, white: 0.20)
+        static let rinkRed = grayInDark(SurfaceColors.rinkRed, white: 0.20)
+        /// Faint on the ice, so the red lines carry the rink and the blue
+        /// lines only divide it (the Figma sheet, 2026-10-28).
+        static let blueLine = grayInDark(SurfaceColors.blueLine.opacity(0.2), white: 0.20)
+
+        private static func grayInDark(_ light: Color, white: CGFloat) -> Color {
+            Color(uiColor: UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(white: white, alpha: 1)
+                    : UIColor(light).resolvedColor(with: traits)
+            })
         }
     }
 
@@ -73,9 +102,9 @@ nonisolated enum SurfaceColors {
     /// its first yard line, is painted in.
     static func base(for league: League) -> Color {
         switch league {
-        case .collegeFootball, .nfl: turf
-        case .nba: maple
-        case .nhl: ice
+        case .collegeFootball, .nfl: Starters.turf
+        case .nba: Starters.maple
+        case .nhl: Starters.ice
         }
     }
 
@@ -88,13 +117,24 @@ nonisolated enum SurfaceColors {
     /// darker without stopping being ice, dims a touch instead.
     static func heading(for league: League) -> Color {
         switch league {
-        case .collegeFootball, .nfl: turfHeading
-        case .nba: paint
-        case .nhl: iceHeading
+        case .collegeFootball, .nfl: Starters.turfHeading
+        case .nba: Starters.paint
+        case .nhl: Starters.iceHeading
         }
     }
     static let turfHeading = dynamic(light: (0.150, 0.400, 0.230), dark: (0.135, 0.370, 0.210))
-    static let iceHeading = dynamic(light: (0.918, 0.933, 0.945), dark: (0.835, 0.858, 0.878))
+    static let iceHeading = dynamic(light: (0.863, 0.863, 0.863), dark: (0.835, 0.858, 0.878))
+
+    /// A surface color as the bare hex `LogoImage(outlineAgainst:)` takes,
+    /// resolved for one appearance — so a mark on the Starters strips is
+    /// checked against the turf it actually sits on.
+    static func hex(_ color: Color, isDark: Bool) -> String {
+        let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(color).resolvedColor(with: traits).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "%02x%02x%02x", Int((r * 255).rounded()), Int((g * 255).rounded()),
+                      Int((b * 255).rounded()))
+    }
 
     /// An end zone or shot mark whose team shipped no usable color.
     static let teamMarkFallback = Color(uiColor: UIColor { traits in
