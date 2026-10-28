@@ -296,11 +296,15 @@ Its views:
 
 - **StatSide Ranking** sorts FBS by Overall Rank, beside ESPN's SOR Rank and
   FPI Rank and the AP rank.
-- **StatSide Résumé** is the résumé alone.
 - **StatSide by conference** groups the ranking by conference.
+- **Record sort (app today)**, formerly "Performance Poll", is the old rule:
+  Perf Rank and Tier, which mirror what the app ships until the port.
 
-**Perf Rank**, the record sort behind the "Performance Poll" view, is
-untouched; the new performance is **Performance Rank**. To refresh:
+The résumé-only view was retired on 2026-10-28. Résumé Rank (Avg Team) and
+Strength stay as columns for checking the résumé. **Perf Rank** is not the
+new performance; that is **Performance Rank**.
+
+To refresh:
 
 ```
 scripts/statside-ranking.py --notion     # needs NOTION_TOKEN; week 4 on
