@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// One team in the StatSide rating's full table: place, mark, name, then
-/// the four numbers it's sorted on — W-L, differential, points for and
-/// against — in `RankRow`'s columns.
+/// four numbers in `RankRow`'s columns. They are the record, the overall
+/// score (0–100), and the résumé and performance ranks the score combines
+/// two-thirds and one-third.
 struct StatSideRatingRow: View {
     let row: StatSideRating.Row
 
@@ -10,7 +11,10 @@ struct StatSideRatingRow: View {
     @ScaledMetric(relativeTo: .subheadline) private var logoSize: CGFloat = 20
     @ScaledMetric(relativeTo: .subheadline) private var rankWidth: CGFloat = 22
     @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 36
-    @ScaledMetric(relativeTo: .subheadline) private var numberWidth: CGFloat = 34
+    /// Wide enough for "98.2" and its caption, "SCORE".
+    @ScaledMetric(relativeTo: .subheadline) private var scoreWidth: CGFloat = 40
+    /// Wide enough for "138" and "PERF": the ranks are three digits at most.
+    @ScaledMetric(relativeTo: .subheadline) private var placeWidth: CGFloat = 30
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
@@ -31,24 +35,24 @@ struct StatSideRatingRow: View {
                 .font(.teamNameEmphasis.monospacedDigit())
                 .foregroundStyle(.textPrimary)
                 .frame(minWidth: recordWidth, alignment: .trailing)
-            number(row.differentialDisplay)
-            number("\(row.pointsFor)")
-            number("\(row.pointsAgainst)")
+            number(row.scoreDisplay, width: scoreWidth)
+            number("\(row.resumeRank)", width: placeWidth)
+            number("\(row.performanceRank)", width: placeWidth)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Number \(row.rank), \(row.team.location), "
-            + "\(row.wins) and \(row.losses), point differential \(row.differentialDisplay), "
-            + "\(row.pointsFor) for, \(row.pointsAgainst) against")
+            + "\(row.wins) and \(row.losses), score \(row.scoreDisplay), "
+            + "résumé \(row.resumeRank), performance \(row.performanceRank)")
         .accessibilityHint("View team page")
     }
 
-    private func number(_ text: String) -> some View {
+    private func number(_ text: String, width: CGFloat) -> some View {
         Text(text)
             .font(.teamName.monospacedDigit())
             .foregroundStyle(.textSecondary)
-            .frame(minWidth: numberWidth, alignment: .trailing)
+            .frame(minWidth: width, alignment: .trailing)
     }
 }

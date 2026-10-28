@@ -16,6 +16,7 @@ struct RootView: View {
     @State private var scoreboards = LeagueScoreboards()
     @State private var directory = TeamDirectoryStore()
     @State private var coachStaff = CoachStaffStore()
+    @State private var statSideRating = StatSideRatingStore()
     @State private var recents = RecentSearchesStore()
     @State private var leagueSections = LeagueSectionExpansion()
     @State private var router: Router
@@ -99,6 +100,7 @@ struct RootView: View {
         .task { await scoreboards.loadInitial() }
         .task { await directory.load() }
         .task { await coachStaff.refresh() }
+        .task { await statSideRating.refresh() }
         .onAppear {
             // The pick-your-teams moment: offered once, and only to someone
             // who follows nobody (an upgrader with follows never sees it).
@@ -201,6 +203,7 @@ struct RootView: View {
         .environment(scoreboards)
         .environment(directory)
         .environment(coachStaff)
+        .environment(statSideRating)
         .environment(recents)
         .environment(leagueSections)
     }

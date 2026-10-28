@@ -1,0 +1,71 @@
+# Weekly refresh of the StatSide rating (E22, 2026-10-28).
+#
+# Runs scripts/statside-ranking.py --publish, which ranks FBS two-thirds on
+# résumé and one-third on performance from ESPN's scoreboards and
+# play-by-play, and opens a PR when the list changed. Merging deploys
+# web/public/statside-rating.json to statside.co/statside-rating.json,
+# which the app reads once per launch, so no App Store release is needed.
+# The bundled copy (sports/Resources/statside-rating.json) changes with it.
+#
+# Before week 4 the script publishes nothing, as the ranking proposal says,
+# so an early-season or offseason run ends without a PR. From January the
+# season is last year's and --postseason folds the bowls and the CFP in.
+#
+# The game summaries are cached between runs: a finished game never
+# changes, so each Sunday fetches only the week's new ones.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" on in
+# Settings > Actions > General, or the PR step fails with a 403.
+name: StatSide rating
+
+on:
+  schedule:
+    # Sundays 15:23 UTC: Saturday's late West Coast games have finished.
+    - cron: "23 15 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      STATSIDE_CACHE: ${{ github.workspace }}/.statside-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .statside-cache
+          key: statside-plays-${{ github.run_id }}
+          restore-keys: statside-plays-
+      - name: Publish statside-rating.json
+        run: python3 scripts/statside-ranking.py --postseason --publish > rank.log 2>&1; tail -40 rank.log
+      - name: Open a PR if the list changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- web/public/statside-rating.json sports/Resources/statside-rating.json; then
+            echo "No change to the rating."
+            exit 0
+          fi
+          branch="statside-rating/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add web/public/statside-rating.json sports/Resources/statside-rating.json
+          git commit -m "Update the StatSide rating"
+          git push -u origin "$branch" --force
+          {
+            echo "Weekly StatSide rating refresh (\`scripts/statside-ranking.py --publish\`)."
+            echo
+            echo '```'
+            grep -E "^Published|through week|^ {0,2}[0-9]+  " rank.log | head -30 || true
+            echo '```'
+          } > body.md
+          gh pr create --title "StatSide rating: $(date -u +%Y-%m-%d)" --body-file body.md --base main --head "$branch"

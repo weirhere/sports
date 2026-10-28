@@ -40,6 +40,7 @@ Usage:
   scripts/statside-ranking.py --season 2025 --through-week 10
   scripts/statside-ranking.py --json out.json
   scripts/statside-ranking.py --notion              # write Notion columns
+  scripts/statside-ranking.py --publish             # write statside-rating.json
   scripts/statside-ranking.py --season 2025 --backtest
 
 Game summaries (the play-by-play) are cached under ~/Library/Caches/StatSide.
@@ -50,7 +51,14 @@ season is about 800 of them.
 Football Teams 2026 database is shared with. Rows are matched by the ESPN
 team id in the database's ESPN url, then by title. A team that matches
 neither is reported, never guessed. The proposal publishes from week four,
-so --notion refuses earlier weeks unless --force is given.
+so --notion and --publish skip earlier weeks unless --force is given.
+
+--publish writes the season into statside-rating.json, the file the app
+reads. One copy is web/public/statside-rating.json, served at
+statside.co, and the app downloads it once per launch. The other is
+sports/Resources/statside-rating.json, bundled with the build. Other
+seasons already in the file are kept, so a finished season's final list
+stays. .github/workflows/statside-rating.yml runs this every Sunday.
 
 --backtest refits every week of a past season on only the games played by
 then, predicts the next week's winners with each rating, and grids the
@@ -88,6 +96,11 @@ FBS_CONFERENCES = {
     "8": "SEC", "37": "Sun Belt",
 }
 LIMIT = 300
+
+# Each team's identity as the scoreboard ships it, by ESPN id: what the app
+# needs to draw a row and open the team's page without asking ESPN.
+TEAMS = {}
+PUBLISHED = ("web/public/statside-rating.json", "sports/Resources/statside-rating.json")
 
 # The margin rating's constants, tuned by --backtest on 2024 and 2025.
 # SIGMA is the spread of a game's margin around the rating gap, which turns
@@ -195,6 +208,8 @@ def parse_game(event, week, seasontype, fbs_ids, names, conferences):
         if not team_id or competitor.get("homeAway") not in ("home", "away"):
             return None
         names[team_id] = team.get("location") or team.get("displayName") or team_id
+        TEAMS[team_id] = {key: team.get(key) for key in
+                          ("location", "name", "abbreviation", "displayName", "shortDisplayName", "logo")}
         conference = str(team.get("conferenceId"))
         if conference in FBS_CONFERENCES:
             fbs_ids.add(team_id)
@@ -212,7 +227,9 @@ def parse_game(event, week, seasontype, fbs_ids, names, conferences):
 
 
 def team_groups(games, fbs_ids, fcs_ids):
-    teams = {g["home"] for g in games} | {g["away"] for g in games}
+    # Sorted, so every sweep visits teams in the same order and a rerun on
+    # the same games gives the same numbers, whatever the hash seed.
+    teams = sorted({g["home"] for g in games} | {g["away"] for g in games})
     return {t: "fbs" if t in fbs_ids else "fcs" if t in fcs_ids else "other" for t in teams}
 
 
@@ -225,7 +242,7 @@ def fit_ratings(games, fbs_ids, fcs_ids, cap=CAP, k=K):
     and anyone else (Division II visitors) toward theirs. The group means and
     home-field advantage are re-estimated on every sweep."""
     group = team_groups(games, fbs_ids, fcs_ids)
-    teams = set(group)
+    teams = list(group)
     schedule = {t: [] for t in teams}
     for g in games:
         margin = max(-cap, min(cap, g["home_score"] - g["away_score"])) if cap else \
@@ -293,7 +310,7 @@ def resume_table(games, fbs_ids, ratings, hfa, sigma=SIGMA):
     fbs_ratings = [ratings[t] for t in fbs_ids if t in ratings]
     bench = {name: percentile(fbs_ratings, q) for name, q in BENCHMARKS.items()}
     rows = []
-    for team in fbs_ids:
+    for team in sorted(fbs_ids):
         played = [g for g in games if team in (g["home"], g["away"])]
         if not played:
             continue
@@ -1171,6 +1188,49 @@ def write_notion_conferences(table, season, week):
     print("Notion: wrote the conference table", file=sys.stderr)
 
 
+def publish(rows, conferences, season, week, final):
+    """Write this season into statside-rating.json, both copies, keeping
+    the other seasons already there. Keys are the app's property names."""
+    teams = []
+    for row in rows:
+        info = TEAMS.get(row["team"], {})
+        conference = conferences.get(row["team"])
+        teams.append({
+            "id": row["team"], **{k: v for k, v in info.items() if v},
+            "conferenceId": int(conference) if conference else None,
+            "rank": row["overall_rank"], "score": row["overall_score"],
+            "wins": row["wins"], "losses": row["losses"],
+            "resumeRank": row["rank"], "resumeScore": row["score"],
+            "performanceRank": row["performance_rank"],
+            "performance": round(row["performance"], 1) + 0.0,
+            "offense": round(row["offense"], 1) + 0.0,
+            "defense": round(row["defense"], 1) + 0.0,
+            "specialTeams": round(row["special"], 1) + 0.0,
+            "conferenceRank": row["conference_rank"],
+        })
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        with open(os.path.join(root, PUBLISHED[0])) as handle:
+            existing = json.load(handle)
+    except (OSError, ValueError):
+        existing = {}
+    seasons = existing.get("seasons") or {}
+    entry = {"label": "Final" if final else f"Week {week}", "throughWeek": week, "teams": teams}
+    if seasons.get(str(season)) == entry:
+        # Unchanged, so `updated` stays put and the weekly job opens no PR.
+        print(f"{season} is unchanged; nothing written.", file=sys.stderr)
+        return
+    seasons[str(season)] = entry
+    document = {"updated": datetime.date.today().isoformat(),
+                "seasons": dict(sorted(seasons.items()))}
+    for path in PUBLISHED:
+        with open(os.path.join(root, path), "w") as handle:
+            json.dump(document, handle, ensure_ascii=False, separators=(",", ":"))
+            handle.write("\n")
+    print(f"Published {season} ({seasons[str(season)]['label']}, {len(teams)} teams) to "
+          + " and ".join(PUBLISHED), file=sys.stderr)
+
+
 def conference_markdown(table, season, week):
     lines = [f"Conferences ranked by their teams' average performance, {season} through "
              f"week {week}. Points per game against an average FBS team on a neutral field.",
@@ -1196,7 +1256,9 @@ def main():
     parser.add_argument("--postseason", action="store_true", help="include bowls and the CFP")
     parser.add_argument("--json", metavar="PATH")
     parser.add_argument("--notion", action="store_true")
-    parser.add_argument("--force", action="store_true", help="publish to Notion before week 4")
+    parser.add_argument("--publish", action="store_true",
+                        help="write the season into statside-rating.json")
+    parser.add_argument("--force", action="store_true", help="publish before week 4")
     parser.add_argument("--backtest", action="store_true")
     parser.add_argument("--show", metavar="TEAM", help="print one team's games and ratings")
     args = parser.parse_args()
@@ -1215,11 +1277,13 @@ def main():
         names.update(post_names)
         conferences.update(post_conferences)
     if not games:
-        sys.exit("No completed games yet.")
+        print("No completed games yet; nothing to rank.")
+        return
     last_week = max(g["week"] for g in games if g["week"] < 100)
-    if args.notion and last_week < PUBLISH_FROM_WEEK and not args.force:
-        sys.exit(f"Week {last_week}: the ranking publishes from week {PUBLISH_FROM_WEEK} "
-                 "(--force to publish anyway).")
+    if (args.notion or args.publish) and last_week < PUBLISH_FROM_WEEK and not args.force:
+        print(f"Week {last_week}: the ranking publishes from week {PUBLISH_FROM_WEEK} "
+              "(--force to publish anyway); nothing written.")
+        args.notion = args.publish = False
     plays = season_plays(games, fbs_ids)
     rows, bench, ratings, sigma, hfa, perf, details, conference_rows = rank_season(
         games, fbs_ids, names, conferences, plays)
@@ -1282,6 +1346,9 @@ def main():
     if args.notion:
         write_notion(rows, names)
         write_notion_conferences(conference_rows, args.season, last_week)
+    if args.publish:
+        final = any(g["week"] >= 100 for g in games)
+        publish(rows, conferences, args.season, last_week, final)
 
 
 if __name__ == "__main__":

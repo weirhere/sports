@@ -184,37 +184,13 @@ private func team(_ id: String, _ location: String) -> Team {
 
     // MARK: - StatSide rating
 
-    private func standing(_ id: String, _ location: String, _ wins: Int, _ losses: Int,
-                          _ pf: Int, _ pa: Int) -> ConferenceStanding {
-        ConferenceStanding(team: team(id, location), conferenceRecord: nil, overallRecord: nil, streak: nil,
-                           wins: wins, losses: losses, pointsFor: pf, pointsAgainst: pa)
-    }
-
-    @Test func theRatingMatchesThePerformancePoll() {
-        // The Notion Performance Poll's top five on 2026-10-25, shuffled
-        // across two conferences.
-        let big12 = ConferenceStandings(id: 4, name: "Big 12", entries: [
-            standing("254", "Utah", 7, 0, 262, 102),
-        ])
-        let mixed = ConferenceStandings(id: 5, name: "Big Ten", entries: [
-            standing("84", "Indiana", 7, 1, 269, 96),
-            standing("26", "UCLA", 7, 0, 241, 107),
-            standing("256", "James Madison", 7, 1, 331, 146),
-            standing("2390", "Miami", 7, 0, 343, 107),
-        ])
-        let rows = StatSideRating.ranking(from: [big12, mixed])
-        #expect(rows.map(\.team.location) == ["Miami", "Utah", "UCLA", "James Madison", "Indiana"])
-        #expect(rows.first?.record == "7-0")
-        #expect(rows.first?.differentialDisplay == "+236")
-        #expect(rows.allSatisfy { $0.isInTopTier })
-    }
-
     /// The payload as ESPN ships it, through the app's own standings
     /// mapper: the ACC, Big 12, Big Ten and Sun Belt of 2026-10-26, split
     /// stats trimmed. ESPN sends `wins` and the "7-0" record and **no**
-    /// `losses` stat for any FBS team — the hand-built tables above had one,
-    /// which is how the first build's rating came out empty on device.
-    @Test func theRatingReadsLossesFromTheRecordAsESPNShipsIt() throws {
+    /// `losses` stat for any FBS team, which is how the record sort's first
+    /// build came out empty on device. The record sort retired on
+    /// 2026-10-28, and the mapper fact it found stays pinned here.
+    @Test func espnShipsNoLossesStatForFBS() throws {
         let url = try #require(Bundle(for: LeagueTeamStatsFixtureToken.self)
             .url(forResource: "cfb-standings-fbs-week9", withExtension: "json"))
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: Data(contentsOf: url))
@@ -224,38 +200,70 @@ private func team(_ id: String, _ location: String) -> Team {
         let entries = standings.flatMap(\.entries)
         #expect(!entries.isEmpty)
         #expect(entries.allSatisfy { $0.losses == nil })
-
-        let rows = StatSideRating.ranking(from: standings)
-        #expect(rows.prefix(5).map(\.team.location) == ["Miami", "Utah", "UCLA", "James Madison", "Indiana"])
-        #expect(rows.first?.record == "7-0")
-        #expect(rows.first?.differentialDisplay == "+236")
-        #expect(rows[3].record == "7-1")
+        #expect(entries.first { $0.team.location == "Miami" }?.overallRecord == "7-0")
     }
 
-    @Test func aRecordSplitsIntoWinsAndLosses() {
-        #expect(StatSideRating.winsAndLosses("7-1")?.wins == 7)
-        #expect(StatSideRating.winsAndLosses("7-1")?.losses == 1)
-        #expect(StatSideRating.winsAndLosses("6-1-1")?.losses == 1)
-        #expect(StatSideRating.winsAndLosses("7") == nil)
-        #expect(StatSideRating.winsAndLosses("—") == nil)
+    private func ratingFile(_ json: String) throws -> StatSideRatingFile {
+        try JSONDecoder().decode(StatSideRatingFile.self, from: Data(json.utf8))
     }
 
-    @Test func fewerLossesBeatMoreWins() {
-        let table = ConferenceStandings(id: 8, name: "SEC", entries: [
-            standing("1", "Seven and one", 7, 1, 300, 100),
-            standing("2", "Six and oh", 6, 0, 150, 140),
-        ])
-        #expect(StatSideRating.ranking(from: [table]).map(\.team.location) == ["Six and oh", "Seven and one"])
+    @Test func aPublishedSeasonDecodesBestFirst() throws {
+        let file = try ratingFile("""
+        {"updated":"2026-10-28","seasons":{"2026":{"label":"Week 9","throughWeek":9,"teams":[
+          {"id":"194","location":"Ohio State","abbreviation":"OSU","conferenceId":5,"rank":2,"score":97.2,
+           "wins":6,"losses":1,"resumeRank":6,"performanceRank":4},
+          {"id":"2390","location":"Miami","logo":"https://a.espncdn.com/i/teamlogos/ncaa/500/2390.png",
+           "rank":1,"score":98.2,"wins":7,"losses":0,"resumeRank":1,"performanceRank":5}]}}}
+        """)
+        let season = try #require(file.season(2026))
+        #expect(season.label == "Week 9")
+        #expect(season.rows.map(\.team.location) == ["Miami", "Ohio State"])
+        #expect(season.rows[0].record == "7-0")
+        #expect(season.rows[0].scoreDisplay == "98.2")
+        #expect(season.rows[0].team.logoURL?.absoluteString.hasSuffix("2390.png") == true)
+        #expect(season.rows[1].team.conferenceId == 5)
+        #expect(season.rows[1].team.league == .collegeFootball)
+        #expect(season.rows[1].resumeRank == 6)
+        #expect(season.rows[1].performanceRank == 4)
     }
 
-    @Test func aTeamInTwoTablesCountsOnce() {
-        let east = ConferenceStandings(id: 37, name: "Sun Belt", entries: [standing("1", "App State", 5, 2, 200, 150)])
-        let west = ConferenceStandings(id: 37, name: "Sun Belt", entries: [standing("1", "App State", 5, 2, 200, 150)])
-        #expect(StatSideRating.ranking(from: [east, west]).count == 1)
+    @Test func anEntryMissingItsPlaceOrRecordIsDroppedNotGuessed() throws {
+        let file = try ratingFile("""
+        {"seasons":{"2026":{"label":"Week 9","teams":[
+          {"id":"1","location":"No rank","wins":5,"losses":2},
+          {"id":"2","location":"No record","rank":2},
+          {"location":"No id","rank":3,"wins":5,"losses":2},
+          {"id":"4","location":"Whole","rank":4,"wins":5,"losses":2}]}}}
+        """)
+        #expect(file.season(2026)?.rows.map(\.team.location) == ["Whole"])
     }
 
-    @Test func aSeasonNobodyHasPlayedHasNoRating() {
-        let table = ConferenceStandings(id: 8, name: "SEC", entries: [standing("1", "Georgia", 0, 0, 0, 0)])
-        #expect(StatSideRating.ranking(from: [table]).isEmpty)
+    @Test func aSeasonTheFileDoesntCarryHasNoRating() throws {
+        let file = try ratingFile(#"{"seasons":{"2026":{"label":"Week 3","teams":[]}}}"#)
+        #expect(file.season(2026) == nil)
+        #expect(file.season(2019) == nil)
+        #expect(StatSideRatingDestination(season: file.season(2019), league: .collegeFootball, year: 2019) == nil)
+    }
+
+    @Test func theTableSaysHowFarTheListRuns() throws {
+        let file = try ratingFile("""
+        {"seasons":{"2025":{"label":"Final","teams":[{"id":"84","location":"Indiana","rank":1,"wins":16,"losses":0}]}}}
+        """)
+        let destination = try #require(StatSideRatingDestination(season: file.season(2025),
+                                                                 league: .collegeFootball, year: 2025))
+        #expect(destination.seasonLabel == "\(League.collegeFootball.seasonLabel(2025)) · Final")
+    }
+
+    /// The copy bundled with the build decodes, and each season in it is a
+    /// whole list: every place from 1 down, no gaps.
+    @Test func theBundledListIsWhole() throws {
+        let store = StatSideRatingStore(bundle: .main)
+        let file = try #require(store.file)
+        #expect(file.updated != nil)
+        for year in (file.seasons ?? [:]).keys.compactMap(Int.init) {
+            let season = try #require(store.season(year))
+            #expect(season.rows.count > 100)
+            #expect(season.rows.map(\.rank) == Array(1...season.rows.count))
+        }
     }
 }

@@ -125,6 +125,7 @@ struct PollScreen: View {
     /// Optional like ConferencePage's: without the scoreboard in the
     /// environment the slate simply stays the snapshot it was fetched as.
     @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+    @Environment(StatSideRatingStore.self) private var statSideRating: StatSideRatingStore?
 
     /// How the Games tab heads its cards, and whose games it shows.
     /// Weeks and Date are on/off toggles over the same slate — a view
@@ -502,7 +503,7 @@ struct PollScreen: View {
             teamIds: rankedIds,
             scopeName: poll?.shortName ?? poll?.name ?? "Top 25",
             seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "),
-            rating: StatSideRating.ranking(from: leagueStats.standingsByYear[year] ?? []))
+            rating: StatSideRatingDestination(season: statSideRating?.season(year), league: league, year: year))
             .task(id: year) {
                 async let stats: Void = leagueStats.load(year: year)
                 async let standings: Void = leagueStats.loadRatingStandings(year: year)

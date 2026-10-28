@@ -9,7 +9,8 @@ struct StatSideRatingTable: View {
 
     // `StatSideRatingRow`'s column widths, so the captions sit over them.
     @ScaledMetric(relativeTo: .subheadline) private var recordWidth: CGFloat = 36
-    @ScaledMetric(relativeTo: .subheadline) private var numberWidth: CGFloat = 34
+    @ScaledMetric(relativeTo: .subheadline) private var scoreWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .subheadline) private var placeWidth: CGFloat = 30
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,9 +35,9 @@ struct StatSideRatingTable: View {
         HStack(spacing: Spacing.sm) {
             Spacer()
             caption("W-L", width: recordWidth)
-            caption("DIFF", width: numberWidth)
-            caption("PF", width: numberWidth)
-            caption("PA", width: numberWidth)
+            caption("SCORE", width: scoreWidth)
+            caption("RÉS", width: placeWidth)
+            caption("PERF", width: placeWidth)
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.top, Spacing.sm)

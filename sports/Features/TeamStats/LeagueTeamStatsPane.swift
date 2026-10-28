@@ -16,9 +16,10 @@ struct LeagueTeamStatsPane: View {
     /// "NFL", "SEC" — whose tables these are, for the full lists.
     let scopeName: String
     let seasonLabel: String
-    /// College football's StatSide rating, leading Top stats. Nil where the
-    /// page doesn't carry one; empty while its standings are still coming.
-    var rating: [StatSideRating.Row]? = nil
+    /// College football's StatSide rating, leading Top stats, with its own
+    /// "2026 · Week 9" label. Nil where the page doesn't carry one, or for a
+    /// season the published file has no list for.
+    var rating: StatSideRatingDestination? = nil
 
     private var rankings: [TeamStatRanking] {
         stats?.rankings(among: teamIds) ?? []
@@ -52,9 +53,8 @@ struct LeagueTeamStatsPane: View {
             let cards = grouped[section] ?? []
             if !cards.isEmpty {
                 sectionTitle(section.title, isFirst: section == first)
-                if section == .top, let rating, !rating.isEmpty {
-                    StatSideRatingCard(destination: StatSideRatingDestination(rows: rating,
-                                                                              seasonLabel: seasonLabel))
+                if section == .top, let rating, !rating.rows.isEmpty {
+                    StatSideRatingCard(destination: rating)
                 }
                 ForEach(cards) { ranking in
                     TeamStatLeaderCard(destination: TeamStatRankingDestination(

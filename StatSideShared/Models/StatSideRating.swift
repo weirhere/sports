@@ -1,82 +1,104 @@
 import Foundation
 
-/// The StatSide rating: college football's FBS teams ranked on results
-/// alone (Andy's Performance Poll, 2026-10-25). No votes, no strength of
-/// schedule, nothing a committee could argue with — fewest losses, then
-/// most wins, then point differential, points scored, and fewest points
-/// allowed.
+/// The StatSide rating: college football's FBS teams ranked two-thirds on
+/// résumé and one-third on performance (Andy, 2026-10-28, from his ranking
+/// proposal). It replaces the record sort of 2026-10-25.
 ///
-/// Losses before wins is the rule doing its job: 7-1 and 6-0 have played
-/// a different number of games, and the team that hasn't lost leads. Same
-/// record means same games played, so the point totals behind it compare
-/// like for like.
+/// - **Résumé** is how unlikely a 90th-percentile FBS team would be to match
+///   the record against the exact schedule.
+/// - **Performance** is offense, defense and special teams from ESPN's
+///   play-by-play, adjusted for the opponents faced.
+///
+/// Performance needs every game's play-by-play, about 800 summaries a
+/// season, which is more than a phone should fetch. So the rating isn't
+/// computed here. `scripts/statside-ranking.py` ranks the season off device
+/// and publishes `statside-rating.json`, which the app bundles and
+/// refreshes from statside.co (`StatSideRatingStore`). The method and its
+/// backtest are in `docs/statside-ranking.md`.
 nonisolated enum StatSideRating {
-    /// How many make the headline tier — the rest are "Unranked", the
-    /// Notion view's two groups.
+    /// How many make the headline tier. The rest are "Unranked".
     static let tierSize = 25
 
     /// The rule as one line, for the full list's footnote.
-    static let rule = "Fewest losses, then most wins, point differential, points for and fewest points against. No polls, no strength of schedule."
+    static let rule = "Two-thirds résumé: how unlikely a 90th-percentile FBS team would be to match "
+        + "this record against this schedule. One-third performance: offense, defense and special "
+        + "teams from play-by-play, adjusted for opponents. Updated weekly from week 4."
 
     struct Row: Sendable, Hashable, Identifiable {
         let rank: Int
         let team: Team
         let wins: Int
         let losses: Int
-        let pointsFor: Int
-        let pointsAgainst: Int
+        /// The combined score, 0–100.
+        let score: Double
+        let resumeRank: Int
+        let performanceRank: Int
 
         var record: String { "\(wins)-\(losses)" }
-        var differential: Int { pointsFor - pointsAgainst }
-        var differentialDisplay: String {
-            differential > 0 ? "+\(differential)" : "\(differential)"
-        }
+        var scoreDisplay: String { score.formatted(.number.precision(.fractionLength(1))) }
         var isInTopTier: Bool { rank <= StatSideRating.tierSize }
         var id: String { team.id }
     }
 
-    /// The whole FBS table from a standings response. Teams are deduped by
-    /// id — a divisional conference ships each team once per table it sits
-    /// in — and FCS tables are left out, since the rating is FBS's. An
-    /// entry missing any of the four numbers can't be placed and is
-    /// dropped rather than guessed. A season nobody has played yet answers
-    /// empty.
-    static func ranking(from standings: [ConferenceStandings]) -> [Row] {
-        var seen: Set<String> = []
-        var lines: [(team: Team, wins: Int, losses: Int, pf: Int, pa: Int)] = []
-        for table in standings where table.league == .collegeFootball
-            && Conference.division(for: table.id, in: .collegeFootball) != .fcs {
-            for entry in table.entries where seen.insert(entry.team.id).inserted {
-                let record = entry.overallRecord.flatMap(winsAndLosses)
-                guard let wins = entry.wins ?? record?.wins,
-                      let losses = entry.losses ?? record?.losses,
-                      let pf = entry.pointsFor, let pa = entry.pointsAgainst else { continue }
-                lines.append((entry.team, wins, losses, pf, pa))
-            }
-        }
-        guard lines.contains(where: { $0.wins + $0.losses > 0 }) else { return [] }
-        let sorted = lines.sorted { lhs, rhs in
-            if lhs.losses != rhs.losses { return lhs.losses < rhs.losses }
-            if lhs.wins != rhs.wins { return lhs.wins > rhs.wins }
-            let lhsDiff = lhs.pf - lhs.pa, rhsDiff = rhs.pf - rhs.pa
-            if lhsDiff != rhsDiff { return lhsDiff > rhsDiff }
-            if lhs.pf != rhs.pf { return lhs.pf > rhs.pf }
-            if lhs.pa != rhs.pa { return lhs.pa < rhs.pa }
-            return lhs.team.location < rhs.team.location
-        }
-        return sorted.enumerated().map { index, line in
-            Row(rank: index + 1, team: line.team, wins: line.wins, losses: line.losses,
-                pointsFor: line.pf, pointsAgainst: line.pa)
-        }
+    /// One season's list, and where it stands: "Week 9", or "Final" once
+    /// the bowls are in.
+    struct Season: Sendable, Hashable {
+        let label: String
+        let rows: [Row]
+    }
+}
+
+/// `statside-rating.json`, as `scripts/statside-ranking.py --publish`
+/// writes it: the seasons by year, each team with its identity and its
+/// numbers. Every field is optional, which is the ESPN rule applied to our
+/// own file too. An entry missing its id, place or record is dropped, and
+/// never guessed.
+nonisolated struct StatSideRatingFile: Sendable, Decodable {
+    /// "2026-10-28". It moves only when a season's list did, so the newer
+    /// file can be picked by comparing these as strings.
+    let updated: String?
+    let seasons: [String: SeasonEntry]?
+
+    nonisolated struct SeasonEntry: Sendable, Decodable {
+        let label: String?
+        let throughWeek: Int?
+        let teams: [TeamEntry]?
     }
 
-    /// "7-1" or "7-1-1" → (7, 1). ESPN's college football standings ship
-    /// `wins` but no `losses` stat at all — none of the 138 FBS teams on
-    /// 2026-10-26 — so the loss count, the rating's first key, lives only
-    /// in the overall record's summary.
-    static func winsAndLosses(_ record: String) -> (wins: Int, losses: Int)? {
-        let parts = record.split(separator: "-").map { Int($0.trimmingCharacters(in: .whitespaces)) }
-        guard parts.count >= 2, let wins = parts[0], let losses = parts[1] else { return nil }
-        return (wins, losses)
+    nonisolated struct TeamEntry: Sendable, Decodable {
+        let id: String?
+        let location: String?
+        let name: String?
+        let abbreviation: String?
+        let displayName: String?
+        let shortDisplayName: String?
+        let logo: String?
+        let conferenceId: Int?
+        let rank: Int?
+        let score: Double?
+        let wins: Int?
+        let losses: Int?
+        let resumeRank: Int?
+        let performanceRank: Int?
+    }
+
+    /// The list for one season, best first, or nil when the file has none.
+    func season(_ year: Int) -> StatSideRating.Season? {
+        guard let entry = seasons?[String(year)] else { return nil }
+        let rows = (entry.teams ?? []).compactMap(Self.row).sorted { $0.rank < $1.rank }
+        guard !rows.isEmpty else { return nil }
+        return StatSideRating.Season(label: entry.label ?? "", rows: rows)
+    }
+
+    private static func row(_ entry: TeamEntry) -> StatSideRating.Row? {
+        guard let id = entry.id, let location = entry.location, let rank = entry.rank,
+              let wins = entry.wins, let losses = entry.losses else { return nil }
+        let team = Team(id: id, location: location, name: entry.name, abbreviation: entry.abbreviation,
+                        displayName: entry.displayName, shortDisplayName: entry.shortDisplayName,
+                        logoURL: entry.logo.flatMap(URL.init(string:)), conferenceId: entry.conferenceId,
+                        league: .collegeFootball)
+        return StatSideRating.Row(rank: rank, team: team, wins: wins, losses: losses,
+                                  score: entry.score ?? 0, resumeRank: entry.resumeRank ?? rank,
+                                  performanceRank: entry.performanceRank ?? rank)
     }
 }

@@ -6,8 +6,18 @@ Proposal", which Andy adopted on 2026-10-27. It was prototyped in Notion
 first. `scripts/statside-ranking.py` computes it and writes it to the College
 Football Teams 2026 database.
 
-The app still ships the record sort (`StatSideShared/Models/StatSideRating.swift`)
-until the port; see BACKLOG E22.
+The app shows the ranking as the **StatSide rating**, on college football's Team
+stats tab (2026-10-28). Performance needs about 800 game summaries a season,
+more than a phone should fetch, so the app doesn't compute the ranking itself:
+
+- `--publish` writes `statside-rating.json`, holding each season's list and
+  each team's identity.
+- The copy in `web/public/` is served at statside.co, and the app downloads it
+  once per launch (`StatSideRatingStore`, like `coaches.json`).
+- The copy in `sports/Resources/` is bundled for a fresh install.
+- `.github/workflows/statside-rating.yml` reruns it every Sunday and opens a
+  PR when the list changed. The fits are deterministic, so an unchanged week
+  writes nothing.
 
 The proposal, section by section, and where each part lives:
 
@@ -298,7 +308,8 @@ Its views:
   FPI Rank and the AP rank.
 - **StatSide by conference** groups the ranking by conference.
 - **Record sort (app today)**, formerly "Performance Poll", is the old rule:
-  Perf Rank and Tier, which mirror what the app ships until the port.
+  Perf Rank and Tier. The app shipped this rule from 2026-10-25 until the
+  ranking replaced it on 2026-10-28.
 
 The résumé-only view was retired on 2026-10-28. Résumé Rank (Avg Team) and
 Strength stay as columns for checking the résumé. **Perf Rank** is not the

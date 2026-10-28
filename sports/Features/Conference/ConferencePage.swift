@@ -155,6 +155,7 @@ struct ConferencePage: View {
     /// Optional like TeamPage's: the live standings dots degrade to none
     /// wherever the scoreboard isn't in the environment.
     @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+    @Environment(StatSideRatingStore.self) private var statSideRating: StatSideRatingStore?
 
     /// The live board for this conference's league.
     private var liveBoard: ScoreboardStore? { scoreboards?.store(for: destination.league) }
@@ -742,7 +743,7 @@ struct ConferencePage: View {
                                     candidates: stats.lines.map(\.team))
         }
         // The rating is FBS's, so it leads FBS's own page — the Top 25
-        // carries it too, from a fetch of its own.
+        // carries it too. Both read the published list.
         let showsRating = Conference.isDivisionRoot(destination.conferenceId, in: destination.league)
             && Conference.division(for: destination.conferenceId, in: destination.league) == .fbs
         return LeagueTeamStatsPane(
@@ -757,7 +758,9 @@ struct ConferencePage: View {
             teamIds: teamIds,
             scopeName: destination.name,
             seasonLabel: destination.league.seasonLabel(selectedYear),
-            rating: showsRating ? StatSideRating.ranking(from: standings ?? []) : nil)
+            rating: showsRating ? StatSideRatingDestination(season: statSideRating?.season(selectedYear),
+                                                            league: destination.league,
+                                                            year: selectedYear) : nil)
             .task(id: selectedYear) { await leagueStats.load(year: selectedYear) }
     }
 

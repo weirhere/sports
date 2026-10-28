@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The StatSide rating, every FBS team: the Top 25, then everyone else, as
-/// Andy's Performance Poll groups them (2026-10-25). The rule sits under
-/// the table, because a rating nobody can check is just another poll.
+/// The StatSide rating, every FBS team: the Top 25, then everyone else
+/// (2026-10-25). The rule sits under the table, because a rating nobody
+/// can check is just another poll.
 struct StatSideRatingScreen: View {
     let destination: StatSideRatingDestination
 

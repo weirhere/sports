@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The StatSide rating's top three, leading college football's Top stats
-/// (2026-10-25). The number beside each team is its record — the rating's
-/// first two keys are losses and wins, so the record is the reason it
-/// stands where it does.
+/// (2026-10-25). The number beside each team is its record. The overall
+/// scores at the top all sit near 97 or 98, so a fan reads more in 7-0 and
+/// 6-1 (2026-10-28).
 struct StatSideRatingCard: View {
     let destination: StatSideRatingDestination
 

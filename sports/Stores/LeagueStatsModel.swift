@@ -70,9 +70,11 @@ final class LeagueStatsModel {
         }
     }
 
-    /// FBS standings for the rating, for a page that doesn't already have
-    /// them — the Top 25's own Standings tab is the poll, not a table. A
-    /// failure just leaves the rating card out; the stats still stand.
+    /// FBS standings for a page that doesn't already have them — the Top
+    /// 25's own Standings tab is the poll, not a table. They lend the stat
+    /// lines their teams' identities. They fed the StatSide rating's record
+    /// sort until 2026-10-28, when the rating moved to its published file.
+    /// A failure just leaves the identities as `byteam` ships them.
     func loadRatingStandings(year: Int) async {
         guard league == .collegeFootball, standingsByYear[year] == nil,
               !standingsLoadingYears.contains(year) else { return }
