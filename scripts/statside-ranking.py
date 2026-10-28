@@ -10,10 +10,13 @@ fixed benchmark team, as strong as the 90th-percentile FBS team, to match or
 beat this team's record against this team's exact schedule, with home, away
 and neutral counted? The less likely, the better. The whole probability is
 used (a Poisson-binomial over the games), not wins minus expected wins. The
-opponents' strength behind it is an opponent-adjusted, capped scoring margin
-fit to every Division I game (`fit_ratings`):
+opponents' strength behind it is the average of two ratings. One is an
+opponent-adjusted, capped scoring margin fit to every Division I game
+(`fit_ratings`):
 
     capped margin(home) = r_home - r_away + HFA      (HFA 0 at neutral sites)
+
+The other is the performance rating below.
 
 Performance -- how well a team has actually played, read from play-by-play.
 Offense and defense are measured on yards per play, success rate,
@@ -124,6 +127,15 @@ ST_K = 6.0
 PERFORMANCE_SIGMA = 14.0
 RESUME_WEIGHT = 2 / 3
 PUBLISH_FROM_WEEK = 4
+
+# What the résumé's win probabilities read as each opponent's strength:
+# "blend" (the margin rating averaged with performance) or "margin" alone.
+# The blend predicted next week better than either one in 2024 and 2025
+# (Brier 0.1815 vs 0.1824, 0.1879 vs 0.1907). It also brought the résumé
+# closer to the committee's top 25 and to ESPN's SOR. Andy adopted it on
+# 2026-10-28. BLEND_SIGMA is the blend's own spread, from the same grid.
+RESUME_STRENGTH = "blend"
+BLEND_SIGMA = 14.0
 
 
 def fetch(url):
@@ -831,13 +843,27 @@ def conference_table(rows, conferences, names):
     return table
 
 
-def rank_season(games, fbs_ids, names, conferences, plays):
+def opponent_strength(ratings, perf, mode=None):
+    """The strength the résumé's win probabilities read, with its sigma:
+    the margin rating alone, or its average with performance."""
+    if (mode or RESUME_STRENGTH) == "blend":
+        return {t: (r + perf[t]["performance"]) / 2 if t in perf else r
+                for t, r in ratings.items()}, BLEND_SIGMA
+    return ratings, SIGMA
+
+
+def rank_season(games, fbs_ids, names, conferences, plays, mode=None):
+    """Everything for one slate of games. Returns (rows, benchmarks, the
+    résumé's opponent strength, its sigma, hfa, performance, performance
+    details, the conference table)."""
     fcs_ids = {t for g in games for t in (g["home"], g["away"])} - fbs_ids
     ratings, hfa = fit_ratings(games, fbs_ids, fcs_ids)
-    rows, bench = resume_table(games, fbs_ids, ratings, hfa)
     perf, details = performance(games, plays, fbs_ids, fcs_ids, hfa)
+    strength, sigma = opponent_strength(ratings, perf, mode)
+    rows, bench = resume_table(games, fbs_ids, strength, hfa, sigma)
     rows = overall_table(rows, perf, conferences)
-    return rows, bench, ratings, hfa, perf, details, conference_table(rows, conferences, names)
+    return (rows, bench, strength, sigma, hfa, perf, details,
+            conference_table(rows, conferences, names))
 
 
 # --- Comparisons -------------------------------------------------------------
@@ -1017,7 +1043,7 @@ def backtest(season):
         brier, accuracy, _ = score_weeks(games, fbs_ids, fits, performance_gap, PERFORMANCE_SIGMA)
         print(f"  {label:<28} acc {accuracy:.1%}  brier {brier:.4f}")
 
-    rows, _, _, _, _, _, _ = rank_season(games, fbs_ids, names, conferences, plays)
+    rows, *_ = rank_season(games, fbs_ids, names, conferences, plays)
     committee = committee_ranking(season)
     print(f"\nEnd of regular season vs the committee's final top 25 ({len(committee)} teams)")
     for label, key in (("résumé", "rank"), ("overall", "overall_rank"),
@@ -1031,7 +1057,7 @@ def backtest(season):
           f"{len({r['team'] for r in rows if r['rank'] <= 25} - {r['team'] for r in rows if r['rank_mid'] <= 25})}")
     print(f"  overall top 25 vs résumé top 25: {len(top - {r['team'] for r in rows if r['rank'] <= 25})} differ")
 
-    rows, _, _, _, _, _, _ = rank_season(games + post, fbs_ids, names, conferences, plays)
+    rows, *_ = rank_season(games + post, fbs_ids, names, conferences, plays)
     sor, fpi = espn_power_index(season)
     print("\nWith the postseason vs ESPN's final ratings")
     for label, key, other in (("résumé vs SOR", "rank", sor),
@@ -1195,7 +1221,7 @@ def main():
         sys.exit(f"Week {last_week}: the ranking publishes from week {PUBLISH_FROM_WEEK} "
                  "(--force to publish anyway).")
     plays = season_plays(games, fbs_ids)
-    rows, bench, ratings, hfa, perf, details, conference_rows = rank_season(
+    rows, bench, ratings, sigma, hfa, perf, details, conference_rows = rank_season(
         games, fbs_ids, names, conferences, plays)
     try:
         sor, fpi = espn_power_index(args.season)
@@ -1230,7 +1256,7 @@ def main():
             unit = perf[row["team"]]
             print(f"\n{names[row['team']]} {row['wins']}-{row['losses']}, high benchmark {bench['high']:+.1f}")
             for opponent, site in row["games"]:
-                p = win_probability(bench["high"] - ratings[opponent] + hfa * site)
+                p = win_probability(bench["high"] - ratings[opponent] + hfa * site, sigma)
                 where = {1: "vs", -1: "at", 0: "n."}[site]
                 print(f"  {where} {names.get(opponent, opponent):<22} {ratings[opponent]:+6.1f}  p(win) {p:.3f}")
             print(f"  P(benchmark wins >= {row['wins']}) = {row['p_high']:.4f}")

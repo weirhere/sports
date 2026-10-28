@@ -44,9 +44,14 @@ neutral sites all count. The less likely, the better the résumé.
   **Résumé Rank** sorts by P ascending; ties break on the average-team P, then
   point differential.
 
-Each opponent's strength is a rating, not a rank position: an opponent-adjusted
-scoring margin fit to every completed Division I game (FBS scoreboards with
-`groups=80`, plus FCS-vs-FCS games with `groups=81`):
+Each opponent's strength is a rating, not a rank position. It is the
+average of two ratings (`RESUME_STRENGTH = "blend"`, adopted 2026-10-28; see
+§ Backtest):
+
+- the **Performance** rating below;
+- an opponent-adjusted **scoring margin** fit to every completed Division I
+  game (FBS scoreboards with `groups=80`, plus FCS-vs-FCS games with
+  `groups=81`):
 
 ```
 capped margin(home) = r_home − r_away + HFA       (HFA = 0 at a neutral site)
@@ -56,7 +61,8 @@ capped margin(home) = r_home − r_away + HFA       (HFA = 0 at a neutral site)
 |---|---|---|
 | `CAP` | 35 | margins capped at ±35, which keeps garbage time out |
 | `K` | 1.0 | phantom games of shrinkage toward the group mean |
-| `SIGMA` | 16.0 | margin spread that turns a rating gap into a win probability |
+| `SIGMA` | 16.0 | margin spread that turns a margin-rating gap into a win probability |
+| `BLEND_SIGMA` | 14.0 | the same for the blended rating the résumé reads |
 | HFA | estimated | about 4 points in 2026 |
 
 ## Performance: offense and defense
@@ -160,7 +166,7 @@ combined:
 ## Conferences
 
 Conferences are ranked by their teams' average Performance. The script also
-prints average offense, defense, special teams and margin rating, how many
+prints average offense, defense, special teams and strength, how many
 teams are in the overall top 25, and each conference's best team. The table
 is printed by every run and saved in `--json`, and it is in the Notion page
 "StatSide conference ratings".
@@ -242,18 +248,38 @@ column is a cheap check rather than a second ranking.
 
 **2026 through week 9** (1043 games, 568 with play-by-play):
 
-- Résumé vs ESPN SOR: Spearman 0.981.
+- Résumé vs ESPN SOR: Spearman 0.984 with the blend (0.981 with the margin alone).
 - Performance vs ESPN FPI: Spearman 0.933.
 - Home field: 4.2 points.
 
 ESPN's play-by-play is missing for a few games: 2 of 934 in 2025 and 18 of
 919 in 2024. Those games count toward the résumé but not toward performance.
 
-**Not done, and worth trying next.** The résumé's win probabilities come
-from the margin rating alone. Averaging in performance predicted better in
-both seasons, so using that average as the opponents' strength would sharpen
-the résumé. It would also make the résumé depend on play-by-play, so it is
-left as a decision for Andy rather than taken here.
+**The résumé's opponent strength: the blend (adopted 2026-10-28).** The
+tables above were first run with the margin rating alone as the opponents'
+strength. Averaging it with performance predicted better in both seasons, so
+the résumé now reads that average, with its own σ:
+
+| | 2025 | 2024 |
+|---|---|---|
+| Next week, margin alone (σ 16) | 72.3%, Brier 0.1824 | 71.3%, 0.1907 |
+| Next week, blend (σ 14) | 72.1%, 0.1815 | 70.4%, 0.1879 |
+| Résumé vs committee, margin → blend | 0.912 → 0.915 | 0.902 → 0.912 |
+| Résumé vs final SOR, margin → blend | 0.992 → 0.996 | 0.993 → 0.996 |
+| Overall vs committee, margin → blend | 0.902 → 0.901 | 0.948 → 0.936 |
+
+σ 14 and 15 tied (Brier within 0.0001 in both seasons). The blend moved one
+team in or out of the résumé's top 25 in each season:
+
+- **2025:** Missouri came in at 25th (from 30th) and Iowa went out. Texas
+  A&M rose from 4th to 2nd, and Tulane fell from 16th to 20th.
+- **2024:** Texas A&M came in at 24th and Army went out. BYU rose from 8th
+  to 6th.
+
+The blend credits wins over teams that played better than their scores, and
+discounts wins over teams whose margins flattered them. The price is that the
+résumé now depends on play-by-play too. Setting `RESUME_STRENGTH = "margin"`
+brings back the score-only version.
 
 ## In Notion
 
