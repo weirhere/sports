@@ -167,8 +167,9 @@ private struct FieldMarkings: View {
             switch league {
             case .collegeFootball, .nfl:
                 // A band a row, alternating out from the line of scrimmage
-                // the way the drive field's do. No yard lines, hashes or
-                // scrimmage line: the rows are the field's only marks.
+                // the way the drive field's do. No yard lines or hashes:
+                // the rows and the line of scrimmage, 2pt of chalk, are the
+                // field's only marks.
                 let step = FormationField.rowHeights(for: league)[0] * scale
                 var band = 0
                 while midY - step * CGFloat(band) > 0 {
@@ -182,13 +183,15 @@ private struct FieldMarkings: View {
                                                                     : SurfaceColors.Starters.turfAlternate))
                     band += 1
                 }
+                context.fill(Path(CGRect(x: 0, y: midY - 1, width: size.width, height: 2)),
+                             with: .color(SurfaceColors.chalk))
             case .nba:
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(SurfaceColors.Starters.maple))
                 let line = SurfaceColors.Starters.paint
                 // A key at each end, 30% of the width and 22% of the length,
                 // open at the baseline; its free-throw circle, as wide as the
                 // key, is centred on the key's end with the inside half under
-                // the key's maple.
+                // the key's maple. The centre circle is the same width.
                 let keyWidth = size.width * 0.3, keyHeight = size.height * 0.22
                 let left = size.width / 2 - keyWidth / 2, right = size.width / 2 + keyWidth / 2
                 for top in [true, false] {
@@ -206,7 +209,7 @@ private struct FieldMarkings: View {
                     context.stroke(outline, with: .color(line), lineWidth: width)
                 }
                 band(midY, line)
-                ring(center: CGPoint(x: size.width / 2, y: midY), diameter: 48, line)
+                ring(center: CGPoint(x: size.width / 2, y: midY), diameter: keyWidth, line)
             case .nhl:
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(SurfaceColors.Starters.ice))
                 let red = SurfaceColors.Starters.rinkRed
@@ -216,13 +219,18 @@ private struct FieldMarkings: View {
                 band(midY + blue, SurfaceColors.Starters.blueLine)
                 band(midY, red)
                 ring(center: CGPoint(x: size.width / 2, y: midY), diameter: 48, red)
-                // Goal lines 20pt off the boards, each crease centred on
-                // its line's inner edge.
+                // Goal lines 20pt off the boards, each crease a half circle
+                // centred on its line's inner edge and opening into the ice.
                 let goal = 20 * scale
                 for y in [goal, size.height - goal] {
                     band(y, red)
-                    let crease = y < midY ? y + width / 2 : y - width / 2
-                    ring(center: CGPoint(x: size.width / 2, y: crease), diameter: 28, red)
+                    let isTop = y < midY
+                    var crease = Path()
+                    crease.addArc(center: CGPoint(x: size.width / 2, y: isTop ? y + width / 2 : y - width / 2),
+                                  radius: 14 - width / 2,
+                                  startAngle: .degrees(isTop ? 0 : 180), endAngle: .degrees(isTop ? 180 : 360),
+                                  clockwise: false)
+                    context.stroke(crease, with: .color(red), lineWidth: width)
                 }
             }
         }

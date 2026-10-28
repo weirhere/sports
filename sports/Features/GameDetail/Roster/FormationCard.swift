@@ -19,8 +19,7 @@ import SwiftUI
 /// disagree (the Figma sheet "↳ Roster variants", 2026-10-27; until then
 /// one row of "HOU offense" chips under the title, and a caption at each
 /// end of the field). The court and the rink, whose lineups don't change
-/// with the ball, name their teams in plain bars: the home side under the
-/// court; both sides on the rink, one at each end.
+/// with the ball, name their teams in plain bars, one at each end.
 struct FormationCard: View {
     let roster: GameRoster
     let league: League
@@ -50,7 +49,7 @@ struct FormationCard: View {
                     .padding(.vertical, Spacing.lg)
                 if isFootball {
                     strip(for: away.team, opponent: home.team, isOffense: awayHasBall)
-                } else if league == .nhl {
+                } else {
                     SurfaceCaptionBar(team: away.team, league: league)
                 }
             }

@@ -85,7 +85,9 @@ nonisolated enum SurfaceColors {
         static let ice = grayInDark(SurfaceColors.ice, white: 0.15)
         static let iceHeading = grayInDark(SurfaceColors.iceHeading, white: 0.20)
         static let rinkRed = grayInDark(SurfaceColors.rinkRed, white: 0.20)
-        static let blueLine = grayInDark(SurfaceColors.blueLine, white: 0.20)
+        /// Faint on the ice, so the red lines carry the rink and the blue
+        /// lines only divide it (the Figma sheet, 2026-10-28).
+        static let blueLine = grayInDark(SurfaceColors.blueLine.opacity(0.2), white: 0.20)
 
         private static func grayInDark(_ light: Color, white: CGFloat) -> Color {
             Color(uiColor: UIColor { traits in
@@ -121,7 +123,7 @@ nonisolated enum SurfaceColors {
         }
     }
     static let turfHeading = dynamic(light: (0.150, 0.400, 0.230), dark: (0.135, 0.370, 0.210))
-    static let iceHeading = dynamic(light: (0.918, 0.933, 0.945), dark: (0.835, 0.858, 0.878))
+    static let iceHeading = dynamic(light: (0.863, 0.863, 0.863), dark: (0.835, 0.858, 0.878))
 
     /// A surface color as the bare hex `LogoImage(outlineAgainst:)` takes,
     /// resolved for one appearance — so a mark on the Starters strips is
