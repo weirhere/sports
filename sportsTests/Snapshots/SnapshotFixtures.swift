@@ -311,6 +311,23 @@ enum SnapshotFixtures {
                                             seasonLabel: league.seasonLabel(2026))
     }
 
+    // MARK: - StatSide rating
+
+    static let miami = team("2390", "Miami", "Hurricanes", "MIA", league: .collegeFootball)
+    static let notreDame = team("87", "Notre Dame", "Fighting Irish", "ND", league: .collegeFootball)
+    static let indiana = team("84", "Indiana", "Hoosiers", "IU", league: .collegeFootball)
+
+    /// The rating's top five, 2026 through week 9.
+    static var statSideRating: StatSideRatingDestination {
+        let rows = [(miami, 7, 0, 312, 101), (ohioState, 6, 1, 254, 98), (notreDame, 6, 1, 281, 120),
+                    (indiana, 7, 1, 290, 133), (georgia, 6, 1, 236, 117)]
+            .enumerated().map { index, line in
+                StatSideRating.Row(rank: index + 1, team: line.0, wins: line.1, losses: line.2,
+                                   pointsFor: line.3, pointsAgainst: line.4)
+            }
+        return StatSideRatingDestination(rows: rows, seasonLabel: League.collegeFootball.seasonLabel(2026))
+    }
+
     /// A follow list with nobody in it, so no row draws emphasized.
     static var noFollows: FollowingStore {
         let defaults = UserDefaults(suiteName: "snapshot-no-follows")!
