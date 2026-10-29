@@ -6,18 +6,22 @@ Proposal", which Andy adopted on 2026-10-27. It was prototyped in Notion
 first. `scripts/statside-ranking.py` computes it and writes it to the College
 Football Teams 2026 database.
 
-The app shows the ranking as the **StatSide rating**, on college football's Team
-stats tab (2026-10-28). Performance needs about 800 game summaries a season,
-more than a phone should fetch, so the app doesn't compute the ranking itself:
+**The app doesn't show it.** The ranking keeps developing in Notion, and the
+app takes it back once it makes sense (Andy, 2026-10-28). For one morning the
+app showed it as the **StatSide rating**, on college football's Team stats
+tab. Performance needs about 800 game summaries a season, more than a phone
+should fetch, so that port read a published list rather than computing it:
 
 - `--publish` writes `statside-rating.json`, holding each season's list and
-  each team's identity.
-- The copy in `web/public/` is served at statside.co, and the app downloads it
+  each team's identity. The flag still works, but nothing reads the file now.
+- A copy in `web/public/` was served at statside.co, and the app downloaded it
   once per launch (`StatSideRatingStore`, like `coaches.json`).
-- The copy in `sports/Resources/` is bundled for a fresh install.
-- `.github/workflows/statside-rating.yml` reruns it every Sunday and opens a
-  PR when the list changed. The fits are deterministic, so an unchanged week
-  writes nothing.
+- A copy in `sports/Resources/` was bundled for a fresh install.
+- `.github/workflows/statside-rating.yml` reran it every Sunday and opened a
+  PR when the list changed.
+
+All of it came out with the card. Commits `df554d0` and `dcf56a3` hold the
+port to restore from.
 
 The proposal, section by section, and where each part lives:
 

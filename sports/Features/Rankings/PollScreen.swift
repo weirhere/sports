@@ -82,8 +82,8 @@ struct PollScreen: View {
     /// tab's first visit and held for the page.
     @State private var news: [NewsStory]?
     @State private var newsFailed = false
-    /// The Team stats tab's tables and the StatSide rating's standings
-    /// (2026-10-25), fetched on the tab's first visit.
+    /// The Team stats tab's tables and the FBS standings that name their
+    /// teams (2026-10-25), fetched on the tab's first visit.
     @State private var leagueStats = LeagueStatsModel(league: .collegeFootball)
     /// Which edge incoming tab content pushes from — right walking Games →
     /// Standings, left coming back (TeamPage's rule).
@@ -125,7 +125,6 @@ struct PollScreen: View {
     /// Optional like ConferencePage's: without the scoreboard in the
     /// environment the slate simply stays the snapshot it was fetched as.
     @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
-    @Environment(StatSideRatingStore.self) private var statSideRating: StatSideRatingStore?
 
     /// How the Games tab heads its cards, and whose games it shows.
     /// Weeks and Date are on/off toggles over the same slate — a view
@@ -480,9 +479,6 @@ struct PollScreen: View {
     /// day-old all-of-FBS scope) — so the cards change as the poll does.
     /// The numbers are ESPN's season to date; `byteam` has no week axis,
     /// so a past week's 25 are ranked on today's totals.
-    ///
-    /// The StatSide rating keeps all of FBS: it's a ranking of its own,
-    /// not a stat the poll's teams are ranked on.
     private var teamStatsSection: some View {
         let year = year
         let poll = selectedPoll
@@ -502,11 +498,10 @@ struct PollScreen: View {
             },
             teamIds: rankedIds,
             scopeName: poll?.shortName ?? poll?.name ?? "Top 25",
-            seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "),
-            rating: StatSideRatingDestination(season: statSideRating?.season(year), league: league, year: year))
+            seasonLabel: [league.seasonLabel(year), weekLabel].compactMap { $0 }.joined(separator: " · "))
             .task(id: year) {
                 async let stats: Void = leagueStats.load(year: year)
-                async let standings: Void = leagueStats.loadRatingStandings(year: year)
+                async let standings: Void = leagueStats.loadFBSStandings(year: year)
                 _ = await (stats, standings)
             }
     }

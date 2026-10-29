@@ -6,10 +6,6 @@ import Observation
 /// tab's first visit and kept for the page — so flipping the season chip
 /// back to a year already seen costs nothing (ConferencePage's per-year
 /// caching rule).
-///
-/// College football's StatSide rating rides alongside where a page asks
-/// for it. It's computed from FBS standings, which a conference or FBS
-/// page already holds and the Top 25 page fetches here, once per season.
 @Observable
 @MainActor
 final class LeagueStatsModel {
@@ -72,10 +68,9 @@ final class LeagueStatsModel {
 
     /// FBS standings for a page that doesn't already have them — the Top
     /// 25's own Standings tab is the poll, not a table. They lend the stat
-    /// lines their teams' identities. They fed the StatSide rating's record
-    /// sort until 2026-10-28, when the rating moved to its published file.
-    /// A failure just leaves the identities as `byteam` ships them.
-    func loadRatingStandings(year: Int) async {
+    /// lines their teams' identities. A failure just leaves the identities
+    /// as `byteam` ships them.
+    func loadFBSStandings(year: Int) async {
         guard league == .collegeFootball, standingsByYear[year] == nil,
               !standingsLoadingYears.contains(year) else { return }
         standingsLoadingYears.insert(year)

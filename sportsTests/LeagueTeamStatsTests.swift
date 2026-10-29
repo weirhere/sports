@@ -182,13 +182,13 @@ private func team(_ id: String, _ location: String) -> Team {
                                         candidates: []) == ["2"])
     }
 
-    // MARK: - StatSide rating
+    // MARK: - FBS standings
 
     /// The payload as ESPN ships it, through the app's own standings
     /// mapper: the ACC, Big 12, Big Ten and Sun Belt of 2026-10-26, split
     /// stats trimmed. ESPN sends `wins` and the "7-0" record and **no**
-    /// `losses` stat for any FBS team, which is how the record sort's first
-    /// build came out empty on device. The record sort retired on
+    /// `losses` stat for any FBS team, which is how the StatSide rating's
+    /// first build came out empty on device. The rating left the app on
     /// 2026-10-28, and the mapper fact it found stays pinned here.
     @Test func espnShipsNoLossesStatForFBS() throws {
         let url = try #require(Bundle(for: LeagueTeamStatsFixtureToken.self)
@@ -201,69 +201,5 @@ private func team(_ id: String, _ location: String) -> Team {
         #expect(!entries.isEmpty)
         #expect(entries.allSatisfy { $0.losses == nil })
         #expect(entries.first { $0.team.location == "Miami" }?.overallRecord == "7-0")
-    }
-
-    private func ratingFile(_ json: String) throws -> StatSideRatingFile {
-        try JSONDecoder().decode(StatSideRatingFile.self, from: Data(json.utf8))
-    }
-
-    @Test func aPublishedSeasonDecodesBestFirst() throws {
-        let file = try ratingFile("""
-        {"updated":"2026-10-28","seasons":{"2026":{"label":"Week 9","throughWeek":9,"teams":[
-          {"id":"194","location":"Ohio State","abbreviation":"OSU","conferenceId":5,"rank":2,"score":97.2,
-           "wins":6,"losses":1,"resumeRank":6,"performanceRank":4},
-          {"id":"2390","location":"Miami","logo":"https://a.espncdn.com/i/teamlogos/ncaa/500/2390.png",
-           "rank":1,"score":98.2,"wins":7,"losses":0,"resumeRank":1,"performanceRank":5}]}}}
-        """)
-        let season = try #require(file.season(2026))
-        #expect(season.label == "Week 9")
-        #expect(season.rows.map(\.team.location) == ["Miami", "Ohio State"])
-        #expect(season.rows[0].record == "7-0")
-        #expect(season.rows[0].scoreDisplay == "98.2")
-        #expect(season.rows[0].team.logoURL?.absoluteString.hasSuffix("2390.png") == true)
-        #expect(season.rows[1].team.conferenceId == 5)
-        #expect(season.rows[1].team.league == .collegeFootball)
-        #expect(season.rows[1].resumeRank == 6)
-        #expect(season.rows[1].performanceRank == 4)
-    }
-
-    @Test func anEntryMissingItsPlaceOrRecordIsDroppedNotGuessed() throws {
-        let file = try ratingFile("""
-        {"seasons":{"2026":{"label":"Week 9","teams":[
-          {"id":"1","location":"No rank","wins":5,"losses":2},
-          {"id":"2","location":"No record","rank":2},
-          {"location":"No id","rank":3,"wins":5,"losses":2},
-          {"id":"4","location":"Whole","rank":4,"wins":5,"losses":2}]}}}
-        """)
-        #expect(file.season(2026)?.rows.map(\.team.location) == ["Whole"])
-    }
-
-    @Test func aSeasonTheFileDoesntCarryHasNoRating() throws {
-        let file = try ratingFile(#"{"seasons":{"2026":{"label":"Week 3","teams":[]}}}"#)
-        #expect(file.season(2026) == nil)
-        #expect(file.season(2019) == nil)
-        #expect(StatSideRatingDestination(season: file.season(2019), league: .collegeFootball, year: 2019) == nil)
-    }
-
-    @Test func theTableSaysHowFarTheListRuns() throws {
-        let file = try ratingFile("""
-        {"seasons":{"2025":{"label":"Final","teams":[{"id":"84","location":"Indiana","rank":1,"wins":16,"losses":0}]}}}
-        """)
-        let destination = try #require(StatSideRatingDestination(season: file.season(2025),
-                                                                 league: .collegeFootball, year: 2025))
-        #expect(destination.seasonLabel == "\(League.collegeFootball.seasonLabel(2025)) · Final")
-    }
-
-    /// The copy bundled with the build decodes, and each season in it is a
-    /// whole list: every place from 1 down, no gaps.
-    @Test func theBundledListIsWhole() throws {
-        let store = StatSideRatingStore(bundle: .main)
-        let file = try #require(store.file)
-        #expect(file.updated != nil)
-        for year in (file.seasons ?? [:]).keys.compactMap(Int.init) {
-            let season = try #require(store.season(year))
-            #expect(season.rows.count > 100)
-            #expect(season.rows.map(\.rank) == Array(1...season.rows.count))
-        }
     }
 }

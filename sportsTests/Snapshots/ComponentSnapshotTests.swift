@@ -242,34 +242,6 @@ struct ComponentSnapshotTests {
         assert(card, variant)
     }
 
-    @Test(.enabled(if: snapshotSelected("statSideRatingCard")), arguments: Variant.football)
-    func statSideRatingCard(_ variant: Variant) {
-        // College football's Team stats tab leads with it (2026-10-25):
-        // the title with its chevron, then the top three. Disabled ink
-        // offscreen, as with the other stat cards.
-        let card = VStack(spacing: Spacing.sm) {
-            StatSideRatingCard(destination: SnapshotFixtures.statSideRating)
-        }
-        .padding(Spacing.sm)
-        .background(Color.bgRecessed)
-        .environment(SnapshotFixtures.noFollows)
-        assert(card, variant)
-    }
-
-    @Test(.enabled(if: snapshotSelected("statSideRatingTable")), arguments: Variant.football)
-    func statSideRatingTable(_ variant: Variant) {
-        // One tier of the full table the card opens: the header, the
-        // column captions, then the rows with their four numbers.
-        let destination = SnapshotFixtures.statSideRating
-        let table = VStack(spacing: Spacing.sm) {
-            StatSideRatingTable(title: "Top 25", subtitle: destination.seasonLabel, rows: destination.rows)
-        }
-        .padding(Spacing.sm)
-        .background(Color.bgRecessed)
-        .environment(SnapshotFixtures.noFollows)
-        assert(table, variant)
-    }
-
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

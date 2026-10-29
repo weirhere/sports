@@ -53,12 +53,11 @@ team id in the database's ESPN url, then by title. A team that matches
 neither is reported, never guessed. The proposal publishes from week four,
 so --notion and --publish skip earlier weeks unless --force is given.
 
---publish writes the season into statside-rating.json, the file the app
-reads. One copy is web/public/statside-rating.json, served at
-statside.co, and the app downloads it once per launch. The other is
-sports/Resources/statside-rating.json, bundled with the build. Other
-seasons already in the file are kept, so a finished season's final list
-stays. .github/workflows/statside-rating.yml runs this every Sunday.
+--publish writes the season into statside-rating.json, at
+web/public/statside-rating.json and sports/Resources/statside-rating.json.
+Other seasons already in the file are kept, so a finished season's final
+list stays. The app stopped reading the file on 2026-10-28, when the
+rating came out of it, so this only matters when it goes back in.
 
 --backtest refits every week of a past season on only the games played by
 then, predicts the next week's winners with each rating, and grids the
