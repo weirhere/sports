@@ -29,6 +29,7 @@ private func game(status: GameStatus, date: Date? = now,
     game.venue = "Bryant-Denny Stadium"
     game.broadcasts = [GameBroadcast(kind: "TV", network: "CBS", isNational: true,
                                      logoURL: nil, darkLogoURL: nil)]
+    game.isTBDFlex = false
     return game
 }
 
@@ -155,6 +156,7 @@ private func guardFollowing(_ teams: Team..., revealed: Set<String> = []) -> Spo
         #expect(hidden.broadcast == "CBS")
         #expect(hidden.broadcasts == original.broadcasts)
         #expect(hidden.venue == "Bryant-Denny Stadium")
+        #expect(hidden.isTBDFlex == false)
         #expect(hidden.home.rank == 4 && hidden.away.rank == 1)
         #expect(hidden.home.team == original.home.team)
     }

@@ -1062,7 +1062,8 @@ nonisolated enum ESPNMapper {
             venue: competition.venue?.fullName,
             venueCity: TeamVenue.cityLine(city: competition.venue?.address?.city,
                                           state: competition.venue?.address?.state),
-            venueIndoor: competition.venue?.indoor
+            venueIndoor: competition.venue?.indoor,
+            isTBDFlex: competition.status?.isTBDFlex
         )
     }
 
@@ -1670,7 +1671,8 @@ nonisolated enum ESPNMapper {
             status: status(from: competition.status, situation: nil),
             home: home,
             away: away,
-            broadcast: competition.broadcasts?.first?.media?.shortName
+            broadcast: competition.broadcasts?.first?.media?.shortName,
+            isTBDFlex: competition.status?.isTBDFlex
         )
     }
 
@@ -1965,7 +1967,8 @@ nonisolated enum ESPNMapper {
             broadcasts: geoBroadcasts(from: competition?.broadcasts ?? []),
             seasonSeries: seasonSeries(from: dto.seasonseries?.elements.first),
             injuries: injuries(from: dto.injuries?.elements ?? []),
-            onIce: onIce(from: dto.onIce?.elements ?? [])
+            onIce: onIce(from: dto.onIce?.elements ?? []),
+            gameNote: nonEmpty(dto.header?.gameNote)
         )
     }
 

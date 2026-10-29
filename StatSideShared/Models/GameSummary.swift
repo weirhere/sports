@@ -88,6 +88,11 @@ nonisolated struct GameSummary: Sendable {
     /// the summary's `onIce`. Empty in every other league and once the
     /// game is final.
     var onIce: [String: [String]] = [:]
+    /// The game's own billing off `header.gameNote` — "College Football
+    /// Playoff National Championship Presented by AT&T" — distinct from
+    /// `Game.headline`, which is the scoreboard's `notes[].headline` in a
+    /// different response. Decoded, unused (BACKLOG.md).
+    var gameNote: String? = nil
 }
 
 /// `SummaryResponseDTO.seasonseries`'s one entry, unflattened. `type` is

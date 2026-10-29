@@ -373,6 +373,29 @@ private func fixture(_ name: String) throws -> Data {
         #expect(gameSummary.broadcasts.count == 3)
     }
 
+    /// End to end: `isTBDFlex` reached the DTO (`competitionStatusCarriesThe
+    /// FlexSchedulingFlag` above) but was never read onto `Game` — both the
+    /// scoreboard and the schedule paths thread it through now.
+    @Test func gameCarriesTheFlexSchedulingFlagFromBothPaths() throws {
+        let scoreboard = try JSONDecoder().decode(ScoreboardDTO.self, from: fixture("nfl-scoreboard"))
+        let event = try #require(scoreboard.events?.elements.first)
+        let scoreboardGame = try #require(ESPNMapper.game(from: event, league: .nfl))
+        #expect(scoreboardGame.isTBDFlex == false)
+
+        let schedule = try JSONDecoder().decode(ScheduleResponseDTO.self, from: fixture("nfl-team-schedule"))
+        let scheduleEvent = try #require(schedule.events?.elements.first)
+        let scheduleGame = try #require(ESPNMapper.game(from: scheduleEvent, league: .nfl))
+        #expect(scheduleGame.isTBDFlex == false)
+    }
+
+    /// End to end: `header.gameNote` reached the DTO (`headerCarriesTheGame
+    /// Note` above) but was never read onto `GameSummary`.
+    @Test func gameSummaryCarriesTheGameNote() throws {
+        let summary = try JSONDecoder().decode(SummaryResponseDTO.self, from: fixture("summary-final-live"))
+        let gameSummary = ESPNMapper.gameSummary(from: summary)
+        #expect(gameSummary.gameNote == "College Football Playoff National Championship Presented by AT&T")
+    }
+
     /// BACKLOG.md E21: "`seasonseries` is a second source for the
     /// playoff-series problem." Both held summaries carry one regular-
     /// season entry; college football's summary carries none at all.
