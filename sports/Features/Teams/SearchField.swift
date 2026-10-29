@@ -19,6 +19,10 @@ struct SearchField: View {
     /// coming back restores what you had rather than always opening or
     /// always staying shut (Andy, 2026-09-21).
     var onFocusChange: ((Bool) -> Void)? = nil
+    /// Whether the field casts its shadow. The Leagues page holds it back
+    /// until the list scrolls under the field (Andy, 2026-10-26): at the
+    /// top there is nothing to lift it off.
+    var showsShadow = true
 
     @FocusState private var isFocused: Bool
 
@@ -68,7 +72,7 @@ struct SearchField: View {
                 // Stronger than the card shadow: the field floats over
                 // scrolling content on the page's own ground (2026-10-19),
                 // so the shadow is all that lifts it.
-                .shadow(color: .black.opacity(0.12), radius: 12, y: 3)
+                .shadow(color: .black.opacity(showsShadow ? 0.12 : 0), radius: 12, y: 3)
         )
     }
 }

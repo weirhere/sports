@@ -41,6 +41,10 @@ import SwiftUI
 /// without a second header saying so. Following one is still what puts
 /// group 81 on the Scores slate.
 struct TablesScreen: View {
+    /// True once the list has scrolled under the search field, which is
+    /// when the field's shadow appears (2026-10-26).
+    @State private var isScrolled = false
+    @State private var showsSettings = false
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
     @Environment(LeagueSectionExpansion.self) private var leagueSections
@@ -111,15 +115,16 @@ struct TablesScreen: View {
         NavigationStack {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
-                    // Same masthead as Games and Teams (2026-09-21).
-                    PageHeader("Leagues")
+                    // Same masthead as Games and Teams (2026-09-21), with
+                    // the page's settings at its trailing edge (2026-10-26).
+                    PageHeader(title: "Leagues") { settingsButton }
                     // Under the title, above everything it filters (Andy,
                     // 2026-09-21). Not at the bottom like the Search tab's:
                     // that field *is* the screen's purpose and belongs under
                     // the thumb, where this one narrows a list you are already
                     // reading and belongs at its head.
                     SearchField(text: $query, prompt: "Find a league",
-                                identifier: "search.leagues")
+                                identifier: "search.leagues", showsShadow: isScrolled)
                         .padding(.horizontal, Spacing.lg)
                         .padding(.bottom, Spacing.sm)
                 }
@@ -147,6 +152,7 @@ struct TablesScreen: View {
                     ConferencePage(destination: destination)
                         .id(destination)
                 }
+                .leagueStatsDestinations()
                 // Identity follows the team (2026-09-10). Search and the
                 // widget route by *replacing* the value at this path position
                 // rather than pushing a second page, and a destination whose
@@ -187,6 +193,29 @@ struct TablesScreen: View {
                 }
         }
         .task { await load() }
+        .sheet(isPresented: $showsSettings) { LeaguesSettingsSheet() }
+    }
+
+    /// The page's settings — how each league's Scores slate is grouped
+    /// (Andy, 2026-10-26: off the cards "to clean up the ui a bit"). The
+    /// Scores header's gear, drawn flat: on Scores' white page the glass
+    /// circle's own shadow all but vanishes, but on this page's gray one it
+    /// read as a dark halo (Andy, same day), and glass has no shadow
+    /// switch. A card-white circle with none matches what the Scores gear
+    /// looks like, and the search field beside it, which also rests
+    /// shadowless at the top of the page.
+    private var settingsButton: some View {
+        Button { showsSettings = true } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .background(Circle().fill(Color.bgCard))
+        .accessibilityLabel("Leagues settings")
+        .accessibilityIdentifier("leagues-settings-button")
     }
 
     /// Every card the hub shows, in order, skipping any whose fetch came
@@ -422,9 +451,17 @@ struct TablesScreen: View {
                         groupSection(group)
                     }
                 }
-                .padding(Spacing.sm)
+                // The search field's gutter, so the cards and the field
+                // share both edges (Andy, 2026-10-26).
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
             }
             .background(Color.bgRecessed)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 1
+            } action: { _, scrolled in
+                withAnimation(.easeOut(duration: 0.15)) { isScrolled = scrolled }
+            }
             .scrollDisabled(isReordering)
             .refreshable { await load() }
             // Edit mode is a thing you do to the list in front of you, so
@@ -524,9 +561,6 @@ struct TablesScreen: View {
                 .buttonStyle(SwipeSafeButtonStyle())
                 .accessibilityIdentifier(group.identifier)
                 .accessibilityLabel("\(group.title), full league")
-                // How this league's Scores slate is split (2026-10-19),
-                // beside the league it is about.
-                SlateGroupingChip(league: group.league)
                 ConferenceFollowButton(conference: id, conferenceName: table.name)
             }
         }
@@ -560,47 +594,32 @@ struct TablesScreen: View {
         let isExpanded = leagueSections.isExpanded(sectionId) || !trimmedQuery.isEmpty
         let rows = group.rows
         return VStack(spacing: 0) {
-            // The grouping chip sits in the header's row but outside its
-            // toggle (2026-10-19): a menu inside a button's label gets no
-            // taps of its own. So the row is the toggle's name on the left,
-            // the chip, and the toggle's chevron on the right — two buttons
-            // for one toggle, which is what makes the chip reachable.
-            HStack(spacing: Spacing.md) {
-                Button {
-                    withAnimation { leagueSections.toggle(sectionId) }
-                } label: {
-                    // `Spacing.md` and a 26pt mark, the same pair the rows
-                    // below use — at `Spacing.sm` and 18pt the header's title
-                    // started a few points left of every conference under it
-                    // (Andy, 2026-09-21).
-                    HStack(spacing: Spacing.md) {
-                        ConferenceLogo(url: group.logoURL, league: group.league)
-                            .frame(width: markSize, height: markSize)
-                        Text(group.title)
-                            // `teamNameEmphasis`, not `sectionHeader`: at 13pt
-                            // the league name was *smaller* than the 15pt
-                            // conference names beneath it, so the parent read
-                            // as the child's caption. Same size, heavier weight
-                            // — the app's own way of saying rank (2026-09-21).
-                            .font(.teamNameEmphasis)
-                            .foregroundStyle(.textPrimary)
-                        // No count (Andy, 2026-09-21). How many tables a league
-                        // holds is not a question anyone arrives with, and it
-                        // read as a score beside the name. The chevron already
-                        // says there is something inside.
-                        Spacer(minLength: Spacing.sm)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(group.identifier)
-                .accessibilityLabel("\(group.title), \(rows.count) \(rows.count == 1 ? "table" : "tables")")
-                .accessibilityValue(isExpanded ? "expanded" : "collapsed")
-                .accessibilityAddTraits(.isHeader)
-                SlateGroupingChip(league: group.league)
-                Button {
-                    withAnimation { leagueSections.toggle(sectionId) }
-                } label: {
+            // One toggle again (2026-10-26): the grouping chip that split
+            // this row into a name button and a chevron button moved to
+            // the page's settings sheet, so the whole header toggles.
+            Button {
+                withAnimation { leagueSections.toggle(sectionId) }
+            } label: {
+                // `Spacing.md` and a 26pt mark, the same pair the rows
+                // below use — at `Spacing.sm` and 18pt the header's title
+                // started a few points left of every conference under it
+                // (Andy, 2026-09-21).
+                HStack(spacing: Spacing.md) {
+                    ConferenceLogo(url: group.logoURL, league: group.league)
+                        .frame(width: markSize, height: markSize)
+                    Text(group.title)
+                        // `teamNameEmphasis`, not `sectionHeader`: at 13pt
+                        // the league name was *smaller* than the 15pt
+                        // conference names beneath it, so the parent read
+                        // as the child's caption. Same size, heavier weight
+                        // — the app's own way of saying rank (2026-09-21).
+                        .font(.teamNameEmphasis)
+                        .foregroundStyle(.textPrimary)
+                    // No count (Andy, 2026-09-21). How many tables a league
+                    // holds is not a question anyone arrives with, and it
+                    // read as a score beside the name. The chevron already
+                    // says there is something inside.
+                    Spacer(minLength: Spacing.sm)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.textSecondary)
@@ -610,11 +629,14 @@ struct TablesScreen: View {
                         // below it rather than past their edge.
                         .padding(.trailing, Spacing.sm)
                         .frame(minWidth: 32, minHeight: 44)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded ? "Collapse \(group.title)" : "Expand \(group.title)")
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(group.identifier)
+            .accessibilityLabel("\(group.title), \(rows.count) \(rows.count == 1 ? "table" : "tables")")
+            .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+            .accessibilityAddTraits(.isHeader)
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.md)
             // minHeight, never a fixed height: at accessibility text

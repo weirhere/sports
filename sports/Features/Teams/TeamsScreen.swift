@@ -63,6 +63,7 @@ struct TeamsScreen: View {
                     ConferencePage(destination: destination)
                         .id(destination)
                 }
+                .leagueStatsDestinations()
                 // TeamPage's Next game card pushes game detail. Identity
                 // follows the game, exactly as the two destinations above
                 // follow theirs.

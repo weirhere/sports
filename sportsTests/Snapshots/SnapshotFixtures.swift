@@ -255,4 +255,66 @@ enum SnapshotFixtures {
                       gameId: nil, teams: [])
         }
     }
+
+    // MARK: - Team stats
+
+    static let ohioState = team("194", "Ohio State", "Buckeyes", "OSU", league: .collegeFootball)
+    static let rangers = team("19", "New York", "Rangers", "NYR", league: .nhl)
+    static let lakers = team("13", "Los Angeles", "Lakers", "LAL", league: .nba)
+
+    /// One leader card's table per sport (2026-10-25): a lower-is-better
+    /// stat for football, a signed one for basketball and hockey's
+    /// three-digit save percentage — the three formats most likely to
+    /// crowd the capsule.
+    static func teamStatRanking(_ sport: Sport) -> TeamStatRankingDestination {
+        let (definitionId, entries): (String, [(Team, Double)]) = switch sport {
+        case .football: ("pointsAllowed", [(georgia, 9.4), (ohioState, 11.3), (alabama, 15.0)])
+        case .basketball: ("pointDifferential", [(celtics, 12.6), (knicks, 8.1), (lakers, -2.4)])
+        case .hockey: ("savePct", [(bruins, 0.925), (rangers, 0.911), (mapleLeafs, 0.904)])
+        }
+        let league = sport.league
+        let definition = league.teamStatDefinitions.first { $0.id == definitionId }!
+        let rows = entries.enumerated().map { index, entry in
+            TeamStatRanking.Row(rank: index + 1, team: entry.0, value: entry.1,
+                                display: definition.format.string(entry.1))
+        }
+        return TeamStatRankingDestination(ranking: TeamStatRanking(definition: definition, rows: rows),
+                                          scopeName: league.shortName,
+                                          seasonLabel: league.seasonLabel(2026))
+    }
+
+    /// One player leader card's table per sport (2026-10-26): a half-sack
+    /// count, a percentage, and hockey's signed plus/minus — no headshots,
+    /// so each disc is the placeholder.
+    static func playerStatRanking(_ sport: Sport) -> PlayerStatRankingDestination {
+        let (definitionId, entries): (String, [(String, String, Team, Double)]) = switch sport {
+        case .football: ("sacks", [("Jalon Walker", "LB", georgia, 9.5),
+                                   ("Arvell Reese", "LB", ohioState, 8),
+                                   ("LT Overton", "DE", alabama, 6.5)])
+        case .basketball: ("fieldGoalPct", [("Jalen Brunson", "G", knicks, 54.2),
+                                            ("Jayson Tatum", "F", celtics, 49.8),
+                                            ("LeBron James", "F", lakers, 48.1)])
+        case .hockey: ("plusMinus", [("Charlie McAvoy", "D", bruins, 14),
+                                     ("Adam Fox", "D", rangers, 9),
+                                     ("Morgan Rielly", "D", mapleLeafs, 7)])
+        }
+        let league = sport.league
+        let definition = league.playerStatDefinitions.first { $0.id == definitionId }!
+        let rows = entries.enumerated().map { index, entry in
+            PlayerStatRanking.Row(rank: index + 1,
+                                  player: LeaguePlayer(athleteId: "\(index)", name: entry.0, headshotURL: nil,
+                                                       position: entry.1, team: entry.2, league: league),
+                                  value: entry.3, display: definition.format.string(entry.3))
+        }
+        return PlayerStatRankingDestination(ranking: PlayerStatRanking(definition: definition, rows: rows),
+                                            scopeName: league.shortName,
+                                            seasonLabel: league.seasonLabel(2026))
+    }
+
+    /// A follow list with nobody in it, so no row draws emphasized.
+    static var noFollows: FollowingStore {
+        let defaults = UserDefaults(suiteName: "snapshot-no-follows")!
+        defaults.removePersistentDomain(forName: "snapshot-no-follows")
+        return FollowingStore(defaults: defaults)
+    }
 }

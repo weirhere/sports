@@ -166,8 +166,9 @@ struct FollowedTablesList: View {
                     .transition(controlTransition(edge: .trailing))
             }
         }
-        // The rows carry a list row's 7pt; a card wants a card's height.
-        .padding(.vertical, Spacing.xs)
+        // The rows carry a list row's 7pt; a card wants a card's height —
+        // 8pt more of it since 2026-10-26 (Andy), 4pt above and below.
+        .padding(.vertical, Spacing.sm)
         // Applied under `cardSurface`, which clips before it fills, so the
         // lift's lighter fill follows the card's rounded corners. It is
         // also dark mode's whole lift signal: the shadow below only
@@ -379,7 +380,7 @@ struct FollowedTablesList: View {
     /// The fallback is only ever reached on the frame before a card has
     /// measured itself, which is well before anyone can press one.
     private func height(of table: FollowedTable) -> CGFloat {
-        heights[table.token] ?? 52
+        heights[table.token] ?? 60
     }
 
     // MARK: - Unfollow
