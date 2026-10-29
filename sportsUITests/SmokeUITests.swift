@@ -100,11 +100,14 @@ final class SmokeUITests: XCTestCase {
         // test happens to run is a calendar fact, and a false one every
         // Sunday: Georgia plays Saturdays.
         //
-        // So walk back a day at a time until it turns up. The drag starts
-        // well clear of the left edge — a rightward swipe that begins near
-        // it is the system's back gesture, not a day step.
+        // So walk back a day at a time until it turns up. Two weeks, not
+        // one: a bye week puts the last game more than seven days back
+        // (Georgia's 2026 bye on Oct 24 left Oct 17 eleven days behind
+        // the 2.10.0 cut). The drag starts well clear of the left edge —
+        // a rightward swipe that begins near it is the system's back
+        // gesture, not a day step.
         var foundFollowing = false
-        for step in 0...7 {
+        for step in 0...14 {
             if scrollUntilExists(followingHeader, in: app,
                                  revealing: .above, timeout: step == 0 ? 10 : 3) {
                 foundFollowing = true
