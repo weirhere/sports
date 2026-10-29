@@ -30,8 +30,8 @@ Alternates:
 - `Live scores for your teams` (26) — says what the app does, not what it
   covers
 
-Audited at 2.10.0 and unchanged. The Standings tab and the Starters
-redesign are new drawing for the same three sports.
+Audited at 2.10.0 and unchanged. The stats tabs, the Standings tab and the
+Starters redesign are new drawing for the same three sports.
 
 Audited at 2.9.0 and unchanged. Spoiler mode, the Roster tab and the News
 pages are new surfaces for the same three sports.
@@ -76,6 +76,12 @@ release-notes history now.
 
 ### 2.10.0 (build 25)
 
+> • Stat leaders on every league page. Player stats ranks the best players
+>   in each sport's own numbers: passing, rushing and receiving, shooting,
+>   scoring and goaltending. Team stats ranks the teams on offense, defense
+>   and more. Each card shows the top three, and tapping it opens the full
+>   list. Conference and division pages rank just their own teams, and the
+>   Top 25 ranks the teams in the poll you're looking at.
 > • Standings on the game page. A new tab shows every table either team is
 >   in, with both teams' rows shaded so you can find them. Pro games have
 >   League, Conference and Division. College games show each side's
@@ -90,11 +96,16 @@ release-notes history now.
 >   in when it was set. Reminders rewrite themselves when you travel now.
 > • VoiceOver reads box score columns by their full names, like "Yards Per
 >   Pass Attempt" instead of "AVG".
+> • Group games by moved behind the gear at the top of the Leagues tab.
 
 2.9.0 (24) was live or in review before this cut, so these notes cover only
-what's new since it. Two of the seven iOS commits since the 2.9.0 bump have
+what's new since it. Two of the eight iOS commits since the 2.9.0 bump have
 no line: one is decode-only (a game note and a flex-scheduling flag read,
-nothing drawn) and one is snapshot baselines. The Standings tab hides on a
+nothing drawn) and one is snapshot baselines. The stats tabs (#293) landed
+mid-cut, and the StatSide rating that PR built and then pulled out of the
+app is not in this build, so nothing here mentions it. FCS pages have no
+stats tabs (ESPN only ranks FBS), which is why the first bullet says
+"every league page" without promising every conference. The Standings tab hides on a
 spoiler-concealed page with the other result-bearing tabs, so it doesn't
 undo Hide scores. Nothing here names a league (§ 4.1(a) rejection).
 
@@ -606,6 +617,8 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • The college football Top 25 polls, with movement arrows
 > • Every college conference, and every pro conference and division — each
 >   table in its own league's terms
+> • Player and team stat leaders for every league, conference and division,
+>   and for the Top 25, each card opening the full ranked list
 > • Game pages: a preview before the game and the facts after, line score,
 >   box score, scoring plays, team stats, leaders, win probability, the
 >   head-to-head series, both teams' standings, and the plays themselves — drives for football,
@@ -636,8 +649,10 @@ leagues ever stop being the thing worth saying first; no review needed.
 > StatSide is an independent app and is not affiliated with or endorsed by any
 > league, conference, team or school.
 
-Changed for 2.10.0, in one place: the game-pages bullet names both teams'
-standings, for the new Standings tab. The Starters redesign is the same
+Changed for 2.10.0, in two places: a stat-leaders bullet follows the tables
+bullet, for the league pages' Player stats and Team stats tabs (#293), and
+the game-pages bullet names both teams' standings, for the new Standings
+tab. The Starters redesign is the same
 Who's playing bullet drawn differently, and Live resetting on launch doesn't
 touch the focus-menu bullet, which never said the choice was remembered.
 
@@ -727,8 +742,9 @@ data" paragraph is unchanged, because nothing in this release collects any.
 
 `college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops,news` (100)
 
-Audited at 2.10.0 and unchanged. `standings` is already here, and it's the
-one word the release's headline would have asked for.
+Audited at 2.10.0 and unchanged. `stats` and `standings` are already here,
+and they're the two words the release's headlines would have asked for.
+`leaders` (8 with the comma) doesn't fit at 100 of 100.
 
 Audited at 2.9.0 and unchanged. `hide scores` (11 with the comma) is the
 one 2.9.0 term people type, since the TV apps call it that, and it would
@@ -1312,8 +1328,9 @@ already schedules. Both basketball and hockey are in their regular seasons
 by this cut (2026-10-28), so the timing lines below are retired; all three
 sports have games on the day strip. Paste the opener block and 2.9.0's Hide
 scores paragraph fresh rather than trusting what ASC carried over. Demo path
-for the release: any game page → Standings (a divisional pro game shows one
-table with both rows shaded).
+for the release: Leagues → any league → Player stats or Team stats, then
+tap a card for the full list; and any game page → Standings (a divisional
+pro game shows one table with both rows shaded).
 
 **Notes audit at 2.9.0: one paste-in paragraph, and a new timing line.**
 2.9.0 adds no entitlement, account, data collection or web view: the Roster
