@@ -58,6 +58,9 @@ struct ComponentSnapshotTests {
         var name: String { "\(sport.rawValue)-\(device.rawValue)-\(scheme == .dark ? "dark" : "light")" }
         var testDescription: String { name }
 
+        /// College football's cells alone, for a surface only it has.
+        static let football: [Variant] = all.filter { $0.sport == .football }
+
         static let all: [Variant] = SnapshotFixtures.Sport.allCases.flatMap { sport in
             Device.allCases.flatMap { device in
                 [ColorScheme.light, .dark].map { Variant(sport: sport, device: device, scheme: $0) }
@@ -206,6 +209,37 @@ struct ComponentSnapshotTests {
             .padding(.bottom, Spacing.sm)
             .background(Color.bgPrimary)
         assert(header, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("teamStatLeaderCard")), arguments: Variant.all)
+    func teamStatLeaderCard(_ variant: Variant) {
+        // A league page's Team stats card (2026-10-25): the stat's title
+        // with its chevron, then the top three, the leader's number in the
+        // filled capsule. On the recessed page at the pane's inset. As
+        // with the story cards, a `NavigationLink` with no stack above it
+        // draws its rows in the disabled ink offscreen; the layout is the
+        // baseline.
+        let card = VStack(spacing: Spacing.sm) {
+            TeamStatLeaderCard(destination: SnapshotFixtures.teamStatRanking(variant.sport))
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        .environment(SnapshotFixtures.noFollows)
+        assert(card, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("playerStatLeaderCard")), arguments: Variant.all)
+    func playerStatLeaderCard(_ variant: Variant) {
+        // The Player stats tab's card (2026-10-26): headshot disc, name
+        // over team and position, the leader's number in the capsule.
+        // Disabled ink offscreen, as with the team card.
+        let card = VStack(spacing: Spacing.sm) {
+            PlayerStatLeaderCard(destination: SnapshotFixtures.playerStatRanking(variant.sport))
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        .environment(SnapshotFixtures.noFollows)
+        assert(card, variant)
     }
 
     // MARK: - Rendering

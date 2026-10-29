@@ -21,7 +21,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, news, games, stats, standings, trades, roster, trophies
+        case overview, news, games, standings, stats, trades, roster, trophies
 
         var title: String {
             switch self {
@@ -632,10 +632,12 @@ struct TeamPage: View {
         // fixture-backed UI suites never reach the network through it.
         if showsRosterTab { tabs.append(.news) }
         tabs.append(.games)
+        // Standings before Stats (Andy, 2026-10-26): where the team
+        // stands, then the numbers behind it.
+        if showsStandingsTab { tabs.append(.standings) }
         // ESPN-only, like the roster: the same backend gate, and the pane
         // says so rather than sitting empty when a season has no numbers.
         if showsRosterTab { tabs.append(.stats) }
-        if showsStandingsTab { tabs.append(.standings) }
         // Trades leads Roster (Andy, 2026-09-27): who's arriving and
         // leaving, then who's here.
         if showsTradesTab { tabs.append(.trades) }
