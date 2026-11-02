@@ -63,6 +63,11 @@ struct GameDetailScreen: View {
     /// Which edge incoming tab content pushes from, the entity pages'
     /// rule: trailing walking forward, leading coming back.
     @State private var tabSlideEdge: Edge = .trailing
+    /// What the drag under the finger has done to the box score's tables.
+    /// A reference held outside view state: the tables report every frame
+    /// they move, and an observed write per frame would re-render the page
+    /// mid-drag.
+    @State private var swipeLedger = TabSwipeLedger()
 
     /// Whether the Plays tab is narrowed to the plays that scored. Lives
     /// here rather than in the list so switching tabs and coming back
@@ -313,8 +318,9 @@ struct GameDetailScreen: View {
                         switch shown {
                         case .boxScore:
                             if let summary {
-                                BoxScoreList(summary: summary)
-                                    .padding(Spacing.sm)
+                                BoxScoreList(summary: summary,
+                                             onTableScroll: swipeLedger.tableScrolled)
+                                .padding(Spacing.sm)
                             }
                         case .plays:
                             if let summary { playsPane(summary) }
@@ -341,12 +347,22 @@ struct GameDetailScreen: View {
                     // The entity pages' swipe: horizontal walks the tabs,
                     // with a dominance check so vertical scrolling never
                     // tab-flips. The buttons stay, so nothing is gated.
+                    // On Box score the swipe hands off at a table's edge:
+                    // a drag that scrolled a table was for the table, and
+                    // only a longer one with nothing left to scroll leaves
+                    // the tab (Raim, 2026-11-02).
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 20)
+                            .onChanged { value in
+                                swipeLedger.dragChanged(startingAt: value.startLocation)
+                            }
                             .onEnded { value in
+                                let tableMoved = swipeLedger.dragEnded()
                                 let dx = value.translation.width
                                 let tabs = availableTabs
-                                guard showsTabs, !tabOwnsHorizontalAxis, abs(dx) > 50,
+                                let threshold: CGFloat = tab == .boxScore ? 100 : 50
+                                guard showsTabs, !tabOwnsHorizontalAxis, !tableMoved,
+                                      abs(dx) > threshold,
                                       abs(dx) > abs(value.translation.height) * 1.5,
                                       let here = tabs.firstIndex(of: tab)
                                 else { return }
@@ -509,6 +525,7 @@ struct GameDetailScreen: View {
     /// Whether the pane is using the horizontal axis itself, so the tab
     /// swipe stands down — the team page's rule. Only the NFL's standings
     /// table does: its twelve columns scroll under a pinned name column.
+    /// The box score shares the axis instead; see the swipe's edge handoff.
     private var tabOwnsHorizontalAxis: Bool {
         tab == .standings && gameLeague.standingsScrollsHorizontally
     }

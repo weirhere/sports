@@ -9,6 +9,9 @@ import SwiftUI
 /// a hardcoded schema would misalign every row mid-game.
 struct BoxScoreList: View {
     let summary: GameSummary
+    /// Called each time a table's columns actually move, so the page's
+    /// tab swipe can tell a drag across the table from one leaving it.
+    var onTableScroll: () -> Void = {}
 
     @State private var selectedTeamId: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -155,6 +158,15 @@ struct BoxScoreList: View {
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.sm)
+        }
+        // The offset held inside the scrollable range, so a rubber-band
+        // past either end doesn't count as moving: a drag at the table's
+        // edge is the one allowed to change tabs.
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            let maxOffset = max(geometry.contentSize.width - geometry.containerSize.width, 0)
+            return min(max(geometry.contentOffset.x, 0), maxOffset)
+        } action: { _, _ in
+            onTableScroll()
         }
     }
 
