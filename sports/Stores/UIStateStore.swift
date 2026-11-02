@@ -246,7 +246,10 @@ final class UIStateStore {
     /// conference stack that came back under them (2026-09-06), the poll,
     /// and the "Other" bucket. Following keeps the opt-in
     /// `expandedSections` semantics it has had since launch, where it is
-    /// seeded open on first run.
+    /// seeded open on first run, and so do the all-FBS and all-FCS
+    /// sections above the conferences (`allDivisionPrefix`), which never
+    /// are: a whole division open by default would put the ACC eleven
+    /// screens down.
     private static func defaultsOpen(_ sectionId: String) -> Bool {
         [GameSection.leaguePrefix, GameSection.conferencePrefix,
          GameSection.pollPrefix, GameSection.otherPrefix]

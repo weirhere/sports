@@ -41,6 +41,22 @@ import Testing
         #expect(!reloaded.expandedSections.contains(sectionId))
     }
 
+    /// FBS and FCS above the conferences start folded, and an open one is
+    /// remembered; the same division by league keeps the open default
+    /// (Josh, 2026-11-02).
+    @Test func theAllDivisionSectionsStartFoldedAndRememberBeingOpened() {
+        let defaults = makeDefaults()
+        let byLeague = GameSection.conferencePrefix + Conference.divisionRoot(.fbs).token
+        let byConference = GameSection.allDivisionPrefix + byLeague
+        let store = UIStateStore(defaults: defaults)
+        #expect(!store.isExpanded(byConference))
+        #expect(store.isExpanded(byLeague))
+
+        store.toggle(byConference)
+        #expect(UIStateStore(defaults: defaults).isExpanded(byConference))
+        #expect(UIStateStore(defaults: defaults).isExpanded(byLeague))
+    }
+
     @Test func collapsedLeaguesPersistAcrossInstances() {
         let defaults = makeDefaults()
         let leagueId = GameSection.id(for: .collegeFootball)
