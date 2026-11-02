@@ -16,7 +16,7 @@
 // third league. Its conferences sort below the eleven FBS ones on the tier
 // rule that already orders the list.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -95,6 +95,7 @@ export function LeaguesHub({
   // reload is a fresh hub.
   const [query, setQuery] = useState("");
   const isFiltering = hubQuery(query).length > 0;
+  const isScrolled = useScrolledPastTop();
 
   /**
    * Divisions folded into their conference: the Sun Belt, not
@@ -276,8 +277,16 @@ export function LeaguesHub({
           with the field under the nav bar on the page's own ground, the
           list fading out as it runs under them (Andy, 2026-10-19) — the
           iOS Leagues tab's fixed head. `-mx-4 px-4` so the ground and the
-          fade span the column's gutters. */}
-      <div className="sticky top-14 z-30 -mx-4 bg-bg-recessed px-4 pb-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-bg-recessed after:to-transparent sm:top-16">
+          fade span the column's gutters. The fade and the field's shadow
+          both wait for the list to scroll (iOS, 2026-11-02): at rest with
+          nothing followed the first card sits under the fade, and its top
+          edge washed gray as if the field cast a shadow. */}
+      <div
+        className={cn(
+          "sticky top-14 z-30 -mx-4 bg-bg-recessed px-4 pb-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-bg-recessed after:to-transparent after:transition-opacity after:duration-150 after:ease-out sm:top-16",
+          !isScrolled && "after:opacity-0"
+        )}
+      >
         <PageHeader title="Leagues" />
         {/* Under the title, above everything it filters (iOS, 2026-09-21).
             At the head of the list, not its foot: it narrows a list you are
@@ -289,6 +298,7 @@ export function LeaguesHub({
           value={query}
           onChange={setQuery}
           placeholder="Find a league"
+          showsShadow={isScrolled}
           className="z-10"
         />
       </div>
@@ -374,6 +384,22 @@ export function LeaguesHub({
  * `TableRow.searchTitle`): the poll by its league's name and "Poll", a
  * table by its own name.
  */
+/**
+ * True once the page has scrolled under the pinned head, which is when the
+ * fade under it and the field's shadow appear (iOS `TablesScreen`'s
+ * `isScrolled`).
+ */
+function useScrolledPastTop() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 1);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return scrolled;
+}
+
 function hubRowTitle(row: HubRow): string {
   return row.kind === "poll" ? `${displayName(row.league)} Poll` : row.table.name;
 }

@@ -136,9 +136,14 @@ struct TablesScreen: View {
                 // The list runs under the masthead and fades out as it
                 // goes, rather than stopping at the edge of a lighter bar
                 // (Andy, 2026-10-19): one ground for the whole page, and
-                // the field's shadow is what lifts it.
+                // the field's shadow is what lifts it. Held back with that
+                // shadow until the list scrolls (2026-11-02): at rest with
+                // nothing followed the first card sits under the fade, and
+                // its top edge washed gray as if the field cast a shadow.
                 content
-                    .overlay(alignment: .top) { ScrollEdgeFade(edge: .top) }
+                    .overlay(alignment: .top) {
+                        ScrollEdgeFade(edge: .top).opacity(isScrolled ? 1 : 0)
+                    }
             }
                 .background(Color.bgRecessed.ignoresSafeArea())
                 .toolbar(.hidden, for: .navigationBar)

@@ -25,6 +25,10 @@ interface SearchFieldProps {
   /** The app-wide search page grabs the keyboard on open; pinned browse
    *  fields don't (their screens are for browsing first). */
   autoFocus?: boolean;
+  /** Whether the field casts its shadow. The Leagues hub holds it back
+   *  until the list scrolls under the field (iOS, 2026-10-26): at the top
+   *  there is nothing to lift it off. */
+  showsShadow?: boolean;
   className?: string;
 }
 
@@ -33,6 +37,7 @@ export function SearchField({
   onChange,
   placeholder,
   autoFocus = false,
+  showsShadow = true,
   className,
 }: SearchFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +67,10 @@ export function SearchField({
         autoCapitalize="none"
         spellCheck={false}
         enterKeyHint="search"
-        className="w-full rounded-[10px] bg-bg-card py-2.5 pl-9 pr-9 shadow-field type-field text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        className={cn(
+          "w-full rounded-[10px] bg-bg-card py-2.5 pl-9 pr-9 type-field text-text-primary transition-shadow duration-150 ease-out placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+          showsShadow && "shadow-field"
+        )}
       />
       {value.length > 0 && (
         <button
