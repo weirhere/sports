@@ -85,7 +85,7 @@ nonisolated struct LeagueTeamStats: Sendable, Hashable {
             || Conference.isDivisionRoot(conference.id, in: league) {
             return nil
         }
-        if league == .collegeFootball {
+        if league.isCollege {
             return Set(standings
                 .filter { $0.belongs(to: conference) }
                 .flatMap(\.entries)

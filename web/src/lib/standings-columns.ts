@@ -9,7 +9,7 @@
 // verified live 2026-09-09), so a CONF column there would be a permanent
 // dash under a caption promising a number.
 
-import type { League } from "./leagues";
+import { isCollege, type League } from "./leagues";
 import type { ConferenceStanding } from "./types";
 
 export type StandingsField =
@@ -55,11 +55,17 @@ export interface StandingsColumn {
   width: number;
 }
 
+const COLLEGE_COLUMNS: StandingsColumn[] = [
+  { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
+  { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
+];
+
 const COLUMNS: Record<League, StandingsColumn[]> = {
-  cfb: [
-    { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
-    { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
-  ],
+  cfb: COLLEGE_COLUMNS,
+  // College basketball's tables are a conference race too (`vsconf` and
+  // `total`, probed 2026-11-02).
+  mcbb: COLLEGE_COLUMNS,
+  wcbb: COLLEGE_COLUMNS,
   // The NFL's own table, in ESPN's order (Andy, 2026-09-13). W-L-T
   // replaces the OVR summary rather than sitting beside it: three columns
   // and one string are the same three numbers, and the league that still
@@ -118,7 +124,9 @@ export function standingsScrollsHorizontally(league: League): boolean {
  * three keep the fetch rather than decode a guessed shape.
  */
 export function summaryCarriesMatchupStandings(league: League): boolean {
-  return league === "cfb";
+  // College basketball's summary ships both conferences with `total` and
+  // `vsconf` as well (probed 2026-11-02).
+  return isCollege(league);
 }
 
 /**

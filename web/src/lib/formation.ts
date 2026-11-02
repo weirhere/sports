@@ -112,6 +112,8 @@ export function makeFormation(
     case "nfl":
       return football(starters, unit ?? "offense");
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return basketball(starters);
     case "nhl":
       return hockey(starters);

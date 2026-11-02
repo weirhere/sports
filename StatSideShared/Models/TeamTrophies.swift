@@ -172,7 +172,37 @@ extension TrophyKind {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
             return conferenceFinals(headline: headline, text: text)
+        case .mensCollegeBasketball, .womensCollegeBasketball:
+            // The NCAA tournament's final only: "NIT - Championship" and
+            // "College Basketball Crown Championship Game" decide trophies
+            // too, but not the one a program counts.
+            if text.hasPrefix("ncaa "), text.contains("national championship") {
+                return TrophyKind(singular: "National Championship",
+                                  plural: "National Championships", tier: .league)
+            }
+            return conferenceTournament(headline: headline, text: text)
         }
+    }
+
+    /// College basketball's conference tournament final: "SEC Tournament -
+    /// Final", "Atlantic 10 Championship - Final", "America East Playoffs -
+    /// Final", "Ivy League Tournament pres. by TIAA - Final" (live, March
+    /// 2026). The trophy is the event's own name, kept as ESPN wrote it
+    /// bar the round and a "pres. by" sponsor tail. The national
+    /// postseason events (NCAA, NIT, WBIT, Crown) are never a conference's.
+    private static func conferenceTournament(headline: String, text: String) -> TrophyKind? {
+        let parts = headline.components(separatedBy: " - ")
+        guard parts.count == 2,
+              parts[1].trimmingCharacters(in: .whitespaces).lowercased() == "final" else { return nil }
+        let event = text.components(separatedBy: " - ")[0]
+        let national = ["ncaa ", "nit", "women's nit", "wbit", "college basketball crown"]
+        guard !national.contains(where: { event.hasPrefix($0) }) else { return nil }
+        var name = parts[0].trimmingCharacters(in: .whitespaces)
+        if let sponsor = name.range(of: " pres. by ", options: .caseInsensitive) {
+            name = String(name[..<sponsor.lowerBound])
+        }
+        guard !name.isEmpty else { return nil }
+        return TrophyKind(singular: name, plural: name + "s", tier: .conference)
     }
 
     /// "SEC Championship", "AFC Championship" — the headline is already the

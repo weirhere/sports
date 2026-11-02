@@ -14,7 +14,7 @@ import { displayName, shortName } from "@/lib/leagues";
 import { GameRow } from "./game-row";
 import { ConferenceLogo } from "./theme/conference-logo";
 import { cn } from "@/lib/utils";
-import { conferencePath } from "@/lib/routes";
+import { conferencePath, pollPath } from "@/lib/routes";
 import { ACCORDION_TRANSITION, INSTANT_TRANSITION } from "@/lib/motion";
 
 interface SectionAccordionProps {
@@ -39,7 +39,7 @@ export function SectionAccordion({
     section.conference !== undefined
       ? conferencePath(section.conference)
       : section.table?.kind === "poll"
-        ? "/rankings/poll"
+        ? pollPath({ league: section.table.league })
         : undefined;
   // Named for what the tap does, not what it says.
   const nameAction = section.table?.kind === "poll" ? "rankings" : "standings";

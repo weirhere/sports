@@ -566,7 +566,9 @@ struct TeamPage: View {
                 // FBS team that happens to be in the ACC. The conference is
                 // the identity there and the subdivision is the
                 // classification around it, so it goes second.
-                if pageLeague.hasCollegeDivisions {
+                // College basketball reads college football's way: Duke is
+                // an ACC team first.
+                if pageLeague.isCollege {
                     groupLink(id, label: label)
                     leagueDestination.map(leagueLink)
                 } else {
@@ -662,7 +664,9 @@ struct TeamPage: View {
     /// UI-test fixture have no endpoint at all, so the roster's backend gate
     /// covers them.
     private var showsTradesTab: Bool {
-        pageLeague != .collegeFootball && client.providesRoster
+        // College basketball likewise: no transactions wire, and the
+        // portal isn't on ESPN.
+        !pageLeague.isCollege && client.providesRoster
     }
 
     /// A school's players in the NFL, NBA and NHL, from `pros.json`. Only

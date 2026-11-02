@@ -67,7 +67,7 @@ extension GamecastContent {
                         allowsShootout: Bool) -> GamecastContent? {
         guard let last = summary.plays.last else { return nil }
         switch league {
-        case .nba: return basketball(summary: summary, last: last)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: return basketball(summary: summary, last: last)
         case .nhl: return hockey(summary: summary, last: last, allowsShootout: allowsShootout)
         case .collegeFootball, .nfl: return nil
         }

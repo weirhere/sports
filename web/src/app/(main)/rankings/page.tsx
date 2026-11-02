@@ -29,10 +29,15 @@ async function settled<T>(work: Promise<T>, fallback: T): Promise<T> {
 }
 
 export default async function LeaguesPage() {
-  const [polls, standings, fcs] = await Promise.all([
-    // College football is the only league that polls — `/rankings` is a
-    // 404 for the other three and always will be.
-    settled(rankings("cfb").then(displayedPolls), [] as Poll[]),
+  const [pollEntries, standings, fcs] = await Promise.all([
+    // The polling leagues — college football and both college basketballs.
+    // `/rankings` is a 404 for the pros and always will be.
+    Promise.all(
+      LEAGUES.filter(hasPoll).map(async (league) => ({
+        league,
+        polls: await settled(rankings(league).then(displayedPolls), [] as Poll[]),
+      }))
+    ),
     Promise.all(
       LEAGUES.map(async (league) => ({
         league,
@@ -45,6 +50,10 @@ export default async function LeaguesPage() {
     settled(hubStandings("cfb", { group: FCS_GROUP_ID }), []),
   ]);
 
+  const polls = Object.fromEntries(
+    pollEntries.map(({ league, polls }) => [league, polls])
+  ) as Partial<Record<League, Poll[]>>;
+
   const byLeague = Object.fromEntries(
     standings.map(({ league, tables }) => [league, tables])
   ) as Record<League, ConferenceStandingsGroup[]>;
@@ -54,7 +63,7 @@ export default async function LeaguesPage() {
       polls={polls}
       standings={byLeague}
       fcsStandings={fcs}
-      hasAnyPoll={hasPoll("cfb")}
+      hasAnyPoll={LEAGUES.some(hasPoll)}
     />
   );
 }

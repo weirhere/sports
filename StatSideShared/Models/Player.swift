@@ -138,7 +138,7 @@ nonisolated extension PlayerIdentity {
         if let positionName, !positionName.isEmpty {
             rows.append((label: "Position", value: positionName))
         }
-        if league != .collegeFootball, let college {
+        if !league.isCollege, let college {
             rows.append((label: Self.collegeLabel, value: college.name))
         }
         if let jersey, !jersey.isEmpty { rows.append((label: "Jersey", value: jersey)) }

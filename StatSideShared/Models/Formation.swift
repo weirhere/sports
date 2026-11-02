@@ -59,7 +59,7 @@ nonisolated struct Formation: Sendable, Hashable {
                      unit: GameRoster.Unit? = nil) -> Formation {
         switch league {
         case .collegeFootball, .nfl: football(starters, unit: unit ?? .offense)
-        case .nba: basketball(starters)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: basketball(starters)
         case .nhl: hockey(starters)
         }
     }
@@ -67,7 +67,7 @@ nonisolated struct Formation: Sendable, Hashable {
     /// Football's platoon for a position, nil for the other leagues and
     /// for a position the table doesn't know.
     static func unit(for position: String?, league: League) -> GameRoster.Unit? {
-        guard league == .collegeFootball || league == .nfl, let position else { return nil }
+        guard league.isFootball, let position else { return nil }
         let code = position.uppercased()
         if FootballPositions.offense.contains(code) { return .offense }
         if FootballPositions.defense.contains(code) { return .defense }

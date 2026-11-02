@@ -34,11 +34,14 @@ final class ProAlumniStore {
         self.file = file
     }
 
-    /// The school's pros. Empty for anything but a college football team:
-    /// a pro team has no alumni, and its id would collide with a school's.
+    /// The school's pros in the leagues its sport feeds
+    /// (`League.proAlumniLeagues`): all three for a football page, the NBA
+    /// for a men's basketball page, none for a pro team — whose id would
+    /// collide with a school's — or a women's basketball page.
     func alumni(of team: Team) -> [ProAlumnus] {
-        guard team.league == .collegeFootball else { return [] }
-        return file?.alumni(collegeId: team.id) ?? []
+        let leagues = team.league.proAlumniLeagues
+        guard !leagues.isEmpty else { return [] }
+        return (file?.alumni(collegeId: team.id) ?? []).filter { leagues.contains($0.league) }
     }
 
     /// The local copies, then one request per launch; a failure keeps

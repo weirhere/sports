@@ -23,7 +23,9 @@ struct NewsLeagueSection: View {
         if stories.isEmpty {
             StatusMessage(text: "No \(league.shortName) stories right now.")
                 .cardSurface()
-        } else if league == .collegeFootball {
+        // A polling league's own page is its poll (college football and
+        // both college basketballs).
+        } else if league.hasPoll {
             StorySection(stories: stories,
                          seeMore: PollDestination(league: league, opensNews: true))
         } else if let id = Conference.leagueWideId(in: league) {

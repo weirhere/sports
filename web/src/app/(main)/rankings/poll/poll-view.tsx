@@ -42,7 +42,7 @@ import {
   postseasonRounds,
 } from "@/lib/postseason";
 import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
-import { teamPath } from "@/lib/routes";
+import { pollPath, teamPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
@@ -101,8 +101,7 @@ export function PollView({
   };
 
   const selectYear = (year: number) => {
-    const query = year === seasonYear(league) ? "" : `?year=${year}`;
-    router.push(`/rankings/poll${query}`);
+    router.push(pollPath({ league, year: year === seasonYear(league) ? undefined : year }));
   };
 
   // The season's slate narrowed to the poll's own teams — the app's "any

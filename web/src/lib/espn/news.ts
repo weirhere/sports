@@ -73,6 +73,8 @@ const SPECS: Record<League, string> = {
   nfl: "football/nfl",
   nba: "basketball/nba",
   nhl: "hockey/nhl",
+  mcbb: "basketball/mens-college-basketball",
+  wcbb: "basketball/womens-college-basketball",
 };
 
 export function teamNewsUrl(league: League, teamId: string): string {

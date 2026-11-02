@@ -413,12 +413,13 @@ struct PlayerPage: View {
         }
     }
 
-    /// The school's college football page, when it plays FBS or FCS
-    /// football: ESPN's college id is the same value as that team's id
-    /// (probed 2026-11-02). A school without football finds nothing here
-    /// and its row stays plain text.
+    /// The school's page in the college league this pro league draws from
+    /// — men's basketball for an NBA player, football otherwise
+    /// (`League.collegeFeeder`): ESPN's college id is the same value as
+    /// that team's id (probed 2026-11-02). A school outside that league
+    /// finds nothing here and its row stays plain text.
     private var collegeTeam: Team? {
-        guard let id = shown.college?.id else { return nil }
-        return directory.team(matching: TeamRef(id: id, league: .collegeFootball))
+        guard let id = shown.college?.id, let league = shown.league.collegeFeeder else { return nil }
+        return directory.team(matching: TeamRef(id: id, league: league))
     }
 }

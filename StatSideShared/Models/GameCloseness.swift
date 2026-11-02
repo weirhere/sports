@@ -40,8 +40,10 @@ extension League {
     /// overtime after it.
     nonisolated var latePeriod: Int {
         switch self {
-        case .collegeFootball, .nfl, .nba: 4
+        case .collegeFootball, .nfl, .nba, .womensCollegeBasketball: 4
         case .nhl: 3
+        // Two halves: the second is the last regulation period.
+        case .mensCollegeBasketball: 2
         }
     }
 
@@ -49,8 +51,8 @@ extension League {
     /// middle period stands in: the underdog still up after two is news.
     nonisolated var secondHalfPeriod: Int {
         switch self {
-        case .collegeFootball, .nfl, .nba: 3
-        case .nhl: 2
+        case .collegeFootball, .nfl, .nba, .womensCollegeBasketball: 3
+        case .nhl, .mensCollegeBasketball: 2
         }
     }
 
@@ -59,7 +61,7 @@ extension League {
     nonisolated var oneScore: Int {
         switch self {
         case .collegeFootball, .nfl: 8
-        case .nba: 6
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: 6
         case .nhl: 1
         }
     }

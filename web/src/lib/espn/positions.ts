@@ -14,7 +14,7 @@
 // the team roster's own abbreviation for that athlete — a new id ESPN adds
 // degrades one player's label, never the roster.
 
-import type { League } from "@/lib/leagues";
+import { isBasketball, type League } from "@/lib/leagues";
 
 export interface EspnPosition {
   abbreviation: string;
@@ -66,7 +66,7 @@ const HOCKEY: Table = {
 };
 
 export function espnPosition(id: string, league: League): EspnPosition | undefined {
-  const table = league === "nba" ? BASKETBALL : league === "nhl" ? HOCKEY : FOOTBALL;
+  const table = isBasketball(league) ? BASKETBALL : league === "nhl" ? HOCKEY : FOOTBALL;
   const entry = table[id];
   return entry ? { abbreviation: entry[0], name: entry[1] } : undefined;
 }

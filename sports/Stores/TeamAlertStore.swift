@@ -39,11 +39,9 @@ nonisolated enum TeamAlert: String, CaseIterable, Codable, Sendable, Identifiabl
 
     /// A basketball game scores 200 points; an alert per basket is noise,
     /// and "scoring" has no quieter meaning there that the payload carries.
+    /// College basketball's 140 are the same noise.
     func applies(to league: League) -> Bool {
-        switch (self, league) {
-        case (.scoring, .nba): false
-        default: true
-        }
+        !(self == .scoring && league.isBasketball)
     }
 
     func title(in league: League) -> String {
@@ -61,7 +59,7 @@ nonisolated enum TeamAlert: String, CaseIterable, Codable, Sendable, Identifiabl
         switch self {
         case .kickoffReminder: "alarm"
         case .gameStart: "play.circle"
-        case .scoring: league == .nhl ? "hockey.puck" : "football"
+        case .scoring: league.fallbackGlyph.replacingOccurrences(of: ".fill", with: "")
         case .breakInPlay: "pause.circle"
         case .final: "flag.checkered"
         case .news: "newspaper"

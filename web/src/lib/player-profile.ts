@@ -14,7 +14,7 @@
 // carries the door's facts in memory; the web re-fetches both sources from
 // the path, which is why the team id still rides in it.
 
-import type { League } from "./leagues";
+import { isCollege, type League } from "./leagues";
 import { rosterMetric, spokenMetric } from "./roster-metric";
 import type { PlayerCollege, RosterPlayer, TeamRoster } from "./types";
 
@@ -97,7 +97,7 @@ export function playerProfileRows(
   if (player.positionName) {
     rows.push({ label: "Position", value: player.positionName });
   }
-  if (league !== "cfb" && player.college) {
+  if (!isCollege(league) && player.college) {
     rows.push({ label: "College", value: player.college.name, href: options?.collegeHref });
   }
   if (player.jersey) rows.push({ label: "Jersey", value: player.jersey });

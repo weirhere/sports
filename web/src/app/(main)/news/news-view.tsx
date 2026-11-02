@@ -28,7 +28,7 @@ import { useOnDemand } from "@/lib/hooks/use-on-demand";
 import { useTeamDirectory } from "@/lib/hooks/use-team-directory";
 import { useNewsHiddenTeams } from "@/lib/hooks/use-news-hidden-teams";
 import { getForYouTeams, getLeaguePages, type ForYouTeams, type LeaguePages } from "@/lib/api";
-import { LEAGUE_DISPLAY_ORDER, leagueLogoUrl, shortName } from "@/lib/leagues";
+import { LEAGUE_DISPLAY_ORDER, hasPoll, leagueLogoUrl, shortName } from "@/lib/leagues";
 import { leagueWideId } from "@/lib/conferences";
 import { followKey, followedLeagues, parseFollowKey } from "@/lib/refs";
 import { conferencePath, pollPath, teamPath } from "@/lib/routes";
@@ -218,8 +218,8 @@ function LeaguesPage({ pages }: { pages: LeaguePages["pages"] }) {
         const stories = pages[league] ?? [];
         const wideId = leagueWideId(league);
         const seeMoreHref =
-          league === "cfb"
-            ? pollPath({ tab: "news" })
+          hasPoll(league)
+            ? pollPath({ tab: "news", league })
             : wideId !== undefined
               ? conferencePath({ league, id: wideId }, { tab: "news" })
               : undefined;

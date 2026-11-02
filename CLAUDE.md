@@ -4,7 +4,7 @@ Context file for AI-assisted development sessions on this project. Read this bef
 
 ## What this is
 
-A sports scores app for iOS — college football, the NFL, the NBA and the NHL — inspired by FotMob's information architecture. Four leagues, done fast and beautifully, in black and white. College football came first and still leads the fall; the NFL joined at 2.0 (2026-09-05) and brought the league axis, which is exactly how basketball and hockey arrived (2026-09-08).
+A sports scores app for iOS — college football, the NFL, the NBA, the NHL and men's and women's college basketball — inspired by FotMob's information architecture. Six leagues, done fast and beautifully, in black and white. College football came first and still leads the fall; the NFL joined at 2.0 (2026-09-05) and brought the league axis, which is exactly how basketball and hockey arrived (2026-09-08), and college basketball after them (2026-11-02, NCAAM and NCAAW). Code asks `league.isCollege`, `league.isFootball` or `league.hasCollegeDivisions` (FBS/FCS), never `== .collegeFootball` to mean one of those.
 
 The target user checks scores 20+ times a fall weekend and is tired of ad-stuffed everything-apps where their sport is one tab among 30. Speed and focus are the product.
 

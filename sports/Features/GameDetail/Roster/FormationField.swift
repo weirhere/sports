@@ -45,7 +45,7 @@ struct FormationField: View {
     static func rowHeights(for league: League) -> [CGFloat] {
         switch league {
         case .collegeFootball, .nfl: [92, 92, 92, 92]
-        case .nba: [228, 140]
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: [228, 140]
         case .nhl: [138, 120, 110]
         }
     }
@@ -110,7 +110,7 @@ struct FormationField: View {
 
     @ViewBuilder
     private func rowView(_ row: Formation.Row, team: Team) -> some View {
-        let hairline = league == .nba ? 0.12 : 0.08
+        let hairline = league.isBasketball ? 0.12 : 0.08
         switch row {
         case .line(let players):
             HStack(spacing: 0) {
@@ -185,7 +185,7 @@ private struct FieldMarkings: View {
                 }
                 context.fill(Path(CGRect(x: 0, y: midY - 1, width: size.width, height: 2)),
                              with: .color(SurfaceColors.chalk))
-            case .nba:
+            case .nba, .mensCollegeBasketball, .womensCollegeBasketball:
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(SurfaceColors.Starters.maple))
                 let line = SurfaceColors.Starters.paint
                 // A key at each end, 30% of the width and 22% of the length,

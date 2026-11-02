@@ -23,7 +23,7 @@ nonisolated enum ESPNPositions {
     static func position(id: String, league: League) -> Position? {
         let table: [String: (String, String)] = switch league {
         case .collegeFootball, .nfl: football
-        case .nba: basketball
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: basketball
         case .nhl: hockey
         }
         guard let entry = table[id] else { return nil }

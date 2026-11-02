@@ -64,7 +64,7 @@ nonisolated enum SurfaceColors {
     static func ink(for league: League) -> Ink {
         switch league {
         case .collegeFootball, .nfl: Ink(text: turfInk, counter: ink)
-        case .nba, .nhl: Ink(text: .textPrimary, counter: .bgPrimary)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .nhl: Ink(text: .textPrimary, counter: .bgPrimary)
         }
     }
 
@@ -103,7 +103,7 @@ nonisolated enum SurfaceColors {
     static func base(for league: League) -> Color {
         switch league {
         case .collegeFootball, .nfl: Starters.turf
-        case .nba: Starters.maple
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: Starters.maple
         case .nhl: Starters.ice
         }
     }
@@ -118,7 +118,7 @@ nonisolated enum SurfaceColors {
     static func heading(for league: League) -> Color {
         switch league {
         case .collegeFootball, .nfl: Starters.turfHeading
-        case .nba: Starters.paint
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: Starters.paint
         case .nhl: Starters.iceHeading
         }
     }

@@ -97,18 +97,19 @@ enum SlateGrouping: String, CaseIterable, Hashable, Sendable {
     case conference
     case division
 
-    /// What Settings offers. College football has no divisions; FBS and
-    /// FCS already stand where they would. Its League rung is the Top 25,
-    /// FBS and FCS; its Conference rung adds the conferences beneath them,
-    /// with FBS and FCS folded.
+    /// What Settings offers. The college leagues have no divisions; FBS
+    /// and FCS already stand where they would. College football's League
+    /// rung is the Top 25, FBS and FCS; college basketball's is the Top 25
+    /// alone. The Conference rung adds the conferences beneath them, with
+    /// FBS and FCS folded.
     static func options(for league: League) -> [SlateGrouping] {
-        league == .collegeFootball ? [.league, .conference] : allCases
+        league.isCollege ? [.league, .conference] : allCases
     }
 
-    /// College football keeps its conference split, which is what fans
-    /// browse it by; the pros are one section each until asked otherwise.
+    /// The college leagues keep their conference split, which is what fans
+    /// browse them by; the pros are one section each until asked otherwise.
     static func defaultValue(for league: League) -> SlateGrouping {
-        league == .collegeFootball ? .conference : .league
+        league.isCollege ? .conference : .league
     }
 
     var label: String {

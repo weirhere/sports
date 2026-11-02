@@ -56,6 +56,7 @@ struct PollScreen: View {
     init(polls: [Poll] = [], league: League = .collegeFootball, opensNews: Bool = false) {
         self.polls = polls
         self.league = league
+        _leagueStats = State(initialValue: LeagueStatsModel(league: league))
         // A News page's "See more" lands on News (2026-09-27).
         _tab = State(initialValue: opensNews ? .news : .standings)
     }

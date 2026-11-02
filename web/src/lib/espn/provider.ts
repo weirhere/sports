@@ -23,8 +23,10 @@ import { transformDepthChart, transformLineup } from "./game-roster-transformers
 import {
   SEASON_FLOOR,
   belongsToSeason,
-  hasCollegeDivisions,
+  hasPlayoffRanking,
   hasPoll,
+  isCollege,
+  leagueGroupId,
   headToHeadSeasons,
   seasonGamesSpan,
   seasonYear as leagueSeasonYear,
@@ -307,7 +309,7 @@ export async function scoreboard(
   };
 }
 
-/** The league's polls. College football is the only one that has any. */
+/** The league's polls: college football's and both college basketballs'. */
 export async function rankings(
   league: League,
   year?: number
@@ -348,16 +350,20 @@ const CORE_POLL_CFP = 21;
  * a table of dashes.
  */
 async function finalRankings(league: League, year: number): Promise<Poll[]> {
+  // College basketball's polls close after the tournament, at postseason
+  // week 3 rather than football's week 1 (probed 2026-11-02), and it has no
+  // CFP — so its closing week is read off the postseason's weeks collection.
+  const week = hasPlayoffRanking(league) ? 1 : await lastWeek(league, year, 3);
   const [directory, ap, coaches, cfp] = await Promise.all([
     teamDirectory(league),
-    coreRanking(league, { year, seasonType: 3, week: 1, rankingId: CORE_POLL_AP }),
+    coreRanking(league, { year, seasonType: 3, week, rankingId: CORE_POLL_AP }),
     coreRanking(league, {
       year,
       seasonType: 3,
-      week: 1,
+      week,
       rankingId: CORE_POLL_COACHES,
     }),
-    finalCfpRanking(league, year),
+    hasPlayoffRanking(league) ? finalCfpRanking(league, year) : undefined,
   ]);
   const found = [ap, coaches, cfp].filter(
     (ranking): ranking is EspnCoreRanking => ranking !== undefined
@@ -368,6 +374,15 @@ async function finalRankings(league: League, year: number): Promise<Poll[]> {
   return found
     .map((ranking) => transformCoreRanking(ranking, league, directory))
     .filter((poll): poll is Poll => poll !== null);
+}
+
+/** How many weeks a season type has, or 1 where the collection won't say. */
+async function lastWeek(league: League, year: number, seasonType: number): Promise<number> {
+  const weeks = await fetchJson<EspnCoreCollection>(
+    coreWeeksUrl(league, { year, seasonType }),
+    REVALIDATE.rankings
+  ).catch(() => undefined);
+  return weeks?.count && weeks.count > 0 ? weeks.count : 1;
 }
 
 /**
@@ -427,7 +442,8 @@ export async function seasonGames(
   league: League,
   year?: number
 ): Promise<Game[]> {
-  return conferenceGames(league, FBS_GROUP_ID, year);
+  // Division I for college basketball, FBS for football.
+  return conferenceGames(league, leagueGroupId(league) ?? FBS_GROUP_ID, year);
 }
 
 /** A league's conferences with alphabetical rosters, for browsing. */
@@ -485,8 +501,11 @@ export async function hubStandings(
   league: League,
   options?: { year?: number; group?: number }
 ): Promise<ConferenceStandingsGroup[]> {
-  if (hasCollegeDivisions(league)) {
+  if (isCollege(league)) {
     // College football's conferences nest only in a divisional era, and
+    // college basketball's not at all; the shipped response carries them.
+    // (Was `hasCollegeDivisions` until college basketball, 2026-11-02.)
+    //
     // the shipped response already carries those divisions.
     return conferenceStandings(league, {
       year: options?.year,

@@ -62,7 +62,7 @@ struct GameRosterPane: View {
     }
 
     private var layout: StartersLayout { uiState?.startersLayout ?? unsavedLayout }
-    private var isFootball: Bool { league == .collegeFootball || league == .nfl }
+    private var isFootball: Bool { league.isFootball }
 
     /// Whether the first thing on the pane is the painted field.
     private var leadsWithField: Bool {
@@ -143,7 +143,7 @@ struct GameRosterPane: View {
     private var inactiveTitle: String {
         switch league {
         case .collegeFootball, .nfl: "Inactive"
-        case .nba: "Did not play"
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: "Did not play"
         case .nhl: "Scratched"
         }
     }

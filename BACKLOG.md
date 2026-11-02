@@ -656,11 +656,26 @@ The first sentence already ships — Following is the first section on Scores, a
 - [ ] **P2** **Widget rows and the share card** — "tap to reveal" rows; share reveals first.
 - [ ] **P2** **Web parity** — `docs/changes/` row; the web game page and slate have the same surfaces and the same follows.
 
+## E31 — Men's and women's college basketball
+
+Andy, 2026-11-02, the night both seasons opened: "We need to get men and women's college basketball in the app as soon as possible." De-iced from the row below. Full parity, iOS and web in one PR; the decision is `docs/changes/299.md`.
+
+- [x] **P0** `League.mensCollegeBasketball` (`mcbb`, NCAAM) and `.womensCollegeBasketball` (`wcbb`, NCAAW), with the sport and college axes (`sport`, `isCollege`, `divisionGroupId`, `hasPlayoffRanking`, `collegeFeeder`) and every `== .collegeFootball` gate re-pointed at what it meant. *(Written 2026-11-02 in a Linux sandbox with no Xcode; needs a Mac build.)*
+- [x] **P0** Scores: Division I (`groups=50`), Top 25 plus a section per conference, conference sections collapsed by default.
+- [x] **P0** Game pages: the NBA's basketball detail; men's halves, women's quarters; court Gamecast; summary-carried matchup standings.
+- [x] **P0** Team, conference, Tables and poll pages; the 32-conference table with the Summit League's split id; popular teams.
+- [x] **P1** NCAA tournament bracket and trophies; an NBA player's College row and NCAAM's Pros tab.
+- [x] **P1** Web parity.
+- [ ] **P0** Mac build, `sportsTests` (`CollegeBasketballTests`), snapshot suite (no existing baseline should move) and an eyes-on pass against a live weeknight. Full `sportsUITests`, watching anything that scrolls Scores past the new sections.
+- [ ] **P2** A "this school's other sports" link on a college team page (Michigan football ↔ Michigan basketball). Follows stay per league; this is the shortcut between them.
+- [ ] **P2** NCAAW's Pros tab, which waits on the WNBA (E17).
+- [ ] **P2** A followed college basketball conference hoisted to the top of Scores still starts collapsed, because the default reads the section id alone. Pass the followed state into `UIStateStore.isExpanded` if it bothers anyone.
+
 ## Icebox (deliberately not now)
 
 - ~~Widgets~~ / ~~Live Activities~~ *(widgets de-iceboxed 2026-08-04 → E7; Live Activities de-iceboxed 2026-09-05 → E9 as a decision item, and **decided 2026-09-10 → E12 as a build** — the "no push story without a backend" verdict collapsed three paths into one, and only two of them need a server; the one chosen is path 3, broadcast channels, which needs a service holding no user data)*
 - ~~Notifications~~ *(local kickoff reminders de-iceboxed 2026-08-04 → E7; live-event push still needs a backend, still iced)*
-- College basketball (same schools, same follows — and since the NBA and NHL landed on 2026-09-08 it needs no new machinery: a sport segment, a registry, and a `standings?group=` axis it already shares with college football)
+- ~~College basketball~~ *(de-iced 2026-11-02 → E31, men's and women's both, shipped the night the seasons opened)*
 - ~~MLB and the WNBA~~ *(scoped 2026-09-14 as E17 — both answer 200 on all four paths, both ship `week: null`, and between them they cover February through November; the epic is written, the go/no-go is its first item. Still not scheduled.)*
 - FCS/lower divisions *(scoped 2026-09-01 as E8 — the epic exists so the shape is known; still not scheduled, and its first item is the go/no-go)*
 - News content (may be never; scores-first is the identity) *(**de-iced in part 2026-09-27 → E25:** stories attached to a game's page and a team's page, read in-app. A News tab, a feed, player news, generated summaries and news in widgets all stay here — `docs/news.md` N1 and N12 to N15)*

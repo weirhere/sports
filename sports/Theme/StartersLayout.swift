@@ -28,7 +28,7 @@ extension League {
     var surfaceName: String {
         switch self {
         case .collegeFootball, .nfl: "Field"
-        case .nba: "Court"
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: "Court"
         case .nhl: "Rink"
         }
     }

@@ -572,7 +572,7 @@ struct ConferencePage: View {
     /// filtered copy of it. College football's wire is empty — ESPN has no
     /// transfer portal — so its pages never offer the tab.
     private var showsTradesTab: Bool {
-        destination.league != .collegeFootball
+        !destination.league.isCollege
             && destination.conferenceId == Conference.leagueWideId(in: destination.league)
             && client.providesRoster
     }
@@ -699,7 +699,7 @@ struct ConferencePage: View {
     /// (2026-10-26) — Team stats' scope, for the same reasons.
     private var playerStatsSection: some View {
         let standings = standingsByYear[selectedYear]
-        let needsStandings = destination.league == .collegeFootball && !isLeagueWide
+        let needsStandings = destination.league.isCollege && !isLeagueWide
         let players = needsStandings && standings == nil
             ? nil
             : leagueStats.players(for: selectedYear)?
@@ -732,7 +732,7 @@ struct ConferencePage: View {
     /// them; every other page can rank as soon as the stats land.
     private var teamStatsSection: some View {
         let standings = standingsByYear[selectedYear]
-        let needsStandings = destination.league == .collegeFootball && !isLeagueWide
+        let needsStandings = destination.league.isCollege && !isLeagueWide
         let stats = needsStandings && standings == nil
             ? nil
             : leagueStats.stats(for: selectedYear)?

@@ -150,7 +150,7 @@ struct SectionAccordion: View, Equatable {
     /// football's conferences stand on their own names: "Big Ten - NCAAF".
     static func title(_ title: String, in league: League?) -> String {
         guard let league else { return title }
-        return league == .collegeFootball
+        return league.isCollege
             ? "\(title) - \(league.shortName)"
             : "\(league.shortName) - \(title)"
     }

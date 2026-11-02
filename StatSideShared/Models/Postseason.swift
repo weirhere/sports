@@ -102,6 +102,8 @@ nonisolated enum Postseason {
         // there when we build it: playoff games carry
         // `competitions[].series` with each side's wins.
         case .nba, .nhl: nil
+        case .mensCollegeBasketball, .womensCollegeBasketball:
+            basketballName(headline: game.headline)
         }
     }
 
@@ -149,6 +151,31 @@ nonisolated enum Postseason {
         if text.contains("quarterfinal") { return "Quarterfinals" }
         if text.contains("first round") { return "First Round" }
         return nil
+    }
+
+    /// The NCAA tournament's rounds, read off headlines like "NCAA Men's
+    /// Basketball Championship - South Region - Sweet 16" and "NCAA
+    /// Women's Basketball Championship - Regional 4 in Sacramento - First
+    /// Four" (captured live 2026-11-02 against March 2026).
+    ///
+    /// Single elimination, so the bracket's results-only feeder rule
+    /// holds, unlike the pros' series. Only the NCAA tournament is the
+    /// bracket: the NIT, the Women's NIT, the WBIT and the College
+    /// Basketball Crown share the postseason season type and name nil,
+    /// like a bowl. Conference tournaments are filed as regular season
+    /// (`season.type == 2`) and never get here.
+    static func basketballName(headline: String?) -> String? {
+        guard let headline, !headline.isEmpty else { return nil }
+        let text = headline.lowercased()
+        guard text.hasPrefix("ncaa "), text.contains("basketball championship") else { return nil }
+        if text.contains("national championship") { return "National Championship" }
+        if text.contains("final four") { return "Final Four" }
+        if text.contains("elite 8") || text.contains("elite eight") { return "Elite Eight" }
+        if text.contains("sweet 16") || text.contains("sweet sixteen") { return "Sweet 16" }
+        if text.contains("first four") { return "First Four" }
+        if text.contains("2nd round") || text.contains("second round") { return "Second Round" }
+        if text.contains("1st round") || text.contains("first round") { return "First Round" }
+        return "NCAA Tournament"
     }
 }
 

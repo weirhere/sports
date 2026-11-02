@@ -59,7 +59,7 @@ nonisolated struct TeamSeasonStats: Sendable, Hashable {
         switch league {
         case .collegeFootball, .nfl:
             ["totalPointsPerGame", "yardsPerGame", "thirdDownConvPct", "turnOverDifferential"]
-        case .nba:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball:
             ["avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct"]
         case .nhl:
             ["goals", "avgGoalsAgainst", "savePct", "faceoffPercent"]
@@ -88,7 +88,7 @@ nonisolated struct TeamLeader: Sendable, Hashable, Identifiable {
         switch league {
         case .collegeFootball, .nfl:
             ["passingLeader", "rushingLeader", "receivingLeader", "totalTackles", "sacks", "interceptions"]
-        case .nba:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball:
             ["pointsPerGame", "reboundsPerGame", "assistsPerGame", "stealsPerGame", "blocksPerGame"]
         case .nhl:
             ["points", "goals", "assists", "wins", "savePct"]

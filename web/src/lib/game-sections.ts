@@ -34,6 +34,7 @@
 import {
   collegeDivision,
   conferenceLogoUrl,
+  isKnownConference,
   conferenceNameFor,
   tier,
   tierRank,
@@ -52,6 +53,7 @@ import {
   LEAGUES,
   LEAGUE_DISPLAY_ORDER,
   displayName,
+  hasCollegeDivisions,
   leagueLogoUrl,
   slateSplitsByConference,
   type League,
@@ -274,8 +276,14 @@ function conferenceSections(
     for (const side of [game.homeTeam, game.awayTeam]) {
       const id = numericConferenceId(side.team.conferenceId);
       if (id === undefined) continue;
-      const division = collegeDivision(id, league);
-      if (division === undefined || !divisions.has(division)) continue;
+      if (hasCollegeDivisions(league)) {
+        const division = collegeDivision(id, league);
+        if (division === undefined || !divisions.has(division)) continue;
+      } else if (!isKnownConference(id, league)) {
+        // College basketball's slate is all of Division I: any conference
+        // the table knows has a section (2026-11-02).
+        continue;
+      }
       claimed.set(conferenceToken({ league, id }), { league, id });
     }
     if (claimed.size === 0) push(undefined, game);

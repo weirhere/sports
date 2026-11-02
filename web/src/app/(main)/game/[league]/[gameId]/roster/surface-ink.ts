@@ -21,6 +21,8 @@ export function surfaceInk(league: League): SurfaceInk {
     case "nhl":
       return { text: "var(--surface-ink)", counter: "var(--surface-chalk)" };
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return { text: "var(--text-primary)", counter: "var(--bg-primary)" };
   }
 }
@@ -32,6 +34,8 @@ export function surfaceBase(league: League): string {
     case "nfl":
       return "var(--surface-turf)";
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return "var(--surface-maple)";
     case "nhl":
       return "var(--surface-ice)";
@@ -47,6 +51,8 @@ export function surfaceHeading(league: League): string {
     case "nfl":
       return "var(--surface-turf-heading)";
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return "var(--surface-paint)";
     case "nhl":
       return "var(--surface-ice-heading)";

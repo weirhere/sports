@@ -16,7 +16,7 @@ nonisolated extension League {
         switch self {
         case .collegeFootball: Self.footballPlayerDefinitions(limit: 200)
         case .nfl: Self.footballPlayerDefinitions(limit: 100)
-        case .nba: Self.basketballPlayerDefinitions
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: Self.basketballPlayerDefinitions
         case .nhl: Self.hockeyPlayerDefinitions
         }
     }

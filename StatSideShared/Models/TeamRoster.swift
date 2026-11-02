@@ -55,7 +55,7 @@ nonisolated struct RosterCoach: Sendable, Hashable {
     /// 404 per roster. Most pro coaches 404 too (11 of 32 NFL); the row's
     /// initials sit under the image, so a miss just leaves them showing.
     func headshotURL(in league: League) -> URL? {
-        guard let id, league != .collegeFootball else { return nil }
+        guard let id, !league.isCollege else { return nil }
         return URL(string: "https://a.espncdn.com/i/headshots/\(league.pathSegment)/coaches/65/\(id).jpg")
     }
 }
@@ -140,7 +140,7 @@ nonisolated enum RosterMetric: Sendable {
 nonisolated extension League {
     var rosterMetric: RosterMetric {
         switch self {
-        case .collegeFootball: .classYear
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: .classYear
         case .nfl, .nba, .nhl: .age
         }
     }

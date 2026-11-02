@@ -360,23 +360,29 @@ actor ESPNClient: ScoresProviding {
         // Deterministic order, and FBS first when it's in the set: it is
         // the canonical payload for anything both divisions carry. FBS and
         // FCS are college football's own axis — every other league asks
-        // once with no group filter, because there is nothing to filter by
-        // and (for the NBA at least) ESPN ignores `groups=` outright.
-        let ordered = league.hasCollegeDivisions
-            ? divisions.sorted { $0.groupId < $1.groupId }.map { $0 }
-            : [Conference.Division?.none]
+        // once — college basketball scoped to Division I (`groups=50`;
+        // without it ESPN answers with a curated handful of games), the
+        // pros with no group filter at all, because there is nothing to
+        // filter by.
+        let ordered: [Int?] = league.hasCollegeDivisions
+            ? divisions.sorted { $0.groupId < $1.groupId }.map(\.groupId)
+            : [league.divisionGroupId]
         guard let primary = ordered.first else {
             throw ESPNError.invalidURL
         }
 
-        func board(for division: Conference.Division?) async throws -> Scoreboard {
+        func board(for division: Int?) async throws -> Scoreboard {
             // 400, not the 300 the week form used: a five-day college
             // football window in September runs ~80 events, but a bowl
             // fortnight or a wide range can carry far more, and a silent
             // truncation would look like missing games.
-            var items = [URLQueryItem(name: "limit", value: "400")]
+            // College basketball's opening night is ~180 Division I games
+            // (2026-11-02) and a February Saturday more, so a window of
+            // more than a day or two needs the headroom; 500 is ESPN's
+            // ceiling (see the Don'ts — 501 collapses to 25).
+            var items = [URLQueryItem(name: "limit", value: league.isBasketball && league.isCollege ? "500" : "400")]
             if let division {
-                items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
+                items.insert(URLQueryItem(name: "groups", value: String(division)), at: 0)
             }
             items += query
             let dto: ScoreboardDTO = try await fetch(base: self.base, path: "/scoreboard",
@@ -431,7 +437,7 @@ actor ESPNClient: ScoresProviding {
         let season = year ?? SeasonYear.year(for: league)
         return try await seasonGames(
             days: SeasonSpan.gameDays(of: league, year: season),
-            groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil,
+            groups: league.divisionGroupId,
             season: season)
     }
 
@@ -560,7 +566,7 @@ actor ESPNClient: ScoresProviding {
     func rankings(year: Int?) async throws -> [Poll] {
         // `/nfl/rankings` is a 404 — the NFL has no poll and never will.
         // An empty list is the honest answer; callers hide the section.
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         // The site endpoint is latest-only: it ignores `season`, `week`,
         // `year` and `dates` alike and always answers with the newest poll
         // it has (probed live 2026-09-05). So it can speak for the season
@@ -586,6 +592,17 @@ actor ESPNClient: ScoresProviding {
     /// A poll that doesn't come back is dropped rather than failing the
     /// season; all three missing is the season failing.
     private func finalRankings(year: Int) async throws -> [Poll] {
+        // College basketball's polls close at `types/3/weeks/3`, after the
+        // tournament, not football's `weeks/1`, and it has no CFP — so its
+        // final table is simply the last week the season's index lists
+        // (probed 2026-11-02: 2025-26's AP runs Preseason, Weeks 2–20,
+        // then postseason week 3).
+        if !league.hasPlayoffRanking {
+            guard let last = try await rankingWeeks(year: year).last else {
+                throw ESPNError.badStatus(404)
+            }
+            return try await rankings(year: year, week: last)
+        }
         async let directoryFetch = teamDirectory()
         async let ap = coreRanking(year: year, seasonType: 3, week: 1, rankingId: 1)
         async let coaches = coreRanking(year: year, seasonType: 3, week: 1, rankingId: 2)
@@ -605,7 +622,7 @@ actor ESPNClient: ScoresProviding {
     /// collection rather than assumed.
     private func finalCFPRanking(year: Int) async -> CoreRankingDTO? {
         let weeks: CoreCollectionDTO? = try? await fetch(
-            base: coreBase, path: "/seasons/\(year)/types/2/weeks",
+            base: coreBase, path: "/seasons/\(league.espnSeason(for: year))/types/2/weeks",
             query: [URLQueryItem(name: "limit", value: "1")]
         )
         guard let last = weeks?.count, last > 0 else { return nil }
@@ -618,10 +635,10 @@ actor ESPNClient: ScoresProviding {
     /// the season (probed live 2026-09-27: 2025's AP lists Preseason,
     /// Weeks 2–16 and Final; its CFP Weeks 11–16; 2026's AP, Weeks 1–4).
     func rankingWeeks(year: Int) async throws -> [PollWeek] {
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         async let ap = rankingIndex(year: year, rankingId: 1)
         async let coaches = rankingIndex(year: year, rankingId: 2)
-        async let cfp = rankingIndex(year: year, rankingId: 21)
+        async let cfp = playoffRankingIndex(year: year)
         let indexes = await [ap, coaches, cfp]
         let answered = indexes.compactMap { $0 }
         guard !answered.isEmpty else { throw ESPNError.badStatus(404) }
@@ -631,23 +648,33 @@ actor ESPNClient: ScoresProviding {
         return Set(weeks).sorted()
     }
 
+    /// The CFP's index, or nil for a league with no playoff ranking —
+    /// college basketball's polls are the AP and Coaches alone.
+    private func playoffRankingIndex(year: Int) async -> CoreRankingIndexDTO? {
+        guard league.hasPlayoffRanking else { return nil }
+        return await rankingIndex(year: year, rankingId: 21)
+    }
+
     /// The core API's ids are 1 AP, 2 Coaches, 21 CFP; the season's index
     /// lists others too (FCS, DII, DIII), never asked for.
     private func rankingIndex(year: Int, rankingId: Int) async -> CoreRankingIndexDTO? {
-        try? await fetch(base: coreBase, path: "/seasons/\(year)/rankings/\(rankingId)", query: [])
+        // Our axis is the opening year; the core API's is ESPN's own,
+        // which for college basketball is the year the season ends.
+        try? await fetch(base: coreBase,
+                         path: "/seasons/\(league.espnSeason(for: year))/rankings/\(rankingId)",
+                         query: [])
     }
 
     /// The polls published that week, in the shown order. A poll that
     /// skipped the week (the CFP before November) just isn't in the list.
     func rankings(year: Int, week: PollWeek) async throws -> [Poll] {
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         async let directoryFetch = teamDirectory()
         async let ap = coreRanking(year: year, seasonType: week.seasonType,
                                    week: week.number, rankingId: 1)
         async let coaches = coreRanking(year: year, seasonType: week.seasonType,
                                         week: week.number, rankingId: 2)
-        async let cfp = coreRanking(year: year, seasonType: week.seasonType,
-                                    week: week.number, rankingId: 21)
+        async let cfp = playoffRanking(year: year, week: week)
         let directory = await directoryFetch
         // A week a poll skipped answers 200 with no ranks rather than 404.
         let dtos = await [ap, coaches, cfp].compactMap { $0 }
@@ -656,11 +683,18 @@ actor ESPNClient: ScoresProviding {
         return dtos.map { ESPNMapper.poll(from: $0, teams: directory) }
     }
 
+    /// That week's CFP table, or nil for a league with no playoff ranking.
+    private func playoffRanking(year: Int, week: PollWeek) async -> CoreRankingDTO? {
+        guard league.hasPlayoffRanking else { return nil }
+        return await coreRanking(year: year, seasonType: week.seasonType,
+                                 week: week.number, rankingId: 21)
+    }
+
     private func coreRanking(year: Int, seasonType: Int, week: Int,
                              rankingId: Int) async -> CoreRankingDTO? {
         try? await fetch(
             base: coreBase,
-            path: "/seasons/\(year)/types/\(seasonType)/weeks/\(week)/rankings/\(rankingId)",
+            path: "/seasons/\(league.espnSeason(for: year))/types/\(seasonType)/weeks/\(week)/rankings/\(rankingId)",
             query: []
         )
     }
@@ -683,13 +717,24 @@ actor ESPNClient: ScoresProviding {
         return teams
     }
 
+    /// The standings request's `group=`: the division asked for in college
+    /// football, Division I (50) in college basketball — without it ESPN's
+    /// college basketball standings answer with no conferences — and none
+    /// for the pros.
+    private func standingsGroupQuery(_ division: Conference.Division) -> [URLQueryItem] {
+        if league.hasCollegeDivisions {
+            return [URLQueryItem(name: "group", value: String(division.groupId))]
+        }
+        guard let group = league.divisionGroupId else { return [] }
+        return [URLQueryItem(name: "group", value: String(group))]
+    }
+
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
         // A pro league's standings response is already the whole league
-        // (AFC and NFC, East and West), so it takes no group filter — only
-        // college football splits into FBS and FCS.
-        let query = league.hasCollegeDivisions
-            ? [URLQueryItem(name: "group", value: String(division.groupId))]
-            : []
+        // (AFC and NFC, East and West), so it takes no group filter;
+        // college football splits into FBS and FCS, college basketball
+        // asks for Division I.
+        let query = standingsGroupQuery(division)
         let dto: StandingsResponseDTO = try await fetch(
             base: standingsBase, path: "/standings", query: query
         )
@@ -698,9 +743,7 @@ actor ESPNClient: ScoresProviding {
 
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] {
-        var query = league.hasCollegeDivisions
-            ? [URLQueryItem(name: "group", value: String(division.groupId))]
-            : []
+        var query = standingsGroupQuery(division)
         // Verified live 2026-08-25: `season` scopes records AND membership,
         // so realignment years read correctly.
         if let year {

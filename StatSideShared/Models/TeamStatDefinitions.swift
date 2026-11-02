@@ -12,7 +12,7 @@ nonisolated extension League {
     var teamStatDefinitions: [TeamStatDefinition] {
         switch self {
         case .collegeFootball, .nfl: Self.footballDefinitions(isNFL: self == .nfl)
-        case .nba: Self.basketballDefinitions
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: Self.basketballDefinitions
         case .nhl: Self.hockeyDefinitions
         }
     }

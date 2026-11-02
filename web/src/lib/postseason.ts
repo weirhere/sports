@@ -64,7 +64,33 @@ function roundName(game: Game, league: League): string | undefined {
     case "nba":
     case "nhl":
       return undefined;
+    case "mcbb":
+    case "wcbb":
+      return basketballRoundName(game.headline);
   }
+}
+
+/**
+ * The NCAA tournament's rounds (iOS `Postseason.basketballName`, 2026-11-02),
+ * off headlines like "NCAA Men's Basketball Championship - South Region -
+ * Sweet 16". Single elimination, so the bracket's results-only feeder rule
+ * holds. The NIT, Women's NIT, WBIT and Crown share the postseason season
+ * type and name nothing, like a bowl.
+ */
+export function basketballRoundName(headline: string | undefined): string | undefined {
+  if (!headline) return undefined;
+  const text = headline.toLowerCase();
+  if (!text.startsWith("ncaa ") || !text.includes("basketball championship")) {
+    return undefined;
+  }
+  if (text.includes("national championship")) return "National Championship";
+  if (text.includes("final four")) return "Final Four";
+  if (text.includes("elite 8") || text.includes("elite eight")) return "Elite Eight";
+  if (text.includes("sweet 16") || text.includes("sweet sixteen")) return "Sweet 16";
+  if (text.includes("first four")) return "First Four";
+  if (text.includes("2nd round") || text.includes("second round")) return "Second Round";
+  if (text.includes("1st round") || text.includes("first round")) return "First Round";
+  return "NCAA Tournament";
 }
 
 function nflRoundName(week: number | undefined): string {

@@ -109,6 +109,8 @@ export function headlineNames(league: League): string[] {
         "turnOverDifferential",
       ];
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return ["avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct"];
     case "nhl":
       return ["goals", "avgGoalsAgainst", "savePct", "faceoffPercent"];
@@ -133,6 +135,8 @@ export function leaderCategories(league: League): string[] {
         "interceptions",
       ];
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return [
         "pointsPerGame",
         "reboundsPerGame",

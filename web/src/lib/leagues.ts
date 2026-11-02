@@ -11,7 +11,7 @@
  * The raw value is the persistence token. It is written into follow keys,
  * filter tokens and URLs, so it must never change.
  */
-export const LEAGUES = ["cfb", "nfl", "nba", "nhl"] as const;
+export const LEAGUES = ["cfb", "nfl", "nba", "nhl", "mcbb", "wcbb"] as const;
 
 export type League = (typeof LEAGUES)[number];
 
@@ -56,7 +56,33 @@ interface LeagueSpec {
   leaderCategories: { name: string; label: string }[];
   /** The team stats the compare card lines up, in order. ESPN's own names. */
   comparedStats: { name: string; label: string }[];
+  /** The sport, which every "is this football?" gate reads (iOS `League.sport`). */
+  sport: Sport;
+  /** A college league: conferences of schools, polls, class years. */
+  isCollege: boolean;
+  /**
+   * The `groups=` the scoreboard and standings are scoped to — FBS (80) in
+   * college football, Division I (50) in college basketball — or null for
+   * the pros, whose slate is the whole league.
+   */
+  divisionGroupId: number | null;
 }
+
+export type Sport = "football" | "basketball" | "hockey";
+
+const BASKETBALL_LEADERS = [
+  { name: "points", label: "Points" },
+  { name: "rebounds", label: "Rebounds" },
+  { name: "assists", label: "Assists" },
+];
+
+const BASKETBALL_COMPARED = [
+  { name: "fieldGoalPct", label: "FG%" },
+  { name: "threePointFieldGoalPct", label: "3PT%" },
+  { name: "totalRebounds", label: "Rebounds" },
+  { name: "assists", label: "Assists" },
+  { name: "turnovers", label: "Turnovers" },
+];
 
 const SPECS: Record<League, LeagueSpec> = {
   cfb: {
@@ -86,6 +112,9 @@ const SPECS: Record<League, LeagueSpec> = {
       { name: "turnovers", label: "Turnovers" },
       { name: "possessionTime", label: "Possession" },
     ],
+    sport: "football",
+    isCollege: true,
+    divisionGroupId: 80,
   },
   nfl: {
     sportSegment: "football",
@@ -115,6 +144,9 @@ const SPECS: Record<League, LeagueSpec> = {
       { name: "turnovers", label: "Turnovers" },
       { name: "possessionTime", label: "Possession" },
     ],
+    sport: "football",
+    isCollege: false,
+    divisionGroupId: null,
   },
   nba: {
     sportSegment: "basketball",
@@ -132,18 +164,11 @@ const SPECS: Record<League, LeagueSpec> = {
     scoringCardTitle: null,
     startNoun: "Tip-off",
     startVerbPhrase: "tips off",
-    leaderCategories: [
-      { name: "points", label: "Points" },
-      { name: "rebounds", label: "Rebounds" },
-      { name: "assists", label: "Assists" },
-    ],
-    comparedStats: [
-      { name: "fieldGoalPct", label: "FG%" },
-      { name: "threePointFieldGoalPct", label: "3PT%" },
-      { name: "totalRebounds", label: "Rebounds" },
-      { name: "assists", label: "Assists" },
-      { name: "turnovers", label: "Turnovers" },
-    ],
+    leaderCategories: BASKETBALL_LEADERS,
+    comparedStats: BASKETBALL_COMPARED,
+    sport: "basketball",
+    isCollege: false,
+    divisionGroupId: null,
   },
   nhl: {
     sportSegment: "hockey",
@@ -173,6 +198,53 @@ const SPECS: Record<League, LeagueSpec> = {
       { name: "hits", label: "Hits" },
       { name: "penaltyMinutes", label: "Penalty Min" },
     ],
+    sport: "hockey",
+    isCollege: false,
+    divisionGroupId: null,
+  },
+  // College basketball (2026-11-02, iOS's same day). "NCAAM" and "NCAAW"
+  // for the reason "NCAAF" is: ESPN's and the broadcasts' word. Both are
+  // end-year, weekless, D-I-scoped (`groups=50`) leagues, probed live.
+  mcbb: {
+    sportSegment: "basketball",
+    pathSegment: "mens-college-basketball",
+    shortName: "NCAAM",
+    displayName: "Men's College Basketball",
+    // Exhibitions in late October; the season opens the first Monday of
+    // November.
+    seasonOpensIn: 10,
+    // The Final Four is the first weekend of April.
+    seasonRollsOverAfter: 4,
+    seasonYearIsEndYear: true,
+    // Two 20-minute halves; period 3 is the first overtime.
+    periodFormat: { regulationCount: 2, longName: "HALF", shortName: "H" },
+    scoringCardTitle: null,
+    startNoun: "Tip-off",
+    startVerbPhrase: "tips off",
+    leaderCategories: BASKETBALL_LEADERS,
+    comparedStats: BASKETBALL_COMPARED,
+    sport: "basketball",
+    isCollege: true,
+    divisionGroupId: 50,
+  },
+  wcbb: {
+    sportSegment: "basketball",
+    pathSegment: "womens-college-basketball",
+    shortName: "NCAAW",
+    displayName: "Women's College Basketball",
+    seasonOpensIn: 10,
+    seasonRollsOverAfter: 4,
+    seasonYearIsEndYear: true,
+    // Four 10-minute quarters, unlike the men.
+    periodFormat: { regulationCount: 4, longName: "QUARTER", shortName: "Q" },
+    scoringCardTitle: null,
+    startNoun: "Tip-off",
+    startVerbPhrase: "tips off",
+    leaderCategories: BASKETBALL_LEADERS,
+    comparedStats: BASKETBALL_COMPARED,
+    sport: "basketball",
+    isCollege: true,
+    divisionGroupId: 50,
   },
 };
 
@@ -180,8 +252,63 @@ export function leagueSpec(league: League): LeagueSpec {
   return SPECS[league];
 }
 
+/** The sport a league plays. */
+export function sportOf(league: League): Sport {
+  return SPECS[league].sport;
+}
+
+export function isFootball(league: League): boolean {
+  return SPECS[league].sport === "football";
+}
+
+export function isBasketball(league: League): boolean {
+  return SPECS[league].sport === "basketball";
+}
+
 /**
- * What a league calls its scoring periods — four quarters in football and
+ * Whether this is a college league — college football and both college
+ * basketballs. Until 2026-11-02 this was spelled `league === "cfb"`, which
+ * meant "college", "football" or "FBS/FCS" depending on the site; each site
+ * now asks the question it means.
+ */
+export function isCollege(league: League): boolean {
+  return SPECS[league].isCollege;
+}
+
+/** College basketball, men's or women's. */
+export function isCollegeBasketball(league: League): boolean {
+  return isCollege(league) && isBasketball(league);
+}
+
+/**
+ * The college league a pro's College row opens (iOS `League.collegeFeeder`,
+ * 2026-11-02): an NBA player's school opens its men's basketball page; an
+ * NFL's, and an NHL's as before, its football page. Undefined for a
+ * college league.
+ */
+export function collegeFeeder(league: League): League | undefined {
+  switch (league) {
+    case "nfl":
+    case "nhl":
+      return "cfb";
+    case "nba":
+      return "mcbb";
+    case "cfb":
+    case "mcbb":
+    case "wcbb":
+      return undefined;
+  }
+}
+
+/** The scoreboard's and standings' `groups=` — FBS (80), Division I (50) —
+ * or undefined for the pros (iOS `League.divisionGroupId`). */
+export function leagueGroupId(league: League): number | undefined {
+  return SPECS[league].divisionGroupId ?? undefined;
+}
+
+/**
+ * What a league calls its scoring periods — four quarters in football, the
+ * NBA and women's college basketball, two halves in men's college
  * basketball, three periods in hockey.
  */
 export function periodFormat(league: League): {
@@ -189,9 +316,7 @@ export function periodFormat(league: League): {
   longName: string;
   shortName: string;
 } {
-  return league === "nhl"
-    ? { regulationCount: 3, longName: "PERIOD", shortName: "P" }
-    : { regulationCount: 4, longName: "QUARTER", shortName: "Q" };
+  return SPECS[league].periodFormat;
 }
 
 /**
@@ -209,6 +334,8 @@ export function scoringCardTitle(league: League): string | undefined {
     case "nhl":
       return "Goals";
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return undefined;
   }
 }
@@ -277,19 +404,28 @@ export function leagueLogoUrl(league: League): string {
   if (league === "cfb") {
     return "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-football-college.png";
   }
+  // Declared on each league's own scoreboard, `leagues[].logos[]`
+  // (probed 2026-11-02).
+  if (league === "mcbb") {
+    return "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_MensBasketball.png";
+  }
+  if (league === "wcbb") {
+    return "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_WomensBasketball.png";
+  }
   return `https://a.espncdn.com/i/teamlogos/leagues/500/${SPECS[league].pathSegment}.png`;
 }
 
 /** The team-logo CDN bucket for this league. */
 export function teamLogoBase(league: League): string {
-  return league === "cfb"
+  // One NCAA bucket for every college sport: the team ids are shared.
+  return isCollege(league)
     ? "https://a.espncdn.com/i/teamlogos/ncaa/500"
     : `https://a.espncdn.com/i/teamlogos/${SPECS[league].pathSegment}/500`;
 }
 
 /** The conference-mark CDN bucket for this league. */
 export function conferenceLogoBase(league: League): string {
-  return league === "cfb"
+  return isCollege(league)
     ? "https://a.espncdn.com/i/teamlogos/ncaa_conf/500"
     : `https://a.espncdn.com/i/teamlogos/${SPECS[league].pathSegment}/500`;
 }
@@ -340,7 +476,8 @@ export const SEASON_FLOOR = 2014;
  * 8-game NHL night are each the whole slate at a glance.
  */
 export function slateSplitsByConference(league: League): boolean {
-  return league === "cfb";
+  // College basketball too (2026-11-02): ~180 Division I games a night.
+  return isCollege(league);
 }
 
 /**
@@ -367,6 +504,12 @@ export function hasCollegeDivisions(league: League): boolean {
  * (probed 2026-09-08).
  */
 export function hasPoll(league: League): boolean {
+  // College basketball's AP and Coaches polls too (probed 2026-11-02).
+  return isCollege(league);
+}
+
+/** Whether the league has a College Football Playoff ranking (core id 21). */
+export function hasPlayoffRanking(league: League): boolean {
   return league === "cfb";
 }
 
@@ -394,6 +537,8 @@ export function headToHeadSeasons(league: League): number {
       return 6; // twice a year inside a division
     case "nba":
     case "nhl":
+    case "mcbb":
+    case "wcbb":
       return 3; // two to four times a year
   }
 }

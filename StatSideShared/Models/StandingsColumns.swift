@@ -56,7 +56,10 @@ nonisolated extension League {
     /// The columns this league's standings tables carry, left to right.
     var standingsColumns: [StandingsColumn] {
         switch self {
-        case .collegeFootball:
+        // College basketball's tables are football's shape: a conference
+        // race, read as CONF then OVR (`vsconf` and `total`, both in the
+        // payload — probed 2026-11-02).
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball:
             [StandingsColumn(field: .inGroupRecord, caption: "CONF",
                              spoken: "in conference", width: 44),
              StandingsColumn(field: .overallRecord, caption: "OVR",
@@ -134,7 +137,10 @@ nonisolated extension League {
     /// too, for the plainer reason that no NFL summary has ever been
     /// captured, and a guess about a payload is what the DTO rule exists
     /// to prevent.
-    var summaryCarriesMatchupStandings: Bool { self == .collegeFootball }
+    ///
+    /// College basketball's summary does the same (probed 2026-11-02):
+    /// both conferences in full, each entry with `total` and `vsconf`.
+    var summaryCarriesMatchupStandings: Bool { isCollege }
 
     /// The columns the game page's matchup slice shows — two rows about
     /// two teams, not a table.

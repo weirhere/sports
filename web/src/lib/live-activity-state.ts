@@ -10,6 +10,7 @@
  * Kept in step by hand, the same way `og-card.ts` is kept in step with
  * `GameShareCardView` (2026-09-09). The contract is small on purpose.
  */
+import { periodFormat } from "@/lib/leagues";
 import type { Game, GameStatus } from "@/lib/types";
 import { gameState } from "@/lib/game-state";
 
@@ -78,8 +79,8 @@ function kickoffHeadline(game: Game, options: HeadlineOptions): string {
 /** "Q3", "P2" in hockey, "OT" past regulation — mirrors
  *  `GameStatus.periodLabel(_:in:)`. */
 export function periodLabel(period: number, league: Game["league"]): string {
-  const regulation = league === "nhl" ? 3 : 4;
-  const short = league === "nhl" ? "P" : "Q";
+  // "H2" for men's college basketball's halves (2026-11-02).
+  const { regulationCount: regulation, shortName: short } = periodFormat(league);
   if (period <= regulation) return `${short}${period}`;
   if (period === regulation + 1) return "OT";
   return `${period - regulation}OT`;

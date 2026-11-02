@@ -49,7 +49,9 @@ struct TablesScreen: View {
     @Environment(UIStateStore.self) private var uiState
     @Environment(LeagueSectionExpansion.self) private var leagueSections
 
-    @State private var polls: [Poll] = []
+    /// Each polling league's current polls — college football's and both
+    /// college basketballs' (2026-11-02) — fetched and failing apart.
+    @State private var polls: [League: [Poll]] = [:]
     /// Standings per league, each fetched and failing independently.
     @State private var standings: [League: [ConferenceStandings]] = [:]
     /// College football's other division, kept apart from `standings`
@@ -238,12 +240,12 @@ struct TablesScreen: View {
             .filter { !$0.rows.isEmpty }
     }
 
-    /// Empty for the NFL, which has no poll.
+    /// Empty for the pros, which have no poll.
     private func displayedPolls(for league: League) -> [Poll] {
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         // One filter for the hub row and the page it pushes, so the two
         // agree on which poll is "first".
-        return PollScreen.displayed(polls)
+        return PollScreen.displayed(polls[league] ?? [])
     }
 
     /// Divisions folded into their conference: the Sun Belt, not
@@ -700,27 +702,43 @@ struct TablesScreen: View {
         defer { isLoading = false }
         // Clear first: a refresh must not leave stale tables on screen
         // while the new fetches are in flight.
-        polls = []
+        polls = [:]
         standings = [:]
         fcsStandings = []
         // The fetches fail independently: no poll is a screen-level error
         // only when no league's standings came back either; a standings
         // miss just drops that league's accordion.
-        async let pollsFetch = DataProvider.makeClient(league: .collegeFootball).rankings()
+        async let pollsFetch = Self.allPolls()
         async let standingsFetch = Self.allStandings()
         // College football's other division, its own request. A miss drops
         // the FCS rows and nothing else — the card is the league's, and its
         // FBS half arrived on a different request.
         async let fcsFetch = try? await DataProvider.makeClient(league: .collegeFootball)
             .conferenceStandings(year: nil, division: .fcs)
-        do {
-            polls = try await pollsFetch
-            lastError = nil
-        } catch {
-            lastError = "Couldn't load tables."
-        }
+        polls = await pollsFetch
         standings = await standingsFetch
         fcsStandings = await fcsFetch ?? []
+        // A screen-level error only when nothing came back at all; one
+        // league's miss just drops its rows.
+        lastError = polls.isEmpty && standings.values.allSatisfy(\.isEmpty)
+            ? "Couldn't load tables." : nil
+    }
+
+    /// Every polling league's current polls, in parallel; a league whose
+    /// request fails is absent rather than failing the others.
+    private static func allPolls() async -> [League: [Poll]] {
+        await withTaskGroup(of: (League, [Poll]?).self) { group in
+            for league in League.allCases where league.hasPoll {
+                group.addTask {
+                    (league, try? await DataProvider.makeClient(league: league).rankings())
+                }
+            }
+            var polls: [League: [Poll]] = [:]
+            for await (league, fetched) in group {
+                if let fetched, !fetched.isEmpty { polls[league] = fetched }
+            }
+            return polls
+        }
     }
 
     /// Every league's standings in parallel — one league's outage leaves

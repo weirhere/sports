@@ -436,6 +436,8 @@ export function inactiveTitle(league: League): string {
     case "nfl":
       return "Inactive";
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return "Did not play";
     case "nhl":
       return "Scratched";
@@ -449,6 +451,8 @@ export function surfaceName(league: League): string {
     case "nfl":
       return "Field";
     case "nba":
+    case "mcbb":
+    case "wcbb":
       return "Court";
     case "nhl":
       return "Rink";

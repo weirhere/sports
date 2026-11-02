@@ -559,7 +559,7 @@ final class LeagueScoreboards {
             let games = visible[league] ?? []
             guard !games.isEmpty else { continue }
             let grouping = groupings[league] ?? .defaultValue(for: league)
-            stack += league == .collegeFootball
+            stack += league.isCollege
                 ? collegeSections(from: games, in: league, grouping: grouping)
                 : proSections(from: games, in: league, grouping: grouping)
         }
@@ -685,9 +685,14 @@ final class LeagueScoreboards {
     private func collegeSections(from games: [Game], in league: League,
                                  grouping: SlateGrouping) -> [GameSection] {
         guard !games.isEmpty else { return [] }
-        let umbrellas: [FollowedTable] = [.poll(league),
-                                          .conference(Conference.divisionRoot(.fbs)),
-                                          .conference(Conference.divisionRoot(.fcs))]
+        // College basketball has the poll and nothing above its
+        // conferences: Division I is one 364-team slate, which is what the
+        // conferences already add up to.
+        let umbrellas: [FollowedTable] = league.hasCollegeDivisions
+            ? [.poll(league),
+               .conference(Conference.divisionRoot(.fbs)),
+               .conference(Conference.divisionRoot(.fcs))]
+            : [.poll(league)]
         let leading = umbrellas.compactMap { table -> GameSection? in
             let claimed = games.filter(table.matches)
             guard !claimed.isEmpty else { return nil }
@@ -704,6 +709,11 @@ final class LeagueScoreboards {
             let claimed = Set([game.home.team.conference, game.away.team.conference]
                 .compactMap { conference -> ConferenceID? in
                     guard let conference else { return nil }
+                    // College basketball's slate is all of Division I, so
+                    // any conference the table knows has a section.
+                    guard league.hasCollegeDivisions else {
+                        return Conference.isKnown(conference.id, in: conference.league) ? conference : nil
+                    }
                     return Conference.division(for: conference.id, in: conference.league)
                         .map(divisions.contains) == true ? conference : nil
                 })
@@ -740,14 +750,14 @@ final class LeagueScoreboards {
     /// What a followed table is called on Scores: the pro leagues' slate
     /// names ("Eastern Conference (Atlantic)"), college football's own.
     private static func sectionTitle(for table: FollowedTable) -> String {
-        guard case .conference(let id) = table, id.league != .collegeFootball else { return table.name }
+        guard case .conference(let id) = table, !id.league.isCollege else { return table.name }
         return Conference.slateName(for: id)
     }
 
     /// The mark a followed table wears on Scores: the league's for any pro
     /// table, the table's own for college football's.
     private static func sectionLogo(for table: FollowedTable) -> URL? {
-        table.league == .collegeFootball ? table.logoURL : table.league.logoURL
+        table.league.isCollege ? table.logoURL : table.league.logoURL
     }
 
     /// Following's order: what's happening now, then what's about to, then

@@ -148,6 +148,80 @@ nonisolated enum Conference {
         .merging(fcsNames) { fbs, _ in fbs }
         .merging(divisionRootNames) { existing, _ in existing }
 
+    /// College basketball's Division I conferences, shared by both
+    /// leagues: read live off `standings?group=50` on 2026-11-02, where the
+    /// men's and women's tables list the same 32 conferences under the same
+    /// ids with one exception — the Summit League is 49 for the men and 47
+    /// for the women, which `cbbNames(in:)` applies. Short forms, as the
+    /// slate and the tables print them; ESPN's own `shortName` except where
+    /// it spells out ("Am. East", "Atlantic Sun") or misnames ("Metro"
+    /// is the Metro Atlantic Athletic Conference, which everyone calls the
+    /// MAAC).
+    ///
+    /// Hardcoded like football's: a conference that appears mid-season
+    /// degrades to "Other" until it's added, never a crash, and a section
+    /// header paints on the first frame instead of after a standings fetch.
+    private static let cbbSharedNames: [Int: String] = [
+        1: "America East",
+        2: "ACC",
+        3: "Atlantic 10",
+        4: "Big East",
+        5: "Big Sky",
+        6: "Big South",
+        7: "Big Ten",
+        8: "Big 12",
+        9: "Big West",
+        10: "CAA",
+        11: "Conference USA",
+        12: "Ivy League",
+        13: "MAAC",
+        14: "MAC",
+        16: "MEAC",
+        18: "Missouri Valley",
+        19: "NEC",
+        20: "OVC",
+        21: "Pac-12",
+        22: "Patriot League",
+        23: "SEC",
+        24: "SoCon",
+        25: "Southland",
+        26: "SWAC",
+        27: "Sun Belt",
+        29: "WCC",
+        30: "UAC",
+        44: "Mountain West",
+        45: "Horizon League",
+        46: "ASUN",
+        62: "American",
+    ]
+
+    private static let mensCBBNames: [Int: String] = cbbSharedNames.merging([49: "Summit League"]) { $1 }
+    private static let womensCBBNames: [Int: String] = cbbSharedNames.merging([47: "Summit League"]) { $1 }
+
+    private static func cbbNames(in league: League) -> [Int: String] {
+        league == .womensCollegeBasketball ? womensCBBNames : mensCBBNames
+    }
+
+    /// The conferences college basketball calls the high majors — the
+    /// power-four leagues plus the Big East, which plays no FBS football
+    /// and is one of the five in basketball. They take `.power4`'s rung
+    /// so they lead the list; the name of the rung is football's.
+    private static let cbbPower: Set<Int> = [2, 4, 7, 8, 23]
+
+    /// Every college basketball conference mark ESPN publishes under
+    /// `ncaa_conf/500/` — 31 of 32 verified 200 on 2026-11-02. The UAC has
+    /// none under any slug, exactly as in football, and is absent.
+    private static let cbbLogoSlugs: [Int: String] = [
+        1: "america_east", 2: "acc", 3: "atlantic_10", 4: "big_east",
+        5: "big_sky", 6: "big_south", 7: "big_ten", 8: "big_12",
+        9: "big_west", 10: "caa", 11: "conference_usa", 12: "ivy",
+        13: "maac", 14: "mid_american", 16: "meac", 18: "missouri_valley",
+        19: "northeast", 20: "ohio_valley", 21: "pac_12", 22: "patriot_league",
+        23: "sec", 24: "southern", 25: "southland", 26: "swac",
+        27: "sun_belt", 29: "west_coast", 44: "mountain_west", 45: "horizon",
+        46: "atlantic_sun", 47: "summit_league", 49: "summit_league", 62: "american",
+    ]
+
     /// The group id standing for a whole college-football division, which
     /// is the rung the pro leagues call a league.
     static func divisionRoot(_ division: Division) -> ConferenceID {
@@ -314,7 +388,11 @@ nonisolated enum Conference {
     }
 
     private static func names(in league: League) -> [Int: String] {
-        league == .collegeFootball ? cfbNames : (registries[league]?.allNames ?? [:])
+        switch league {
+        case .collegeFootball: cfbNames
+        case .mensCollegeBasketball, .womensCollegeBasketball: cbbNames(in: league)
+        case .nfl, .nba, .nhl: registries[league]?.allNames ?? [:]
+        }
     }
 
     private static let power4: Set<Int> = [1, 4, 5, 8]
@@ -354,7 +432,11 @@ nonisolated enum Conference {
     ]
 
     private static func logoSlugs(in league: League) -> [Int: String] {
-        league == .collegeFootball ? cfbLogoSlugs : (registries[league]?.conferenceSlugs ?? [:])
+        switch league {
+        case .collegeFootball: cfbLogoSlugs
+        case .mensCollegeBasketball, .womensCollegeBasketball: cbbLogoSlugs
+        case .nfl, .nba, .nhl: registries[league]?.conferenceSlugs ?? [:]
+        }
     }
 
     /// A group's display name, with its conference folded in where the
@@ -523,6 +605,11 @@ nonisolated enum Conference {
 
     static func tier(for id: Int?, in league: League) -> Tier {
         guard let id, names(in: league)[id] != nil else { return .other }
+        if league.isBasketball, league.isCollege {
+            // College basketball: one flat list, high majors first, and no
+            // division root — Division I is one 364-team table nobody reads.
+            return cbbPower.contains(id) ? .power4 : .group5
+        }
         guard let registry = registries[league] else {
             // College football: one flat list of conferences, ranked —
             // under a division root, which leads that list exactly as a
@@ -604,8 +691,18 @@ nonisolated enum Conference {
     /// ESPN's own order — the divisions hang beneath them rather than
     /// sitting in the same list.
     static func topLevelIds(in league: League) -> [Int] {
+        if league.isCollege, league.isBasketball { return collegeBasketballOrderedIds(in: league) }
         guard let registry = registries[league] else { return orderedIds }
         return registry.conferences.map(\.id)
+    }
+
+    /// A college basketball league's conferences in browsing order: the
+    /// high majors, then everyone else, alphabetical within each.
+    static func collegeBasketballOrderedIds(in league: League) -> [Int] {
+        cbbNames(in: league).keys.sorted { lhs, rhs in
+            let (lt, rt) = (tier(for: lhs, in: league), tier(for: rhs, in: league))
+            return lt == rt ? name(for: lhs, in: league) < name(for: rhs, in: league) : lt < rt
+        }
     }
 
     /// Whether this conference's championship game takes the standings'
