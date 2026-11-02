@@ -1,0 +1,68 @@
+# Weekly refresh of each school's players in the NFL, NBA and NHL (2026-11-02).
+#
+# Runs scripts/build-pros.py, which walks the 94 pro rosters on ESPN and
+# indexes their players by college, and opens a PR when a roster moved.
+# Merging deploys web/public/pros.json to statside.co/pros.json, which the
+# app reads on launch for the college team page's Pros tab, so no App Store
+# release is needed.
+#
+# Unlike coaches.yml this arms auto-merge: the data is ESPN's, not an open
+# wiki's, so there is nothing for a human to vet. The PR is opened with
+# PR_SHEPHERD_TOKEN when it is set, because a PR opened with GITHUB_TOKEN
+# triggers no workflows, and main's required checks would then never run
+# and the auto-merge never fire. Without that secret the PR still opens and
+# waits for a human, like the coaches one.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" on in
+# Settings > Actions > General, or the PR step fails with a 403.
+name: Pros by college
+
+on:
+  schedule:
+    # Tuesdays 15:23 UTC: after Monday's waivers and Tuesday's practice
+    # squad moves, and clear of the coaches job.
+    - cron: "23 15 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build pros.json
+        run: python3 scripts/build-pros.py 2> build.log; status=$?; cat build.log; exit $status
+      - name: Open a PR if a roster changed
+        env:
+          GH_TOKEN: ${{ secrets.PR_SHEPHERD_TOKEN || secrets.GITHUB_TOKEN }}
+          CAN_AUTO_MERGE: ${{ secrets.PR_SHEPHERD_TOKEN != '' }}
+        run: |
+          if git diff --quiet -- web/public/pros.json sports/Resources/pros.json; then
+            echo "No roster changes."
+            exit 0
+          fi
+          branch="pros/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add web/public/pros.json sports/Resources/pros.json
+          git commit -m "Update pros by college from ESPN rosters"
+          git push -u origin "$branch" --force
+          {
+            echo "Weekly pros-by-college refresh from ESPN's pro rosters (\`scripts/build-pros.py\`)."
+            echo
+            echo '```'
+            grep -vE "^\s*miss:" build.log || true
+            echo '```'
+          } > body.md
+          gh pr create --title "Pros by college: $(date -u +%Y-%m-%d)" --body-file body.md --base main --head "$branch"
+          if [ "$CAN_AUTO_MERGE" = "true" ]; then
+            gh pr merge "$branch" --auto --squash
+          fi

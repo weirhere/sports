@@ -2464,7 +2464,8 @@ nonisolated enum ESPNMapper {
             headshotURL: dto.headshot?.href.flatMap(URL.init(string:)),
             // First listed: a player carrying two designations has one status
             // that matters, and it's the one ESPN leads with.
-            injuryStatus: (dto.injuries?.elements ?? []).compactMap(\.status).first)
+            injuryStatus: (dto.injuries?.elements ?? []).compactMap(\.status).first,
+            college: PlayerIdentity.College(dto: dto.college))
     }
 
     private static func coach(from dtos: [RosterCoachDTO]) -> RosterCoach? {

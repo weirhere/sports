@@ -10,6 +10,9 @@ struct LabeledValueCard: View {
         /// What VoiceOver reads for the label — ESPN's "Passing Yards"
         /// where the visible label is its "YDS". Defaults to `label`.
         var spokenLabel: String?
+        /// Where the row goes, when its value is a team the app has a page
+        /// for: a pro's college (2026-11-02). Nil leaves the row as it was.
+        var team: Team?
         var id: String { label }
     }
 
@@ -31,7 +34,17 @@ struct LabeledValueCard: View {
         .cardSurface()
     }
 
+    @ViewBuilder
     private func rowView(_ row: Row) -> some View {
+        if let team = row.team {
+            NavigationLink(value: team) { rowContent(row, isLink: true) }
+                .buttonStyle(.plain)
+        } else {
+            rowContent(row, isLink: false)
+        }
+    }
+
+    private func rowContent(_ row: Row, isLink: Bool) -> some View {
         HStack(spacing: Spacing.sm) {
             Text(row.label)
                 .font(.rowName)
@@ -41,9 +54,18 @@ struct LabeledValueCard: View {
                 .font(.rowNameEmphasis)
                 .monospacedDigit()
                 .foregroundStyle(.textPrimary)
+            if isLink {
+                // `RosterCoachRow`'s chevron, so a row that goes somewhere
+                // says so the way every other one in the app does.
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.md)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(row.spokenLabel ?? row.label) \(row.value)")
     }

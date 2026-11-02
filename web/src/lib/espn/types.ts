@@ -710,6 +710,18 @@ export interface EspnRosterAthlete {
    *  leagues ship only `years`, which is seasons played, not a class. */
   experience?: { years?: number; displayValue?: string; abbreviation?: string };
   injuries?: { status?: string }[];
+  /** Where a pro played college (2026-11-02): on every NFL and NBA row and
+   *  on the NHL's college players; absent for anyone who didn't go. */
+  college?: EspnCollegeRef;
+}
+
+/** `{id, name, shortName, abbrev, mascot}` on the roster row and the athlete
+ *  payload alike. `mascot` is left out: ESPN sends "MInutewomen" for UMass's
+ *  men. */
+export interface EspnCollegeRef {
+  id?: string | number;
+  name?: string;
+  shortName?: string;
 }
 
 export interface EspnRosterPosition {

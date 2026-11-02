@@ -42,6 +42,19 @@ nonisolated struct PlayerIdentity: Sendable, Hashable, Identifiable {
     var classAbbreviation: String?
     var headshotURL: URL?
     var injuryStatus: String?
+    /// Where a pro played college (2026-11-02). The roster door carries it;
+    /// the others get it from the athlete fetch the page already makes.
+    var college: College?
+
+    /// A school, as ESPN names it on a pro's roster row and athlete payload.
+    struct College: Sendable, Hashable {
+        /// ESPN's school id, which is the same value as the school's
+        /// college football team id (UNC 153, Florida State 52, UMass 113 —
+        /// probed 2026-11-02). That is what lets the row open the school's
+        /// team page; a school without football simply finds no team.
+        let id: String?
+        let name: String
+    }
 
     /// Namespaced by league the way `FollowKey` is, and for the same reason:
     /// two leagues can reuse an athlete id, and this value is a navigation
@@ -71,7 +84,8 @@ nonisolated extension PlayerIdentity {
                   age: player.age,
                   classAbbreviation: player.classAbbreviation,
                   headshotURL: player.headshotURL,
-                  injuryStatus: player.injuryStatus)
+                  injuryStatus: player.injuryStatus,
+                  college: player.college)
     }
 
     /// A game roster's person, carried into the page it pushes (E29,
@@ -97,9 +111,12 @@ nonisolated extension PlayerIdentity {
     /// college football publishes no age at all and a class year instead, so
     /// an Age row there would label a value that never arrives.
     ///
-    /// **No hometown row.** The design draws one; no payload we hold carries
-    /// a `birthPlace` and the fixtures are trimmed, so its source is unknown
-    /// rather than absent. The row lands when the probe finds it.
+    /// **College** is the pro leagues' only (2026-11-02): a college football
+    /// player's school is the team badge already over the card.
+    ///
+    /// **No hometown row yet.** The athlete payload carries
+    /// `displayBirthPlace` (found 2026-11-02, while probing for college); the
+    /// row is a BACKLOG item, not a missing source.
     var profileRows: [(label: String, value: String)] {
         var rows: [(label: String, value: String)] = []
         if let height, !height.isEmpty { rows.append((label: "Height", value: height)) }
@@ -121,6 +138,9 @@ nonisolated extension PlayerIdentity {
         if let positionName, !positionName.isEmpty {
             rows.append((label: "Position", value: positionName))
         }
+        if league != .collegeFootball, let college {
+            rows.append((label: Self.collegeLabel, value: college.name))
+        }
         if let jersey, !jersey.isEmpty { rows.append((label: "Jersey", value: jersey)) }
         if let injuryStatus, !injuryStatus.isEmpty {
             rows.append((label: "Status", value: injuryStatus))
@@ -137,6 +157,9 @@ nonisolated extension PlayerIdentity {
     /// spoken form — a label that announces facts the screen doesn't show
     /// makes the page longer to hear than to read, and the rows below say
     /// both with their own names attached.
+    /// The College row's label, so the page can find the row it links.
+    static let collegeLabel = "College"
+
     var spokenSummary: String {
         var parts: [String] = [name]
         if let teamName, !teamName.isEmpty { parts.append(teamName) }

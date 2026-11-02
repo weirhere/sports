@@ -1,0 +1,114 @@
+{
+  "athletes": [
+    {
+      "position": "Centers",
+      "items": [
+        {
+          "id": "3024916",
+          "displayName": "Teddy Blueger",
+          "fullName": "Teddy Blueger",
+          "jersey": "73",
+          "displayHeight": "6' 0\"",
+          "displayWeight": "185 lbs",
+          "age": 32,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3024916.png"
+          },
+          "position": {
+            "name": "Center",
+            "displayName": "Center",
+            "abbreviation": "C"
+          },
+          "experience": {
+            "years": 9
+          },
+          "injuries": [],
+          "college": {
+            "id": "2364",
+            "guid": "e039b209-5680-3b13-bcbd-85f818178519",
+            "mascot": "Mavericks",
+            "name": "Minnesota State",
+            "shortName": "Minnesota St",
+            "abbrev": "MNST"
+          }
+        },
+        {
+          "id": "4378685",
+          "displayName": "Bo Groulx",
+          "fullName": "Bo Groulx",
+          "jersey": "29",
+          "displayHeight": "6' 2\"",
+          "displayWeight": "202 lbs",
+          "age": 26,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4378685.png"
+          },
+          "position": {
+            "name": "Center",
+            "displayName": "Center",
+            "abbreviation": "C"
+          },
+          "experience": {
+            "years": 4
+          },
+          "injuries": []
+        }
+      ]
+    },
+    {
+      "position": "Left Wings",
+      "items": [
+        {
+          "id": "5342529",
+          "displayName": "Gavin McKenna",
+          "fullName": "Gavin McKenna",
+          "jersey": "92",
+          "displayHeight": "5' 11\"",
+          "displayWeight": "164 lbs",
+          "age": 18,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5342529.png"
+          },
+          "position": {
+            "name": "Left Wing",
+            "displayName": "Left Wing",
+            "abbreviation": "LW"
+          },
+          "experience": {
+            "years": 0
+          },
+          "injuries": [],
+          "college": {
+            "id": "213",
+            "guid": "b3155a8a-f3e2-376b-ba0b-0d763de49166",
+            "mascot": "Nittany Lions",
+            "name": "Penn State",
+            "shortName": "Penn State",
+            "abbrev": "PSU"
+          }
+        },
+        {
+          "id": "3042111",
+          "displayName": "Nick Paul",
+          "fullName": "Nick Paul",
+          "jersey": "20",
+          "displayHeight": "6' 3\"",
+          "displayWeight": "225 lbs",
+          "age": 31,
+          "headshot": {
+            "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3042111.png"
+          },
+          "position": {
+            "name": "Left Wing",
+            "displayName": "Left Wing",
+            "abbreviation": "LW"
+          },
+          "experience": {
+            "years": 11
+          },
+          "injuries": []
+        }
+      ]
+    }
+  ]
+}

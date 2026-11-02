@@ -1,0 +1,27 @@
+{
+  "athlete": {
+    "id": "1966",
+    "displayName": "LeBron James",
+    "age": 41,
+    "team": {
+      "id": "20",
+      "displayName": "Philadelphia 76ers"
+    },
+    "jersey": "23",
+    "displayHeight": "6' 9\"",
+    "displayWeight": "250 lbs",
+    "position": {
+      "abbreviation": "F",
+      "displayName": "Forward"
+    },
+    "headshot": {
+      "href": "https://a.espncdn.com/i/headshots/nba/players/full/1966.png"
+    },
+    "status": {
+      "name": "Active",
+      "type": "active"
+    },
+    "displayBirthPlace": "Akron, OH",
+    "displayDraft": "2003: Rd 1, Pk 1 (CLE)"
+  }
+}

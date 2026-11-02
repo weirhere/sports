@@ -1279,6 +1279,32 @@ nonisolated struct RosterAthleteDTO: Decodable {
     /// leagues ship only `years`, which is seasons played, not a class.
     let experience: RosterExperienceDTO?
     let injuries: LossyArray<RosterInjuryDTO>?
+    /// Where a pro played college (2026-11-02): on every NFL and NBA row
+    /// and on the NHL's college players. No key at all for someone who
+    /// didn't go, and none on a college football roster.
+    let college: CollegeRefDTO?
+}
+
+/// `{id, name, shortName, abbrev, mascot}` on the roster row and the athlete
+/// payload alike. `mascot` is left undecoded: ESPN sends "MInutewomen" for
+/// UMass's men, so it isn't a field to print.
+nonisolated struct CollegeRefDTO: Decodable {
+    let id: FlexibleID?
+    let name: String?
+    let shortName: String?
+}
+
+nonisolated extension PlayerIdentity.College {
+    /// The full name over the short one ("Florida State", not "Florida
+    /// St"), `CoachClient.collegeName`'s rule; nil when ESPN named neither.
+    init?(dto: CollegeRefDTO?) {
+        guard let dto else { return nil }
+        let name = [dto.name, dto.shortName]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+        guard let name else { return nil }
+        self.init(id: dto.id?.value, name: name)
+    }
 }
 
 nonisolated struct RosterPositionDTO: Decodable {

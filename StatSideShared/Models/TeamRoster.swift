@@ -83,6 +83,9 @@ nonisolated struct RosterPlayer: Sendable, Identifiable, Hashable {
     /// "Questionable", "Out". Only the NFL ships these, and only for the
     /// handful of players carrying one.
     let injuryStatus: String?
+    /// Where a pro played college. Defaulted so a test's memberwise init
+    /// can leave it out.
+    var college: PlayerIdentity.College? = nil
 
     /// What a 36pt row disc actually asks for. ESPN links the 600×436 press
     /// photo, and a 100-player college roster rendered off those is ~20 MB of

@@ -1,0 +1,34 @@
+{
+  "athlete": {
+    "id": "4431452",
+    "displayName": "Drake Maye",
+    "age": 24,
+    "team": {
+      "id": "17",
+      "displayName": "New England Patriots"
+    },
+    "jersey": "10",
+    "displayHeight": "6' 4\"",
+    "displayWeight": "225 lbs",
+    "position": {
+      "abbreviation": "QB",
+      "displayName": "Quarterback"
+    },
+    "headshot": {
+      "href": "https://a.espncdn.com/i/headshots/nfl/players/full/4431452.png"
+    },
+    "status": {
+      "name": "Active",
+      "type": "active"
+    },
+    "college": {
+      "id": "153",
+      "mascot": "Tar Heels",
+      "name": "North Carolina",
+      "shortName": "North Carolina",
+      "abbrev": "UNC"
+    },
+    "displayBirthPlace": "Huntersville, NC",
+    "displayDraft": "2024: Rd 1, Pk 3 (NE)"
+  }
+}
