@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  collegeFromEspn,
   findRosterPlayer,
   mergePlayer,
   playerHref,
@@ -180,5 +181,78 @@ describe("finding the player a URL names", () => {
 
   it("returns nothing for an id this team has no player for", () => {
     expect(findRosterPlayer(roster, "999")).toBeUndefined();
+  });
+});
+
+// Where a pro played college (2026-11-02) — iOS `PlayerCollegeTests`.
+describe("the College row", () => {
+  const maye = player({
+    id: "4431452",
+    name: "Drake Maye",
+    age: 24,
+    jersey: "10",
+    classAbbreviation: undefined,
+    college: { id: "153", name: "North Carolina" },
+  });
+
+  it("sits between Position and Jersey for a pro", () => {
+    expect(labels(maye, "nfl")).toEqual([
+      "Height",
+      "Weight",
+      "Age",
+      "Position",
+      "College",
+      "Jersey",
+    ]);
+  });
+
+  it("links to the school only when the caller found its page", () => {
+    const plain = playerProfileRows(maye, "nfl").find((row) => row.label === "College");
+    expect(plain).toEqual({ label: "College", value: "North Carolina", href: undefined });
+    const linked = playerProfileRows(maye, "nfl", { collegeHref: "/team/cfb/153" }).find(
+      (row) => row.label === "College"
+    );
+    expect(linked?.href).toBe("/team/cfb/153");
+  });
+
+  it("is absent for a player who didn't play college", () => {
+    expect(labels(player({ college: undefined }), "nba")).not.toContain("College");
+  });
+
+  // A college player's school is the team badge over the card already.
+  it("is absent for a college football player", () => {
+    expect(labels(player({ college: { id: "61", name: "Georgia" } }), "cfb")).not.toContain(
+      "College"
+    );
+  });
+
+  it("takes the roster's college over the athlete payload's", () => {
+    const merged = mergePlayer("1", player({ college: { id: "1", name: "Door U" } }), {
+      college: { id: "153", name: "North Carolina" },
+    });
+    expect(merged?.college?.name).toBe("Door U");
+  });
+
+  it("fills a door that lacked it from the athlete payload", () => {
+    const merged = mergePlayer("4431452", undefined, {
+      name: "Drake Maye",
+      college: { id: "153", name: "North Carolina" },
+    });
+    expect(merged?.college).toEqual({ id: "153", name: "North Carolina" });
+  });
+});
+
+describe("ESPN's college reference", () => {
+  it("prefers the full name and keeps the id as a string", () => {
+    expect(collegeFromEspn({ id: 52, name: "Florida State", shortName: "Florida St" })).toEqual({
+      id: "52",
+      name: "Florida State",
+    });
+  });
+
+  it("falls back to the short name, and is nothing without either", () => {
+    expect(collegeFromEspn({ shortName: "UMass" })?.name).toBe("UMass");
+    expect(collegeFromEspn({ id: "1", name: " ", shortName: "" })).toBeUndefined();
+    expect(collegeFromEspn(undefined)).toBeUndefined();
   });
 });

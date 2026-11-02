@@ -16,11 +16,30 @@
 
 import type { League } from "./leagues";
 import { rosterMetric, spokenMetric } from "./roster-metric";
-import type { RosterPlayer, TeamRoster } from "./types";
+import type { PlayerCollege, RosterPlayer, TeamRoster } from "./types";
 
 export interface PlayerProfileRow {
   label: string;
   value: string;
+  /** Where the row goes — a pro's college, when the school has a page. */
+  href?: string;
+}
+
+/**
+ * ESPN's college reference as the app's: the full name over the short one
+ * ("Florida State", not "Florida St"), undefined when it named neither —
+ * iOS `PlayerIdentity.College(dto:)`.
+ */
+export function collegeFromEspn(
+  college: { id?: string | number; name?: string; shortName?: string } | undefined
+): PlayerCollege | undefined {
+  if (!college) return undefined;
+  const name = [college.name, college.shortName]
+    .map((value) => value?.trim())
+    .find((value): value is string => !!value);
+  if (!name) return undefined;
+  const id = college.id === undefined || college.id === "" ? undefined : String(college.id);
+  return { id, name };
 }
 
 /** Where a roster row points. */
@@ -40,13 +59,18 @@ export function playerHref(
  * football publishes no age at all and a class year instead, so an Age row
  * there would label a value that never arrives.
  *
- * **No hometown row.** The design draws one; no payload we hold carries a
- * `birthPlace`, and the fixtures are trimmed, so its source is unknown rather
- * than absent. The row lands when the probe finds it.
+ * **College** is the pro leagues' only (2026-11-02): a college football
+ * player's school is the team badge already over the card. `collegeHref` is
+ * the school's team page, when the caller found one.
+ *
+ * **No hometown row yet.** The athlete payload carries `displayBirthPlace`
+ * (found 2026-11-02, while probing for college); the row is a BACKLOG item,
+ * not a missing source.
  */
 export function playerProfileRows(
   player: RosterPlayer,
-  league: League
+  league: League,
+  options?: { collegeHref?: string }
 ): PlayerProfileRow[] {
   const rows: PlayerProfileRow[] = [];
   if (player.height) rows.push({ label: "Height", value: player.height });
@@ -72,6 +96,9 @@ export function playerProfileRows(
 
   if (player.positionName) {
     rows.push({ label: "Position", value: player.positionName });
+  }
+  if (league !== "cfb" && player.college) {
+    rows.push({ label: "College", value: player.college.name, href: options?.collegeHref });
   }
   if (player.jersey) rows.push({ label: "Jersey", value: player.jersey });
   if (player.injuryStatus) {
@@ -119,6 +146,8 @@ export interface AthleteProfile {
   /** `displayName ?? location`, the app's one team name. */
   teamName?: string;
   teamLogoUrl?: string;
+  /** Absent, not empty, for a player who didn't play college. */
+  college?: PlayerCollege;
 }
 
 /**
@@ -150,6 +179,7 @@ export function mergePlayer(
     age: base.age ?? athlete.age,
     headshotUrl: base.headshotUrl ?? athlete.headshotUrl,
     injuryStatus: base.injuryStatus ?? athlete.injuryStatus,
+    college: base.college ?? athlete.college,
   };
 }
 

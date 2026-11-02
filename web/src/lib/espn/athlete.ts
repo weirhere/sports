@@ -16,7 +16,7 @@
 // it would be louder than the thing it apologises for.
 
 import { leagueSpec, type League } from "@/lib/leagues";
-import type { AthleteProfile } from "@/lib/player-profile";
+import { collegeFromEspn, type AthleteProfile } from "@/lib/player-profile";
 import type {
   PlayerGameLog,
   PlayerGameLogEntry,
@@ -84,6 +84,9 @@ export interface EspnAthleteResponse {
     position?: { abbreviation?: string; displayName?: string };
     headshot?: { href?: string };
     status?: { name?: string; type?: string };
+    /** The roster row's shape (2026-11-02); absent for a player who didn't
+     *  play college. */
+    college?: { id?: EspnId; name?: string; shortName?: string };
     team?: {
       id?: EspnId;
       displayName?: string;
@@ -195,6 +198,7 @@ export function transformAthleteProfile(
     // The app's one team name (2026-09-21): `displayName ?? location`.
     teamName: nonEmpty(team?.displayName) ?? nonEmpty(team?.location),
     teamLogoUrl: nonEmpty(logo),
+    college: collegeFromEspn(athlete.college),
   };
 }
 

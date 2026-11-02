@@ -215,7 +215,12 @@ nonisolated struct AthleteProfileClient {
               let payload = try? decoder.decode(AthleteProfileResponseDTO.self, from: data),
               let athlete = payload.athlete
         else { return (player, nil) }
+        return (Self.filled(player, from: athlete), athlete.team?.id)
+    }
 
+    /// The merge itself, field by field and door first (`x ?? athlete.x`):
+    /// pure, so it is testable against a captured payload without a request.
+    static func filled(_ player: PlayerIdentity, from athlete: ProfileAthleteDTO) -> PlayerIdentity {
         var filled = player
         filled.age = filled.age ?? athlete.age
         filled.jersey = filled.jersey ?? athlete.jersey
@@ -224,13 +229,14 @@ nonisolated struct AthleteProfileClient {
         filled.height = filled.height ?? athlete.displayHeight
         filled.weight = filled.weight ?? athlete.displayWeight
         filled.headshotURL = filled.headshotURL ?? athlete.headshot?.href
+        filled.college = filled.college ?? PlayerIdentity.College(dto: athlete.college)
         // `status` is the roster's injury line in the other door's data, and
         // ESPN says "Active" here for everyone who isn't hurt — which is not
         // a fact worth a row of its own.
         if let status = athlete.status?.type, status != "active" {
             filled.injuryStatus = filled.injuryStatus ?? athlete.status?.name
         }
-        return (filled, athlete.team?.id)
+        return filled
     }
 }
 
@@ -249,6 +255,9 @@ nonisolated struct ProfileAthleteDTO: Decodable {
     let position: ProfilePositionDTO?
     let headshot: ProfileHeadshotDTO?
     let status: ProfileStatusDTO?
+    /// The roster row's shape (2026-11-02). Absent, not null, for a player
+    /// who didn't play college.
+    let college: CollegeRefDTO?
 }
 
 nonisolated struct ProfileTeamDTO: Decodable {

@@ -763,6 +763,17 @@ export interface RosterPlayer {
   /** "Questionable", "Out". Only the NFL ships these, and only for the
    *  handful of players carrying one. */
   injuryStatus?: string;
+  /** Where a pro played college (2026-11-02) — iOS `PlayerIdentity.College`. */
+  college?: PlayerCollege;
+}
+
+/** A school as ESPN names it on a pro's roster row and athlete payload. The
+ *  id is the school's, the same value as its college football team id
+ *  (UNC 153, Florida State 52, UMass 113 — probed 2026-11-02), which is how
+ *  the Profile row links to the school's team page. */
+export interface PlayerCollege {
+  id?: string;
+  name: string;
 }
 
 /** Nothing to show — which is what renders "Roster TBA" rather than a

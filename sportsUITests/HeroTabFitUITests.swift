@@ -1,6 +1,6 @@
 import XCTest
 
-/// Does the team page's seven-tab hero row actually fit a phone?
+/// Does the team page's eight-tab hero row actually fit a phone?
 ///
 /// Filed off the web bug fixed 2026-09-20, where the same five tabs —
 /// Overview, Games, Standings, Roster, Trophies — overflowed a 390pt
@@ -53,7 +53,7 @@ final class HeroTabFitUITests: XCTestCase {
         app.launch()
 
         // Georgia: an FBS team with a conference, so Standings is present,
-        // and ESPN serves it a roster — the full seven-tab row, which is the
+        // and ESPN serves it a roster — the full eight-tab row, which is the
         // only one of the three hero pages at risk. Conference and poll
         // pages carry three tabs (Standings, Games, Postseason) and have
         // room to spare.
@@ -62,8 +62,10 @@ final class HeroTabFitUITests: XCTestCase {
 
         // Six since the Stats tab (2026-09-24), seven since News
         // (2026-09-27), which sits second since E26. Standings has come
-        // before Stats since the league stats tabs (#293).
-        let titles = ["Overview", "News", "Games", "Standings", "Stats", "Roster", "Trophies"]
+        // before Stats since the league stats tabs (#293). Eight since Pros
+        // (2026-11-02), after Roster on a school with players in the pros —
+        // which Georgia always has.
+        let titles = ["Overview", "News", "Games", "Standings", "Stats", "Roster", "Pros", "Trophies"]
         let tabs = titles.map { app.buttons["hero-tab-\($0.lowercased())"] }
         XCTAssertTrue(tabs[0].waitForExistence(timeout: 10),
                       "The team page should show its hero tab row")
@@ -76,7 +78,7 @@ final class HeroTabFitUITests: XCTestCase {
         let window = app.windows.firstMatch.frame
         let present = zip(titles, tabs).filter { $0.1.exists }
         XCTAssertEqual(present.count, titles.count,
-                       "Expected all seven tabs; got \(present.map(\.0))")
+                       "Expected all eight tabs; got \(present.map(\.0))")
 
         // The measurements are the point, so they go in the log whether or
         // not anything fails — a passing run at one text size is evidence

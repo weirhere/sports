@@ -405,7 +405,20 @@ struct PlayerPage: View {
         let rows = shown.profileRows
         if !rows.isEmpty {
             LabeledValueCard(title: "Profile",
-                             rows: rows.map { LabeledValueCard.Row(label: $0.label, value: $0.value) })
+                             rows: rows.map {
+                                 LabeledValueCard.Row(label: $0.label, value: $0.value,
+                                                      team: $0.label == PlayerIdentity.collegeLabel
+                                                          ? collegeTeam : nil)
+                             })
         }
+    }
+
+    /// The school's college football page, when it plays FBS or FCS
+    /// football: ESPN's college id is the same value as that team's id
+    /// (probed 2026-11-02). A school without football finds nothing here
+    /// and its row stays plain text.
+    private var collegeTeam: Team? {
+        guard let id = shown.college?.id else { return nil }
+        return directory.team(matching: TeamRef(id: id, league: .collegeFootball))
     }
 }

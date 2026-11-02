@@ -13,6 +13,8 @@ struct TeamPage: View {
     /// Optional like the directory: the fresher-game merge degrades to the
     /// schedule payload wherever the scoreboard isn't in the environment.
     @Environment(LeagueScoreboards.self) private var scoreboards: LeagueScoreboards?
+    /// Optional like the directory: without it the Pros tab doesn't show.
+    @Environment(ProAlumniStore.self) private var proAlumni: ProAlumniStore?
 
     /// The live board for *this page's* league — an NFL team's scores come
     /// from the NFL scoreboard, never college football's.
@@ -21,7 +23,7 @@ struct TeamPage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison, so a third tab can't break the choreography.
     private enum Tab: Int, HeroTabItem {
-        case overview, news, games, standings, stats, trades, roster, trophies
+        case overview, news, games, standings, stats, trades, roster, pros, trophies
 
         var title: String {
             switch self {
@@ -31,6 +33,7 @@ struct TeamPage: View {
             case .standings: "Standings"
             case .roster: "Roster"
             case .trades: "Trades"
+            case .pros: "Pros"
             case .trophies: "Trophies"
             case .news: "News"
             }
@@ -315,6 +318,7 @@ struct TeamPage: View {
                         case .standings: standingsContent
                         case .roster: rosterContent
                         case .trades: tradesContent
+                        case .pros: prosContent
                         case .trophies: trophiesContent
                         case .news: newsContent
                         }
@@ -642,6 +646,8 @@ struct TeamPage: View {
         // leaving, then who's here.
         if showsTradesTab { tabs.append(.trades) }
         if showsRosterTab { tabs.append(.roster) }
+        // After the school's own roster, the ones who went on (2026-11-02).
+        if showsProsTab { tabs.append(.pros) }
         tabs.append(.trophies)
         return tabs
     }
@@ -658,6 +664,14 @@ struct TeamPage: View {
     private var showsTradesTab: Bool {
         pageLeague != .collegeFootball && client.providesRoster
     }
+
+    /// A school's players in the NFL, NBA and NHL, from `pros.json`. Only
+    /// where there is at least one, so the tab never opens onto nothing, and
+    /// only on ESPN: the file is keyed by ESPN's ids, which CFBD's and the
+    /// UI-test fixture's teams don't share.
+    private var showsProsTab: Bool { client.providesRoster && !alumni.isEmpty }
+
+    private var alumni: [ProAlumnus] { proAlumni?.alumni(of: team) ?? [] }
 
     /// The tab one step along the row — the *visible* row, not the enum's.
     /// Standings is conference-gated, so a hidden tab sits in the middle of
@@ -1027,6 +1041,14 @@ struct TeamPage: View {
         // fetch rides along only for a pane already scoped to it — a page
         // nobody scopes down pays for nothing.
         .task(id: standingsYear) { await loadStandings(scope: scope) }
+    }
+
+    /// The school's pros (2026-11-02). Only reachable when there are some,
+    /// so it has no empty state of its own.
+    private var prosContent: some View {
+        ProAlumniPane(alumni: alumni)
+            .padding(.horizontal, Spacing.sm)
+            .padding(.bottom, Spacing.sm)
     }
 
     /// Who plays here — FotMob's squad screen, in the app's table language.

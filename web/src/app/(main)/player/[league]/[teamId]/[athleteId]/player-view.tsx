@@ -60,6 +60,9 @@ interface PlayerViewProps {
   player: RosterPlayer;
   /** The club he plays for now, off the athlete payload. */
   team?: { id: string; name?: string; logoUrl?: string };
+  /** The College row's destination — the school's team page, when it has
+   *  one (resolved on the server). */
+  collegeHref?: string;
   stats: PlayerStats;
   /** ESPN's season year "now" belongs to, for the This season card. */
   currentEspnSeason: number;
@@ -70,6 +73,7 @@ export function PlayerView({
   athleteId,
   player,
   team,
+  collegeHref,
   stats,
   currentEspnSeason,
 }: PlayerViewProps) {
@@ -97,7 +101,7 @@ export function PlayerView({
 
   const headlines = seasonHeadlines(stats, currentEspnSeason);
   const seasonLabel = seasonLabelFor(stats, currentEspnSeason);
-  const profileRows = playerProfileRows(player, league);
+  const profileRows = playerProfileRows(player, league, { collegeHref });
 
   // The season menu, from ESPN's own list of seasons it will answer for.
   // `SeasonMenuChip` speaks the app's season years and ESPN's log speaks

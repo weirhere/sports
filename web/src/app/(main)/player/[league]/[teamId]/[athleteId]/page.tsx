@@ -16,7 +16,8 @@
 // with the club he plays for now.
 
 import { notFound } from "next/navigation";
-import { teamRoster, teamSchedule } from "@/lib/espn";
+import { conferenceTeams, teamRoster, teamSchedule } from "@/lib/espn";
+import { FBS_GROUP_ID, FCS_GROUP_ID } from "@/lib/conferences";
 import { athleteProfile, athleteStats } from "@/lib/espn/athlete";
 import {
   displayName,
@@ -26,6 +27,8 @@ import {
   type League,
 } from "@/lib/leagues";
 import { findRosterPlayer, mergePlayer } from "@/lib/player-profile";
+import { teamPath } from "@/lib/routes";
+import type { PlayerCollege } from "@/lib/types";
 import { PlayerView } from "./player-view";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +49,30 @@ async function resolvePlayer(league: League, teamId: string, athleteId: string) 
     athleteProfile(league, athleteId),
   ]);
   return { player: mergePlayer(athleteId, rosterResult, athlete), athlete };
+}
+
+/**
+ * The school's college football page, when it has one: ESPN's college id is
+ * the school's, the same value as its FBS or FCS team id (2026-11-02). A
+ * school without football — Gonzaga, Boston University — finds nothing and
+ * its row stays text. Both lists are the Teams page's cached standings
+ * requests, so this rarely costs a fetch of its own.
+ */
+async function collegeHref(
+  league: League,
+  college: PlayerCollege | undefined
+): Promise<string | undefined> {
+  if (league === "cfb" || !college?.id) return undefined;
+  const id = college.id;
+  const groups = await Promise.all(
+    [FBS_GROUP_ID, FCS_GROUP_ID].map((group) =>
+      conferenceTeams("cfb", { group }).catch(() => [])
+    )
+  );
+  const known = groups.flat().some((conference) =>
+    conference.teams.some((team) => team.id === id)
+  );
+  return known ? teamPath({ league: "cfb", id }) : undefined;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -73,6 +100,7 @@ export default async function PlayerPage({ params }: PageProps) {
   ]);
   // Neither source knows him — a dead link, or ESPN down on both hosts.
   if (!player) notFound();
+  const college = await collegeHref(league, player.college);
 
   // The badge names the team off the fetched team, never off the path. Only
   // when the athlete fetch failed outright does the path's team stand in,
@@ -98,6 +126,7 @@ export default async function PlayerPage({ params }: PageProps) {
       player={player}
       team={team?.name ? team : undefined}
       stats={stats}
+      collegeHref={college}
       // The season "now" belongs to, on the app-wide clock and in ESPN's
       // numbering for this league — the only season the This season card
       // will speak for. Decided here so server and client agree.

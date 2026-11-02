@@ -104,6 +104,7 @@ import type {
   EspnRosterCoach,
 } from "./types";
 import { flexibleNumber } from "./types";
+import { collegeFromEspn } from "@/lib/player-profile";
 import { newsStory } from "./news";
 import { parseKickoff } from "@/lib/format";
 
@@ -1871,6 +1872,7 @@ function transformRosterPlayer(
     injuryStatus: (athlete.injuries ?? [])
       .map((injury) => nonEmpty(injury.status))
       .find((status): status is string => status !== undefined),
+    college: collegeFromEspn(athlete.college),
   };
 }
 
