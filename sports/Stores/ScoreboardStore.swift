@@ -98,7 +98,9 @@ enum SlateGrouping: String, CaseIterable, Hashable, Sendable {
     case division
 
     /// What Settings offers. College football has no divisions; FBS and
-    /// FCS already stand where they would.
+    /// FCS already stand where they would. Its League rung is the Top 25,
+    /// FBS and FCS; its Conference rung adds the conferences beneath them,
+    /// with FBS and FCS folded.
     static func options(for league: League) -> [SlateGrouping] {
         league == .collegeFootball ? [.league, .conference] : allCases
     }
@@ -135,6 +137,12 @@ struct GameSection: Identifiable, Hashable {
     static let pollPrefix = "poll-"
     /// Games no known conference in the fetched divisions can claim.
     static let otherPrefix = "other-"
+    /// College football's FBS and FCS when the slate is grouped by
+    /// conference — "all-conf-cfb-80". Not defaults-open, unlike the same
+    /// sections by league: there they *are* the slate, here they are a
+    /// whole division above the conferences, so they start folded and
+    /// remember being opened, as Following does (Josh, 2026-11-02).
+    static let allDivisionPrefix = "all-"
 
     static func id(for league: League) -> String { "\(leaguePrefix)\(league.rawValue)" }
 

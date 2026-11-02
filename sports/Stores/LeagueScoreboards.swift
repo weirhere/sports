@@ -660,13 +660,17 @@ final class LeagueScoreboards {
                         .map { FollowedTable.conference(ConferenceID(league, $0)) })
     }
 
-    /// College football's slate: the Top 25, then the rung you chose —
-    /// FBS and FCS by league, or one section per conference, A–Z, with
-    /// "Other" last (Andy, 2026-10-03; the conferences' A–Z order is
-    /// 2026-09-26's, replacing the P4 → G5 → FCS tier order).
+    /// College football's slate: the Top 25, FBS and FCS, then — grouped
+    /// by conference — one section per conference, A–Z, with "Other" last
+    /// (Andy, 2026-10-03; the conferences' A–Z order is 2026-09-26's,
+    /// replacing the P4 → G5 → FCS tier order).
     ///
-    /// FBS and FCS are the sport's leagues, not peers of its conferences,
-    /// so they show only grouped by league. The Top 25 leads either way:
+    /// FBS and FCS are the sport's leagues, not peers of its conferences.
+    /// By league they are the slate; by conference they ride along folded,
+    /// under their own ids (`GameSection.allDivisionPrefix`), as the one
+    /// place to scan the whole day without opening eleven conferences
+    /// (Josh, 2026-11-02 — an all-FBS view had gone missing for anyone who
+    /// never found the grouping in Settings). The Top 25 leads either way:
     /// it cuts across the sport the way Following cuts across your teams,
     /// and every ranked team is FBS (ESPN's scoreboard ranks are the AP's
     /// and the CFP's — the FCS slate carries none, probed 2026-10-03), so
@@ -681,15 +685,15 @@ final class LeagueScoreboards {
     private func collegeSections(from games: [Game], in league: League,
                                  grouping: SlateGrouping) -> [GameSection] {
         guard !games.isEmpty else { return [] }
-        let umbrellas: [FollowedTable] = grouping == .conference
-            ? [.poll(league)]
-            : [.poll(league),
-               .conference(Conference.divisionRoot(.fbs)),
-               .conference(Conference.divisionRoot(.fcs))]
+        let umbrellas: [FollowedTable] = [.poll(league),
+                                          .conference(Conference.divisionRoot(.fbs)),
+                                          .conference(Conference.divisionRoot(.fcs))]
         let leading = umbrellas.compactMap { table -> GameSection? in
             let claimed = games.filter(table.matches)
             guard !claimed.isEmpty else { return nil }
-            return GameSection(id: table.token, title: table.name, games: claimed,
+            let folded = grouping == .conference && table != .poll(league)
+            return GameSection(id: folded ? GameSection.allDivisionPrefix + table.token : table.token,
+                               title: table.name, games: claimed,
                                league: league, logoURL: table.logoURL, table: table)
         }
         guard grouping == .conference else { return leading }
