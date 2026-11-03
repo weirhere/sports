@@ -91,6 +91,10 @@ nonisolated protocol ScoresProviding: Sendable {
     /// Top 25's Games tab a filter over one slate rather than 25 schedule
     /// fetches. `year` selects a season; nil means the current one.
     func seasonGames(year: Int?) async throws -> [Game]
+    /// College basketball's postseason, asked for as the days it's played
+    /// — the Top 25's Playoffs tab without the ~300 MB season around it
+    /// (2026-11-03). Empty for every other league.
+    func tournamentGames(year: Int) async throws -> [Game]
     func gameSummary(eventId: String) async throws -> GameSummary
     /// One team's current roster.
     ///
@@ -121,6 +125,9 @@ nonisolated extension ScoresProviding {
     func seasonGames(year: Int?) async throws -> [Game] {
         try await conferenceGames(conferenceId: Conference.fbsGroupId, year: year)
     }
+
+    /// No backend but ESPN's has a tournament window to ask about.
+    func tournamentGames(year: Int) async throws -> [Game] { [] }
 
     /// A league that nests nothing under its conferences has no divisional
     /// tables, and neither does a backend that can't ask for them. Empty
@@ -471,9 +478,10 @@ actor ESPNClient: ScoresProviding {
     func seasonGames(days: ClosedRange<Date>, groups: Int?,
                      season: Int? = nil) async throws -> [Game] {
         let months = Self.monthTokens(for: days)
+        let gate = RequestGate(limit: Self.seasonRequestLimit)
         let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
             for month in months {
-                group.addTask { try await self.seasonBoard(month: month, groups: groups) }
+                group.addTask { try await self.seasonBoard(month: month, groups: groups, gate: gate) }
             }
             return try await group.reduce(into: [Game]()) { $0 += $1 }
         }
@@ -490,18 +498,46 @@ actor ESPNClient: ScoresProviding {
         return order.compactMap { byId[$0] }
     }
 
+    /// The NCAA tournament's days, March 14 to April 10 of the year the
+    /// season ends: Selection Sunday's weekend through the championship,
+    /// with a few days' slack either side. 22 of those days held all 105
+    /// of 2026's postseason games in 1.8 MB (probed 2026-11-03), where the
+    /// Division I season around them is ~6,000 games and ~300 MB.
+    ///
+    /// Postseason games only: the conference tournaments in the window are
+    /// regular season to ESPN, and the ranked teams' schedules carry them.
+    func tournamentGames(year: Int) async throws -> [Game] {
+        guard league.isCollege, league.isBasketball else { return [] }
+        let gate = RequestGate(limit: Self.seasonRequestLimit)
+        let groups = league.divisionGroupId
+        let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
+            for day in Self.tournamentDayTokens(endYear: league.espnSeason(for: year)) {
+                group.addTask { try await gate.run { try await self.seasonBoard(token: day, groups: groups) } }
+            }
+            return try await group.reduce(into: [Game]()) { $0 += $1 }
+        }
+        var seen = Set<String>()
+        return fetched.filter { $0.seasonType == Postseason.seasonType && seen.insert($0.id).inserted }
+    }
+
+    static func tournamentDayTokens(endYear: Int) -> [String] {
+        let march = dayTokens(inMonth: String(format: "%04d03", endYear)).filter { $0.suffix(2) >= "14" }
+        let april = dayTokens(inMonth: String(format: "%04d04", endYear)).filter { $0.suffix(2) <= "10" }
+        return march + april
+    }
+
     /// One month, with the days it may have dropped re-asked one by one —
     /// see `daysToReask(inMonth:after:)`. A month request that fails
     /// outright is re-asked as days too, rather than failing the season.
-    private func seasonBoard(month: String, groups: Int?) async throws -> [Game] {
-        let games = (try? await seasonBoard(token: month, groups: groups)) ?? []
+    private func seasonBoard(month: String, groups: Int?, gate: RequestGate) async throws -> [Game] {
+        let games = (try? await gate.run { try await self.seasonBoard(token: month, groups: groups) }) ?? []
         let days = Self.daysToReask(inMonth: month, after: games)
         guard !days.isEmpty else { return games }
         // The merge dedupes the overlap, so asking a day twice costs a
         // request, never a duplicate row.
         return try await withThrowingTaskGroup(of: [Game].self) { group in
             for day in days {
-                group.addTask { try await self.seasonBoard(token: day, groups: groups) }
+                group.addTask { try await gate.run { try await self.seasonBoard(token: day, groups: groups) } }
             }
             return try await group.reduce(into: games) { $0 += $1 }
         }
@@ -557,6 +593,11 @@ actor ESPNClient: ScoresProviding {
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
         return ESPNMapper.scoreboard(from: dto, league: league).games
     }
+
+    /// How many of one season fetch's requests run at once (`RequestGate`).
+    /// Six is the per-host connection count browsers settled on, and it
+    /// leaves the page's other requests — the poll, standings — room.
+    static let seasonRequestLimit = 6
 
     /// ESPN's own ceiling on `limit`, and the count that means "this came
     /// back truncated".

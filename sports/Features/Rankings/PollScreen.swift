@@ -118,11 +118,18 @@ struct PollScreen: View {
         let week: PollWeek
     }
 
-    /// The ranked teams' season slate, per year — one request each, kept
-    /// for the visit.
+    /// The season slate, per year, kept for the visit: the whole division
+    /// where that's a reasonable download, the tournament alone where it
+    /// isn't (see `teamGames`).
     @State private var gamesByYear: [Int: [Game]] = [:]
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
+    /// Where the season is too big to load whole (`loadsWholeSeasonSlate`,
+    /// college basketball), `gamesByYear` holds only the tournament, and
+    /// each ranked team's own season lands here, keyed "year:teamId" —
+    /// fetched as the polls name them, kept for the visit.
+    @State private var teamGames: [String: [Game]] = [:]
+    @State private var teamGamesLoading: Set<String> = []
 
     /// Optional like ConferencePage's: without the scoreboard in the
     /// environment the slate simply stays the snapshot it was fetched as.
@@ -194,6 +201,46 @@ struct PollScreen: View {
             async let weeks: Void = loadWeeks(year: year)
             async let games: Void = loadGames(year: year)
             _ = await (poll, weeks, games)
+        }
+        // Re-runs as the polls name new teams: a season switch, a picked
+        // week, the other poll.
+        .task(id: RankedTeams(year: year, ids: rankedTeamIds)) {
+            await loadTeamGames(year: year, teamIds: rankedTeamIds)
+        }
+    }
+
+    private struct RankedTeams: Equatable {
+        let year: Int
+        let ids: [String]
+    }
+
+    /// Every team the shown week's polls rank, where the slate is built
+    /// from them; empty where the page loads the whole season.
+    private var rankedTeamIds: [String] {
+        guard !league.loadsWholeSeasonSlate else { return [] }
+        return Array(Set(seasonPolls.flatMap { $0.ranks.map(\.team.id) })).sorted()
+    }
+
+    private func loadTeamGames(year value: Int, teamIds: [String]) async {
+        let missing = teamIds.filter {
+            teamGames["\(value):\($0)"] == nil && !teamGamesLoading.contains("\(value):\($0)")
+        }
+        guard !missing.isEmpty else { return }
+        teamGamesLoading.formUnion(missing.map { "\(value):\($0)" })
+        let client = DataProvider.makeClient(league: league)
+        let gate = RequestGate(limit: ESPNClient.seasonRequestLimit)
+        await withTaskGroup(of: (String, [Game]?).self) { group in
+            for id in missing {
+                group.addTask {
+                    (id, try? await gate.run { try await client.seasonGames(teamId: id, year: value) })
+                }
+            }
+            for await (id, games) in group {
+                let key = "\(value):\(id)"
+                teamGamesLoading.remove(key)
+                // A miss isn't cached: the next poll change asks again.
+                if let games { teamGames[key] = games }
+            }
         }
     }
 
@@ -327,19 +374,21 @@ struct PollScreen: View {
         }
     }
 
-    /// The season's whole FBS slate in one request — the ranked teams'
-    /// games are a filter over it, not 25 schedule fetches. `groups=80`
-    /// with `dates={year}` returns the full season (verified live
-    /// 2026-09-05: 800 events for 2025), which is the same request
-    /// ConferencePage makes for one conference.
+    /// College football's whole FBS slate — ~950 games, so the ranked
+    /// teams' games are a filter over it, not 25 schedule fetches. College
+    /// basketball's Division I is six times that and ~300 MB, so there this
+    /// fetches only the tournament and `loadTeamGames` brings the ranked
+    /// teams' seasons (2026-11-03).
     private func loadGames(year value: Int, force: Bool = false) async {
         guard gamesByYear[value] == nil || force else { return }
         guard !gamesLoadingYears.contains(value) else { return }
         gamesLoadingYears.insert(value)
         defer { gamesLoadingYears.remove(value) }
         do {
-            gamesByYear[value] = try await DataProvider.makeClient(league: league)
-                .seasonGames(year: value)
+            let client = DataProvider.makeClient(league: league)
+            gamesByYear[value] = league.loadsWholeSeasonSlate
+                ? try await client.seasonGames(year: value)
+                : try await client.tournamentGames(year: value)
             gamesFailedYears.remove(value)
         } catch {
             gamesFailedYears.insert(value)
@@ -372,9 +421,16 @@ struct PollScreen: View {
                     .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                // No subtitle (Andy, 2026-09-27): ESPN's headline ("2025
-                // AP Poll: Final Rankings") said which season, poll and
-                // week, and the chips over the table now say all three.
+                // Which sport (Andy, 2026-11-03): three leagues have a Top
+                // 25 and nothing else on the page says whose. Season, poll
+                // and week stay the chips' (2026-09-27, which dropped ESPN's
+                // headline for saying them).
+                if let sport = league.pollSportName {
+                    Text(sport)
+                        .font(.chipEmphasis)
+                        .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -624,7 +680,17 @@ struct PollScreen: View {
     /// the score it had when the page opened and a pre-game row never
     /// turned live at all.
     private var slate: [Game]? {
-        guard let games = gamesByYear[year] else { return nil }
+        guard var games = gamesByYear[year] else { return nil }
+        if !league.loadsWholeSeasonSlate {
+            // The tournament, then each ranked team's season, once each:
+            // two ranked teams share every game they play each other.
+            var seen = Set(games.map(\.id))
+            for id in rankedTeamIds {
+                for game in teamGames["\(year):\(id)"] ?? [] where seen.insert(game.id).inserted {
+                    games.append(game)
+                }
+            }
+        }
         return Game.merging(games, withLive: scoreboards?.store(for: league).boardGames ?? [])
     }
 
@@ -742,7 +808,7 @@ struct PollScreen: View {
                           actionTitle: "Show all games",
                           retry: { teamFilter = nil })
                 .cardSurface()
-        } else if gamesLoadingYears.contains(year) {
+        } else if gamesLoadingYears.contains(year) || !teamGamesLoading.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)

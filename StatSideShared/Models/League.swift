@@ -68,6 +68,13 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// Whether a page can load this league's whole season as one slate.
+    /// College basketball can't: Division I is ~6,000 games at ~19 KB
+    /// each, ~300 MB a season, and fetching it timed out the page's other
+    /// requests (2026-11-03). Its Top 25 loads the ranked teams' schedules
+    /// and the tournament's days instead.
+    var loadsWholeSeasonSlate: Bool { !(isCollege && isBasketball) }
+
     /// Whether the playoffs are best-of series rather than single games —
     /// what makes the bracket draw one card per series (2026-11-03).
     var playsSeries: Bool {
@@ -176,6 +183,18 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .mensCollegeBasketball: "Men's College Basketball"
         case .womensCollegeBasketball: "Women's College Basketball"
         case .nfl, .nba, .nhl, .mlb, .wnba: displayName
+        }
+    }
+
+    /// The sport and who plays it, under a title that names neither — the
+    /// Top 25's (Andy, 2026-11-03), where three leagues' pages otherwise
+    /// read the same. Nil for the pros, which have no poll.
+    var pollSportName: String? {
+        switch self {
+        case .collegeFootball: "Men's Football"
+        case .mensCollegeBasketball: "Men's Basketball"
+        case .womensCollegeBasketball: "Women's Basketball"
+        case .nfl, .nba, .nhl, .mlb, .wnba: nil
         }
     }
 
