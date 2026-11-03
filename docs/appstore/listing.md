@@ -30,6 +30,17 @@ Alternates:
 - `Live scores for your teams` (26) — says what the app does, not what it
   covers
 
+**Audited at 3.0.0 and knowingly left a subset.** Baseball is the fourth
+sport, and the subtitle names three. Every way of naming four overruns:
+`Football, hoops, hockey, baseball` is 33, and `Football, basketball,
+baseball` is 30 and drops hockey, which is in season while baseball isn't
+until spring. Swapping to a no-sport line (`Four sports, college and pro`,
+28) would move all four sport words into the keywords, 36 characters the
+field doesn't have. So the subtitle keeps the three, `baseball` goes into the
+keywords (see there), and the promotional text and description say all four.
+Revisit in February, when baseball is on and hockey is still going: that is
+the case for `Football, basketball, baseball` with `hockey` in the keywords.
+
 Audited at 2.10.0 and unchanged. The stats tabs, the Standings tab and the
 Starters redesign are new drawing for the same three sports.
 
@@ -73,6 +84,47 @@ Primary: **Sports**. No secondary needed.
 
 Per-version release notes. Newest first — keep the old ones, this is the
 release-notes history now.
+
+### 3.0.0 (build 26)
+
+> • Four new leagues: men's and women's college basketball, pro baseball and
+>   pro women's basketball. That's eight now, and each one gets what the
+>   others have: scores, game pages, tables, stat leaders, team and player
+>   pages, and trophies. College basketball has both Top 25 polls, for the
+>   men and the women.
+> • Baseball reads like baseball. Live games say Top 5th, extra innings are
+>   the 10th and not overtime, and the line score ends in runs, hits and
+>   errors. Plays go by half inning, one line per at-bat. While a game is on,
+>   the card draws the diamond with the runners on, the count, the outs and
+>   who's pitching to whom.
+> • Baseball teams start with reminders off, since they play almost every
+>   day. The bell on a team page turns them on.
+> • Playoff brackets. Pro playoffs draw as series, one card per matchup with
+>   the series score, and tapping a card opens the game that's on, up next or
+>   the one that decided it. The tab is called Playoffs everywhere now and
+>   sits right after Standings.
+> • Where a pro played college. Pro player pages have a College row that
+>   opens the school's page, and college team pages have a Pros tab with the
+>   school's players in the pros.
+> • Grouped by conference, Games now leads with the Top 25s and the biggest
+>   conferences, and each college football division gets its own folded
+>   section with every game in it.
+> • In Following, a women's college game says (W) after each team, so a
+>   school's men's and women's teams don't read the same. Women's team and
+>   conference pages do the same where the names match.
+> • The season picker sits beside Follow at the top of league, conference
+>   and team pages.
+> • Box scores scroll sideways without flipping you to the next tab.
+
+2.10.0 (25) was archived 2026-10-28 and hadn't been uploaded at that cut. If
+it never went up, paste 2.10.0's bullets under these. 3.0.0 because it
+doubles the leagues and adds a sport (Andy's call at this cut). Every one of
+the five iOS commits since the 2.10.0 bump has a line except #298 (the
+Leagues tab's top fade waits for a scroll), which is drawing too small to
+name. The (W) bullet is worded around a school because the commit's own
+example was a team name. Nothing here names a league, conference or
+division (§ 4.1(a) rejection), which is why FBS and FCS are "each college
+football division".
 
 ### 2.10.0 (build 25)
 
@@ -526,9 +578,18 @@ up, fold the still-true bullets into 1.3.1 and drop that one.
 
 ## Promotional text (170 chars max — editable anytime without review) ✏️
 
-> Four leagues, one screen. Follow your football, basketball and hockey
-> teams, college and pro, see what's live, and get a reminder 30 minutes
-> before they play. No ads. (166)
+> Eight leagues, one screen. Follow your football, basketball, hockey and
+> baseball teams, college and pro, and get a reminder 30 minutes before they
+> play. No ads. (160)
+
+**Changed for 3.0.0.** "Four leagues" stopped being true, and the sport list
+gains baseball. Eight leagues and the fourth sport cost 11 characters over
+the limit, so "see what's live" went rather than the "30 minutes", the one
+concrete thing in the line and the clause every earlier candidate has kept.
+The 2.9.0 line was:
+*"Four leagues, one screen. Follow your football, basketball and hockey
+teams, college and pro, see what's live, and get a reminder 30 minutes
+before they play. No ads."* (166)
 
 **Changed for the 4.1(a) rejection (2.6.1, 2026-09-28).** The previous line
 named the NFL, NBA and NHL. Promotional text is metadata even though it
@@ -584,18 +645,19 @@ leagues ever stop being the thing worth saying first; no review needed.
 
 ## Description (4000 chars max) ✏️
 
-> StatSide is football, basketball and hockey, college and pro, at a glance.
+> StatSide is football, basketball, hockey and baseball, college and pro, at
+> a glance.
 > One screen answers "what's happening right now" — no ads, no interstitials,
 > nothing between you and the scores.
 >
 > BUILT FOR GAME DAY, ALL YEAR
-> • Your teams first: follow any team in any of the four leagues and their
+> • Your teams first: follow any team in any of the eight leagues and their
 >   games lead the page, together
 > • One day at a time, every league stacked, and each one split the way you
 >   want it — one section for the whole league, or a section per conference
 >   or division
 > • Live games get a pulsing dot, heavier type on the score, and possession
->   where the sport has it
+>   where the sport has it, or the runners, count and outs in baseball
 > • A focus menu narrows the day to live games, or to the tight ones: live
 >   and close, late in the game, or an upset brewing
 > • Hide scores until you've watched. Your teams' games show Live or Final
@@ -614,7 +676,10 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • Long-press any game to follow a team or share the score
 >
 > LEAGUES, TABLES AND TEAMS
-> • The college football Top 25 polls, with movement arrows
+> • The college Top 25 polls, for football and for men's and women's
+>   basketball, with movement arrows
+> • Playoff brackets: every pro series on one card, from the first round to
+>   the final, and the college tournaments
 > • Every college conference, and every pro conference and division — each
 >   table in its own league's terms
 > • Player and team stat leaders for every league, conference and division,
@@ -622,17 +687,20 @@ leagues ever stop being the thing worth saying first; no review needed.
 > • Game pages: a preview before the game and the facts after, line score,
 >   box score, scoring plays, team stats, leaders, win probability, the
 >   head-to-head series, both teams' standings, and the plays themselves — drives for football,
->   periods for basketball and hockey
-> • Who's playing, on every game page: the starters drawn on the field, court
->   or rink, the coaches, the bench, the inactives and the injured, away on
+>   periods for basketball and hockey, every at-bat by half inning for
+>   baseball
+> • Who's playing, on every game page: the starters drawn on the field, court,
+>   rink or diamond, the coaches, the bench, the inactives and the injured, away on
 >   the left and home on the right
 > • Team pages: the record, season stats and leaders, the full season, bye
->   weeks, the roster, the home ground, and the trophies the team has won
-> • Player pages: this season's numbers, every game, and the career, reached
->   from a roster, a search, a box score or a game's leaders
+>   weeks, the roster, the home ground, and the trophies the team has won,
+>   and for a college, its players in the pros
+> • Player pages: this season's numbers, every game, the career, and where
+>   a pro played college, reached from a roster, a search, a box score or a
+>   game's leaders
 > • Coach pages: every job a head coach has held, the record at each, and
 >   the games season by season
-> • Optional betting lines: the spread and over/under before kickoff, off
+> • Optional betting lines: the spread and over/under before the game, off
 >   unless you turn them on
 > • Search any team, conference, game, player or story — across every league,
 >   from a field that sits under your thumb
@@ -644,10 +712,19 @@ leagues ever stop being the thing worth saying first; no review needed.
 > no account, no tracking. StatSide collects no data — your followed teams
 > live on your phone and nowhere else.
 >
-> Free. Fast. Four leagues, done right.
+> Free. Fast. Eight leagues, done right.
 >
 > StatSide is an independent app and is not affiliated with or endorsed by any
 > league, conference, team or school.
+
+Changed for 3.0.0, in nine places, all for the four new leagues and the
+fourth sport. The opener names baseball; "four leagues" is eight in the
+follow bullet and the closer; the live bullet says what a live baseball game
+shows instead of possession; the polls bullet gains college basketball's, men's
+and women's, and a playoff-brackets bullet follows it; the plays clause and
+the Who's playing bullet name the at-bat and the diamond; team and player
+pages gain the Pros tab and the College row; and the betting lines are
+"before the game", since baseball doesn't kick off. Still no league named.
 
 Changed for 2.10.0, in two places: a stat-leaders bullet follows the tables
 bullet, for the league pages' Player stats and Team stats tabs (#293), and
@@ -740,7 +817,14 @@ data" paragraph is unchanged, because nothing in this release collects any.
 
 ## Keywords (100 chars max, comma-separated, no spaces needed after commas)
 
-`college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,rankings,hoops,news` (100)
+`college,scores,live,standings,top 25,box score,playoff,pro,schedule,widget,stats,baseball,hoops,news` (100)
+
+**Changed for 3.0.0: `baseball` in, `rankings` out**, nine characters for
+nine. Baseball is the sport the subtitle can't fit (see Subtitle), and the
+keywords are the only other indexed field. `rankings` is the cheapest term to
+lose: `top 25` carries the polls and `standings` the tables. `pro` plus
+`baseball` still matches "pro baseball", the same trick 4.1(a) taught for
+football.
 
 Audited at 2.10.0 and unchanged. `stats` and `standings` are already here,
 and they're the two words the release's headlines would have asked for.
@@ -998,6 +1082,19 @@ Resolution Center reply).
 exactly 1284×2778 and 1320×2868. Re-render the three on the Mac per
 `docs/social/README.md` § Regenerating before upload if the glyphs need to
 match frames 02–07 exactly.
+
+### 3.0.0: two captions re-rendered, devices carried forward
+
+`01-hero` and `08-closer` said things 3.0.0 makes false: the hero's
+"Football, basketball and hockey." and "Four leagues, one day at a time",
+and the closer's "Four leagues, done right." They read "Football,
+basketball, hockey and baseball.", "Eight leagues, one day at a time" and
+"Eight leagues, done right." now, both sizes re-rendered from
+`docs/social/src/as-*.html` over the same 2026-10-19 masters. Re-upload
+those two frames in their slots (1 and 10 in the order above); the other
+eight carry forward. No master was reshot: baseball and the WNBA are in
+their offseasons, so there's no live diamond or bracket in progress to shoot,
+and still no basketball frame. A reshoot in spring can carry both.
 
 ### 2.9.0: reshot, eleven frames, real logos (Andy's call)
 
@@ -1288,7 +1385,8 @@ Rewritten 2026-08-04 for the 4.2.2 resubmission; league names refreshed for
 self-describes as displaying aggregated content.
 
 > StatSide is a fully native SwiftUI app built around following your teams
-> across college football, the NFL, the NBA and the NHL. Follow a team (Teams
+> across college football, men's and women's college basketball, the NFL,
+> the NBA, the WNBA, the NHL and MLB. Follow a team (Teams
 > tab) and the app personalizes around it: a Following section leads the games
 > page with your teams from every league together, and you can turn on game
 > reminders — local notifications 30 minutes before each of your teams' games,
@@ -1306,7 +1404,7 @@ self-describes as displaying aggregated content.
 >   VoiceOver support, light/dark mode
 > • No web views anywhere; every screen is native SwiftUI
 >
-> To demo: follow any team from the Teams tab (Add teams → any of the four
+> To demo: follow any team from the Teams tab (Add teams → any of the eight
 > leagues), then enable the bell on its team page (game reminders) and add the
 > StatSide widget to the Home Screen. The day strip on Games walks any day of
 > the season, and the season picker on a league or team page reaches past
@@ -1320,6 +1418,28 @@ strip and empty slates for basketball and hockey, which is the season and not a
 defect. The Leagues tab shows all four with their tables, and a past season on
 an NBA or NHL team page shows a full schedule — that is the fastest way to see
 basketball and hockey carrying real data.
+
+**Notes audit at 3.0.0: the opener and the demo line changed, plus a
+timing line.** The opener named four leagues and now names all eight, and the
+demo paragraph's "any of the four leagues" is eight. Review notes are the one
+field exempt from § 4.1(a), since only the reviewer reads them. 3.0.0 adds no
+entitlement, account, data collection or web view: the four leagues are the
+same screens, the Pros tab reads a file bundled in the app (nothing new is
+fetched from anywhere but ESPN), and baseball reminders default off, so a
+baseball follow schedules nothing until the bell is turned on. Paste the
+whole block fresh.
+
+Timing line for the submission, because two of the new leagues are between
+seasons on review day:
+
+> Pro baseball and the WNBA are in their offseasons, so their Games slates
+> are empty until spring. Their league pages carry last season in full:
+> standings, stats, the Playoffs tab's series bracket and every game. College
+> basketball's season opened this week.
+
+Demo paths for the release: Leagues → MLB → Playoffs, then a World Series
+card for a finished game page (Plays by half inning, the R/H/E line score);
+any NBA or NFL player page → Profile → College; a college team page → Pros.
 
 **Notes audit at 2.10.0: no new paragraph, and no timing line.** 2.10.0
 adds no entitlement, account, data collection or web view: the Standings
