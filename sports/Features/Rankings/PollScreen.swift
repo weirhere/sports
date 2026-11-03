@@ -31,7 +31,8 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, news, playerStats, teamStats, postseason
+        // Declared in the row's order: the raw value is the swipe's direction.
+        case standings, postseason, games, news, playerStats, teamStats
 
         var title: String {
             switch self {
@@ -40,7 +41,7 @@ struct PollScreen: View {
             case .playerStats: "Player stats"
             case .teamStats: "Team stats"
             case .news: "News"
-            case .postseason: "Postseason"
+            case .postseason: "Playoffs"
             }
         }
     }
@@ -182,9 +183,9 @@ struct PollScreen: View {
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
-            // The season chip leads each pane's control row instead
-            // (2026-09-27) — see `seasonChip`.
+            // The season beside Follow (Andy, 2026-11-03) — see `seasonChip`.
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if tab != .news { seasonChip }
                 PollFollowPill(league: league)
             }
         }
@@ -402,9 +403,9 @@ struct PollScreen: View {
                 // pinned header leaves under the bar.
                 .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                // No control on News: stories are today's, whatever season
-                // the other tabs are showing.
-                if tab != .news {
+                // Only a tab with controls of its own gets a row; the
+                // season is in the header.
+                if hasPaneControls(for: tab) {
                     controlRow(for: tab)
                         .padding(.horizontal, Spacing.sm)
                         .padding(.top, Spacing.sm)
@@ -417,11 +418,20 @@ struct PollScreen: View {
         }
     }
 
-    /// The season leads every tab's row; after it, what shapes this pane
-    /// alone — the week and poll on Standings, the slate toggles on Games,
-    /// nothing on Postseason, whose round chips live in the pane.
+    /// What shapes this pane alone — the week and poll on Standings, the
+    /// slate toggles on Games, nothing on Playoffs, whose round chips live
+    /// in the pane.
+    private func hasPaneControls(for tab: Tab) -> Bool {
+        switch tab {
+        case .standings, .playerStats, .teamStats:
+            (shownWeek != nil && seasonWeeks.count > 1) || seasonPolls.count > 1
+        case .games: true
+        case .news, .postseason: false
+        }
+    }
+
     private func controlRow(for tab: Tab) -> some View {
-        SeasonControlRow(season: seasonChip) {
+        HStack(spacing: Spacing.sm) {
             switch tab {
             // The stats tabs rank the poll's teams, so they carry the
             // same week and poll chips: they decide who's on them.
@@ -443,6 +453,7 @@ struct PollScreen: View {
             case .news, .postseason:
                 EmptyView()
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -553,13 +564,12 @@ struct PollScreen: View {
             .padding(.bottom, Spacing.sm)
     }
 
-    /// The season picker leads every pane's control row, above the cards
-    /// it scopes (Andy, 2026-09-27, superseding the 2026-09-05 move onto
-    /// the toolbar row), with the pane's own controls after it: the poll
-    /// picker on Rankings, the slate toggles on Games.
+    /// The season picker rides the header beside Follow (Andy,
+    /// 2026-11-03, superseding 2026-09-27's move into each pane's row):
+    /// it scopes the whole page, so it belongs to the page.
     private var seasonChip: SeasonMenuChip {
         SeasonMenuChip(current: year, seasons: availableSeasons, league: league,
-                       onSelect: { select(year: $0) })
+                       style: .bar, onSelect: { select(year: $0) })
     }
 
     @ViewBuilder
@@ -660,11 +670,13 @@ struct PollScreen: View {
         // News after Games (Andy, 2026-09-27, E26), then the stats tabs
         // (2026-10-26), ESPN-gated like ConferencePage's so the
         // fixture-backed UI suites never reach the network.
-        var tabs: [Tab] = [.standings, .games, .news]
+        var tabs: [Tab] = [.standings]
+        // Second whenever the season has one (Andy, 2026-11-03).
+        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
+        tabs.append(contentsOf: [.games, .news])
         if DataProvider.makeClient(league: league).providesRoster {
             tabs.append(contentsOf: [.playerStats, .teamStats])
         }
-        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
         return tabs
     }
 

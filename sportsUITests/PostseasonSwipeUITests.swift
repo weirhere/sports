@@ -47,7 +47,7 @@ final class PostseasonSwipeUITests: XCTestCase {
         guard selectPreviousSeason(app) else { return false }
         // A past season is two `limit=900` requests for the whole FBS
         // slate, so the tab can take a beat longer than a tab switch.
-        let tab = app.buttons["Postseason"].firstMatch
+        let tab = app.buttons["Playoffs"].firstMatch
         guard tab.waitForExistence(timeout: 60) else { return false }
         tab.tap()
         return true
@@ -59,7 +59,7 @@ final class PostseasonSwipeUITests: XCTestCase {
         app.launch()
         app.tabBars.buttons["Leagues"].firstMatch.tap()
         guard openPostseason(app) else {
-            XCTFail("Couldn't reach the Postseason tab in the previous season")
+            XCTFail("Couldn't reach the Playoffs tab in the previous season")
             return
         }
 
@@ -104,7 +104,7 @@ final class PostseasonSwipeUITests: XCTestCase {
                        "Swiping left should move to the next round")
 
         // The tab must not have moved with it — the rounds own this axis.
-        XCTAssertTrue(app.buttons["Postseason"].firstMatch.exists,
+        XCTAssertTrue(app.buttons["Playoffs"].firstMatch.exists,
                       "The swipe must not have changed tabs")
     }
 }
