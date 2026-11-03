@@ -956,7 +956,8 @@ private let allFCSSection = GameSection.allDivisionPrefix + fcsSection
 
 @Suite struct LeagueDisplayOrderTests {
     @Test func leaguesListAlphabetically() {
-        #expect(League.displayOrder == [.nba, .collegeFootball, .nfl, .nhl])
-        #expect(League.displayOrder.map(\.displayName) == ["NBA", "NCAAF", "NFL", "NHL"])
+        #expect(League.displayOrder == [.mlb, .nba, .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball, .nfl, .nhl, .wnba])
+        #expect(League.displayOrder.map(\.displayName)
+            == ["MLB", "NBA", "NCAAF", "NCAAM", "NCAAW", "NFL", "NHL", "WNBA"])
     }
 }

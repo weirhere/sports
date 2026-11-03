@@ -43,8 +43,10 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
     /// Alphabetical by the printed name, so the two land between NCAAF and
     /// the NFL.
     @Test func displayOrderStaysAlphabetical() {
-        #expect(League.displayOrder.map(\.shortName)
-            == ["NBA", "NCAAF", "NCAAM", "NCAAW", "NFL", "NHL"])
+        let order = League.displayOrder.map(\.shortName)
+        #expect(order.firstIndex(of: "NCAAM") == order.firstIndex(of: "NCAAF").map { $0 + 1 })
+        #expect(order.firstIndex(of: "NCAAW") == order.firstIndex(of: "NCAAM").map { $0 + 1 })
+        #expect(order == order.sorted())
     }
 
     @Test func theSportAndCollegeAxes() {

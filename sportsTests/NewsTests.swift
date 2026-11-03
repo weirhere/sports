@@ -336,7 +336,7 @@ private func summary(_ name: String, league: League) throws -> GameSummary {
     @Test func theNewsTabsRunForYouLatestTransfersLeagues() {
         #expect(NewsFeedStore.Feed.allCases.map(\.title) == ["For you", "Latest", "Transfers", "Leagues"])
         // The Leagues page lists leagues as the Leagues tab does.
-        #expect(League.displayOrder == [.nba, .collegeFootball, .nfl, .nhl])
+        #expect(League.displayOrder == [.mlb, .nba, .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball, .nfl, .nhl, .wnba])
     }
 
     @MainActor
