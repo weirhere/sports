@@ -277,6 +277,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// Whether a season crosses New Year — August to January, October to
+    /// June. True for every league until MLB (February to November) and
+    /// the WNBA (April to October), which run inside one calendar year.
+    ///
+    /// The season rules branch on it (2026-11-03): a calendar-year league's
+    /// season closes in the year it opened, and its offseason months (after
+    /// the final, before the next opener) still show the season just
+    /// played. `seasonRollsOverAfter` is then the month its season closes
+    /// in, not a month of the following year.
+    var seasonSpansNewYear: Bool { seasonRollsOverAfter < seasonOpensIn }
+
     /// Our opening-year season → the value ESPN's `season=` wants.
     func espnSeason(for year: Int) -> Int { seasonYearIsEndYear ? year + 1 : year }
 
@@ -321,7 +332,12 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// `week: null` on every NBA and NHL event and ships an empty
     /// `leagues[].calendar` for both (probed 2026-09-08), so a Weeks
     /// toggle there files a whole season under one unnamed card.
-    var hasWeeks: Bool { !seasonYearIsEndYear }
+    ///
+    /// Football's alone, said as such (2026-11-03): this was
+    /// `!seasonYearIsEndYear`, which held only while every league that
+    /// named a season for its opening year was a football league. MLB and
+    /// the WNBA run inside one calendar year and have no weeks either.
+    var hasWeeks: Bool { isFootball }
 
     /// Whether this league's scoreboard and standings take college
     /// football's FBS/FCS `groups=` parameter. Replaces every
@@ -375,7 +391,11 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// on ice — ESPN still ships `grass: false` for their arenas, which we
     /// were rendering as "Surface · Turf" on a hockey rink (Andy,
     /// 2026-09-09: "nba and nhl games aren't played on turf").
-    var playsOnASurface: Bool { !seasonYearIsEndYear }
+    ///
+    /// Read off the sport since 2026-11-03, for `hasWeeks`'s reason: it was
+    /// `!seasonYearIsEndYear`, a proxy that stops holding once a
+    /// calendar-year league arrives.
+    var playsOnASurface: Bool { isFootball }
 
     /// What a league calls its scoring periods.
     ///

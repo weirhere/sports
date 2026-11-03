@@ -487,7 +487,9 @@ export function slateSplitsByConference(league: League): boolean {
  * one unnamed card.
  */
 export function hasWeeks(league: League): boolean {
-  return !SPECS[league].seasonYearIsEndYear;
+  // Football's alone (2026-11-03): was `!seasonYearIsEndYear`, which stops
+  // holding once a calendar-year league (MLB, the WNBA) arrives.
+  return isFootball(league);
 }
 
 /**
@@ -552,7 +554,24 @@ export function headToHeadSeasons(league: League): number {
  * hockey rink (Andy, 2026-09-09).
  */
 export function playsOnASurface(league: League): boolean {
-  return !SPECS[league].seasonYearIsEndYear;
+  return isFootball(league);
+}
+
+/**
+ * Whether a season crosses New Year — August to January, October to June.
+ * MLB and the WNBA run inside one calendar year, and the season rules below
+ * branch on it (iOS `League.seasonSpansNewYear`, 2026-11-03).
+ */
+export function seasonSpansNewYear(league: League): boolean {
+  const spec = SPECS[league];
+  return spec.seasonRollsOverAfter < spec.seasonOpensIn;
+}
+
+/** The leagues whose seasons cross New Year — the ones the app's July–June
+ *  season is computed over. A calendar-year league's games fall on days
+ *  inside one app season or the next. */
+function spanningLeagues(): League[] {
+  return LEAGUES.filter(seasonSpansNewYear);
 }
 
 // --- Season timing ------------------------------------------------------
@@ -564,6 +583,11 @@ export function playsOnASurface(league: League): boolean {
 export function seasonYear(league: League, now: Date = new Date()): number {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
+  // A calendar-year league is in its new season from its opening month; the
+  // winter before it still shows the season just played.
+  if (!seasonSpansNewYear(league)) {
+    return month < SPECS[league].seasonOpensIn ? year - 1 : year;
+  }
   return month <= SPECS[league].seasonRollsOverAfter ? year - 1 : year;
 }
 
@@ -595,7 +619,12 @@ export function seasonSpan(
   const start = new Date(year, spec.seasonOpensIn - 1, 1);
   // The first of the month after the rollover month, minus a day — so
   // February's length is never spelled out and leap years are free.
-  const end = new Date(year + 1, spec.seasonRollsOverAfter, 0);
+  // A calendar-year league closes in the year it opened.
+  const end = new Date(
+    seasonSpansNewYear(league) ? year + 1 : year,
+    spec.seasonRollsOverAfter,
+    0
+  );
   return { start, end: end < start ? start : end };
 }
 
@@ -658,7 +687,7 @@ export function belongsToSeason(
  * longer has an offseason.
  */
 export function unionSeasonSpan(year: number): { start: Date; end: Date } {
-  const spans = LEAGUES.map((league) => seasonSpan(league, year));
+  const spans = spanningLeagues().map((league) => seasonSpan(league, year));
   const start = new Date(Math.min(...spans.map((s) => s.start.getTime())));
   const end = new Date(Math.max(...spans.map((s) => s.end.getTime())));
   return { start, end: end < start ? start : end };
@@ -670,7 +699,7 @@ export function unionSeasonSpan(year: number): { start: Date; end: Date } {
  * the app's season runs until the last league's does.
  */
 export function seasonYearContaining(day: Date): number {
-  const latest = Math.max(...LEAGUES.map((l) => SPECS[l].seasonRollsOverAfter));
+  const latest = Math.max(...spanningLeagues().map((l) => SPECS[l].seasonRollsOverAfter));
   const month = day.getMonth() + 1;
   return month <= latest ? day.getFullYear() - 1 : day.getFullYear();
 }

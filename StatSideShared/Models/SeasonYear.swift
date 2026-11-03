@@ -9,10 +9,17 @@ nonisolated enum SeasonYear {
     /// College football ends in January (bowls and the CFP), so January is
     /// last season. The NFL runs through the February Super Bowl, so
     /// February is too.
+    ///
+    /// A calendar-year league (`League.seasonSpansNewYear` false — MLB, the
+    /// WNBA) is in its new season from its opening month; before that, the
+    /// winter still shows the season it just finished.
     static func year(for league: League = .collegeFootball,
                      now: Date = .now, calendar: Calendar = .current) -> Int {
         let year = calendar.component(.year, from: now)
         let month = calendar.component(.month, from: now)
+        guard league.seasonSpansNewYear else {
+            return month < league.seasonOpensIn ? year - 1 : year
+        }
         return month <= league.seasonRollsOverAfter ? year - 1 : year
     }
 }
@@ -43,8 +50,10 @@ nonisolated enum SeasonSpan {
             ?? Date(timeIntervalSince1970: 0)
         // The first of the month after the rollover month, minus a day —
         // February's length is never spelled out, so leap years are free.
+        // A calendar-year league closes in the year it opened.
         let afterEnd = calendar.date(from: DateComponents(
-            year: year + 1, month: league.seasonRollsOverAfter + 1, day: 1)) ?? start
+            year: league.seasonSpansNewYear ? year + 1 : year,
+            month: league.seasonRollsOverAfter + 1, day: 1)) ?? start
         let end = calendar.date(byAdding: .day, value: -1, to: afterEnd) ?? start
         return start...max(start, end)
     }
@@ -79,10 +88,18 @@ nonisolated enum SeasonSpan {
     }
 
     /// Every covered league's season at once — the day strip's bounds. The
-    /// NFL's February closes the app's season; college football's August
-    /// opens it.
+    /// NFL's July opens the app's season; the NBA's and NHL's June closes
+    /// it.
+    ///
+    /// Over the leagues whose seasons cross New Year only (2026-11-03). The
+    /// app's season is July to June, and a calendar-year league's games
+    /// (MLB's February to November) simply fall on days inside one app
+    /// season or the next; counted here, MLB's November would stretch the
+    /// strip and its rollover would drag every September back a year.
+    static var spanningLeagues: [League] { League.allCases.filter(\.seasonSpansNewYear) }
+
     static func days(year: Int, calendar: Calendar = .current) -> ClosedRange<Date> {
-        let spans = League.allCases.map { days(of: $0, year: year, calendar: calendar) }
+        let spans = spanningLeagues.map { days(of: $0, year: year, calendar: calendar) }
         let start = spans.map(\.lowerBound).min() ?? Date(timeIntervalSince1970: 0)
         let end = spans.map(\.upperBound).max() ?? start
         return start...max(start, end)
@@ -95,7 +112,7 @@ nonisolated enum SeasonSpan {
         // A day in the rollover months belongs to the season that opened
         // the previous August. `League.allCases.map` keeps the boundary in
         // one place: the app's season runs until the last league's does.
-        let latest = League.allCases.map(\.seasonRollsOverAfter).max() ?? 1
+        let latest = spanningLeagues.map(\.seasonRollsOverAfter).max() ?? 1
         return month <= latest ? year - 1 : year
     }
 }
