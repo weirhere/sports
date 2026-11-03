@@ -15,8 +15,8 @@ import Foundation
 /// `DataProvider`). Never touches the network.
 nonisolated final class FixtureScoresClient: ScoresProviding {
     /// The scripted slate is a college-football Saturday; the initialiser
-    /// takes a league so `DataProvider` can hand one over uniformly, but
-    /// every fixture team is stamped college football.
+    /// takes a league so `DataProvider` can hand one over uniformly, and
+    /// every other league's client answers with an empty day.
     nonisolated let league: League
 
     init(league: League = .collegeFootball) {
@@ -78,6 +78,14 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
 
     func scoreboard(weekValue: Int?, seasonType: Int?, year: Int?,
                     divisions: Set<Conference.Division>) async throws -> Scoreboard {
+        // Every league's store asks with `[.fbs]` by default, so without
+        // this gate each league served the football slate as its own: the
+        // same game under "SEC - NCAAM" and "SEC - NCAAW" as well as its
+        // football sections, an off-screen duplicate for a test's
+        // firstMatch, and one tick (and one chance at the scripted
+        // failure) per league per poll. Other leagues get a quiet day and
+        // leave the shared timeline alone.
+        guard league == .collegeFootball else { return Self.emptyBoard }
         let tick = await SharedState.shared.nextTick()
         // Staggered latency so responses land mid-render and overlap the
         // detail poll's, the way ESPN's real jitter interleaves them.
@@ -98,6 +106,9 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
         return Scoreboard(seasonYear: 2026, seasonType: 2, currentWeekNumber: 1,
                           weeks: Self.weeks, games: games)
     }
+
+    private static let emptyBoard = Scoreboard(seasonYear: 2026, seasonType: 2,
+                                               currentWeekNumber: nil, weeks: [], games: [])
 
     /// The scripted slate is "now"-relative, so every day window resolves
     /// to the same tick as the week form. The suite drives a live game,
@@ -126,6 +137,7 @@ nonisolated final class FixtureScoresClient: ScoresProviding {
     /// and a stub returning nothing hid that whole screen from the
     /// fixture.
     func conferenceGames(conferenceId: Int, year: Int?) async throws -> [Game] {
+        guard league == .collegeFootball else { return [] }
         let tick = await SharedState.shared.currentTick()
         return Self.games(at: max(tick, 1)).filter {
             $0.home.team.conferenceId == conferenceId
