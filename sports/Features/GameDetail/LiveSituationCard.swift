@@ -45,6 +45,16 @@ struct LiveSituationCard: View {
         )
     }
 
+    /// Baseball's card (2026-11-03): the diamond, its runners, and the count,
+    /// keyed on the latest play so a new batter redraws it.
+    init(summary: GameSummary, diamond: BaseballDiamond) {
+        self.init(
+            content: GamecastContent.baseball(diamond: diamond, summary: summary,
+                                              names: summary.athleteNames),
+            surface: AnyView(DiamondSurface(diamond: diamond, away: summary.away, home: summary.home)
+                .id(diamond.playId)))
+    }
+
     /// Basketball's and hockey's card: this period's shots on the court or
     /// rink, keyed by period so the surface clears at each break (D9).
     init(summary: GameSummary, content: GamecastContent, map: ShotMap) {

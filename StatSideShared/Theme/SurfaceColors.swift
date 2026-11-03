@@ -5,9 +5,11 @@ import UIKit
 /// (2026-09-27, widened the same day from "the field" to "the surface").
 /// Each surface renders as the place it pictures: turf with the teams'
 /// colors in their end zones and the broadcast's yellow line to gain;
-/// a maple court; white ice with its red lines. Team colors mark whose
-/// shot is whose. Nothing outside `DriveField`, `CourtSurface`,
-/// `RinkSurface`, `ShotMarksLayer` and the Roster tab's `FormationField`
+/// a maple court; white ice with its red lines; and since 2026-11-03 a
+/// diamond, the turf's grass with infield dirt cut into it. Team colors
+/// mark whose shot is whose, and who's on base. Nothing outside
+/// `DriveField`, `CourtSurface`, `RinkSurface`, `DiamondSurface`,
+/// `ShotMarksLayer` and the Roster tab's `FormationField`
 /// and `FormationCard` (whose title and chips sit on the same paint) may
 /// use these; the rest of the card, and the app, stays monochrome.
 ///
