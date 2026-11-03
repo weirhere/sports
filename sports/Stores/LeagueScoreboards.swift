@@ -596,8 +596,42 @@ final class LeagueScoreboards {
                                       spansLeagues: leagues.count > 1,
                                       isFollowed: true))
         }
-        return result + hoisted + stack.filter { !hoistedIds.contains($0.id) }
+        return result + hoisted + Self.headlinersFirst(stack.filter { !hoistedIds.contains($0.id) })
     }
+
+    /// The browse below your own sections leads with what most people came
+    /// for (Andy, 2026-11-03): every college league's Top 25, then the big
+    /// conferences league by league — SEC, Big Ten, Big 12, ACC, and the
+    /// Big East where basketball counts it one of the five — then
+    /// everything else in its resting order. Partly reverses 2026-09-26's
+    /// strict A–Z, which filed a Tuesday's SEC hoops under ASUN, Atlantic
+    /// 10 and Big Sky. A section's place moves; its contents don't.
+    private static func headlinersFirst(_ stack: [GameSection]) -> [GameSection] {
+        var polls: [GameSection] = []
+        var powers: [League: [(rank: Int, section: GameSection)]] = [:]
+        var rest: [GameSection] = []
+        for section in stack {
+            switch section.table {
+            case .poll?:
+                polls.append(section)
+            case .conference(let id)? where id.league.isCollege
+                && Conference.tier(for: id.id, in: id.league) == .power4:
+                let rank = powerOrder.firstIndex(of: Conference.name(for: id.id, in: id.league))
+                    ?? powerOrder.count
+                powers[id.league, default: []].append((rank, section))
+            default:
+                rest.append(section)
+            }
+        }
+        let bigs = League.displayOrder.flatMap { league in
+            (powers[league] ?? []).sorted { $0.rank < $1.rank }.map(\.section)
+        }
+        return polls + bigs + rest
+    }
+
+    /// The big conferences' order, by name so one list serves football's
+    /// ids and basketball's. Andy's pick, 2026-11-03.
+    private static let powerOrder = ["SEC", "Big Ten", "Big 12", "ACC", "Big East"]
 
     /// A pro league's slate at the rung you chose (Andy, 2026-10-03): the
     /// league whole, or each conference with a game, or each division,

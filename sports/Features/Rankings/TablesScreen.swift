@@ -635,7 +635,11 @@ struct TablesScreen: View {
                         // ends, so the chevron sits over the controls
                         // below it rather than past their edge.
                         .padding(.trailing, Spacing.sm)
-                        .frame(minWidth: 32, minHeight: 44)
+                        // No 44pt height of its own: the whole header is
+                        // the button, and a 44pt chevron inside 12pt of
+                        // padding stood these cards 12pt taller than the
+                        // Follow cards beside them (Andy, 2026-11-03).
+                        .frame(minWidth: 32)
                 }
                 .contentShape(Rectangle())
             }
@@ -645,7 +649,9 @@ struct TablesScreen: View {
             .accessibilityValue(isExpanded ? "expanded" : "collapsed")
             .accessibilityAddTraits(.isHeader)
             .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
+            // The league card's 7pt, so a chevron card and a Follow card
+            // come out one height.
+            .padding(.vertical, 7)
             // minHeight, never a fixed height: at accessibility text
             // sizes the title outgrows the card and must be allowed to.
             .frame(minHeight: Self.headerHeight)

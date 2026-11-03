@@ -198,9 +198,11 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
             #expect(board.games.count == 10, "\(name)")
             #expect(board.games.allSatisfy { $0.home.team.league == league })
             // The scoreboard ships each D-I team's conference inline.
-            #expect(board.games.contains { $0.home.team.conference != nil })
+            let carriesConference = board.games.contains { $0.home.team.conference != nil }
+            #expect(carriesConference)
             // And ranks, for the Top 25 section.
-            #expect(board.games.contains(where: \.involvesRankedTeam))
+            let carriesRanks = board.games.contains(where: \.involvesRankedTeam)
+            #expect(carriesRanks)
         }
     }
 
