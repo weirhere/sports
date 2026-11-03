@@ -59,15 +59,16 @@ nonisolated struct Formation: Sendable, Hashable {
                      unit: GameRoster.Unit? = nil) -> Formation {
         switch league {
         case .collegeFootball, .nfl: football(starters, unit: unit ?? .offense)
-        case .nba: basketball(starters)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: basketball(starters)
         case .nhl: hockey(starters)
+        case .mlb: baseball(starters)
         }
     }
 
     /// Football's platoon for a position, nil for the other leagues and
     /// for a position the table doesn't know.
     static func unit(for position: String?, league: League) -> GameRoster.Unit? {
-        guard league == .collegeFootball || league == .nfl, let position else { return nil }
+        guard league.isFootball, let position else { return nil }
         let code = position.uppercased()
         if FootballPositions.offense.contains(code) { return .offense }
         if FootballPositions.defense.contains(code) { return .defense }
@@ -157,6 +158,30 @@ nonisolated struct Formation: Sendable, Hashable {
         let backcourt = arrange(guards, left: ["PG"], middle: [], right: ["SG"], flank: ["G"])
         let front = arrange(frontcourt, left: ["SF"], middle: ["C", "FC"], right: ["PF"], flank: ["F", "GF"])
         return Formation(rows: [.line(backcourt), .line(front)], unplaced: unplaced)
+    }
+
+    // MARK: - Baseball
+
+    /// The nine fielders on a diamond, from the outfield in: the outfield
+    /// nearest the midline (the two diamonds meet at their fences), the
+    /// infield, then the battery deepest — hockey's goalie, in baseball.
+    /// A designated hitter has no position in the field and is listed
+    /// under it with anything else the layout can't name.
+    private static func baseball(_ starters: [GameRoster.Person]) -> Formation {
+        var outfield: [GameRoster.Person] = [], infield: [GameRoster.Person] = []
+        var battery: [GameRoster.Person] = [], unplaced: [GameRoster.Person] = []
+        for person in starters {
+            switch person.position?.uppercased() ?? "" {
+            case "LF", "CF", "RF", "OF": outfield.append(person)
+            case "3B", "SS", "2B", "1B", "IF": infield.append(person)
+            case "P", "SP", "RP", "C": battery.append(person)
+            default: unplaced.append(person)
+            }
+        }
+        let outer = arrange(outfield, left: ["LF"], middle: ["CF"], right: ["RF"], flank: ["OF"])
+        let inner = arrange(infield, left: ["3B", "SS"], middle: [], right: ["2B", "1B"], flank: ["IF"])
+        let pair = arrange(battery, left: [], middle: ["P", "SP", "RP", "C"], right: [], flank: [])
+        return Formation(rows: [.line(outer), .line(inner), .line(pair)], unplaced: unplaced)
     }
 
     // MARK: - Hockey

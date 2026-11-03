@@ -38,6 +38,7 @@ import {
   LEAGUES,
   LEAGUE_DISPLAY_ORDER,
   displayName,
+  hasPoll,
   leagueLogoUrl,
   type League,
 } from "@/lib/leagues";
@@ -46,7 +47,7 @@ import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { useFavoritesContext } from "@/components/providers/favorites-provider";
 import { useUIState } from "@/lib/hooks/use-ui-state";
 import { conferenceToken } from "@/lib/refs";
-import { conferencePath } from "@/lib/routes";
+import { conferencePath, pollPath } from "@/lib/routes";
 import {
   orderedTables,
   tableName,
@@ -61,8 +62,9 @@ import { cn } from "@/lib/utils";
 import { FollowCapsuleButton } from "@/components/follow-capsule";
 
 interface LeaguesHubProps {
-  /** The polls, filtered and in picker order (AP first when present). */
-  polls: Poll[];
+  /** Each polling league's polls, filtered and in picker order (AP first
+   *  when present) — college football's and both college basketballs'. */
+  polls: Partial<Record<League, Poll[]>>;
   /** Each league's tables — divisional for the pro leagues, folded back up
    * into conferences here. */
   standings: Record<League, ConferenceStandingsGroup[]>;
@@ -180,9 +182,9 @@ export function LeaguesHub({
     const cache = {} as Record<League, HubRow[]>;
     for (const league of LEAGUES) {
       const rows: HubRow[] = [];
-      // College football is the only league that polls.
-      if (league === "cfb" && polls.length > 0) {
-        rows.push({ kind: "poll", league, polls });
+      const leaguePolls = polls[league] ?? [];
+      if (hasPoll(league) && leaguePolls.length > 0) {
+        rows.push({ kind: "poll", league, polls: leaguePolls });
       }
       rows.push(
         ...tablesIn[league].map(
@@ -226,7 +228,7 @@ export function LeaguesHub({
     () =>
       followed.filter((table) =>
         table.kind === "poll"
-          ? polls.length > 0
+          ? (polls[table.league]?.length ?? 0) > 0
           : findTable(loadedTables, table.ref) !== undefined
       ),
     [followed, loadedTables, polls]
@@ -517,7 +519,7 @@ export function Top25Row({ league }: { league: League }) {
   return (
     <div className="flex min-h-12 items-center gap-3 pr-4">
       <Link
-        href="/rankings/poll"
+        href={pollPath({ league })}
         className="flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-[7px] transition-colors hover:bg-bg-header"
         aria-label="Top 25"
       >

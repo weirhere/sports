@@ -17,7 +17,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import type { Game, GameDrive, GameTeam, PlayItem } from "@/lib/types";
-import { periodText, allowsShootout } from "@/lib/period-label";
+import { periodText, allowsShootout, halfInningText } from "@/lib/period-label";
+import { halfInningSegments } from "@/lib/baseball-gamecast";
+import { isBaseball } from "@/lib/leagues";
 import { PlayRow } from "./play-row";
 import { cn } from "@/lib/utils";
 
@@ -151,6 +153,31 @@ export function PeriodPlayList({
   const shown = scoringOnly
     ? plays.filter((play) => play.isScoringPlay)
     : plays;
+
+  // Baseball (2026-11-03): one row per at-bat result, under half-inning
+  // headings — ESPN's feed is pitch by pitch, ~516 plays a game.
+  if (isBaseball(game.league)) {
+    const segments = halfInningSegments(shown);
+    return (
+      <section className="card-surface pb-1">
+        {segments.map((segment, index) => (
+          <div key={`${segment.period ?? ""}-${segment.half ?? ""}`}>
+            {index > 0 && <div className="ml-4 border-t border-divider" />}
+            <PeriodRow
+              title={
+                segment.half
+                  ? halfInningText(segment.period, segment.half)
+                  : periodText(segment.period, game.league)
+              }
+              plays={segment.plays}
+              game={game}
+              defaultExpanded={index === 0}
+            />
+          </div>
+        ))}
+      </section>
+    );
+  }
 
   // Period order, newest first; a play with no period of its own trails.
   const byPeriod = new Map<number, PlayItem[]>();

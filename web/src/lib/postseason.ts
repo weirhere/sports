@@ -6,7 +6,7 @@
 // so the shape a bracket takes is testable without a component in sight.
 
 import type { Game, Team } from "@/lib/types";
-import type { League } from "@/lib/leagues";
+import { playsSeries, type League } from "@/lib/leagues";
 
 /** ESPN's `season.type` for the postseason. */
 export const POSTSEASON_SEASON_TYPE = 3;
@@ -14,6 +14,12 @@ export const POSTSEASON_SEASON_TYPE = 3;
 export interface PostseasonRound {
   name: string;
   games: Game[];
+  /**
+   * The real game each series card opens, by card id — the series' live
+   * game, its next one, or the one that decided it. Absent for a league of
+   * single games, whose cards are games already.
+   */
+  opens?: Record<string, Game>;
 }
 
 function kickoff(game: Game): number {
@@ -48,12 +54,10 @@ export function postseasonGames(games: Game[]): Game[] {
  * 46 games in week 1, bowls and playoff alike — so the round lives in
  * ESPN's printed headline and nowhere else.
  *
- * The NBA and NHL name nothing: their playoffs are best-of-seven *series*,
- * and this bracket models single elimination — `feeders` reads advancement
- * off "a completed game's winner turns up in a later game", which is true
- * of every game of a series against the same opponent. Naming no round
- * means `postseasonRounds` produces none and the tab never appears, which
- * is the deferral made explicit rather than accidental.
+ * The series leagues (the NBA, NHL, MLB and WNBA) name their rounds off
+ * the headline too, and `postseasonRounds` draws each series as one card
+ * (iOS, 2026-11-03), so `feeders` reads a series winner the way it reads a
+ * game winner.
  */
 function roundName(game: Game, league: League): string | undefined {
   switch (league) {
@@ -63,8 +67,36 @@ function roundName(game: Game, league: League): string | undefined {
       return collegeRoundName(game.headline);
     case "nba":
     case "nhl":
-      return undefined;
+    case "mlb":
+    case "wnba":
+      return seriesRoundName(game.headline, league);
+    case "mcbb":
+    case "wcbb":
+      return basketballRoundName(game.headline);
   }
+}
+
+/**
+ * The NCAA tournament's rounds (iOS `Postseason.basketballName`, 2026-11-02),
+ * off headlines like "NCAA Men's Basketball Championship - South Region -
+ * Sweet 16". Single elimination, so the bracket's results-only feeder rule
+ * holds. The NIT, Women's NIT, WBIT and Crown share the postseason season
+ * type and name nothing, like a bowl.
+ */
+export function basketballRoundName(headline: string | undefined): string | undefined {
+  if (!headline) return undefined;
+  const text = headline.toLowerCase();
+  if (!text.startsWith("ncaa ") || !text.includes("basketball championship")) {
+    return undefined;
+  }
+  if (text.includes("national championship")) return "National Championship";
+  if (text.includes("final four")) return "Final Four";
+  if (text.includes("elite 8") || text.includes("elite eight")) return "Elite Eight";
+  if (text.includes("sweet 16") || text.includes("sweet sixteen")) return "Sweet 16";
+  if (text.includes("first four")) return "First Four";
+  if (text.includes("2nd round") || text.includes("second round")) return "Second Round";
+  if (text.includes("1st round") || text.includes("first round")) return "First Round";
+  return "NCAA Tournament";
 }
 
 function nflRoundName(week: number | undefined): string {
@@ -156,12 +188,212 @@ export function postseasonRounds(
     if (bucket) bucket.push(game);
     else grouped.set(name, [game]);
   }
-  return [...grouped.entries()]
-    .map(([name, roundGames]) => ({
-      name,
-      games: [...roundGames].sort((a, b) => kickoff(a) - kickoff(b)),
-    }))
+  const rounds = [...grouped.entries()]
+    .map(([name, roundGames]) => {
+      const sorted = [...roundGames].sort((a, b) => kickoff(a) - kickoff(b));
+      return playsSeries(league) ? seriesRound(name, sorted) : { name, games: sorted };
+    })
     .sort((a, b) => roundKickoff(a) - roundKickoff(b));
+  return playsSeries(league) ? settledRounds(rounds) : rounds;
+}
+
+/**
+ * A series league's round, off headlines like "ALDS - Game 3", "West 1st
+ * Round - Game 2", "WNBA Finals - Game 7" (iOS `Postseason.seriesName`,
+ * probed 2026-11-03). A bracket's two halves are one round — the ALDS and
+ * the NLDS are the Division Series — because the bracket pairs a round
+ * against the next, and the final is fed from both. The NBA's play-in never
+ * gets here: ESPN files it as its own season type (5).
+ */
+export function seriesRoundName(
+  headline: string | undefined,
+  league: League
+): string | undefined {
+  if (!headline) return undefined;
+  const text = (headline.split(" - Game")[0] ?? headline).toLowerCase();
+  switch (league) {
+    case "mlb":
+      if (text.includes("world series")) return "World Series";
+      if (text.endsWith("cs") || text.includes("championship series")) return "Championship Series";
+      if (text.endsWith("ds") || text.includes("division series")) return "Division Series";
+      if (text.endsWith("wc") || text.includes("wild card")) return "Wild Card";
+      break;
+    case "nba":
+      if (text.startsWith("nba finals")) return "NBA Finals";
+      // Before "finals", which "semifinals" contains.
+      if (text.includes("semifinals")) return "Conference Semifinals";
+      if (text.includes("finals")) return "Conference Finals";
+      if (text.includes("1st round") || text.includes("first round")) return "First Round";
+      break;
+    case "nhl":
+      if (text.includes("stanley cup")) return "Stanley Cup Final";
+      if (text.includes("final")) return "Conference Finals";
+      if (text.includes("2nd round") || text.includes("second round")) return "Second Round";
+      if (text.includes("1st round") || text.includes("first round")) return "First Round";
+      break;
+    case "wnba":
+      if (text.includes("semifinals")) return "Semifinals";
+      if (text.includes("finals")) return "Finals";
+      if (text.includes("1st round") || text.includes("first round")) return "First Round";
+      break;
+    default:
+      return undefined;
+  }
+  // A playoff game in a round we don't know yet still shows.
+  return "Playoffs";
+}
+
+function isStarted(game: Game): boolean {
+  return game.status !== "scheduled" && game.status !== "postponed" && game.status !== "cancelled";
+}
+
+function isLive(game: Game): boolean {
+  return game.status === "in_progress" || game.status === "halftime" ||
+    game.status === "end_period" || game.status === "delayed";
+}
+
+/**
+ * One card per series: the round's games grouped by their two teams, each
+ * group drawn as a single game whose scores are series wins and whose winner
+ * is the series winner once decided — so `bracketPairing` and `feeders` wire
+ * a series bracket with no rule of their own.
+ */
+export function seriesRound(name: string, games: Game[]): PostseasonRound {
+  const grouped = new Map<string, Game[]>();
+  for (const game of games) {
+    const key = [game.homeTeam.team.id, game.awayTeam.team.id].sort().join("|");
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(game);
+    else grouped.set(key, [game]);
+  }
+  const opens: Record<string, Game> = {};
+  const cards: Game[] = [];
+  for (const series of grouped.values()) {
+    const card = seriesCard(series, name);
+    if (!card) continue;
+    const open = seriesOpening(series);
+    if (open) opens[card.id] = open;
+    cards.push(card);
+  }
+  cards.sort((a, b) => kickoff(a) - kickoff(b));
+  return { name, games: cards, opens };
+}
+
+/**
+ * One series as a card. Game 1's sides keep their places — the better seed
+ * hosts it — and the record is the latest played game's, which ESPN stamps
+ * as it stood after that game.
+ */
+export function seriesCard(games: Game[], round: string): Game | undefined {
+  const sorted = [...games].sort((a, b) => kickoff(a) - kickoff(b));
+  const first = sorted[0];
+  if (!first) return undefined;
+  const started = sorted.filter(isStarted);
+  const record =
+    [...started].reverse().find((game) => game.series)?.series ??
+    [...sorted].reverse().find((game) => game.series)?.series;
+  const wins = record?.wins ?? {};
+  const decided = record?.completed === true;
+  const leader = Object.entries(wins).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const live = sorted.find(isLive);
+
+  const side = (team: Game["homeTeam"]): Game["homeTeam"] => ({
+    team: team.team,
+    score: started.length === 0 ? null : (wins[team.team.id] ?? 0),
+    ranking: team.ranking,
+    record: team.record,
+    isWinner: decided ? team.team.id === leader : undefined,
+  });
+
+  return {
+    ...first,
+    id: `series-${first.id}`,
+    week: undefined,
+    headline: round,
+    series: record ?? { completed: false, wins: {} },
+    status: decided ? "complete" : (live?.status ?? "scheduled"),
+    clock: decided ? undefined : live?.clock,
+    quarter: decided ? undefined : live?.quarter,
+    livePhase: decided ? undefined : live?.livePhase,
+    statusDetail: decided ? record?.summary : (live?.statusDetail ?? record?.summary),
+    homeTeam: side(first.homeTeam),
+    awayTeam: side(first.awayTeam),
+    broadcast: undefined,
+    possession: undefined,
+  };
+}
+
+/**
+ * The game a series card opens: the one being played, else the next one
+ * scheduled, else the last one played.
+ */
+export function seriesOpening(games: Game[]): Game | undefined {
+  const sorted = [...games].sort((a, b) => kickoff(a) - kickoff(b));
+  return (
+    sorted.find(isLive) ??
+    sorted.find((game) => game.status === "scheduled") ??
+    sorted[sorted.length - 1]
+  );
+}
+
+/**
+ * A series whose deciding game the slate is missing, settled by who played
+ * on: exactly one of its teams in a later round means that team won it, with
+ * the wins it takes to clinch (iOS `Postseason.settled`, seen live on the
+ * NHL's 2026 first round). Results-only, like `feeders`.
+ */
+export function settledRounds(rounds: PostseasonRound[]): PostseasonRound[] {
+  return rounds.map((round, index) => {
+    const later = new Set(
+      rounds
+        .slice(index + 1)
+        .flatMap((next) => next.games)
+        .flatMap((game) => [game.homeTeam.team.id, game.awayTeam.team.id])
+    );
+    const games = round.games.map((card) => {
+      if (winnerTeamId(card) !== undefined || !card.series) return card;
+      const through = [card.homeTeam.team.id, card.awayTeam.team.id].filter((id) =>
+        later.has(id)
+      );
+      if (through.length !== 1) return card;
+      return settleSeries(card, through[0]);
+    });
+    return { ...round, games };
+  });
+}
+
+function settleSeries(card: Game, winner: string): Game {
+  const series = card.series ?? { completed: false, wins: {} };
+  const clinch = series.length !== undefined ? Math.floor(series.length / 2) + 1 : 0;
+  const side = (team: Game["homeTeam"]): Game["homeTeam"] => {
+    const won = team.team.id === winner;
+    return {
+      ...team,
+      score: won ? Math.max(clinch, team.score ?? 0) : team.score,
+      isWinner: won,
+    };
+  };
+  const homeTeam = side(card.homeTeam);
+  const awayTeam = side(card.awayTeam);
+  const [top, bottom] = homeTeam.isWinner ? [homeTeam, awayTeam] : [awayTeam, homeTeam];
+  const summary = `${top.team.abbreviation || top.team.school} wins series ${top.score ?? 0}-${bottom.score ?? 0}`;
+  return {
+    ...card,
+    status: "complete",
+    statusDetail: summary,
+    series: {
+      ...series,
+      summary,
+      completed: true,
+      wins: {
+        ...series.wins,
+        [homeTeam.team.id]: homeTeam.score ?? 0,
+        [awayTeam.team.id]: awayTeam.score ?? 0,
+      },
+    },
+    homeTeam,
+    awayTeam,
+  };
 }
 
 /**

@@ -31,7 +31,8 @@ struct PollScreen: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, news, playerStats, teamStats, postseason
+        // Declared in the row's order: the raw value is the swipe's direction.
+        case standings, postseason, games, news, playerStats, teamStats
 
         var title: String {
             switch self {
@@ -40,7 +41,7 @@ struct PollScreen: View {
             case .playerStats: "Player stats"
             case .teamStats: "Team stats"
             case .news: "News"
-            case .postseason: "Postseason"
+            case .postseason: "Playoffs"
             }
         }
     }
@@ -56,6 +57,7 @@ struct PollScreen: View {
     init(polls: [Poll] = [], league: League = .collegeFootball, opensNews: Bool = false) {
         self.polls = polls
         self.league = league
+        _leagueStats = State(initialValue: LeagueStatsModel(league: league))
         // A News page's "See more" lands on News (2026-09-27).
         _tab = State(initialValue: opensNews ? .news : .standings)
     }
@@ -116,11 +118,18 @@ struct PollScreen: View {
         let week: PollWeek
     }
 
-    /// The ranked teams' season slate, per year — one request each, kept
-    /// for the visit.
+    /// The season slate, per year, kept for the visit: the whole division
+    /// where that's a reasonable download, the tournament alone where it
+    /// isn't (see `teamGames`).
     @State private var gamesByYear: [Int: [Game]] = [:]
     @State private var gamesLoadingYears: Set<Int> = []
     @State private var gamesFailedYears: Set<Int> = []
+    /// Where the season is too big to load whole (`loadsWholeSeasonSlate`,
+    /// college basketball), `gamesByYear` holds only the tournament, and
+    /// each ranked team's own season lands here, keyed "year:teamId" —
+    /// fetched as the polls name them, kept for the visit.
+    @State private var teamGames: [String: [Game]] = [:]
+    @State private var teamGamesLoading: Set<String> = []
 
     /// Optional like ConferencePage's: without the scoreboard in the
     /// environment the slate simply stays the snapshot it was fetched as.
@@ -181,9 +190,9 @@ struct PollScreen: View {
                     .opacity(showsInlineTitle ? 1 : 0)
                     .accessibilityHidden(!showsInlineTitle)
             }
-            // The season chip leads each pane's control row instead
-            // (2026-09-27) — see `seasonChip`.
+            // The season beside Follow (Andy, 2026-11-03) — see `seasonChip`.
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if tab != .news { seasonChip }
                 PollFollowPill(league: league)
             }
         }
@@ -192,6 +201,46 @@ struct PollScreen: View {
             async let weeks: Void = loadWeeks(year: year)
             async let games: Void = loadGames(year: year)
             _ = await (poll, weeks, games)
+        }
+        // Re-runs as the polls name new teams: a season switch, a picked
+        // week, the other poll.
+        .task(id: RankedTeams(year: year, ids: rankedTeamIds)) {
+            await loadTeamGames(year: year, teamIds: rankedTeamIds)
+        }
+    }
+
+    private struct RankedTeams: Equatable {
+        let year: Int
+        let ids: [String]
+    }
+
+    /// Every team the shown week's polls rank, where the slate is built
+    /// from them; empty where the page loads the whole season.
+    private var rankedTeamIds: [String] {
+        guard !league.loadsWholeSeasonSlate else { return [] }
+        return Array(Set(seasonPolls.flatMap { $0.ranks.map(\.team.id) })).sorted()
+    }
+
+    private func loadTeamGames(year value: Int, teamIds: [String]) async {
+        let missing = teamIds.filter {
+            teamGames["\(value):\($0)"] == nil && !teamGamesLoading.contains("\(value):\($0)")
+        }
+        guard !missing.isEmpty else { return }
+        teamGamesLoading.formUnion(missing.map { "\(value):\($0)" })
+        let client = DataProvider.makeClient(league: league)
+        let gate = RequestGate(limit: ESPNClient.seasonRequestLimit)
+        await withTaskGroup(of: (String, [Game]?).self) { group in
+            for id in missing {
+                group.addTask {
+                    (id, try? await gate.run { try await client.seasonGames(teamId: id, year: value) })
+                }
+            }
+            for await (id, games) in group {
+                let key = "\(value):\(id)"
+                teamGamesLoading.remove(key)
+                // A miss isn't cached: the next poll change asks again.
+                if let games { teamGames[key] = games }
+            }
         }
     }
 
@@ -325,19 +374,21 @@ struct PollScreen: View {
         }
     }
 
-    /// The season's whole FBS slate in one request — the ranked teams'
-    /// games are a filter over it, not 25 schedule fetches. `groups=80`
-    /// with `dates={year}` returns the full season (verified live
-    /// 2026-09-05: 800 events for 2025), which is the same request
-    /// ConferencePage makes for one conference.
+    /// College football's whole FBS slate — ~950 games, so the ranked
+    /// teams' games are a filter over it, not 25 schedule fetches. College
+    /// basketball's Division I is six times that and ~300 MB, so there this
+    /// fetches only the tournament and `loadTeamGames` brings the ranked
+    /// teams' seasons (2026-11-03).
     private func loadGames(year value: Int, force: Bool = false) async {
         guard gamesByYear[value] == nil || force else { return }
         guard !gamesLoadingYears.contains(value) else { return }
         gamesLoadingYears.insert(value)
         defer { gamesLoadingYears.remove(value) }
         do {
-            gamesByYear[value] = try await DataProvider.makeClient(league: league)
-                .seasonGames(year: value)
+            let client = DataProvider.makeClient(league: league)
+            gamesByYear[value] = league.loadsWholeSeasonSlate
+                ? try await client.seasonGames(year: value)
+                : try await client.tournamentGames(year: value)
             gamesFailedYears.remove(value)
         } catch {
             gamesFailedYears.insert(value)
@@ -370,9 +421,16 @@ struct PollScreen: View {
                     .foregroundStyle(headerPaint?.ink ?? .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                // No subtitle (Andy, 2026-09-27): ESPN's headline ("2025
-                // AP Poll: Final Rankings") said which season, poll and
-                // week, and the chips over the table now say all three.
+                // Which sport (Andy, 2026-11-03): three leagues have a Top
+                // 25 and nothing else on the page says whose. Season, poll
+                // and week stay the chips' (2026-09-27, which dropped ESPN's
+                // headline for saying them).
+                if let sport = league.pollSportName {
+                    Text(sport)
+                        .font(.chipEmphasis)
+                        .foregroundStyle(headerPaint?.secondaryInk ?? .textSecondary)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -401,9 +459,9 @@ struct PollScreen: View {
                 // pinned header leaves under the bar.
                 .background(headerGround.padding(.top, -Spacing.sm))
             VStack(spacing: 0) {
-                // No control on News: stories are today's, whatever season
-                // the other tabs are showing.
-                if tab != .news {
+                // Only a tab with controls of its own gets a row; the
+                // season is in the header.
+                if hasPaneControls(for: tab) {
                     controlRow(for: tab)
                         .padding(.horizontal, Spacing.sm)
                         .padding(.top, Spacing.sm)
@@ -416,11 +474,20 @@ struct PollScreen: View {
         }
     }
 
-    /// The season leads every tab's row; after it, what shapes this pane
-    /// alone — the week and poll on Standings, the slate toggles on Games,
-    /// nothing on Postseason, whose round chips live in the pane.
+    /// What shapes this pane alone — the week and poll on Standings, the
+    /// slate toggles on Games, nothing on Playoffs, whose round chips live
+    /// in the pane.
+    private func hasPaneControls(for tab: Tab) -> Bool {
+        switch tab {
+        case .standings, .playerStats, .teamStats:
+            (shownWeek != nil && seasonWeeks.count > 1) || seasonPolls.count > 1
+        case .games: true
+        case .news, .postseason: false
+        }
+    }
+
     private func controlRow(for tab: Tab) -> some View {
-        SeasonControlRow(season: seasonChip) {
+        HStack(spacing: Spacing.sm) {
             switch tab {
             // The stats tabs rank the poll's teams, so they carry the
             // same week and poll chips: they decide who's on them.
@@ -442,6 +509,7 @@ struct PollScreen: View {
             case .news, .postseason:
                 EmptyView()
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -552,13 +620,12 @@ struct PollScreen: View {
             .padding(.bottom, Spacing.sm)
     }
 
-    /// The season picker leads every pane's control row, above the cards
-    /// it scopes (Andy, 2026-09-27, superseding the 2026-09-05 move onto
-    /// the toolbar row), with the pane's own controls after it: the poll
-    /// picker on Rankings, the slate toggles on Games.
+    /// The season picker rides the header beside Follow (Andy,
+    /// 2026-11-03, superseding 2026-09-27's move into each pane's row):
+    /// it scopes the whole page, so it belongs to the page.
     private var seasonChip: SeasonMenuChip {
         SeasonMenuChip(current: year, seasons: availableSeasons, league: league,
-                       onSelect: { select(year: $0) })
+                       style: .bar, onSelect: { select(year: $0) })
     }
 
     @ViewBuilder
@@ -613,7 +680,17 @@ struct PollScreen: View {
     /// the score it had when the page opened and a pre-game row never
     /// turned live at all.
     private var slate: [Game]? {
-        guard let games = gamesByYear[year] else { return nil }
+        guard var games = gamesByYear[year] else { return nil }
+        if !league.loadsWholeSeasonSlate {
+            // The tournament, then each ranked team's season, once each:
+            // two ranked teams share every game they play each other.
+            var seen = Set(games.map(\.id))
+            for id in rankedTeamIds {
+                for game in teamGames["\(year):\(id)"] ?? [] where seen.insert(game.id).inserted {
+                    games.append(game)
+                }
+            }
+        }
         return Game.merging(games, withLive: scoreboards?.store(for: league).boardGames ?? [])
     }
 
@@ -659,11 +736,13 @@ struct PollScreen: View {
         // News after Games (Andy, 2026-09-27, E26), then the stats tabs
         // (2026-10-26), ESPN-gated like ConferencePage's so the
         // fixture-backed UI suites never reach the network.
-        var tabs: [Tab] = [.standings, .games, .news]
+        var tabs: [Tab] = [.standings]
+        // Second whenever the season has one (Andy, 2026-11-03).
+        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
+        tabs.append(contentsOf: [.games, .news])
         if DataProvider.makeClient(league: league).providesRoster {
             tabs.append(contentsOf: [.playerStats, .teamStats])
         }
-        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
         return tabs
     }
 
@@ -729,7 +808,7 @@ struct PollScreen: View {
                           actionTitle: "Show all games",
                           retry: { teamFilter = nil })
                 .cardSurface()
-        } else if gamesLoadingYears.contains(year) {
+        } else if gamesLoadingYears.contains(year) || !teamGamesLoading.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)

@@ -56,7 +56,10 @@ nonisolated extension League {
     /// The columns this league's standings tables carry, left to right.
     var standingsColumns: [StandingsColumn] {
         switch self {
-        case .collegeFootball:
+        // College basketball's tables are football's shape: a conference
+        // race, read as CONF then OVR (`vsconf` and `total`, both in the
+        // payload — probed 2026-11-02).
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball:
             [StandingsColumn(field: .inGroupRecord, caption: "CONF",
                              spoken: "in conference", width: 44),
              StandingsColumn(field: .overallRecord, caption: "OVR",
@@ -91,13 +94,30 @@ nonisolated extension League {
                              spoken: "point differential", width: 38),
              StandingsColumn(field: .streak, caption: "STRK",
                              spoken: "streak", width: 34)]
-        case .nba:
+        case .nba, .wnba:
             [StandingsColumn(field: .overallRecord, caption: "W-L",
                              spoken: "overall", width: 44),
              StandingsColumn(field: .winPercent, caption: "PCT",
                              spoken: "win percentage", width: 38),
              StandingsColumn(field: .gamesBehind, caption: "GB",
                              spoken: "games back", width: 32)]
+        // MLB's own table, in ESPN's order (2026-11-03): a 162-game race
+        // read on games behind, with run differential and the last ten
+        // beside it. Wider than a phone, like the NFL's, so it pins and
+        // scrolls. Every field is in the payload (`total`, `home`, `road`,
+        // `pointsfor`/`pointsagainst` are runs, `lasttengames`).
+        case .mlb:
+            [StandingsColumn(field: .wins, caption: "W", spoken: "wins", width: 28),
+             StandingsColumn(field: .losses, caption: "L", spoken: "losses", width: 28),
+             StandingsColumn(field: .winPercent, caption: "PCT", spoken: "win percentage", width: 42),
+             StandingsColumn(field: .gamesBehind, caption: "GB", spoken: "games back", width: 34),
+             StandingsColumn(field: .homeRecord, caption: "HOME", spoken: "at home", width: 46),
+             StandingsColumn(field: .awayRecord, caption: "AWAY", spoken: "away", width: 46),
+             StandingsColumn(field: .pointsFor, caption: "RS", spoken: "runs scored", width: 34),
+             StandingsColumn(field: .pointsAgainst, caption: "RA", spoken: "runs allowed", width: 34),
+             StandingsColumn(field: .pointDifferential, caption: "DIFF", spoken: "run differential", width: 40),
+             StandingsColumn(field: .streak, caption: "STRK", spoken: "streak", width: 34),
+             StandingsColumn(field: .lastTenGames, caption: "L10", spoken: "in the last ten", width: 40)]
         case .nhl:
             // Points is the ranking; the record has three numbers because
             // a game lost in overtime is still worth a point.
@@ -115,7 +135,7 @@ nonisolated extension League {
     /// pattern). True for exactly the league whose column set can't fit:
     /// a set that fits must never become a scroller, because a scroller
     /// says "there is more here" and there wouldn't be.
-    var standingsScrollsHorizontally: Bool { self == .nfl }
+    var standingsScrollsHorizontally: Bool { self == .nfl || self == .mlb }
 
     /// Whether this league's `/summary` carries the standings table the
     /// matchup card wants, so the game page can skip its second request
@@ -134,7 +154,10 @@ nonisolated extension League {
     /// too, for the plainer reason that no NFL summary has ever been
     /// captured, and a guess about a payload is what the DTO rule exists
     /// to prevent.
-    var summaryCarriesMatchupStandings: Bool { self == .collegeFootball }
+    ///
+    /// College basketball's summary does the same (probed 2026-11-02):
+    /// both conferences in full, each entry with `total` and `vsconf`.
+    var summaryCarriesMatchupStandings: Bool { isCollege }
 
     /// The columns the game page's matchup slice shows — two rows about
     /// two teams, not a table.

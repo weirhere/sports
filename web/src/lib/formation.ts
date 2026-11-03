@@ -112,9 +112,14 @@ export function makeFormation(
     case "nfl":
       return football(starters, unit ?? "offense");
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return basketball(starters);
     case "nhl":
       return hockey(starters);
+    case "mlb":
+      return baseball(starters);
   }
 }
 
@@ -253,6 +258,41 @@ function basketball(starters: GameRosterPerson[]): Formation {
 }
 
 // --- Hockey ---
+
+/**
+ * The nine fielders on a diamond (iOS, 2026-11-03): the outfield nearest the
+ * midline, the infield, then the battery deepest. A designated hitter has
+ * no position in the field and is listed under it.
+ */
+function baseball(starters: GameRosterPerson[]): Formation {
+  const outfield: GameRosterPerson[] = [];
+  const infield: GameRosterPerson[] = [];
+  const battery: GameRosterPerson[] = [];
+  const unplaced: GameRosterPerson[] = [];
+  for (const person of starters) {
+    switch (code(person)) {
+      case "LF": case "CF": case "RF": case "OF":
+        outfield.push(person);
+        break;
+      case "3B": case "SS": case "2B": case "1B": case "IF":
+        infield.push(person);
+        break;
+      case "P": case "SP": case "RP": case "C":
+        battery.push(person);
+        break;
+      default:
+        unplaced.push(person);
+    }
+  }
+  return build(
+    [
+      { kind: "line", players: arrange(outfield, ["LF"], ["CF"], ["RF"], new Set(["OF"])) },
+      { kind: "line", players: arrange(infield, ["3B", "SS"], [], ["2B", "1B"], new Set(["IF"])) },
+      { kind: "line", players: arrange(battery, [], ["P", "SP", "RP", "C"], [], new Set()) },
+    ],
+    unplaced
+  );
+}
 
 function hockey(starters: GameRosterPerson[]): Formation {
   const forwards: GameRosterPerson[] = [];

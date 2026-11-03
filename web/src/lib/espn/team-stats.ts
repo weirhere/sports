@@ -109,9 +109,16 @@ export function headlineNames(league: League): string[] {
         "turnOverDifferential",
       ];
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return ["avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct"];
     case "nhl":
       return ["goals", "avgGoalsAgainst", "savePct", "faceoffPercent"];
+    // Names unique across MLB's batting/pitching/fielding groups (iOS,
+    // 2026-11-03).
+    case "mlb":
+      return ["runs", "avg", "OPS", "ERA"];
   }
 }
 
@@ -133,6 +140,9 @@ export function leaderCategories(league: League): string[] {
         "interceptions",
       ];
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return [
         "pointsPerGame",
         "reboundsPerGame",
@@ -142,6 +152,8 @@ export function leaderCategories(league: League): string[] {
       ];
     case "nhl":
       return ["points", "goals", "assists", "wins", "savePct"];
+    case "mlb":
+      return ["avg", "homeRuns", "RBIs", "ERA", "wins", "saves"];
   }
 }
 

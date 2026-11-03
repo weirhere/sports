@@ -133,7 +133,7 @@ describe("athleteIdFromUid", () => {
 });
 
 describe("transformAthleteSearch", () => {
-  it("keeps the player group's people in the four leagues only", () => {
+  it("keeps the player group's people in the leagues the app covers only", () => {
     const athletes = transformAthleteSearch({
       results: [
         {
@@ -157,7 +157,14 @@ describe("transformAthleteSearch", () => {
               uid: "s:40~l:41~a:60456",
               displayName: "Tim McDavid",
               subtitle: null,
+              // Covered since 2026-11-02, when college basketball arrived.
               defaultLeagueSlug: "mens-college-basketball",
+            },
+            {
+              uid: "s:40~l:59~a:60457",
+              displayName: "Tia McDavid",
+              subtitle: null,
+              defaultLeagueSlug: "usa.1",
             },
             { displayName: "No Uid", defaultLeagueSlug: "nfl" },
           ],
@@ -179,6 +186,13 @@ describe("transformAthleteSearch", () => {
         league: "cfb",
         name: "Clem McDavid",
         teamName: "Harvard Crimson",
+        headshotUrl: undefined,
+      },
+      {
+        athleteId: "60456",
+        league: "mcbb",
+        name: "Tim McDavid",
+        teamName: undefined,
         headshotUrl: undefined,
       },
     ]);

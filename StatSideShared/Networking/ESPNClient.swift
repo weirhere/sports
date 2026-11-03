@@ -91,6 +91,10 @@ nonisolated protocol ScoresProviding: Sendable {
     /// Top 25's Games tab a filter over one slate rather than 25 schedule
     /// fetches. `year` selects a season; nil means the current one.
     func seasonGames(year: Int?) async throws -> [Game]
+    /// College basketball's postseason, asked for as the days it's played
+    /// — the Top 25's Playoffs tab without the ~300 MB season around it
+    /// (2026-11-03). Empty for every other league.
+    func tournamentGames(year: Int) async throws -> [Game]
     func gameSummary(eventId: String) async throws -> GameSummary
     /// One team's current roster.
     ///
@@ -121,6 +125,9 @@ nonisolated extension ScoresProviding {
     func seasonGames(year: Int?) async throws -> [Game] {
         try await conferenceGames(conferenceId: Conference.fbsGroupId, year: year)
     }
+
+    /// No backend but ESPN's has a tournament window to ask about.
+    func tournamentGames(year: Int) async throws -> [Game] { [] }
 
     /// A league that nests nothing under its conferences has no divisional
     /// tables, and neither does a backend that can't ask for them. Empty
@@ -360,23 +367,29 @@ actor ESPNClient: ScoresProviding {
         // Deterministic order, and FBS first when it's in the set: it is
         // the canonical payload for anything both divisions carry. FBS and
         // FCS are college football's own axis — every other league asks
-        // once with no group filter, because there is nothing to filter by
-        // and (for the NBA at least) ESPN ignores `groups=` outright.
-        let ordered = league.hasCollegeDivisions
-            ? divisions.sorted { $0.groupId < $1.groupId }.map { $0 }
-            : [Conference.Division?.none]
+        // once — college basketball scoped to Division I (`groups=50`;
+        // without it ESPN answers with a curated handful of games), the
+        // pros with no group filter at all, because there is nothing to
+        // filter by.
+        let ordered: [Int?] = league.hasCollegeDivisions
+            ? divisions.sorted { $0.groupId < $1.groupId }.map(\.groupId)
+            : [league.divisionGroupId]
         guard let primary = ordered.first else {
             throw ESPNError.invalidURL
         }
 
-        func board(for division: Conference.Division?) async throws -> Scoreboard {
+        func board(for division: Int?) async throws -> Scoreboard {
             // 400, not the 300 the week form used: a five-day college
             // football window in September runs ~80 events, but a bowl
             // fortnight or a wide range can carry far more, and a silent
             // truncation would look like missing games.
-            var items = [URLQueryItem(name: "limit", value: "400")]
+            // College basketball's opening night is ~180 Division I games
+            // (2026-11-02) and a February Saturday more, so a window of
+            // more than a day or two needs the headroom; 500 is ESPN's
+            // ceiling (see the Don'ts — 501 collapses to 25).
+            var items = [URLQueryItem(name: "limit", value: league.isBasketball && league.isCollege ? "500" : "400")]
             if let division {
-                items.insert(URLQueryItem(name: "groups", value: String(division.groupId)), at: 0)
+                items.insert(URLQueryItem(name: "groups", value: String(division)), at: 0)
             }
             items += query
             let dto: ScoreboardDTO = try await fetch(base: self.base, path: "/scoreboard",
@@ -431,7 +444,7 @@ actor ESPNClient: ScoresProviding {
         let season = year ?? SeasonYear.year(for: league)
         return try await seasonGames(
             days: SeasonSpan.gameDays(of: league, year: season),
-            groups: league.hasCollegeDivisions ? Conference.fbsGroupId : nil,
+            groups: league.divisionGroupId,
             season: season)
     }
 
@@ -465,9 +478,10 @@ actor ESPNClient: ScoresProviding {
     func seasonGames(days: ClosedRange<Date>, groups: Int?,
                      season: Int? = nil) async throws -> [Game] {
         let months = Self.monthTokens(for: days)
+        let gate = RequestGate(limit: Self.seasonRequestLimit)
         let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
             for month in months {
-                group.addTask { try await self.seasonBoard(month: month, groups: groups) }
+                group.addTask { try await self.seasonBoard(month: month, groups: groups, gate: gate) }
             }
             return try await group.reduce(into: [Game]()) { $0 += $1 }
         }
@@ -484,19 +498,89 @@ actor ESPNClient: ScoresProviding {
         return order.compactMap { byId[$0] }
     }
 
-    /// One month, re-asked as its own days when it comes back at the limit.
-    private func seasonBoard(month: String, groups: Int?) async throws -> [Game] {
-        let games = try await seasonBoard(token: month, groups: groups)
-        guard games.count >= Self.seasonWindowLimit else { return games }
-        // A month that legitimately holds exactly the limit costs a fan-out
-        // for nothing — the merge dedupes it away, and guessing the other
-        // way loses days in silence.
-        return try await withThrowingTaskGroup(of: [Game].self) { group in
-            for day in Self.dayTokens(inMonth: month) {
-                group.addTask { try await self.seasonBoard(token: day, groups: groups) }
+    /// The NCAA tournament's days, March 14 to April 10 of the year the
+    /// season ends: Selection Sunday's weekend through the championship,
+    /// with a few days' slack either side. 22 of those days held all 105
+    /// of 2026's postseason games in 1.8 MB (probed 2026-11-03), where the
+    /// Division I season around them is ~6,000 games and ~300 MB.
+    ///
+    /// Postseason games only: the conference tournaments in the window are
+    /// regular season to ESPN, and the ranked teams' schedules carry them.
+    func tournamentGames(year: Int) async throws -> [Game] {
+        guard league.isCollege, league.isBasketball else { return [] }
+        let gate = RequestGate(limit: Self.seasonRequestLimit)
+        let groups = league.divisionGroupId
+        let fetched = try await withThrowingTaskGroup(of: [Game].self) { group in
+            for day in Self.tournamentDayTokens(endYear: league.espnSeason(for: year)) {
+                group.addTask { try await gate.run { try await self.seasonBoard(token: day, groups: groups) } }
             }
-            return try await group.reduce(into: []) { $0 += $1 }
+            return try await group.reduce(into: [Game]()) { $0 += $1 }
         }
+        var seen = Set<String>()
+        return fetched.filter { $0.seasonType == Postseason.seasonType && seen.insert($0.id).inserted }
+    }
+
+    static func tournamentDayTokens(endYear: Int) -> [String] {
+        let march = dayTokens(inMonth: String(format: "%04d03", endYear)).filter { $0.suffix(2) >= "14" }
+        let april = dayTokens(inMonth: String(format: "%04d04", endYear)).filter { $0.suffix(2) <= "10" }
+        return march + april
+    }
+
+    /// One month, with the days it may have dropped re-asked one by one —
+    /// see `daysToReask(inMonth:after:)`. A month request that fails
+    /// outright is re-asked as days too, rather than failing the season.
+    private func seasonBoard(month: String, groups: Int?, gate: RequestGate) async throws -> [Game] {
+        let games = (try? await gate.run { try await self.seasonBoard(token: month, groups: groups) }) ?? []
+        let days = Self.daysToReask(inMonth: month, after: games)
+        guard !days.isEmpty else { return games }
+        // The merge dedupes the overlap, so asking a day twice costs a
+        // request, never a duplicate row.
+        return try await withThrowingTaskGroup(of: [Game].self) { group in
+            for day in days {
+                group.addTask { try await gate.run { try await self.seasonBoard(token: day, groups: groups) } }
+            }
+            return try await group.reduce(into: games) { $0 += $1 }
+        }
+    }
+
+    /// The days of a month its own response can't vouch for.
+    ///
+    /// A month request is trusted only up to the last day it returned a
+    /// game for: that day and every one after it are re-asked as days.
+    /// ESPN cuts a `groups=` month short four ways, and only the first
+    /// says so with a count (probed 2026-11-03):
+    /// - **at `limit`**: 500 games, ending mid-month (college basketball's
+    ///   December and March);
+    /// - **by size**: NCAAW's March stopped at 454 games on March 15, an
+    ///   8 MB response — the whole NCAA tournament missing behind a count
+    ///   the guard read as complete;
+    /// - **the last day**: every NHL month with `groups=9` leaves its final
+    ///   day out (164 of April's 166 games; Game 6 of two first-round
+    ///   series), while the same day asked alone has them;
+    /// - **empty**: college basketball's November answers with nothing.
+    ///
+    /// Every short response ran from the 1st and stopped early, so the days
+    /// after the last returned one are where the losses are. A month that
+    /// comes back at the limit is re-asked whole, as it always was, since a
+    /// count cap is the one cut nobody has seen the shape of. Costs a day
+    /// request or two per healthy month, ~15–30 for a short one.
+    static func daysToReask(inMonth month: String, after games: [Game]) -> [String] {
+        let days = dayTokens(inMonth: month)
+        guard games.count < seasonWindowLimit,
+              let last = games.compactMap(\.date).max()
+        else { return days }
+        let lastDay = dayToken(for: last)
+        return days.filter { $0 >= lastDay }
+    }
+
+    /// The `dates=` day a moment falls on — Eastern, which is how ESPN
+    /// files a game: a 10 PM Pacific puck drop is the next day in UTC and
+    /// the same day here.
+    static func dayToken(for date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DayFormat.eastern
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d%02d%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     /// One `dates=` token's worth of games, whatever its granularity.
@@ -509,6 +593,11 @@ actor ESPNClient: ScoresProviding {
         let dto: ScoreboardDTO = try await fetch(path: "/scoreboard", query: items)
         return ESPNMapper.scoreboard(from: dto, league: league).games
     }
+
+    /// How many of one season fetch's requests run at once (`RequestGate`).
+    /// Six is the per-host connection count browsers settled on, and it
+    /// leaves the page's other requests — the poll, standings — room.
+    static let seasonRequestLimit = 6
 
     /// ESPN's own ceiling on `limit`, and the count that means "this came
     /// back truncated".
@@ -560,7 +649,7 @@ actor ESPNClient: ScoresProviding {
     func rankings(year: Int?) async throws -> [Poll] {
         // `/nfl/rankings` is a 404 — the NFL has no poll and never will.
         // An empty list is the honest answer; callers hide the section.
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         // The site endpoint is latest-only: it ignores `season`, `week`,
         // `year` and `dates` alike and always answers with the newest poll
         // it has (probed live 2026-09-05). So it can speak for the season
@@ -586,6 +675,17 @@ actor ESPNClient: ScoresProviding {
     /// A poll that doesn't come back is dropped rather than failing the
     /// season; all three missing is the season failing.
     private func finalRankings(year: Int) async throws -> [Poll] {
+        // College basketball's polls close at `types/3/weeks/3`, after the
+        // tournament, not football's `weeks/1`, and it has no CFP — so its
+        // final table is simply the last week the season's index lists
+        // (probed 2026-11-02: 2025-26's AP runs Preseason, Weeks 2–20,
+        // then postseason week 3).
+        if !league.hasPlayoffRanking {
+            guard let last = try await rankingWeeks(year: year).last else {
+                throw ESPNError.badStatus(404)
+            }
+            return try await rankings(year: year, week: last)
+        }
         async let directoryFetch = teamDirectory()
         async let ap = coreRanking(year: year, seasonType: 3, week: 1, rankingId: 1)
         async let coaches = coreRanking(year: year, seasonType: 3, week: 1, rankingId: 2)
@@ -605,7 +705,7 @@ actor ESPNClient: ScoresProviding {
     /// collection rather than assumed.
     private func finalCFPRanking(year: Int) async -> CoreRankingDTO? {
         let weeks: CoreCollectionDTO? = try? await fetch(
-            base: coreBase, path: "/seasons/\(year)/types/2/weeks",
+            base: coreBase, path: "/seasons/\(league.espnSeason(for: year))/types/2/weeks",
             query: [URLQueryItem(name: "limit", value: "1")]
         )
         guard let last = weeks?.count, last > 0 else { return nil }
@@ -618,10 +718,10 @@ actor ESPNClient: ScoresProviding {
     /// the season (probed live 2026-09-27: 2025's AP lists Preseason,
     /// Weeks 2–16 and Final; its CFP Weeks 11–16; 2026's AP, Weeks 1–4).
     func rankingWeeks(year: Int) async throws -> [PollWeek] {
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         async let ap = rankingIndex(year: year, rankingId: 1)
         async let coaches = rankingIndex(year: year, rankingId: 2)
-        async let cfp = rankingIndex(year: year, rankingId: 21)
+        async let cfp = playoffRankingIndex(year: year)
         let indexes = await [ap, coaches, cfp]
         let answered = indexes.compactMap { $0 }
         guard !answered.isEmpty else { throw ESPNError.badStatus(404) }
@@ -631,23 +731,33 @@ actor ESPNClient: ScoresProviding {
         return Set(weeks).sorted()
     }
 
+    /// The CFP's index, or nil for a league with no playoff ranking —
+    /// college basketball's polls are the AP and Coaches alone.
+    private func playoffRankingIndex(year: Int) async -> CoreRankingIndexDTO? {
+        guard league.hasPlayoffRanking else { return nil }
+        return await rankingIndex(year: year, rankingId: 21)
+    }
+
     /// The core API's ids are 1 AP, 2 Coaches, 21 CFP; the season's index
     /// lists others too (FCS, DII, DIII), never asked for.
     private func rankingIndex(year: Int, rankingId: Int) async -> CoreRankingIndexDTO? {
-        try? await fetch(base: coreBase, path: "/seasons/\(year)/rankings/\(rankingId)", query: [])
+        // Our axis is the opening year; the core API's is ESPN's own,
+        // which for college basketball is the year the season ends.
+        try? await fetch(base: coreBase,
+                         path: "/seasons/\(league.espnSeason(for: year))/rankings/\(rankingId)",
+                         query: [])
     }
 
     /// The polls published that week, in the shown order. A poll that
     /// skipped the week (the CFP before November) just isn't in the list.
     func rankings(year: Int, week: PollWeek) async throws -> [Poll] {
-        guard league == .collegeFootball else { return [] }
+        guard league.hasPoll else { return [] }
         async let directoryFetch = teamDirectory()
         async let ap = coreRanking(year: year, seasonType: week.seasonType,
                                    week: week.number, rankingId: 1)
         async let coaches = coreRanking(year: year, seasonType: week.seasonType,
                                         week: week.number, rankingId: 2)
-        async let cfp = coreRanking(year: year, seasonType: week.seasonType,
-                                    week: week.number, rankingId: 21)
+        async let cfp = playoffRanking(year: year, week: week)
         let directory = await directoryFetch
         // A week a poll skipped answers 200 with no ranks rather than 404.
         let dtos = await [ap, coaches, cfp].compactMap { $0 }
@@ -656,11 +766,18 @@ actor ESPNClient: ScoresProviding {
         return dtos.map { ESPNMapper.poll(from: $0, teams: directory) }
     }
 
+    /// That week's CFP table, or nil for a league with no playoff ranking.
+    private func playoffRanking(year: Int, week: PollWeek) async -> CoreRankingDTO? {
+        guard league.hasPlayoffRanking else { return nil }
+        return await coreRanking(year: year, seasonType: week.seasonType,
+                                 week: week.number, rankingId: 21)
+    }
+
     private func coreRanking(year: Int, seasonType: Int, week: Int,
                              rankingId: Int) async -> CoreRankingDTO? {
         try? await fetch(
             base: coreBase,
-            path: "/seasons/\(year)/types/\(seasonType)/weeks/\(week)/rankings/\(rankingId)",
+            path: "/seasons/\(league.espnSeason(for: year))/types/\(seasonType)/weeks/\(week)/rankings/\(rankingId)",
             query: []
         )
     }
@@ -683,13 +800,24 @@ actor ESPNClient: ScoresProviding {
         return teams
     }
 
+    /// The standings request's `group=`: the division asked for in college
+    /// football, Division I (50) in college basketball — without it ESPN's
+    /// college basketball standings answer with no conferences — and none
+    /// for the pros.
+    private func standingsGroupQuery(_ division: Conference.Division) -> [URLQueryItem] {
+        if league.hasCollegeDivisions {
+            return [URLQueryItem(name: "group", value: String(division.groupId))]
+        }
+        guard let group = league.divisionGroupId else { return [] }
+        return [URLQueryItem(name: "group", value: String(group))]
+    }
+
     func conferences(in division: Conference.Division) async throws -> [ConferenceTeams] {
         // A pro league's standings response is already the whole league
-        // (AFC and NFC, East and West), so it takes no group filter — only
-        // college football splits into FBS and FCS.
-        let query = league.hasCollegeDivisions
-            ? [URLQueryItem(name: "group", value: String(division.groupId))]
-            : []
+        // (AFC and NFC, East and West), so it takes no group filter;
+        // college football splits into FBS and FCS, college basketball
+        // asks for Division I.
+        let query = standingsGroupQuery(division)
         let dto: StandingsResponseDTO = try await fetch(
             base: standingsBase, path: "/standings", query: query
         )
@@ -698,9 +826,7 @@ actor ESPNClient: ScoresProviding {
 
     func conferenceStandings(year: Int?,
                              division: Conference.Division) async throws -> [ConferenceStandings] {
-        var query = league.hasCollegeDivisions
-            ? [URLQueryItem(name: "group", value: String(division.groupId))]
-            : []
+        var query = standingsGroupQuery(division)
         // Verified live 2026-08-25: `season` scopes records AND membership,
         // so realignment years read correctly.
         if let year {
@@ -1048,6 +1174,7 @@ nonisolated enum ESPNMapper {
             seasonType: event.season?.type,
             seasonYear: event.season?.year.map(league.seasonYear(fromESPN:)),
             headline: competition.notes?.first?.headline,
+            series: series(from: competition.series),
             status: status(from: event.status, situation: competition.situation),
             home: home,
             away: away,
@@ -1109,6 +1236,18 @@ nonisolated enum ESPNMapper {
     private static func nonEmpty(_ string: String?) -> String? {
         guard let string, !string.isEmpty else { return nil }
         return string
+    }
+
+    /// A playoff series only: the regular season's head-to-head record
+    /// isn't one, and a series with no team ids can't be drawn.
+    static func series(from dto: SeriesDTO?) -> PlayoffSeries? {
+        guard let dto, dto.type == "playoff" else { return nil }
+        let wins = (dto.competitors ?? []).reduce(into: [String: Int]()) { wins, side in
+            if let id = side.id { wins[id] = side.wins ?? 0 }
+        }
+        guard !wins.isEmpty else { return nil }
+        return PlayoffSeries(length: dto.totalCompetitions, summary: nonEmpty(dto.summary),
+                             completed: dto.completed ?? false, wins: wins)
     }
 
     static func status(from dto: StatusDTO?, situation: SituationDTO?) -> GameStatus {
@@ -1277,7 +1416,8 @@ nonisolated enum ESPNMapper {
         let played = seasonHasStarted(dto, now: now)
         return standingsGroups(in: dto)
             .map { standings(from: $0.group, parentId: $0.parentId,
-                             league: league, played: played) }
+                             league: league,
+                             played: played || isEarlierSeason($0.group, of: dto, league: league)) }
             .sorted { lhs, rhs in
                 let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
                                 Conference.tier(for: rhs.id, in: league))
@@ -1307,7 +1447,8 @@ nonisolated enum ESPNMapper {
             let id = group.id?.value
             guard let parent = Conference.parent(of: id, in: league) ?? payloadParent,
                   parent != id else { return nil }
-            return standings(from: group, parentId: parent, league: league, played: played)
+            return standings(from: group, parentId: parent, league: league,
+                             played: played || isEarlierSeason(group, of: dto, league: league))
         }
         .sorted { $0.name < $1.name }
     }
@@ -1328,6 +1469,26 @@ nonisolated enum ESPNMapper {
     ///
     /// True when ESPN ships no date at all, which is every football
     /// response we have ever read — absence must never blank a table.
+    /// Whether a calendar-year league's table is the season just played,
+    /// served under a pointer ESPN has already rolled to the next one.
+    ///
+    /// MLB's standings announced 2027 on 2026-11-03, opening 2027-02-18,
+    /// with every table still 2026's final. `SeasonYear` says MLB's current
+    /// season all winter *is* 2026, so those numbers are the right ones,
+    /// and the start-date gate below would blank them until February.
+    ///
+    /// Not for the leagues whose seasons cross New Year. The NBA's rolled
+    /// pointer means the app's current NBA season genuinely is the new one,
+    /// and last season's records under it are the thing
+    /// `aSeasonThatHasNotOpenedCarriesNoStats` exists to keep off screen.
+    static func isEarlierSeason(_ group: StandingsGroupDTO, of dto: StandingsResponseDTO,
+                                league: League) -> Bool {
+        guard !league.seasonSpansNewYear,
+              let table = group.standings?.season,
+              let announced = dto.season?.year else { return false }
+        return table < announced
+    }
+
     static func seasonHasStarted(_ dto: StandingsResponseDTO, now: Date = .now) -> Bool {
         guard let start = ESPNDate.parse(dto.season?.startDate) else { return true }
         return start <= now
@@ -1719,14 +1880,30 @@ nonisolated enum ESPNMapper {
     /// The same stamp over a flat feed. Hockey's goals are the reason:
     /// which side scored is the row's whole point, and a flat play carries
     /// no drive to read it off.
+    ///
+    /// Baseball's feed is pitch by pitch, and the run lands on the pitch
+    /// row a step *before* the at-bat result ESPN flags as scoring — "Pratt
+    /// singled to center, Turang scored" reads 1-0 after a pitch that was
+    /// already 1-0 (2026-11-03), so a row-to-row comparison credited no
+    /// one and MLB's Scoring card came up empty. A flagged play that moved
+    /// nothing against the row before is read against the score as of the
+    /// last scoring play instead. A hockey shootout attempt still matches
+    /// neither: its 1-2 tally never tops the game's 2-2.
     static func attributingScores(_ plays: [Play]) -> [Play] {
         var away = 0
         var home = 0
+        var scoredAway = 0
+        var scoredHome = 0
         return plays.map { play in
             guard let a = play.awayScore, let h = play.homeScore else { return play }
             var play = play
             if play.isScoringPlay {
                 play.scoringSide = a > away ? .away : (h > home ? .home : nil)
+                    ?? (a > scoredAway ? .away : (h > scoredHome ? .home : nil))
+                if play.scoringSide != nil {
+                    scoredAway = a
+                    scoredHome = h
+                }
             }
             away = a
             home = h
@@ -1785,9 +1962,26 @@ nonisolated enum ESPNMapper {
                 yardage: play.statYardage?.value,
                 shortText: play.shortDescription,
                 scoreValue: play.scoreValue,
-                participants: participants(from: play.participants?.elements ?? [])
+                participants: participants(from: play.participants?.elements ?? []),
+                half: InningHalf(espn: play.period?.type),
+                baseball: baseballState(play)
             )
         }
+    }
+
+    /// An MLB play's state, or nil for any other league's — a play with
+    /// neither `outs` nor an `atBatId` isn't baseball's.
+    static func baseballState(_ play: PlayDTO) -> BaseballPlayState? {
+        guard play.outs != nil || play.atBatId != nil else { return nil }
+        return BaseballPlayState(
+            outs: play.outs,
+            balls: play.resultCount?.balls,
+            strikes: play.resultCount?.strikes,
+            atBatId: play.atBatId,
+            pitchType: play.pitchType?.text,
+            pitchVelocity: play.pitchVelocity?.value,
+            kind: play.type?.type,
+            resultText: play.alternativeType?.alternativeText ?? play.alternativeType?.text)
     }
 
     /// A play's named participants, by role. Nil where ESPN gave no name
@@ -1899,6 +2093,8 @@ nonisolated enum ESPNMapper {
                 rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
                 winner: comp.winner,
                 linescores: (comp.linescores ?? []).compactMap(\.displayValue),
+                hits: Self.lineTotal(comp.linescores, \.hits),
+                errors: Self.lineTotal(comp.linescores, \.errors),
                 color: comp.team?.color,
                 alternateColor: comp.team?.alternateColor
             )
@@ -2085,6 +2281,13 @@ nonisolated enum ESPNMapper {
         )
     }
 
+    /// A baseball line score's H or E: the innings' own counts summed, or
+    /// nil where no inning carries one — every league but MLB.
+    static func lineTotal(_ lines: [LinescoreDTO]?, _ field: KeyPath<LinescoreDTO, Int?>) -> Int? {
+        let values = (lines ?? []).compactMap { $0[keyPath: field] }
+        return values.isEmpty ? nil : values.reduce(0, +)
+    }
+
     static func boxScore(from boxscore: BoxscoreDTO?) -> [BoxScore] {
         (boxscore?.players ?? []).compactMap { entry -> BoxScore? in
             guard let teamId = entry.team?.id else { return nil }
@@ -2096,7 +2299,10 @@ nonisolated enum ESPNMapper {
                 // on the floor. The columns are what a box score is; the
                 // name is only how we label a section when there are
                 // several.
-                let name = group.name ?? group.text ?? "players"
+                // MLB names neither of its two groups and types them
+                // instead — `batting`, `pitching` — so the type is the
+                // name, and the two tables don't collide as "players".
+                let name = group.name ?? group.text ?? group.type ?? "players"
                 // No headers, nothing to align stats against.
                 let columns = group.labels ?? []
                 guard !columns.isEmpty else { return nil }
@@ -2191,8 +2397,20 @@ nonisolated enum ESPNMapper {
         let away = teams.first { $0.homeAway == "away" } ?? teams[0]
         let home = teams.first { $0.homeAway == "home" } ?? teams[1]
 
+        // Flat in every league but MLB, whose statistics come grouped —
+        // batting, pitching, fielding — and are searched group by group
+        // in that order, so `hits` is the batting group's.
         func value(_ name: String, of team: BoxscoreTeamDTO) -> String? {
-            team.statistics?.first { $0.name == name }?.displayValue
+            let stats = team.statistics ?? []
+            if let flat = stats.first(where: { $0.name == name && $0.stats == nil })?.displayValue {
+                return flat
+            }
+            for group in stats {
+                if let value = group.stats?.first(where: { $0.name == name })?.displayValue {
+                    return value
+                }
+            }
+            return nil
         }
 
         return league.comparedStats.compactMap { stat in

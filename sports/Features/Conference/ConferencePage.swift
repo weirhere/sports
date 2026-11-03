@@ -13,7 +13,8 @@ struct ConferencePage: View {
     /// Raw values order the tabs — the slide direction is an ordinal
     /// comparison (TeamPage's rule).
     private enum Tab: Int, HeroTabItem {
-        case standings, games, news, playerStats, teamStats, postseason, trades
+        // Declared in the row's order: the raw value is the swipe's direction.
+        case standings, postseason, games, news, playerStats, teamStats, trades
 
         var title: String {
             switch self {
@@ -22,7 +23,7 @@ struct ConferencePage: View {
             case .playerStats: "Player stats"
             case .teamStats: "Team stats"
             case .news: "News"
-            case .postseason: "Postseason"
+            case .postseason: "Playoffs"
             case .trades: "Trades"
             }
         }
@@ -407,7 +408,7 @@ struct ConferencePage: View {
         .task(id: logoURL) { markHexLoaded = await HeaderPaint.loadMarkHex(for: logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(destination.name)
+                Text(destination.name + womensMark)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(headerInk)
                     .lineLimit(1)
@@ -415,9 +416,11 @@ struct ConferencePage: View {
                     .accessibilityHidden(!showsInlineTitle)
             }
             // The follow pill rides the toolbar row, FotMob's pattern
-            // (Andy, 2026-08-31). The season chip leads the pane's control
-            // row instead (2026-09-27) — see `controlRow(for:)`.
+            // (Andy, 2026-08-31), and the season beside it (2026-11-03,
+            // superseding 2026-09-27's move into the pane): one season
+            // scopes every tab, so it belongs to the page, not a strip.
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if showsSeasonChip { seasonChip }
                 ConferenceFollowPill(conference: destination.conference)
             }
         }
@@ -460,6 +463,13 @@ struct ConferencePage: View {
         return ConferenceDestination(conference: id, name: Conference.name(for: id))
     }
 
+    /// " (W)" after both titles — the hero and the bar's — for a women's
+    /// college conference whose name the men's league uses too
+    /// (2026-11-03).
+    private var womensMark: String {
+        Conference.sharesMensName(destination.conference) ? " (W)" : ""
+    }
+
     private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
@@ -472,11 +482,12 @@ struct ConferencePage: View {
                     .background(Circle().fill(Color.logoBacking).padding(-6))
                     .padding(6)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(destination.name)
+                    Text(destination.name + womensMark)
                         .font(.heroTitle)
                         .foregroundStyle(headerInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .accessibilityLabel(destination.name + (womensMark.isEmpty ? "" : ", women's"))
                     subtitle
                 }
                 Spacer(minLength: 0)
@@ -518,16 +529,15 @@ struct ConferencePage: View {
                                         onSelect: { value in
                                             withAnimation(.default) { tradesFilter = value }
                                         })
-                    } else if tab == .news {
-                        // No control: stories are today's, whatever season
-                        // the other tabs are showing.
-                        EmptyView()
-                    } else {
-                        controlRow(for: tab)
+                    } else if hasPaneControls(for: tab) {
+                        HStack(spacing: Spacing.sm) {
+                            paneControls(for: tab)
+                            Spacer(minLength: 0)
+                        }
                     }
                 }
                 .padding(.horizontal, Spacing.sm)
-                .padding(.top, Spacing.sm)
+                .padding(.top, tab == .trades || hasPaneControls(for: tab) ? Spacing.sm : 0)
                 // The gap that used to be the pane's own top padding, so
                 // pinned cards never touch the row above.
                 Color.clear.frame(height: Spacing.sm)
@@ -556,13 +566,17 @@ struct ConferencePage: View {
     /// measurement was of an *unscoped* request, and `groups=` narrows the
     /// slate in every league we cover.
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.standings, .games]
+        var tabs: [Tab] = [.standings]
+        // Second, between Standings and Games, whenever the season has
+        // them (Andy, 2026-11-03): a finished season's playoffs are its
+        // headline, and a running one's are what everyone's watching.
+        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
+        tabs.append(.games)
         // After Games (Andy, 2026-09-27, E26), and ahead of the stats tabs
         // (2026-10-26). ESPN-gated like the Trades tab, so the
         // fixture-backed UI suites never reach the network.
         if client.providesRoster { tabs.append(.news) }
         if showsStatsTabs { tabs.append(contentsOf: [.playerStats, .teamStats]) }
-        if !postseasonRounds.isEmpty { tabs.append(.postseason) }
         if showsTradesTab { tabs.append(.trades) }
         return tabs
     }
@@ -572,7 +586,7 @@ struct ConferencePage: View {
     /// filtered copy of it. College football's wire is empty — ESPN has no
     /// transfer portal — so its pages never offer the tab.
     private var showsTradesTab: Bool {
-        destination.league != .collegeFootball
+        !destination.league.isCollege
             && destination.conferenceId == Conference.leagueWideId(in: destination.league)
             && client.providesRoster
     }
@@ -629,23 +643,31 @@ struct ConferencePage: View {
     /// row), then the controls that shape only this pane — the Games tab's
     /// Weeks / Date toggles and team filter, the same set the Top 25's
     /// Games tab carries, or the Standings tab's scope.
-    private func controlRow(for tab: Tab) -> some View {
-        SeasonControlRow(season: seasonChip) {
-            paneControls(for: tab)
-        }
-    }
+    /// Every tab a season scopes. News is today's stories and Trades the
+    /// wire's last two years, whatever season the rest are showing.
+    private var showsSeasonChip: Bool { tab != .news && tab != .trades }
 
     private var seasonChip: SeasonMenuChip {
         SeasonMenuChip(current: selectedYear, seasons: availableSeasons, league: destination.league,
-                       onSelect: { select(year: $0) })
+                       style: .bar, onSelect: { select(year: $0) })
+    }
+
+    /// Whether the strip under the tabs has anything to hold: a tab with
+    /// no control of its own gets no row, not an empty one.
+    private func hasPaneControls(for tab: Tab) -> Bool {
+        switch tab {
+        case .games: true
+        case .standings: availableScopes.count > 1
+        default: false
+        }
     }
 
     @ViewBuilder
     private func paneControls(for tab: Tab) -> some View {
-        // The Postseason tab brings its own control — the round chips,
+        // The Playoffs tab brings its own control — the round chips,
         // inside the pane where the bracket is. The standings scope has
         // nothing to say about a playoff bracket (Andy, 2026-09-06), so
-        // the season stands alone above the rounds.
+        // that tab has no row here at all.
         if tab == .games {
             SlateControlRow(grouping: grouping,
                             onToggle: { toggle(grouping: $0) },
@@ -699,7 +721,7 @@ struct ConferencePage: View {
     /// (2026-10-26) — Team stats' scope, for the same reasons.
     private var playerStatsSection: some View {
         let standings = standingsByYear[selectedYear]
-        let needsStandings = destination.league == .collegeFootball && !isLeagueWide
+        let needsStandings = destination.league.isCollege && !isLeagueWide
         let players = needsStandings && standings == nil
             ? nil
             : leagueStats.players(for: selectedYear)?
@@ -732,7 +754,7 @@ struct ConferencePage: View {
     /// them; every other page can rank as soon as the stats land.
     private var teamStatsSection: some View {
         let standings = standingsByYear[selectedYear]
-        let needsStandings = destination.league == .collegeFootball && !isLeagueWide
+        let needsStandings = destination.league.isCollege && !isLeagueWide
         let stats = needsStandings && standings == nil
             ? nil
             : leagueStats.stats(for: selectedYear)?

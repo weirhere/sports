@@ -9,6 +9,9 @@ nonisolated struct GameSummary: Sendable {
         let rank: Int?
         let winner: Bool?
         let linescores: [String]   // per-quarter, incl. OT columns
+        /// Baseball's H and E, summed off the line score. Nil elsewhere.
+        var hits: Int? = nil
+        var errors: Int? = nil
         /// ESPN's team colors, bare hex. The Gamecast field paints its
         /// end zones with them and nothing else does (2026-09-27). On the
         /// side rather than `Team` so a team's identity, which follows and
@@ -315,6 +318,68 @@ nonisolated struct Play: Identifiable, Hashable, Sendable {
     /// Who was involved, in flat-feed leagues only — empty in football,
     /// whose drive-nested plays carry no `participants` block.
     var participants: [PlayParticipant] = []
+    /// Baseball (2026-11-03): which half of `period` this is. Nil in every
+    /// other league, whose periods are whole.
+    var half: InningHalf? = nil
+    /// Baseball's live state as of this play, read off every MLB play:
+    /// outs, and the count once the pitch landed.
+    var baseball: BaseballPlayState? = nil
+}
+
+/// Which half of an inning a baseball play sits in — ESPN's
+/// `period.type`. `middle` and `end` are the breaks between halves.
+nonisolated enum InningHalf: String, Hashable, Sendable {
+    case top, bottom, middle, end
+
+    init?(espn type: String?) {
+        switch type?.lowercased() {
+        case "top": self = .top
+        case "bottom", "bot": self = .bottom
+        case "middle", "mid": self = .middle
+        case "end": self = .end
+        default: return nil
+        }
+    }
+
+    /// "Top", "Bottom" — the plays list's half-inning heading.
+    var title: String {
+        switch self {
+        case .top: "Top"
+        case .bottom: "Bottom"
+        case .middle: "Middle"
+        case .end: "End"
+        }
+    }
+}
+
+/// What one MLB play says about the game's state (2026-11-03). Every play
+/// in ESPN's feed carries it — a pitch, a result, a substitution — so the
+/// live diamond is the last play read whole, the way the court's shot map
+/// is this period's plays.
+nonisolated struct BaseballPlayState: Hashable, Sendable {
+    /// Outs once this play ended.
+    let outs: Int?
+    /// The count after the pitch (`resultCount`).
+    let balls: Int?
+    let strikes: Int?
+    /// ESPN's at-bat id: every pitch of one plate appearance shares it.
+    let atBatId: String?
+    /// "Four-seam FB", "Sinker"; nil on anything that wasn't a pitch.
+    let pitchType: String?
+    /// Miles per hour.
+    let pitchVelocity: Int?
+    /// ESPN's `type.type` slug: "ball", "strike-looking", "play-result",
+    /// "start-batterpitcher", "start-inning". What sorts a pitch from the
+    /// result it led to.
+    let kind: String?
+    /// A result's own word, where ESPN gave a sharper one than `text`:
+    /// "Strikeout", "Single", "Home Run".
+    let resultText: String?
+
+    /// Whether this is an at-bat's outcome — the row the Plays tab lists —
+    /// rather than one pitch of it or a bookkeeping marker.
+    var isResult: Bool { kind == "play-result" }
+    var isPitch: Bool { pitchType != nil }
 }
 
 /// One person named on a play, by ESPN's own word for what they did.

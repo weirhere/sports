@@ -51,10 +51,21 @@ export function conferencePath(
   return `/conference/${ref.league}/${ref.id}${query ? `?${query}` : ""}`;
 }
 
-/** College football's league page, the Top 25, opened on a tab — a News
- *  page's "See more" (2026-09-27). */
-export function pollPath(options?: { tab?: "news" }): string {
-  return options?.tab ? `/rankings/poll?tab=${options.tab}` : "/rankings/poll";
+/** A polling league's page, its Top 25 — optionally opened on a tab (a
+ *  News page's "See more", 2026-09-27) or at a past season. College
+ *  football's stays the bare `/rankings/poll` it has always been; college
+ *  basketball's (2026-11-02) carries `?league=`. */
+export function pollPath(options?: {
+  tab?: "news";
+  league?: League;
+  year?: number;
+}): string {
+  const params = new URLSearchParams();
+  if (options?.league && options.league !== "cfb") params.set("league", options.league);
+  if (options?.year !== undefined) params.set("year", String(options.year));
+  if (options?.tab) params.set("tab", options.tab);
+  const query = params.toString();
+  return `/rankings/poll${query ? `?${query}` : ""}`;
 }
 
 /** Whether a page's `tab` query asks for News. */

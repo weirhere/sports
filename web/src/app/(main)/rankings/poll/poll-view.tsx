@@ -17,6 +17,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   leagueLogoUrl,
+  pollSportName,
   seasonYear,
   seasonYears,
   shortName,
@@ -42,7 +43,7 @@ import {
   postseasonRounds,
 } from "@/lib/postseason";
 import { gamesForTeam, type SlateGrouping } from "@/lib/conference-slate";
-import { teamPath } from "@/lib/routes";
+import { pollPath, teamPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
@@ -101,8 +102,7 @@ export function PollView({
   };
 
   const selectYear = (year: number) => {
-    const query = year === seasonYear(league) ? "" : `?year=${year}`;
-    router.push(`/rankings/poll${query}`);
+    router.push(pollPath({ league, year: year === seasonYear(league) ? undefined : year }));
   };
 
   // The season's slate narrowed to the poll's own teams — the app's "any
@@ -149,14 +149,15 @@ export function PollView({
 
   const tabs: HeroTab[] = [
     { id: "standings", label: "Standings" },
+    // Second whenever the season has one (iOS, 2026-11-03). A tab that
+    // would open on "no games" is worse than no tab.
+    ...(rounds.length > 0
+      ? [{ id: "postseason", label: "Playoffs" }]
+      : []),
     { id: "games", label: "Games" },
     // College football's league page reads the league's feed, the News
     // tab's NCAAF page (iOS E26, 2026-09-27).
     { id: "news", label: "News" },
-    // A tab that would open on "no games" is worse than no tab.
-    ...(rounds.length > 0
-      ? [{ id: "postseason", label: "Postseason" }]
-      : []),
   ];
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
 
@@ -194,12 +195,19 @@ export function PollView({
         }
         title="Top 25"
         subtitle={
-          // ESPN's own line for the poll ("2026 AP Poll: Preseason") — which
-          // poll, and how far into the season it is. On a past season it
-          // names the year, so the page can't be mistaken for this week's.
+          // Which sport first (iOS, 2026-11-03): three leagues have a Top 25
+          // and nothing else on the page says whose. Then ESPN's own line
+          // for the poll ("2026 AP Poll: Preseason") — which poll, and how
+          // far into the season it is; on a past season it names the year,
+          // so the page can't be mistaken for this week's.
           <span className="type-chip-em text-text-secondary">
-            {selectedPoll?.headline ??
-              (displayYear === seasonYear(league) ? "" : String(displayYear))}
+            {[
+              pollSportName(league),
+              selectedPoll?.headline ??
+                (displayYear === seasonYear(league) ? "" : String(displayYear)),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         }
         trailing={

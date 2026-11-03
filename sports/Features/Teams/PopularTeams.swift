@@ -13,7 +13,8 @@ import Foundation
 /// Ids are ESPN team ids, read off the live `/teams` payloads rather than
 /// recalled — a wrong id is silently skipped, so the failure mode is an
 /// invisibly short sheet rather than anything that shows up in review.
-/// Football verified 2026-09-05, basketball and hockey 2026-09-08. An id the directory doesn't carry is simply skipped, so a
+/// Football verified 2026-09-05, basketball and hockey 2026-09-08, college
+/// basketball 2026-11-02. An id the directory doesn't carry is simply skipped, so a
 /// realignment or a renamed franchise costs a row, never a crash.
 nonisolated enum PopularTeams {
     private static let ids: [League: [String]] = [
@@ -69,6 +70,56 @@ nonisolated enum PopularTeams {
             "6",     // Edmonton Oilers
             "15",    // Philadelphia Flyers
             "37",    // Vegas Golden Knights
+        ],
+        // College basketball verified 2026-11-02 against the live `/teams`.
+        .mensCollegeBasketball: [
+            "150",   // Duke
+            "153",   // North Carolina
+            "96",    // Kentucky
+            "2305",  // Kansas
+            "41",    // UConn
+            "2250",  // Gonzaga
+            "127",   // Michigan State
+            "12",    // Arizona
+            "222",   // Villanova
+            "84",    // Indiana
+        ],
+        // MLB and the WNBA verified 2026-11-03 against the live `/teams`.
+        .mlb: [
+            "10",    // New York Yankees
+            "19",    // Los Angeles Dodgers
+            "2",     // Boston Red Sox
+            "16",    // Chicago Cubs
+            "15",    // Atlanta Braves
+            "21",    // New York Mets
+            "22",    // Philadelphia Phillies
+            "26",    // San Francisco Giants
+            "24",    // St. Louis Cardinals
+            "18",    // Houston Astros
+        ],
+        .wnba: [
+            "5",     // Indiana Fever
+            "9",     // New York Liberty
+            "17",    // Las Vegas Aces
+            "129689", // Golden State Valkyries
+            "19",    // Chicago Sky
+            "8",     // Minnesota Lynx
+            "14",    // Seattle Storm
+            "6",     // Los Angeles Sparks
+            "11",    // Phoenix Mercury
+            "20",    // Atlanta Dream
+        ],
+        .womensCollegeBasketball: [
+            "41",    // UConn
+            "2579",  // South Carolina
+            "99",    // LSU
+            "2294",  // Iowa
+            "24",    // Stanford
+            "87",    // Notre Dame
+            "251",   // Texas
+            "26",    // UCLA
+            "2633",  // Tennessee
+            "30",    // USC
         ],
     ]
 

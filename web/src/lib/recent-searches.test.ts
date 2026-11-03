@@ -109,7 +109,7 @@ describe("parseRecents", () => {
     const raw = JSON.stringify([
       auburn,
       { kind: "team", id: "", league: "cfb" },
-      { kind: "team", id: "5", league: "mlb" },
+      { kind: "team", id: "5", league: "mls" },
       { kind: "conference", id: "8", league: "cfb" },
       { kind: "player", id: "1", league: "nfl", name: "No Team Id" },
       { kind: "planet", id: "3", league: "nfl" },

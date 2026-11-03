@@ -16,8 +16,9 @@ nonisolated extension League {
         switch self {
         case .collegeFootball: Self.footballPlayerDefinitions(limit: 200)
         case .nfl: Self.footballPlayerDefinitions(limit: 100)
-        case .nba: Self.basketballPlayerDefinitions
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: Self.basketballPlayerDefinitions
         case .nhl: Self.hockeyPlayerDefinitions
+        case .mlb: Self.baseballPlayerDefinitions
         }
     }
 
@@ -173,6 +174,49 @@ nonisolated extension League {
     /// sorts don't qualify anyone (skaters at 0.00, 1-for-1 shooters at
     /// 100%), so goals-against ranks inside the goalie pool with a shot
     /// minimum and shooting percentage isn't offered.
+    /// MLB's leaderboards (2026-11-03). Keys are `byathlete`'s own, read
+    /// live: `batting` and `pitching` categories. The pools are sorted by
+    /// playing time — at-bats, innings — so a rate (average, ERA, WHIP)
+    /// ranks inside the regulars rather than a September call-up's
+    /// 2-for-3; the minimums keep the rest out.
+    private static let baseballPlayerDefinitions: [PlayerStatDefinition] = {
+        let batters = PlayerStatQuery(category: "batting", sort: "batting.atBats", limit: 250)
+        let pitchers = PlayerStatQuery(category: "pitching", sort: "pitching.innings", limit: 200)
+        let relievers = PlayerStatQuery(category: "pitching", sort: "pitching.saves", limit: 60)
+        let qualifiedBatter = PlayerStatDefinition.Minimum(key: key("batting", "atBats"), value: 300)
+        let qualifiedPitcher = PlayerStatDefinition.Minimum(key: key("pitching", "innings"), value: 100)
+        return [
+            PlayerDefinition(id: "homeRuns", title: "Home runs", section: .top, query: batters,
+                             key: key("batting", "homeRuns"), higherIsBetter: true, format: .integer),
+            PlayerDefinition(id: "avg", title: "Batting average", section: .top, query: batters,
+                             key: key("batting", "avg"), higherIsBetter: true, format: .fraction,
+                             minimum: qualifiedBatter),
+            PlayerDefinition(id: "era", title: "ERA", section: .top, query: pitchers,
+                             key: key("pitching", "ERA"), higherIsBetter: false, format: .decimal(2),
+                             minimum: qualifiedPitcher),
+            PlayerDefinition(id: "strikeouts", title: "Strikeouts", section: .top, query: pitchers,
+                             key: key("pitching", "strikeouts"), higherIsBetter: true, format: .integer),
+
+            PlayerDefinition(id: "rbi", title: "Runs batted in", section: .batting, query: batters,
+                             key: key("batting", "RBIs"), higherIsBetter: true, format: .integer),
+            PlayerDefinition(id: "hits", title: "Hits", section: .batting, query: batters,
+                             key: key("batting", "hits"), higherIsBetter: true, format: .integer),
+            PlayerDefinition(id: "ops", title: "OPS", section: .batting, query: batters,
+                             key: key("batting", "OPS"), higherIsBetter: true, format: .fraction,
+                             minimum: qualifiedBatter),
+            PlayerDefinition(id: "stolenBases", title: "Stolen bases", section: .batting, query: batters,
+                             key: key("batting", "stolenBases"), higherIsBetter: true, format: .integer),
+
+            PlayerDefinition(id: "wins", title: "Wins", section: .pitching, query: pitchers,
+                             key: key("pitching", "wins"), higherIsBetter: true, format: .integer),
+            PlayerDefinition(id: "whip", title: "WHIP", section: .pitching, query: pitchers,
+                             key: key("pitching", "WHIP"), higherIsBetter: false, format: .decimal(2),
+                             minimum: qualifiedPitcher),
+            PlayerDefinition(id: "saves", title: "Saves", section: .pitching, query: relievers,
+                             key: key("pitching", "saves"), higherIsBetter: true, format: .integer),
+        ]
+    }()
+
     private static let hockeyPlayerDefinitions: [PlayerStatDefinition] = {
         let points = PlayerStatQuery(category: nil, sort: "offensive.points", limit: 200)
         let goalies = PlayerStatQuery(category: nil, sort: "defensive.savePct", limit: 60)

@@ -286,7 +286,61 @@ export function trophyKindFromHeadline(
         return { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" };
       }
       return conferenceFinals(headline, text);
+    case "mlb":
+      // "World Series - Game 5" on every game of the series; the champion
+      // is the last completed game's winner. The pennants are the LCS's.
+      if (text.startsWith("world series")) {
+        return { singular: "World Series", plural: "World Series", tier: "league" };
+      }
+      if (text.startsWith("alcs")) {
+        return { singular: "AL Pennant", plural: "AL Pennants", tier: "conference" };
+      }
+      if (text.startsWith("nlcs")) {
+        return { singular: "NL Pennant", plural: "NL Pennants", tier: "conference" };
+      }
+      return undefined;
+    case "wnba":
+      if (text.startsWith("wnba finals")) {
+        return { singular: "WNBA Finals", plural: "WNBA Finals", tier: "league" };
+      }
+      // One game decides it; its group games say "WNBA Commissioner's Cup"
+      // alone and win nothing.
+      if (text.includes("commissioner's cup championship")) {
+        return { singular: "Commissioner's Cup", plural: "Commissioner's Cups", tier: "league" };
+      }
+      return undefined;
+    case "mcbb":
+    case "wcbb":
+      // The NCAA tournament's final only — the NIT and the Crown decide
+      // trophies too, but not the one a program counts.
+      if (text.startsWith("ncaa ") && text.includes("national championship")) {
+        return {
+          singular: "National Championship",
+          plural: "National Championships",
+          tier: "league",
+        };
+      }
+      return conferenceTournament(headline, text);
   }
+}
+
+/**
+ * College basketball's conference tournament final — "SEC Tournament -
+ * Final", "America East Playoffs - Final", "Ivy League Tournament pres. by
+ * TIAA - Final" (live, March 2026). The event's own name is the trophy, bar
+ * the round and a "pres. by" sponsor tail (iOS, 2026-11-02).
+ */
+function conferenceTournament(headline: string, text: string): TrophyKind | undefined {
+  const parts = headline.split(" - ");
+  if (parts.length !== 2 || parts[1].trim().toLowerCase() !== "final") return undefined;
+  const event = text.split(" - ")[0];
+  const national = ["ncaa ", "nit", "women's nit", "wbit", "college basketball crown"];
+  if (national.some((prefix) => event.startsWith(prefix))) return undefined;
+  let name = parts[0].trim();
+  const sponsor = name.toLowerCase().indexOf(" pres. by ");
+  if (sponsor >= 0) name = name.slice(0, sponsor);
+  if (name.length === 0) return undefined;
+  return { singular: name, plural: `${name}s`, tier: "conference" };
 }
 
 // --- Deriving a season's titles -------------------------------------------

@@ -15,12 +15,17 @@ import type { SurfaceInk } from "@/components/slate-control-row";
  */
 export function surfaceInk(league: League): SurfaceInk {
   switch (league) {
+    // The diamond's grass is the turf's green, so its ink is too.
     case "cfb":
     case "nfl":
+    case "mlb":
       return { text: "var(--surface-turf-ink)", counter: "var(--surface-ink)" };
     case "nhl":
       return { text: "var(--surface-ink)", counter: "var(--surface-chalk)" };
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return { text: "var(--text-primary)", counter: "var(--bg-primary)" };
   }
 }
@@ -30,8 +35,12 @@ export function surfaceBase(league: League): string {
   switch (league) {
     case "cfb":
     case "nfl":
+    case "mlb":
       return "var(--surface-turf)";
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return "var(--surface-maple)";
     case "nhl":
       return "var(--surface-ice)";
@@ -45,8 +54,12 @@ export function surfaceHeading(league: League): string {
   switch (league) {
     case "cfb":
     case "nfl":
+    case "mlb":
       return "var(--surface-turf-heading)";
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return "var(--surface-paint)";
     case "nhl":
       return "var(--surface-ice-heading)";

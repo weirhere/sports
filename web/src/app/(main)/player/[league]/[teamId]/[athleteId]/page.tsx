@@ -20,6 +20,7 @@ import { conferenceTeams, teamRoster, teamSchedule } from "@/lib/espn";
 import { FBS_GROUP_ID, FCS_GROUP_ID } from "@/lib/conferences";
 import { athleteProfile, athleteStats } from "@/lib/espn/athlete";
 import {
+  collegeFeeder,
   displayName,
   espnSeason,
   parseLeague,
@@ -62,17 +63,20 @@ async function collegeHref(
   league: League,
   college: PlayerCollege | undefined
 ): Promise<string | undefined> {
-  if (league === "cfb" || !college?.id) return undefined;
+  // An NBA player's school opens its men's basketball page (2026-11-02);
+  // football's pros keep opening football.
+  const feeder = collegeFeeder(league);
+  if (!feeder || !college?.id) return undefined;
   const id = college.id;
   const groups = await Promise.all(
-    [FBS_GROUP_ID, FCS_GROUP_ID].map((group) =>
-      conferenceTeams("cfb", { group }).catch(() => [])
+    (feeder === "cfb" ? [FBS_GROUP_ID, FCS_GROUP_ID] : [undefined]).map((group) =>
+      conferenceTeams(feeder, { group }).catch(() => [])
     )
   );
   const known = groups.flat().some((conference) =>
     conference.teams.some((team) => team.id === id)
   );
-  return known ? teamPath({ league: "cfb", id }) : undefined;
+  return known ? teamPath({ league: feeder, id }) : undefined;
 }
 
 export async function generateMetadata({ params }: PageProps) {

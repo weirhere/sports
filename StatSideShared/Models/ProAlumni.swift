@@ -72,7 +72,7 @@ nonisolated struct ProAlumniFile: Sendable, Decodable {
         (colleges?[collegeId]?.elements ?? []).compactMap { entry in
             guard let slug = entry.league,
                   let league = League.allCases.first(where: { $0.pathSegment == slug }),
-                  league != .collegeFootball,
+                  !league.isCollege,
                   let athleteId = entry.athleteId, !athleteId.isEmpty,
                   let name = entry.name, !name.isEmpty
             else { return nil }

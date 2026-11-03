@@ -11,8 +11,13 @@ struct LineScoreGrid: View {
     /// playoff game.
     var allowsShootout: Bool = false
 
+    /// Baseball's line score ends R, H, E (2026-11-03): runs, then the hits
+    /// and errors summed off the innings. Nine innings and three totals
+    /// don't fit the other leagues' spacing on a phone, so it tightens.
+    private var isBaseball: Bool { league.isBaseball }
+
     var body: some View {
-        Grid(horizontalSpacing: Spacing.lg, verticalSpacing: Spacing.sm) {
+        Grid(horizontalSpacing: isBaseball ? Spacing.sm : Spacing.lg, verticalSpacing: Spacing.sm) {
             GridRow {
                 Text("")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -23,10 +28,18 @@ struct LineScoreGrid: View {
                         .foregroundStyle(.textSecondary)
                         .gridColumnAlignment(.trailing)
                 }
-                Text("T")
+                Text(isBaseball ? "R" : "T")
                     .font(.metaEmphasis)
                     .foregroundStyle(.textSecondary)
                     .gridColumnAlignment(.trailing)
+                if isBaseball {
+                    ForEach(["H", "E"], id: \.self) { caption in
+                        Text(caption)
+                            .font(.metaEmphasis)
+                            .foregroundStyle(.textSecondary)
+                            .gridColumnAlignment(.trailing)
+                    }
+                }
             }
             if let away = summary.away { row(away) }
             if let home = summary.home { row(home) }
@@ -63,6 +76,13 @@ struct LineScoreGrid: View {
             Text(side.score.map(String.init) ?? "–")
                 .font(.teamNameEmphasis.monospacedDigit())
                 .foregroundStyle(.textPrimary)
+            if isBaseball {
+                ForEach(Array([side.hits, side.errors].enumerated()), id: \.offset) { _, value in
+                    Text(value.map(String.init) ?? "–")
+                        .font(.teamName.monospacedDigit())
+                        .foregroundStyle(.textPrimary)
+                }
+            }
         }
     }
 }

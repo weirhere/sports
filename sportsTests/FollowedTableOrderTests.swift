@@ -22,7 +22,9 @@ import Testing
         #expect(FollowedTable(token: "SEC") == nil)
         #expect(FollowedTable(token: "poll-") == nil)
         #expect(FollowedTable(token: "conf-") == nil)
-        #expect(FollowedTable(token: "conf-mlb-8") == nil)
+        // A league we don't cover (MLB was this example until it joined,
+        // 2026-11-03).
+        #expect(FollowedTable(token: "conf-xfl-8") == nil)
     }
 
     @Test func namesComeFromTheRegistry() {

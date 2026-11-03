@@ -29,6 +29,9 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// or the playoff round. Only postseason games carry it, and college
     /// football's postseason is unreadable without it.
     var headline: String? = nil
+    /// The playoff series this game belongs to, as it stood after this
+    /// game — nil for a single game. Only the scoreboard carries it.
+    var series: PlayoffSeries? = nil
     let status: GameStatus
     let home: Competitor
     let away: Competitor
@@ -99,6 +102,19 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     }
 }
 
+/// A best-of series' standing after one of its games (2026-11-03): what
+/// the bracket draws for MLB, the NBA, the NHL and the WNBA, whose
+/// playoffs are series rather than single games.
+nonisolated struct PlayoffSeries: Hashable, Sendable {
+    /// Best of how many — 3, 5 or 7.
+    let length: Int?
+    /// ESPN's own sentence: "MIL wins series 4-1", "Series tied 1-1".
+    let summary: String?
+    let completed: Bool
+    /// Wins by team id.
+    let wins: [String: Int]
+}
+
 /// A live game's answer to "how's my team doing" — the standings dot's
 /// three states.
 nonisolated enum LiveResult: Sendable {
@@ -126,6 +142,14 @@ nonisolated enum GameStatus: Hashable, Sendable {
     func liveStatusText(in league: League = .collegeFootball) -> String? {
         guard case .live(let clock, let period, let detail, let phase, _) = self else { return nil }
         func label(_ period: Int) -> String { Self.periodLabel(period, in: league) }
+        // Baseball has no clock and its own words for where a game is:
+        // ESPN's "Top 5th", "Mid 5th", "Bot 5th", "End 5th" (2026-11-03).
+        // `displayClock` sits at "0:00" all night, so "0:00 • 5th" would
+        // be a clock that never moves on an inning missing its half.
+        guard league.hasGameClock else {
+            if let detail, !detail.isEmpty { return detail }
+            return period.map(label)
+        }
         switch phase {
         case .halftime:
             return "Half"
@@ -158,6 +182,8 @@ nonisolated enum GameStatus: Hashable, Sendable {
     /// does show live, "1OT" is a wrong word rather than a wrong number.
     static func periodLabel(_ period: Int, in league: League = .collegeFootball) -> String {
         let format = league.periodFormat
+        // Extra innings are innings: the 10th, not "OT".
+        if league.isBaseball { return ordinal(period) }
         if period <= format.regulationCount { return ordinal(period) }
         if period == format.regulationCount + 1 { return "OT" }
         return "\(period - format.regulationCount)OT"
@@ -166,12 +192,14 @@ nonisolated enum GameStatus: Hashable, Sendable {
     /// Regulation only, so the table covers every case a period can be:
     /// four quarters, three periods, and nothing else reaches here.
     private static func ordinal(_ value: Int) -> String {
-        switch value {
-        case 1: "1st"
-        case 2: "2nd"
-        case 3: "3rd"
-        case 4: "4th"
-        default: "\(value)th"
+        // Teens are all "th"; past them, the last digit decides — the
+        // 21st inning has been played, and "21th" is wrong.
+        guard !(11...13).contains(value % 100) else { return "\(value)th" }
+        switch value % 10 {
+        case 1: return "\(value)st"
+        case 2: return "\(value)nd"
+        case 3: return "\(value)rd"
+        default: return "\(value)th"
         }
     }
 }

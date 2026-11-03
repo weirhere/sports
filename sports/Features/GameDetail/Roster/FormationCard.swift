@@ -30,7 +30,7 @@ struct FormationCard: View {
     let layout: StartersLayout
     let onLayoutChange: (StartersLayout) -> Void
 
-    private var isFootball: Bool { league == .collegeFootball || league == .nfl }
+    private var isFootball: Bool { league.isFootball }
     private var away: GameRoster.Side { roster.away }
     private var home: GameRoster.Side { roster.home }
 

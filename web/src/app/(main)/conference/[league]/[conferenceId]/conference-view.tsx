@@ -13,6 +13,7 @@ import { ChevronRight } from "lucide-react";
 import {
   conferenceLogoUrl,
   conferenceName,
+  conferenceSharesMensName,
   isDivisionRoot,
   leagueWideId,
   rootAbove,
@@ -162,8 +163,8 @@ export function ConferenceView({
   // The postseason is already in hand: the Games tab fetches the whole
   // season, so splitting the bracket out costs no request. A tab that would
   // open on "no games" is worse than no tab, so it appears only where this
-  // season's slate actually has a playoff — and never for the NBA or NHL,
-  // whose best-of-seven series this single-elimination bracket can't model.
+  // season's slate actually has a playoff. Series leagues draw one card per
+  // series (iOS, 2026-11-03).
   const rounds = useMemo(
     () => postseasonRounds(games ?? [], league),
     [games, league]
@@ -179,9 +180,12 @@ export function ConferenceView({
       ? roundChoice
       : defaultRound(rounds);
 
+  // Playoffs second, between Standings and Games, whenever the season has
+  // them (iOS, 2026-11-03): a finished season's playoffs are its headline,
+  // and a running one's are what everyone's watching.
   const tabs: HeroTab[] =
     rounds.length > 0
-      ? [...BASE_TABS, { id: "postseason", label: "Postseason" }]
+      ? [BASE_TABS[0], { id: "postseason", label: "Playoffs" }, ...BASE_TABS.slice(1)]
       : BASE_TABS;
   const activeTab = tabs.some((entry) => entry.id === tab) ? tab : "standings";
 
@@ -257,7 +261,11 @@ export function ConferenceView({
             <ConferenceLogo src={undefined} name="" />
           )
         }
-        title={name}
+        // "(W)" where the men's league has a conference by the same name
+        // (2026-11-03).
+        title={
+          conferenceSharesMensName({ league, id: conferenceId }) ? `${name} (W)` : name
+        }
         // The parent league as a link, and nothing else: no page header
         // carries a team count (iOS, 2026-09-27). The team page's hero has
         // had this line, one rung up, since it landed.

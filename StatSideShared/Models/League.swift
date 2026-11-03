@@ -14,8 +14,88 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     case nfl
     case nba
     case nhl
+    /// NCAA Division I men's basketball. Added 2026-11-02, the week both
+    /// college seasons tipped off.
+    case mensCollegeBasketball = "mcbb"
+    /// NCAA Division I women's basketball. Its own league rather than a
+    /// flag on the men's: ESPN files it under its own path, it plays four
+    /// quarters where the men play two halves, and a handful of its
+    /// conference ids differ (the Summit League is 49 for the men, 47 here).
+    case womensCollegeBasketball = "wcbb"
+    /// Major League Baseball (2026-11-03). The first sport whose period
+    /// has a half and whose game has no clock.
+    case mlb
+    /// The WNBA (2026-11-03). Basketball through and through: the NBA's
+    /// summary, byte for byte, on a calendar-year season.
+    case wnba
 
     var id: String { rawValue }
+
+    /// The sport a league plays. The axis every "is this football?" or
+    /// "is this basketball?" question reads, so a gate that means the
+    /// sport never has to enumerate leagues — six of them made
+    /// `league == .nba` stop meaning "basketball".
+    enum Sport: String, Sendable, Hashable {
+        case football, basketball, hockey, baseball
+    }
+
+    var sport: Sport {
+        switch self {
+        case .collegeFootball, .nfl: .football
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: .basketball
+        case .nhl: .hockey
+        case .mlb: .baseball
+        }
+    }
+
+    var isFootball: Bool { sport == .football }
+    var isBasketball: Bool { sport == .basketball }
+    var isBaseball: Bool { sport == .baseball }
+
+    /// Whether a game runs on a clock. Baseball's doesn't: a live MLB game
+    /// is "Top 5th", and ESPN's `displayClock` sits at "0:00" all night.
+    var hasGameClock: Bool { !isBaseball }
+
+    /// Whether this is a college league: conferences of schools, polls,
+    /// class years and a slate split by conference. Until 2026-11-02 this
+    /// was spelled `league == .collegeFootball`, which meant "college" at
+    /// some sites, "football" at others and "FBS/FCS" at the rest; each
+    /// site now asks the question it means.
+    var isCollege: Bool {
+        switch self {
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: true
+        case .nfl, .nba, .nhl, .mlb, .wnba: false
+        }
+    }
+
+    /// Whether a page can load this league's whole season as one slate.
+    /// College basketball can't: Division I is ~6,000 games at ~19 KB
+    /// each, ~300 MB a season, and fetching it timed out the page's other
+    /// requests (2026-11-03). Its Top 25 loads the ranked teams' schedules
+    /// and the tournament's days instead.
+    var loadsWholeSeasonSlate: Bool { !(isCollege && isBasketball) }
+
+    /// Whether the playoffs are best-of series rather than single games —
+    /// what makes the bracket draw one card per series (2026-11-03).
+    var playsSeries: Bool {
+        switch self {
+        case .nba, .nhl, .mlb, .wnba: true
+        case .collegeFootball, .nfl, .mensCollegeBasketball, .womensCollegeBasketball: false
+        }
+    }
+
+    /// The `groups=` a league's scoreboard and standings are scoped to:
+    /// FBS (80) for college football, Division I (50) for college
+    /// basketball (verified live 2026-11-02: 182 men's and 164 women's
+    /// games on the season's opening night, 32 conferences in the table).
+    /// Nil for the pros, whose slate is the whole league.
+    var divisionGroupId: Int? {
+        switch self {
+        case .collegeFootball: 80
+        case .mensCollegeBasketball, .womensCollegeBasketball: 50
+        case .nfl, .nba, .nhl, .mlb, .wnba: nil
+        }
+    }
 
     /// The sport path segment above the league's own. Football's two
     /// leagues share it; basketball and hockey do not, and all three base
@@ -23,8 +103,9 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     var sportSegment: String {
         switch self {
         case .collegeFootball, .nfl: "football"
-        case .nba: "basketball"
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: "basketball"
         case .nhl: "hockey"
+        case .mlb: "baseball"
         }
     }
 
@@ -37,6 +118,10 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .nfl: "nfl"
         case .nba: "nba"
         case .nhl: "nhl"
+        case .mensCollegeBasketball: "mens-college-basketball"
+        case .womensCollegeBasketball: "womens-college-basketball"
+        case .mlb: "mlb"
+        case .wnba: "wnba"
         }
     }
 
@@ -52,12 +137,18 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// every `FollowKey`, every recent-search entry and the widget's
     /// stored selection, so renaming it would silently orphan followed
     /// teams on upgrade.
+    /// "NCAAM" and "NCAAW" for college basketball (2026-11-02), on the
+    /// same reasoning: they are ESPN's and the broadcasts' words.
     var shortName: String {
         switch self {
         case .collegeFootball: "NCAAF"
         case .nfl: "NFL"
         case .nba: "NBA"
         case .nhl: "NHL"
+        case .mensCollegeBasketball: "NCAAM"
+        case .womensCollegeBasketball: "NCAAW"
+        case .mlb: "MLB"
+        case .wnba: "WNBA"
         }
     }
 
@@ -74,14 +165,7 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// is load-bearing elsewhere (fetch fan-out, season spans).
     static let displayOrder: [League] = allCases.sorted { $0.displayName < $1.displayName }
 
-    var displayName: String {
-        switch self {
-        case .collegeFootball: "NCAAF"
-        case .nfl: "NFL"
-        case .nba: "NBA"
-        case .nhl: "NHL"
-        }
-    }
+    var displayName: String { shortName }
 
     /// The name VoiceOver says, which is **not** the name on screen for
     /// college football.
@@ -96,7 +180,21 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     var spokenName: String {
         switch self {
         case .collegeFootball: "College Football"
-        case .nfl, .nba, .nhl: displayName
+        case .mensCollegeBasketball: "Men's College Basketball"
+        case .womensCollegeBasketball: "Women's College Basketball"
+        case .nfl, .nba, .nhl, .mlb, .wnba: displayName
+        }
+    }
+
+    /// The sport and who plays it, under a title that names neither — the
+    /// Top 25's (Andy, 2026-11-03), where three leagues' pages otherwise
+    /// read the same. Nil for the pros, which have no poll.
+    var pollSportName: String? {
+        switch self {
+        case .collegeFootball: "Men's Football"
+        case .mensCollegeBasketball: "Men's Basketball"
+        case .womensCollegeBasketball: "Women's Basketball"
+        case .nfl, .nba, .nhl, .mlb, .wnba: nil
         }
     }
 
@@ -121,10 +219,18 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// backing disc in dark mode, where a light-inked shield would vanish.
     var logoURL: URL? {
         switch self {
-        case .nfl, .nba, .nhl:
+        // MLB's and the WNBA's sit beside the others (probed 2026-09-14).
+        case .nfl, .nba, .nhl, .mlb, .wnba:
             URL(string: "https://a.espncdn.com/i/teamlogos/leagues/500/\(pathSegment).png")
         case .collegeFootball:
             URL(string: "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-football-college.png")
+        // The marks each league's own scoreboard declares in
+        // `leagues[].logos[]` (probed 2026-11-02), filed beside college
+        // football's under `redesign/`.
+        case .mensCollegeBasketball:
+            URL(string: "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_MensBasketball.png")
+        case .womensCollegeBasketball:
+            URL(string: "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_WomensBasketball.png")
         }
     }
 
@@ -140,7 +246,9 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .nfl: "013369"
         case .nba: "253b73"
         case .nhl: "000000"
-        case .collegeFootball: nil
+        // Neither ships a `color` we've read; the header reads it off the
+        // mark, as college football's does.
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball, .mlb, .wnba: nil
         }
     }
 
@@ -152,10 +260,11 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// The app's *own* chrome (the Scores tab icon, the wordmark) is a
     /// separate question and deliberately not read from here.
     var fallbackGlyph: String {
-        switch self {
-        case .collegeFootball, .nfl: "football.fill"
-        case .nba: "basketball.fill"
-        case .nhl: "hockey.puck.fill"
+        switch sport {
+        case .football: "football.fill"
+        case .basketball: "basketball.fill"
+        case .hockey: "hockey.puck.fill"
+        case .baseball: "baseball.fill"
         }
     }
 
@@ -176,6 +285,14 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .collegeFootball: 8
         case .nfl: 7
         case .nba, .nhl: 9
+        // Exhibitions start in late October; the regular season opens the
+        // first Monday of November.
+        case .mensCollegeBasketball, .womensCollegeBasketball: 10
+        // Spring training opens in late February (ESPN's 2026 season
+        // object starts 2026-02-19).
+        case .mlb: 2
+        // Preseason in early April; ESPN's season object starts 2026-04-03.
+        case .wnba: 4
         }
     }
 
@@ -188,6 +305,13 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .collegeFootball: 1
         case .nfl: 2
         case .nba, .nhl: 6
+        // Both Final Fours are played the first weekend of April.
+        case .mensCollegeBasketball, .womensCollegeBasketball: 4
+        // The two calendar-year leagues: the month their season *closes*
+        // in, the same year (see `seasonSpansNewYear`). The World Series
+        // can reach November; the 2026 WNBA Finals' Game 7 was October 31.
+        case .mlb: 11
+        case .wnba: 10
         }
     }
 
@@ -206,9 +330,24 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     var seasonYearIsEndYear: Bool {
         switch self {
         case .collegeFootball, .nfl: false
-        case .nba, .nhl: true
+        // College basketball too: `season.year` is 2027 for 2026-27
+        // (probed 2026-11-02).
+        case .nba, .nhl, .mensCollegeBasketball, .womensCollegeBasketball: true
+        // Both stamp the calendar year they're played in.
+        case .mlb, .wnba: false
         }
     }
+
+    /// Whether a season crosses New Year — August to January, October to
+    /// June. True for every league until MLB (February to November) and
+    /// the WNBA (April to October), which run inside one calendar year.
+    ///
+    /// The season rules branch on it (2026-11-03): a calendar-year league's
+    /// season closes in the year it opened, and its offseason months (after
+    /// the final, before the next opener) still show the season just
+    /// played. `seasonRollsOverAfter` is then the month its season closes
+    /// in, not a month of the following year.
+    var seasonSpansNewYear: Bool { seasonRollsOverAfter < seasonOpensIn }
 
     /// Our opening-year season → the value ESPN's `season=` wants.
     func espnSeason(for year: Int) -> Int { seasonYearIsEndYear ? year + 1 : year }
@@ -245,6 +384,10 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .collegeFootball: 10   // one meeting a year, so ten of them
         case .nfl: 6                // twice a year inside a division
         case .nba, .nhl: 3          // two to four times a year
+        // Once or twice a year inside a conference, plus tournaments.
+        case .mensCollegeBasketball, .womensCollegeBasketball, .wnba: 3
+        // Thirteen meetings a year inside a division.
+        case .mlb: 2
         }
     }
 
@@ -252,18 +395,60 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// `week: null` on every NBA and NHL event and ships an empty
     /// `leagues[].calendar` for both (probed 2026-09-08), so a Weeks
     /// toggle there files a whole season under one unnamed card.
-    var hasWeeks: Bool { !seasonYearIsEndYear }
+    ///
+    /// Football's alone, said as such (2026-11-03): this was
+    /// `!seasonYearIsEndYear`, which held only while every league that
+    /// named a season for its opening year was a football league. MLB and
+    /// the WNBA run inside one calendar year and have no weeks either.
+    var hasWeeks: Bool { isFootball }
 
     /// Whether this league's scoreboard and standings take college
     /// football's FBS/FCS `groups=` parameter. Replaces every
     /// `league == .nfl` in the client, which read as "the league that
     /// isn't college football" and stops being true at four.
+    ///
+    /// Stays college football's alone after college basketball arrived
+    /// (2026-11-02): FBS/FCS is a football split. College basketball's
+    /// `groups=50` is a single division and reads `divisionGroupId`.
     var hasCollegeDivisions: Bool { self == .collegeFootball }
 
     /// Whether the league ranks its teams. College football has the AP,
-    /// Coaches and CFP polls; `/rankings` is a 404 for the other three and
-    /// always will be (probed 2026-09-08).
-    var hasPoll: Bool { self == .collegeFootball }
+    /// Coaches and CFP polls, college basketball the AP and Coaches (probed
+    /// 2026-11-02); `/rankings` is a 404 for the pros and always will be
+    /// (probed 2026-09-08).
+    var hasPoll: Bool { isCollege }
+
+    /// The college league a pro's College row opens: an NBA player's
+    /// school opens its men's basketball page, an NFL player's its football
+    /// page (2026-11-02 — until then every College row opened football,
+    /// the only college league there was). The NHL keeps football, which
+    /// is what it opened before: the app covers no college hockey, and the
+    /// school's page is still the school. Nil for a college league.
+    var collegeFeeder: League? {
+        switch self {
+        case .nfl, .nhl: .collegeFootball
+        case .nba: .mensCollegeBasketball
+        case .wnba: .womensCollegeBasketball
+        // The app covers no college baseball.
+        case .mlb, .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: nil
+        }
+    }
+
+    /// The pro leagues a college team page's Pros tab lists. Football keeps
+    /// all three it listed when the tab shipped; men's basketball lists the
+    /// NBA, its own; women's lists none, since the app has no WNBA.
+    var proAlumniLeagues: [League] {
+        switch self {
+        case .collegeFootball: [.nfl, .nba, .nhl]
+        case .mensCollegeBasketball: [.nba]
+        case .womensCollegeBasketball: [.wnba]
+        case .nfl, .nba, .nhl, .mlb, .wnba: []
+        }
+    }
+
+    /// Whether the league has a College Football Playoff ranking. ESPN's
+    /// core ranking id 21; football only.
+    var hasPlayoffRanking: Bool { self == .collegeFootball }
 
     /// Whether the surface underfoot is a fact about the game.
     ///
@@ -272,7 +457,13 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// on ice — ESPN still ships `grass: false` for their arenas, which we
     /// were rendering as "Surface · Turf" on a hockey rink (Andy,
     /// 2026-09-09: "nba and nhl games aren't played on turf").
-    var playsOnASurface: Bool { !seasonYearIsEndYear }
+    ///
+    /// Read off the sport since 2026-11-03, for `hasWeeks`'s reason: it was
+    /// `!seasonYearIsEndYear`, a proxy that stops holding once a
+    /// calendar-year league arrives.
+    /// Baseball too: Tropicana Field's turf and Wrigley's grass are a
+    /// real difference, and ESPN ships `grass` for every ballpark.
+    var playsOnASurface: Bool { isFootball || isBaseball }
 
     /// What a league calls its scoring periods.
     ///
@@ -290,8 +481,17 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
 
     var periodFormat: PeriodFormat {
         switch self {
-        case .collegeFootball, .nfl, .nba:
+        case .collegeFootball, .nfl, .nba, .womensCollegeBasketball, .wnba:
             PeriodFormat(regulationCount: 4, longName: "QUARTER", shortName: "Q")
+        // Nine innings, each in halves (`Play.half`); no letter, since a
+        // live MLB line is ESPN's own "Top 5th".
+        case .mlb:
+            PeriodFormat(regulationCount: 9, longName: "INNING", shortName: "")
+        // Men's college basketball plays two 20-minute halves
+        // (`format.regulation.periods == 2`, "1st Half"); period 3 is the
+        // first overtime.
+        case .mensCollegeBasketball:
+            PeriodFormat(regulationCount: 2, longName: "HALF", shortName: "H")
         case .nhl:
             PeriodFormat(regulationCount: 3, longName: "PERIOD", shortName: "P")
         }
@@ -309,8 +509,11 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         case .collegeFootball, .nfl:
             [("passingYards", "Passing"), ("rushingYards", "Rushing"),
              ("receivingYards", "Receiving")]
-        case .nba:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba:
             [("points", "Points"), ("rebounds", "Rebounds"), ("assists", "Assists")]
+        // MLB's summary ships no `leaders` block; the card stays away.
+        case .mlb:
+            []
         case .nhl:
             [("goals", "Goals"), ("assists", "Assists"), ("points", "Points")]
         }
@@ -326,7 +529,7 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
             [("totalYards", "Total Yards"), ("netPassingYards", "Passing"),
              ("rushingYards", "Rushing"), ("thirdDownEff", "3rd Down"),
              ("turnovers", "Turnovers"), ("possessionTime", "Possession")]
-        case .nba:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba:
             [("fieldGoalPct", "FG%"), ("threePointFieldGoalPct", "3PT%"),
              ("totalRebounds", "Rebounds"), ("assists", "Assists"),
              ("turnovers", "Turnovers")]
@@ -334,6 +537,13 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
             [("shotsTotal", "Shots"), ("powerPlayGoals", "Power Play"),
              ("faceoffPercent", "Faceoffs"), ("hits", "Hits"),
              ("penaltyMinutes", "Penalty Min")]
+        // MLB's team statistics come in batting/pitching/fielding groups,
+        // flattened by the mapper; these names are the batting group's and
+        // fielding's `errors` (read off the World Series fixture).
+        case .mlb:
+            [("hits", "Hits"), ("homeRuns", "Home Runs"), ("walks", "Walks"),
+             ("strikeouts", "Strikeouts"), ("runnersLeftOnBase", "Left on Base"),
+             ("errors", "Errors")]
         }
     }
 
@@ -348,7 +558,10 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         switch self {
         case .collegeFootball, .nfl: "Scoring"
         case .nhl: "Goals"
-        case .nba: nil
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: nil
+        // Baseball scores a handful of times a game and each run is an
+        // event, as in football; ESPN flags them on the play feed.
+        case .mlb: "Scoring"
         }
     }
 
@@ -357,18 +570,20 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// arrived; the request-id prefix `kickoff.` stays, because that is a
     /// persistence token rather than copy.
     var startNoun: String {
-        switch self {
-        case .collegeFootball, .nfl: "Kickoff"
-        case .nba: "Tip-off"
-        case .nhl: "Puck drop"
+        switch sport {
+        case .football: "Kickoff"
+        case .basketball: "Tip-off"
+        case .hockey: "Puck drop"
+        case .baseball: "First pitch"
         }
     }
 
     var startVerbPhrase: String {
-        switch self {
-        case .collegeFootball, .nfl: "kicks off"
-        case .nba: "tips off"
-        case .nhl: "drops the puck"
+        switch sport {
+        case .football: "kicks off"
+        case .basketball: "tips off"
+        case .hockey: "drops the puck"
+        case .baseball: "throws the first pitch"
         }
     }
 
@@ -378,10 +593,14 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// 2026-09-08).
     var teamLogoPathComponent: String {
         switch self {
-        case .collegeFootball: "ncaa"
+        // One NCAA bucket for every college sport: team ids are shared
+        // across them (Michigan is 130 in football and both basketballs).
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: "ncaa"
         case .nfl: "nfl"
         case .nba: "nba"
         case .nhl: "nhl"
+        case .mlb: "mlb"
+        case .wnba: "wnba"
         }
     }
 
@@ -393,8 +612,8 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
     /// instead; see `Conference.logoURL(for:in:)`.
     var conferenceLogoPathComponent: String {
         switch self {
-        case .collegeFootball: "ncaa_conf"
-        case .nfl, .nba, .nhl: teamLogoPathComponent
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: "ncaa_conf"
+        case .nfl, .nba, .nhl, .mlb, .wnba: teamLogoPathComponent
         }
     }
 }
@@ -437,6 +656,10 @@ nonisolated struct ConferenceID: Hashable, Codable, Sendable, Identifiable {
     static func nfl(_ id: Int) -> ConferenceID { ConferenceID(.nfl, id) }
     static func nba(_ id: Int) -> ConferenceID { ConferenceID(.nba, id) }
     static func nhl(_ id: Int) -> ConferenceID { ConferenceID(.nhl, id) }
+    static func mcbb(_ id: Int) -> ConferenceID { ConferenceID(.mensCollegeBasketball, id) }
+    static func wcbb(_ id: Int) -> ConferenceID { ConferenceID(.womensCollegeBasketball, id) }
+    static func mlb(_ id: Int) -> ConferenceID { ConferenceID(.mlb, id) }
+    static func wnba(_ id: Int) -> ConferenceID { ConferenceID(.wnba, id) }
 
     /// The persistence token: `"cfb-8"`. Round-trips through
     /// `init?(token:)`, which accepts a bare `"8"` as college football so

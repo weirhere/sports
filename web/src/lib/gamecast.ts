@@ -7,6 +7,7 @@
 // `GamecastContent`, and each league builds one here. That's what keeps the
 // three from drifting apart, on either platform.
 
+import { isBasketball } from "@/lib/leagues";
 import type { Game, GameSituation, PlayItem, Team } from "@/lib/types";
 
 /** One of the three header columns: "DOWN / 2nd & 4", "SHOTS / 10–7". A
@@ -90,6 +91,9 @@ export function shotMapGamecast(
   if (!last) return undefined;
   switch (game.league) {
     case "nba":
+    case "mcbb":
+    case "wcbb":
+    case "wnba":
       return basketball(game, plays, last);
     case "nhl":
       return hockey(game, plays, last, allowsShootout);
@@ -375,7 +379,7 @@ export function currentShotMap(
   allowsShootout: boolean
 ): ShotMap | undefined {
   const surface =
-    game.league === "nba" ? "court" : game.league === "nhl" ? "rink" : undefined;
+    isBasketball(game.league) ? "court" : game.league === "nhl" ? "rink" : undefined;
   if (!surface) return undefined;
   let period: number | undefined;
   for (let i = plays.length - 1; i >= 0 && period === undefined; i--) {

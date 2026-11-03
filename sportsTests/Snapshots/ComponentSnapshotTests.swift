@@ -61,6 +61,9 @@ struct ComponentSnapshotTests {
         /// College football's cells alone, for a surface only it has.
         static let football: [Variant] = all.filter { $0.sport == .football }
 
+        /// Basketball's cells alone, for a row only a basketball league draws.
+        static let basketball: [Variant] = all.filter { $0.sport == .basketball }
+
         static let all: [Variant] = SnapshotFixtures.Sport.allCases.flatMap { sport in
             Device.allCases.flatMap { device in
                 [ColorScheme.light, .dark].map { Variant(sport: sport, device: device, scheme: $0) }
@@ -89,6 +92,31 @@ struct ComponentSnapshotTests {
         let row = GameRow(game: SnapshotFixtures.game(variant.sport), timeOnly: true)
             .background(Color.bgCard)
         assert(row, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("gameRowWomen")), arguments: Variant.basketball)
+    func gameRowWomen(_ variant: Variant) {
+        // A women's college game in the Following section: both names
+        // carry "(W)" (2026-11-03).
+        let game = SnapshotFixtures.womensGame
+        let row = GameRow(game: game, timeOnly: true,
+                          womensMarks: [game.away.team.id, game.home.team.id])
+            .background(Color.bgCard)
+        assert(row, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("seriesBracket")), arguments: Variant.basketball)
+    func seriesBracket(_ variant: Variant) {
+        // The Postseason tab for a series league (2026-11-03): one card
+        // per series, series wins where the score goes, the loser muted,
+        // the live Finals saying which game it is. On the recessed page,
+        // as the tab paints it; disabled ink offscreen, as with the
+        // story cards.
+        let rounds = SnapshotFixtures.seriesRounds
+        let bracket = PostseasonSection(rounds: rounds, selection: rounds.first?.name,
+                                        onSelectRound: { _ in })
+            .background(Color.bgRecessed)
+        assert(bracket, variant)
     }
 
     @Test(.enabled(if: snapshotSelected("gameRowConcealed")), arguments: Variant.all)

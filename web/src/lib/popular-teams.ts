@@ -16,6 +16,12 @@ import { LEAGUES, type League } from "@/lib/leagues";
 import type { ConferenceTeams, Team } from "@/lib/types";
 
 const IDS: Record<League, string[]> = {
+  // College basketball, verified against the live `/teams` 2026-11-02.
+  mcbb: ["150", "153", "96", "2305", "41", "2250", "127", "12", "222", "84"],
+  wcbb: ["41", "2579", "99", "2294", "24", "87", "251", "26", "2633", "30"],
+  // MLB and the WNBA, verified against the live `/teams` 2026-11-03.
+  mlb: ["10", "19", "2", "16", "15", "21", "22", "26", "24", "18"],
+  wnba: ["5", "9", "17", "129689", "19", "8", "14", "6", "11", "20"],
   cfb: [
     "194", // Ohio State
     "333", // Alabama

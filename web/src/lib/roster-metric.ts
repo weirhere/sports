@@ -25,6 +25,10 @@ const METRICS: Record<League, RosterMetric> = {
   nfl: { field: "age", caption: "AGE", width: 44 },
   nba: { field: "age", caption: "AGE", width: 44 },
   nhl: { field: "age", caption: "AGE", width: 44 },
+  mcbb: { field: "classYear", caption: "CLASS", width: 44 },
+  wcbb: { field: "classYear", caption: "CLASS", width: 44 },
+  mlb: { field: "age", caption: "AGE", width: 44 },
+  wnba: { field: "age", caption: "AGE", width: 44 },
 };
 
 export function rosterMetric(league: League): RosterMetric {

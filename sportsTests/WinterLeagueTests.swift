@@ -272,7 +272,7 @@ import Testing
             (1...30).map(String.init)
         case .nhl:
             (1...30).map(String.init).filter { $0 != "24" } + ["37", "124292", "129764"]
-        case .collegeFootball:
+        case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball, .mlb, .wnba:
             []
         }
     }

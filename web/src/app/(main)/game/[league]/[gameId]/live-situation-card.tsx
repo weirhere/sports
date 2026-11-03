@@ -29,6 +29,8 @@ import { TeamMark } from "./team-mark";
 import { DriveField } from "./gamecast/drive-field";
 import { CourtSurface } from "./gamecast/court-surface";
 import { RinkSurface } from "./gamecast/rink-surface";
+import { DiamondSurface } from "./gamecast/diamond-surface";
+import type { BaseballDiamond } from "@/lib/baseball-gamecast";
 
 /** Football's card: the drive on the field. */
 export function DriveGamecastCard({
@@ -57,6 +59,32 @@ export function DriveGamecastCard({
             playId={situation.lastPlayId}
           />
         )
+      }
+    />
+  );
+}
+
+/** Baseball's card (2026-11-03): the diamond, its runners and the count,
+ *  keyed on the latest play so a new batter redraws it. */
+export function BaseballGamecastCard({
+  game,
+  diamond,
+  content,
+}: {
+  game: Game;
+  diamond: BaseballDiamond;
+  content: GamecastContent;
+}) {
+  return (
+    <LiveSituationCard
+      content={content}
+      surface={
+        <DiamondSurface
+          key={diamond.playId}
+          diamond={diamond}
+          away={game.awayTeam}
+          home={game.homeTeam}
+        />
       }
     />
   );

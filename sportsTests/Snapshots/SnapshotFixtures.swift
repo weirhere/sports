@@ -107,6 +107,19 @@ enum SnapshotFixtures {
         }
     }
 
+    static let uconnWomen = team("41", "UConn", "Huskies", "CONN", league: .womensCollegeBasketball)
+    static let southCarolinaWomen = team("2579", "South Carolina", "Gamecocks", "SC",
+                                         league: .womensCollegeBasketball)
+
+    /// A women's college final, for the Following row's (W) mark
+    /// (2026-11-03), which both sides wear.
+    static let womensGame = Game(
+        id: "snap-wcbb", date: day(2027, 1, 20), name: nil, shortName: "CONN @ SC", weekNumber: nil,
+        status: .final(detail: "Final"),
+        home: competitor(southCarolinaWomen, score: 74, record: "17-1", rank: 1, isHome: true, winner: true),
+        away: competitor(uconnWomen, score: 70, record: "16-2", rank: 3, isHome: false, winner: false),
+        broadcast: "ESPN")
+
     /// The same three matchups as finals, for spoiler mode's baselines
     /// (E30): football and hockey are `game(_:)`'s pairs played out,
     /// basketball is already a final. Hockey ends in overtime so the
@@ -254,6 +267,43 @@ enum SnapshotFixtures {
                       headline: pair.0, dek: nil, attribution: pair.1, published: nil,
                       gameId: nil, teams: [])
         }
+    }
+
+    // MARK: - Series bracket
+
+    static let warriors = team("9", "Golden State", "Warriors", "GS", league: .nba)
+
+    /// The NBA's last two rounds as series cards (2026-11-03): two
+    /// conference finals decided, the Finals live in Game 4 at 2-1. One
+    /// game per series carries its record, which is all a card reads.
+    static var seriesRounds: [PostseasonRound] {
+        func game(_ id: String, _ headline: String, home: Team, away: Team, day: Int,
+                  status: GameStatus, wins: [Team: Int], completed: Bool, summary: String) -> Game {
+            let winner: Team? = completed ? wins.max { $0.value < $1.value }?.key : nil
+            return Game(id: id, date: SnapshotFixtures.day(2027, 6, day), name: nil, shortName: nil,
+                        weekNumber: nil, seasonType: Postseason.seasonType, headline: headline,
+                        series: PlayoffSeries(length: 7, summary: summary, completed: completed,
+                                              wins: Dictionary(uniqueKeysWithValues: wins.map { ($0.key.id, $0.value) })),
+                        status: status,
+                        home: Competitor(team: home, score: 101, record: nil, rank: nil, isHome: true,
+                                         winner: winner.map { $0 == home }),
+                        away: Competitor(team: away, score: 96, record: nil, rank: nil, isHome: false,
+                                         winner: winner.map { $0 == away }),
+                        broadcast: nil)
+        }
+        let games = [
+            game("e6", "East Finals - Game 6", home: celtics, away: knicks, day: 1,
+                 status: .final(detail: "Final"), wins: [celtics: 4, knicks: 2], completed: true,
+                 summary: "BOS wins series 4-2"),
+            game("w5", "West Finals - Game 5", home: lakers, away: warriors, day: 2,
+                 status: .final(detail: "Final"), wins: [lakers: 4, warriors: 1], completed: true,
+                 summary: "LAL wins series 4-1"),
+            game("f4", "NBA Finals - Game 4", home: lakers, away: celtics, day: 12,
+                 status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing,
+                               possessionTeamId: nil),
+                 wins: [celtics: 2, lakers: 1], completed: false, summary: "BOS leads series 2-1"),
+        ]
+        return Postseason.rounds(from: games, league: .nba)
     }
 
     // MARK: - Team stats

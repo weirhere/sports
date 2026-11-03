@@ -733,6 +733,12 @@ struct GameDetailScreen: View {
                         card(title: "Current drive") {
                             LiveSituationCard(summary: summary, situation: situation)
                         }
+                    } else if let diamond = baseballGamecast(summary) {
+                        // Baseball: the diamond, the count and the matchup
+                        // (2026-11-03), off the play feed's latest play.
+                        card(title: "Current inning") {
+                            LiveSituationCard(summary: summary, diamond: diamond)
+                        }
                     } else if let shots = shotGamecast(summary) {
                         // Basketball and hockey: the same card over this
                         // period's shots (2026-09-27).
@@ -855,6 +861,12 @@ struct GameDetailScreen: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    /// The baseball diamond, live games only, like the court and rink.
+    private func baseballGamecast(_ summary: GameSummary) -> BaseballDiamond? {
+        guard gameLeague.isBaseball, case .live = GameHeaderState.status(game, summary) else { return nil }
+        return BaseballDiamond.current(plays: summary.plays)
     }
 
     /// The court or rink Gamecast, live games only (D1): the color budget's

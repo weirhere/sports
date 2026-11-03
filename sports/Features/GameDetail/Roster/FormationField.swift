@@ -45,8 +45,10 @@ struct FormationField: View {
     static func rowHeights(for league: League) -> [CGFloat] {
         switch league {
         case .collegeFootball, .nfl: [92, 92, 92, 92]
-        case .nba: [228, 140]
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: [228, 140]
         case .nhl: [138, 120, 110]
+        // The outfield nearest the midline, the infield, the battery.
+        case .mlb: [150, 120, 100]
         }
     }
 
@@ -110,7 +112,7 @@ struct FormationField: View {
 
     @ViewBuilder
     private func rowView(_ row: Formation.Row, team: Team) -> some View {
-        let hairline = league == .nba ? 0.12 : 0.08
+        let hairline = league.isBasketball ? 0.12 : 0.08
         switch row {
         case .line(let players):
             HStack(spacing: 0) {
@@ -185,7 +187,7 @@ private struct FieldMarkings: View {
                 }
                 context.fill(Path(CGRect(x: 0, y: midY - 1, width: size.width, height: 2)),
                              with: .color(SurfaceColors.chalk))
-            case .nba:
+            case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba:
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(SurfaceColors.Starters.maple))
                 let line = SurfaceColors.Starters.paint
                 // A key at each end, 30% of the width and 22% of the length,
@@ -232,6 +234,38 @@ private struct FieldMarkings: View {
                                   clockwise: false)
                     context.stroke(crease, with: .color(red), lineWidth: width)
                 }
+            case .mlb:
+                // Two diamonds meeting at their outfields: grass, and at
+                // each end an infield cut into it with home plate at the
+                // edge, its foul lines running out to the corners.
+                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(SurfaceColors.Starters.turf))
+                let chalk = SurfaceColors.chalk.opacity(0.85)
+                let reach = size.width * 0.17
+                let base: CGFloat = 7 * scale
+                for top in [true, false] {
+                    let direction: CGFloat = top ? 1 : -1
+                    let home = CGPoint(x: size.width / 2, y: top ? 16 * scale : size.height - 16 * scale)
+                    let first = CGPoint(x: home.x + reach, y: home.y + reach * direction)
+                    let second = CGPoint(x: home.x, y: home.y + 2 * reach * direction)
+                    let third = CGPoint(x: home.x - reach, y: home.y + reach * direction)
+                    var infield = Path()
+                    infield.addLines([home, first, second, third])
+                    infield.closeSubpath()
+                    context.fill(infield, with: .color(SurfaceColors.Starters.infieldDirt))
+                    for corner: CGFloat in [-1, 1] {
+                        var foul = Path()
+                        foul.move(to: home)
+                        let run = size.width / 2
+                        foul.addLine(to: CGPoint(x: home.x + run * corner, y: home.y + run * direction))
+                        context.stroke(foul, with: .color(chalk), lineWidth: width)
+                    }
+                    for bag in [first, second, third, home] {
+                        context.fill(Path(CGRect(x: bag.x - base / 2, y: bag.y - base / 2,
+                                                 width: base, height: base)),
+                                     with: .color(SurfaceColors.chalk))
+                    }
+                }
+                band(midY, SurfaceColors.Starters.turfAlternate)
             }
         }
     }

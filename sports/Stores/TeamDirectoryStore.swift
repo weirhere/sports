@@ -72,6 +72,19 @@ final class TeamDirectoryStore {
         conferences(in: league).flatMap(\.teams)
     }
 
+    /// Whether a women's college team's full name is a men's team's too —
+    /// "UConn Huskies" is both, "Georgia Lady Bulldogs" isn't (330 of 362
+    /// share one, 2026-11-03). A shared name gets "(W)" on the team page,
+    /// where nothing else says which program it is (Andy, 2026-11-03).
+    func sharesMensName(_ team: Team) -> Bool {
+        Self.sharesMensName(team, mens: teams(in: .mensCollegeBasketball))
+    }
+
+    nonisolated static func sharesMensName(_ team: Team, mens: [Team]) -> Bool {
+        guard team.league == .womensCollegeBasketball, let name = team.displayName else { return false }
+        return mens.contains { $0.displayName == name }
+    }
+
     func load() async {
         guard conferences.isEmpty, !isLoading else { return }
         isLoading = true

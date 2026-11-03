@@ -739,3 +739,24 @@ describe("a leader carries the id the card links on", () => {
       .toEqual([]);
   });
 });
+
+describe("scoring plays on a pitch-by-pitch feed", () => {
+  // MLB's run lands on the pitch row a step before the flagged at-bat
+  // result (iOS, 2026-11-03): the result row reads the same score as the
+  // row before it, and must still be credited.
+  it("credits the side whose score went up since the last scoring play", async () => {
+    const { transformPlays } = await import("./transformers");
+    const plays = transformPlays([
+      { id: "1", awayScore: 0, homeScore: 0 },
+      { id: "2", awayScore: 1, homeScore: 0 },
+      { id: "3", awayScore: 1, homeScore: 0, scoringPlay: true, text: "Pratt singled, Turang scored" },
+      { id: "4", awayScore: 1, homeScore: 1 },
+      { id: "5", awayScore: 1, homeScore: 1, scoringPlay: true, text: "Smith homered" },
+      // A shootout-style attempt whose tally tops nothing stays unclaimed.
+      { id: "6", awayScore: 0, homeScore: 1, scoringPlay: true },
+    ] as never);
+    expect(plays.map((play) => play.scoringSide)).toEqual([
+      undefined, undefined, "away", undefined, "home", undefined,
+    ]);
+  });
+});

@@ -48,6 +48,10 @@ struct PostseasonSection: View {
         max(120, (paneWidth - Self.columnGap - Self.edgeInset * 2) / 2)
     }
 
+    private var seriesOpens: [String: Game] {
+        rounds.reduce(into: [:]) { opens, round in opens.merge(round.opens) { first, _ in first } }
+    }
+
     private var activeIndex: Int {
         rounds.firstIndex { $0.name == selection } ?? 0
     }
@@ -245,8 +249,11 @@ struct PostseasonSection: View {
         }
     }
 
+    /// A series card opens a real game — the live one, the next one, or
+    /// the one that decided it — never the card itself, which no summary
+    /// endpoint knows.
     private func matchLink(_ game: Game) -> some View {
-        NavigationLink(value: game) {
+        NavigationLink(value: seriesOpens[game.id] ?? game) {
             BracketMatchCard(game: game)
         }
         .buttonStyle(.plain)
@@ -481,6 +488,7 @@ private struct BracketMatchCard: View {
     }
 
     private var statusLine: String {
+        if let series = game.series { return seriesLine(series) }
         switch game.status {
         case .final(let detail):
             if let detail, detail.localizedCaseInsensitiveContains("OT") { return "Final/OT" }
@@ -498,8 +506,32 @@ private struct BracketMatchCard: View {
         }
     }
 
+    /// A series card's line: the game being played, Game 1's date before
+    /// a series starts, and ESPN's own sentence otherwise — "ATL leads
+    /// series 1-0", "MIL wins series 4-1" (2026-11-03).
+    private func seriesLine(_ series: PlayoffSeries) -> String {
+        let played = series.wins.values.reduce(0, +)
+        if game.isLive {
+            let clock = game.status.liveStatusText(in: game.home.team.league) ?? "Live"
+            return "Game \(played + 1) · \(clock)"
+        }
+        if played == 0, case .pre = game.status, let date = game.date {
+            let when = game.timeTBD ? date.formatted(.dateTime.month(.defaultDigits).day())
+                : date.formatted(.dateTime.month(.defaultDigits).day().hour().minute())
+            return "Game 1 · \(when)"
+        }
+        if let summary = series.summary { return summary }
+        return series.length.map { "Best of \($0)" } ?? "Series"
+    }
+
     private var spokenLabel: String {
         var parts = [game.headline].compactMap(\.self)
+        // A series has no host — and its line already says the record.
+        guard game.series == nil else {
+            parts.append("\(game.away.team.location) versus \(game.home.team.location)")
+            parts.append(statusLine)
+            return parts.joined(separator: ", ")
+        }
         parts.append("\(game.away.team.location) at \(game.home.team.location)")
         if let away = game.away.score, let home = game.home.score {
             parts.append("\(away) to \(home)")

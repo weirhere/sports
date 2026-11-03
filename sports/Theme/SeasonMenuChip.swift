@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// The season picker: a capsule chip opening a menu of years, newest
-/// first. Shared by the Scores header, TeamPage and ConferencePage so the
-/// three read as one control.
+/// The season picker: a chip opening a menu of years, newest first.
+/// Shared by every entity page so they read as one control.
 struct SeasonMenuChip: View {
+    /// Where the chip rides. An entity page's header carries it beside
+    /// Follow (`.bar`, Andy, 2026-11-03); the player and coach panes keep
+    /// it over their cards (`.pane`).
+    enum Style { case pane, bar }
+
     let current: Int
     let seasons: [Int]
     /// Whose season this is. Football names a season by the year it opens
@@ -11,6 +15,7 @@ struct SeasonMenuChip: View {
     /// render "2026-27", which is ESPN's own spelling and the only one
     /// that isn't ambiguous about which winter you're looking at.
     var league: League = .collegeFootball
+    var style: Style = .pane
     let onSelect: (Int) -> Void
 
     private func label(_ year: Int) -> String { league.seasonLabel(year) }
@@ -35,18 +40,29 @@ struct SeasonMenuChip: View {
         .accessibilityValue(label(current))
     }
 
-    /// Same capsule as the Scores header chips and the panes' other
-    /// chips, so every chip over content reads as one family. (The `.bar`
-    /// variant for the toolbar row retired 2026-09-27, when every entity
-    /// page moved its season chip into the pane.)
+    /// Over content, the panes' capsule, so every chip there reads as one
+    /// family. In the bar, the label alone in the bar's ink: the toolbar's
+    /// own glass groups it with Follow, and a capsule inside that glass
+    /// would be a second container around one word. (The bar style first
+    /// retired 2026-09-27, when the chip moved into the panes; it came back
+    /// 2026-11-03 with the chip beside Follow.)
+    @ViewBuilder
     private var label: some View {
-        content
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, 8)
-            .glassCapsuleInteractive(fallback: Color.bgElevated)
-            // Compact capsule, 44 pt tap target.
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+        switch style {
+        case .pane:
+            content
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, 8)
+                .glassCapsuleInteractive(fallback: Color.bgElevated)
+                // Compact capsule, 44 pt tap target.
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        case .bar:
+            content
+                .padding(.horizontal, Spacing.sm)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
     }
 
     private var content: some View {

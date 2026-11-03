@@ -8,6 +8,8 @@ import {
   apiBase,
   espnSeason,
   hasCollegeDivisions,
+  isCollegeBasketball,
+  leagueGroupId,
   leaguePath,
   standingsApiBase,
   type League,
@@ -56,6 +58,37 @@ export function espnDayTokens(start: Date, end: Date): string[] {
     cursor.setDate(cursor.getDate() + 1);
   }
   return tokens;
+}
+
+/** A month token's own days, as `dates=` tokens: `202609` → `20260901`…`20260930`. */
+export function monthDayTokens(month: string): string[] {
+  if (!/^\d{6}$/.test(month)) return [];
+  const year = Number(month.slice(0, 4));
+  const index = Number(month.slice(4)) - 1;
+  return espnDayTokens(new Date(year, index, 1), new Date(year, index + 1, 0));
+}
+
+/**
+ * The days of a month its own response can't vouch for — iOS
+ * `ESPNClient.daysToReask(inMonth:after:)` (2026-11-03).
+ *
+ * A month request is trusted only up to the last day it returned a game for:
+ * that day and every one after it are asked again as days. ESPN cuts a
+ * `groups=` month short four ways and only the first says so with a count:
+ * at `limit`; by response size (NCAAW's March stopped at 454 games on the
+ * 15th, the whole NCAA tournament gone); by dropping its last day (every NHL
+ * month with `groups=9`); or by answering empty (college basketball's
+ * November). Every short response ran from the 1st and stopped early. A
+ * month at the limit is asked again whole, as it always was.
+ */
+export function daysToReask(month: string, eventDates: readonly string[]): string[] {
+  const days = monthDayTokens(month);
+  const parsed = eventDates
+    .map((date) => new Date(date))
+    .filter((date) => !Number.isNaN(date.getTime()));
+  if (eventDates.length >= WINDOW_LIMIT || parsed.length === 0) return days;
+  const last = espnDay(new Date(Math.max(...parsed.map((date) => date.getTime()))));
+  return days.filter((day) => day >= last);
 }
 
 /** Every calendar month a span touches, as `dates=` tokens, in order. */
@@ -136,9 +169,16 @@ export function scoreboardUrl(
   }
 ): string {
   const url = new URL(`${apiBase(league)}/scoreboard`);
-  const groups = params?.groups ?? (hasCollegeDivisions(league) ? FBS_GROUP_ID : undefined);
+  // FBS for college football, Division I for college basketball — without
+  // `groups=50` ESPN answers college basketball with a curated handful.
+  const groups = params?.groups ?? leagueGroupId(league);
   if (groups !== undefined) url.searchParams.set("groups", String(groups));
-  url.searchParams.set("limit", String(params?.limit ?? 300));
+  // ~180 Division I games on a weeknight, more on a February Saturday; 500
+  // is ESPN's ceiling (501 collapses to 25).
+  url.searchParams.set(
+    "limit",
+    String(params?.limit ?? (isCollegeBasketball(league) ? 500 : 300))
+  );
   if (params?.week !== undefined) url.searchParams.set("week", String(params.week));
   if (params?.seasonType !== undefined) {
     url.searchParams.set("seasontype", String(params.seasonType));
@@ -227,6 +267,8 @@ export function standingsUrl(
   const url = new URL(`${standingsApiBase(league)}/standings`);
   if (hasCollegeDivisions(league)) {
     url.searchParams.set("group", String(params?.group ?? FBS_GROUP_ID));
+  } else if (isCollegeBasketball(league)) {
+    url.searchParams.set("group", String(params?.group ?? leagueGroupId(league)));
   }
   if (params?.year !== undefined) {
     url.searchParams.set("season", String(espnSeason(league, params.year)));
@@ -302,8 +344,10 @@ export function coreRankingUrl(
   league: League,
   params: { year: number; seasonType: number; week: number; rankingId: number }
 ): string {
+  // Our axis is the opening year; the core API's is ESPN's own (2027 for
+  // college basketball's 2026-27).
   return (
-    `${coreLeagueBase(league)}/${params.year}` +
+    `${coreLeagueBase(league)}/${espnSeason(league, params.year)}` +
     `/types/${params.seasonType}/weeks/${params.week}/rankings/${params.rankingId}`
   );
 }
@@ -315,7 +359,7 @@ export function coreWeeksUrl(
   params: { year: number; seasonType: number }
 ): string {
   return (
-    `${coreLeagueBase(league)}/${params.year}` +
+    `${coreLeagueBase(league)}/${espnSeason(league, params.year)}` +
     `/types/${params.seasonType}/weeks?limit=1`
   );
 }

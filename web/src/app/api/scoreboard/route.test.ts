@@ -65,7 +65,7 @@ describe("GET /api/scoreboard", () => {
   });
 
   it("still rejects an unknown league before asking ESPN", async () => {
-    const response = await GET(request("league=mlb"));
+    const response = await GET(request("league=pwhl"));
 
     expect(response.status).toBe(400);
     expect(scoreboardForDays).not.toHaveBeenCalled();

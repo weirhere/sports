@@ -9,7 +9,7 @@
 // verified live 2026-09-09), so a CONF column there would be a permanent
 // dash under a caption promising a number.
 
-import type { League } from "./leagues";
+import { isCollege, type League } from "./leagues";
 import type { ConferenceStanding } from "./types";
 
 export type StandingsField =
@@ -29,7 +29,8 @@ export type StandingsField =
   | "pointsFor"
   | "pointsAgainst"
   | "pointDifferential"
-  | "streak";
+  | "streak"
+  | "lastTenGames";
 
 /**
  * Whether the value is a record ("2-0") rather than a number. Only these
@@ -43,6 +44,7 @@ const RECORD_FIELDS: ReadonlySet<StandingsField> = new Set([
   "homeRecord",
   "awayRecord",
   "divisionRecord",
+  "lastTenGames",
 ]);
 
 export interface StandingsColumn {
@@ -55,11 +57,23 @@ export interface StandingsColumn {
   width: number;
 }
 
+const COLLEGE_COLUMNS: StandingsColumn[] = [
+  { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
+  { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
+];
+
+const NBA_COLUMNS: StandingsColumn[] = [
+  { field: "overallRecord", caption: "W-L", spoken: "overall", width: 44 },
+  { field: "winPercent", caption: "PCT", spoken: "win percentage", width: 38 },
+  { field: "gamesBehind", caption: "GB", spoken: "games back", width: 32 },
+];
+
 const COLUMNS: Record<League, StandingsColumn[]> = {
-  cfb: [
-    { field: "inGroupRecord", caption: "CONF", spoken: "in conference", width: 44 },
-    { field: "overallRecord", caption: "OVR", spoken: "overall", width: 44 },
-  ],
+  cfb: COLLEGE_COLUMNS,
+  // College basketball's tables are a conference race too (`vsconf` and
+  // `total`, probed 2026-11-02).
+  mcbb: COLLEGE_COLUMNS,
+  wcbb: COLLEGE_COLUMNS,
   // The NFL's own table, in ESPN's order (Andy, 2026-09-13). W-L-T
   // replaces the OVR summary rather than sitting beside it: three columns
   // and one string are the same three numbers, and the league that still
@@ -79,10 +93,23 @@ const COLUMNS: Record<League, StandingsColumn[]> = {
     { field: "pointDifferential", caption: "DIFF", spoken: "point differential", width: 38 },
     { field: "streak", caption: "STRK", spoken: "streak", width: 34 },
   ],
-  nba: [
-    { field: "overallRecord", caption: "W-L", spoken: "overall", width: 44 },
-    { field: "winPercent", caption: "PCT", spoken: "win percentage", width: 38 },
-    { field: "gamesBehind", caption: "GB", spoken: "games back", width: 32 },
+  nba: NBA_COLUMNS,
+  wnba: NBA_COLUMNS,
+  // MLB's own table, in ESPN's order (iOS, 2026-11-03): a 162-game race
+  // read on games behind, run differential and the last ten. Wider than the
+  // column it sits in, like the NFL's, so it pins and scrolls.
+  mlb: [
+    { field: "wins", caption: "W", spoken: "wins", width: 28 },
+    { field: "losses", caption: "L", spoken: "losses", width: 28 },
+    { field: "winPercent", caption: "PCT", spoken: "win percentage", width: 42 },
+    { field: "gamesBehind", caption: "GB", spoken: "games back", width: 34 },
+    { field: "homeRecord", caption: "HOME", spoken: "at home", width: 46 },
+    { field: "awayRecord", caption: "AWAY", spoken: "away", width: 46 },
+    { field: "pointsFor", caption: "RS", spoken: "runs scored", width: 34 },
+    { field: "pointsAgainst", caption: "RA", spoken: "runs allowed", width: 34 },
+    { field: "pointDifferential", caption: "DIFF", spoken: "run differential", width: 40 },
+    { field: "streak", caption: "STRK", spoken: "streak", width: 34 },
+    { field: "lastTenGames", caption: "L10", spoken: "in the last ten", width: 40 },
   ],
   // Points is the ranking; the record has three numbers because a game
   // lost in overtime is still worth a point.
@@ -105,7 +132,7 @@ export function standingsColumns(league: League): StandingsColumn[] {
  * "there is more here" and there wouldn't be.
  */
 export function standingsScrollsHorizontally(league: League): boolean {
-  return league === "nfl";
+  return league === "nfl" || league === "mlb";
 }
 
 /**
@@ -118,7 +145,9 @@ export function standingsScrollsHorizontally(league: League): boolean {
  * three keep the fetch rather than decode a guessed shape.
  */
 export function summaryCarriesMatchupStandings(league: League): boolean {
-  return league === "cfb";
+  // College basketball's summary ships both conferences with `total` and
+  // `vsconf` as well (probed 2026-11-02).
+  return isCollege(league);
 }
 
 /**
@@ -174,6 +203,8 @@ export function standingValue(
       return entry.pointDifferential;
     case "streak":
       return entry.streak;
+    case "lastTenGames":
+      return entry.lastTenGames;
   }
 }
 

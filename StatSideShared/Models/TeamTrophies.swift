@@ -172,7 +172,62 @@ extension TrophyKind {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
             return conferenceFinals(headline: headline, text: text)
+        case .mlb:
+            // "World Series - Game 5" on every game of the series; the
+            // champion is the last completed game's winner, as with the
+            // NBA Finals. The pennants are the LCS's: "ALCS - Game 6".
+            if text.hasPrefix("world series") {
+                return TrophyKind(singular: "World Series", plural: "World Series", tier: .league)
+            }
+            if text.hasPrefix("alcs") {
+                return TrophyKind(singular: "AL Pennant", plural: "AL Pennants", tier: .conference)
+            }
+            if text.hasPrefix("nlcs") {
+                return TrophyKind(singular: "NL Pennant", plural: "NL Pennants", tier: .conference)
+            }
+            return nil
+        case .wnba:
+            // "WNBA Finals - Game 7"; the Commissioner's Cup is one game,
+            // "WNBA Commissioner's Cup Championship" — its group games say
+            // "WNBA Commissioner's Cup" alone and win nothing (June 2026).
+            if text.hasPrefix("wnba finals") {
+                return TrophyKind(singular: "WNBA Finals", plural: "WNBA Finals", tier: .league)
+            }
+            if text.contains("commissioner's cup championship") {
+                return TrophyKind(singular: "Commissioner's Cup", plural: "Commissioner's Cups", tier: .league)
+            }
+            return nil
+        case .mensCollegeBasketball, .womensCollegeBasketball:
+            // The NCAA tournament's final only: "NIT - Championship" and
+            // "College Basketball Crown Championship Game" decide trophies
+            // too, but not the one a program counts.
+            if text.hasPrefix("ncaa "), text.contains("national championship") {
+                return TrophyKind(singular: "National Championship",
+                                  plural: "National Championships", tier: .league)
+            }
+            return conferenceTournament(headline: headline, text: text)
         }
+    }
+
+    /// College basketball's conference tournament final: "SEC Tournament -
+    /// Final", "Atlantic 10 Championship - Final", "America East Playoffs -
+    /// Final", "Ivy League Tournament pres. by TIAA - Final" (live, March
+    /// 2026). The trophy is the event's own name, kept as ESPN wrote it
+    /// bar the round and a "pres. by" sponsor tail. The national
+    /// postseason events (NCAA, NIT, WBIT, Crown) are never a conference's.
+    private static func conferenceTournament(headline: String, text: String) -> TrophyKind? {
+        let parts = headline.components(separatedBy: " - ")
+        guard parts.count == 2,
+              parts[1].trimmingCharacters(in: .whitespaces).lowercased() == "final" else { return nil }
+        let event = text.components(separatedBy: " - ")[0]
+        let national = ["ncaa ", "nit", "women's nit", "wbit", "college basketball crown"]
+        guard !national.contains(where: { event.hasPrefix($0) }) else { return nil }
+        var name = parts[0].trimmingCharacters(in: .whitespaces)
+        if let sponsor = name.range(of: " pres. by ", options: .caseInsensitive) {
+            name = String(name[..<sponsor.lowerBound])
+        }
+        guard !name.isEmpty else { return nil }
+        return TrophyKind(singular: name, plural: name + "s", tier: .conference)
     }
 
     /// "SEC Championship", "AFC Championship" — the headline is already the

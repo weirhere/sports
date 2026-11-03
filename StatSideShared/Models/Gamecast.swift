@@ -67,9 +67,10 @@ extension GamecastContent {
                         allowsShootout: Bool) -> GamecastContent? {
         guard let last = summary.plays.last else { return nil }
         switch league {
-        case .nba: return basketball(summary: summary, last: last)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: return basketball(summary: summary, last: last)
         case .nhl: return hockey(summary: summary, last: last, allowsShootout: allowsShootout)
-        case .collegeFootball, .nfl: return nil
+        // Baseball's card is the diamond (`BaseballGamecast`), not a map.
+        case .collegeFootball, .nfl, .mlb: return nil
         }
     }
 

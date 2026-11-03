@@ -39,7 +39,7 @@ import {
   type FollowedTable,
 } from "@/lib/followed-tables";
 import { displayName, shortName } from "@/lib/leagues";
-import { conferencePath } from "@/lib/routes";
+import { conferencePath, pollPath } from "@/lib/routes";
 import { ConferenceLogo } from "@/components/theme/conference-logo";
 import { TrophyMark } from "@/components/theme/trophy-mark";
 import { cn } from "@/lib/utils";
@@ -248,7 +248,7 @@ function FollowedTableCard({
   const title = tagged ? `${name} - ${shortName(league)}` : name;
   const spoken = tagged ? `${name}, ${displayName(league)}` : name;
   const href =
-    table.kind === "poll" ? "/rankings/poll" : conferencePath(table.ref);
+    table.kind === "poll" ? pollPath({ league: table.league }) : conferencePath(table.ref);
 
   // The controls slide in from the card's own edges; Reduce Motion gets the
   // fade alone. Width animates too, so the name eases over rather than

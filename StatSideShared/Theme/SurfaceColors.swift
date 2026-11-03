@@ -5,9 +5,11 @@ import UIKit
 /// (2026-09-27, widened the same day from "the field" to "the surface").
 /// Each surface renders as the place it pictures: turf with the teams'
 /// colors in their end zones and the broadcast's yellow line to gain;
-/// a maple court; white ice with its red lines. Team colors mark whose
-/// shot is whose. Nothing outside `DriveField`, `CourtSurface`,
-/// `RinkSurface`, `ShotMarksLayer` and the Roster tab's `FormationField`
+/// a maple court; white ice with its red lines; and since 2026-11-03 a
+/// diamond, the turf's grass with infield dirt cut into it. Team colors
+/// mark whose shot is whose, and who's on base. Nothing outside
+/// `DriveField`, `CourtSurface`, `RinkSurface`, `DiamondSurface`,
+/// `ShotMarksLayer` and the Roster tab's `FormationField`
 /// and `FormationCard` (whose title and chips sit on the same paint) may
 /// use these; the rest of the card, and the app, stays monochrome.
 ///
@@ -45,6 +47,11 @@ nonisolated enum SurfaceColors {
     /// dimmer in dark so it doesn't glare off a black page.
     static let ice = dynamic(light: (0.961, 0.973, 0.980), dark: (0.875, 0.898, 0.918))
     static let boards = dynamic(light: (0.604, 0.639, 0.671), dark: (0.420, 0.455, 0.486))
+    /// Baseball's infield and basepaths (2026-11-03): the diamond's grass
+    /// is `turf`, the app's one green, and this is the dirt it's cut
+    /// into — a clay that reads on both the green and a dark page. Bases
+    /// and lines are `chalk`.
+    static let infieldDirt = dynamic(light: (0.722, 0.553, 0.388), dark: (0.596, 0.447, 0.306))
     /// The rink's red lines are the app's one red, not a hockey red.
     static let rinkRed = Color.rankDown
     /// The blue lines, in gray: no blue joins the app for them (D13).
@@ -63,8 +70,9 @@ nonisolated enum SurfaceColors {
     /// had fixed dark ink until its dark mode turned gray (2026-10-27).
     static func ink(for league: League) -> Ink {
         switch league {
-        case .collegeFootball, .nfl: Ink(text: turfInk, counter: ink)
-        case .nba, .nhl: Ink(text: .textPrimary, counter: .bgPrimary)
+        // The diamond's grass is the turf's green, so its ink is too.
+        case .collegeFootball, .nfl, .mlb: Ink(text: turfInk, counter: ink)
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba, .nhl: Ink(text: .textPrimary, counter: .bgPrimary)
         }
     }
 
@@ -85,6 +93,7 @@ nonisolated enum SurfaceColors {
         static let ice = grayInDark(SurfaceColors.ice, white: 0.15)
         static let iceHeading = grayInDark(SurfaceColors.iceHeading, white: 0.20)
         static let rinkRed = grayInDark(SurfaceColors.rinkRed, white: 0.20)
+        static let infieldDirt = grayInDark(SurfaceColors.infieldDirt, white: 0.20)
         /// Faint on the ice, so the red lines carry the rink and the blue
         /// lines only divide it (the Figma sheet, 2026-10-28).
         static let blueLine = grayInDark(SurfaceColors.blueLine.opacity(0.2), white: 0.20)
@@ -102,8 +111,8 @@ nonisolated enum SurfaceColors {
     /// its first yard line, is painted in.
     static func base(for league: League) -> Color {
         switch league {
-        case .collegeFootball, .nfl: Starters.turf
-        case .nba: Starters.maple
+        case .collegeFootball, .nfl, .mlb: Starters.turf
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: Starters.maple
         case .nhl: Starters.ice
         }
     }
@@ -117,8 +126,8 @@ nonisolated enum SurfaceColors {
     /// darker without stopping being ice, dims a touch instead.
     static func heading(for league: League) -> Color {
         switch league {
-        case .collegeFootball, .nfl: Starters.turfHeading
-        case .nba: Starters.paint
+        case .collegeFootball, .nfl, .mlb: Starters.turfHeading
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: Starters.paint
         case .nhl: Starters.iceHeading
         }
     }

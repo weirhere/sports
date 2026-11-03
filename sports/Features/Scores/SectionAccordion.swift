@@ -150,7 +150,7 @@ struct SectionAccordion: View, Equatable {
     /// football's conferences stand on their own names: "Big Ten - NCAAF".
     static func title(_ title: String, in league: League?) -> String {
         guard let league else { return title }
-        return league == .collegeFootball
+        return league.isCollege
             ? "\(title) - \(league.shortName)"
             : "\(league.shortName) - \(title)"
     }
@@ -229,7 +229,8 @@ struct SectionAccordion: View, Equatable {
             // you're looking at.
             SectionGameRow(game: game,
                            leagueTag: section.spansLeagues ? game.home.team.league : nil,
-                           sectionConference: sectionConference)
+                           sectionConference: sectionConference,
+                           marksWomen: section.id == GameSection.followingId)
             if game.id != section.games.last?.id {
                 Divider()
                     .overlay(Color.divider)

@@ -49,5 +49,5 @@ Whatever the Saturdays reveal: polling behavior under 50 concurrent games, row l
 | Risk | Posture |
 |---|---|
 | ESPN API changes/breaks without notice | Contained: DTO isolation, all-optional decoding. If it dies mid-season, swap to CFBD behind the same domain models |
-| Seasonality (Feb–Aug is dead air) | Accepted for v1. Offseason landing state in Phase 4. **CBB is no longer the answer** (2026-09-14): it runs Nov–Mar and overlaps what the app already covers. MLB (Feb–Nov) and the WNBA (Apr–Oct) are the leagues that cover the hole — scoped as BACKLOG E17, not scheduled |
+| Seasonality (Feb–Aug is dead air) | Accepted for v1. Offseason landing state in Phase 4. **CBB is no longer the answer** (2026-09-14): it runs Nov–Mar and overlaps what the app already covers (it shipped anyway, 2026-11-02, as E31, because fans asked for it, not for the calendar). **MLB and the WNBA shipped 2026-11-03 (E17)**, so February through November is covered and the hole is closed. MLB (Feb–Nov) and the WNBA (Apr–Oct) are the leagues that cover the hole — scoped as BACKLOG E17, not scheduled |
 | One-person project, 5-week runway | Phases 0–1 are the only hard commitment before kickoff; 2–3 can land mid-season |

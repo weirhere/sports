@@ -113,6 +113,20 @@ private let directory = [acc, big12, sec, pac12, afc, nfc]
         #expect(store.teams(in: .nfl).allSatisfy { $0.league == .nfl })
         #expect(store.allTeams.count == 2)
     }
+
+    /// A women's team page wears "(W)" only when a men's team has its
+    /// exact name: the Huskies do, the Lady Bulldogs don't, and nothing
+    /// outside NCAAW is ever marked.
+    @Test func onlyAWomensNameAMensTeamSharesIsMarked() {
+        let mens = [team("41", "UConn", nickname: "Huskies", league: .mensCollegeBasketball, conference: 4),
+                    team("61", "Georgia", nickname: "Bulldogs", league: .mensCollegeBasketball, conference: 23)]
+        let uconn = team("41", "UConn", nickname: "Huskies", league: .womensCollegeBasketball, conference: 4)
+        let georgia = team("61", "Georgia", nickname: "Lady Bulldogs",
+                           league: .womensCollegeBasketball, conference: 23)
+        #expect(TeamDirectoryStore.sharesMensName(uconn, mens: mens))
+        #expect(!TeamDirectoryStore.sharesMensName(georgia, mens: mens))
+        #expect(!TeamDirectoryStore.sharesMensName(mens[0], mens: mens))
+    }
 }
 
 private struct DirectoryStub: ScoresProviding {
@@ -125,7 +139,7 @@ private struct DirectoryStub: ScoresProviding {
             division == .fbs ? [sec] : []
         case .nfl:
             [ConferenceTeams(id: 8, name: "AFC", teams: [dolphins], league: .nfl)]
-        case .nba, .nhl:
+        case .nba, .nhl, .mlb, .wnba, .mensCollegeBasketball, .womensCollegeBasketball:
             []
         }
     }

@@ -17,7 +17,10 @@
 //
 // COLLAPSED ids are stored, not expanded ones, so a section never seen
 // before defaults open — the iOS "Following + Top 25 open by default"
-// semantics generalized to everything-open on web.
+// semantics generalized to everything-open on web. The one exception is
+// college basketball's conferences (2026-11-02, iOS's same rule): they start
+// closed, ~350 games a night in two sections each, so for those the OPENED
+// ids are stored instead (`openedSections`).
 //
 // The **grouping** retired with the week strip (iOS, 2026-09-05): the day is
 // the axis now, and the by-conference view is what the league accordions
@@ -33,6 +36,8 @@ const STORAGE_KEY = "statside.ui.v1";
 /** What reaches localStorage. */
 export interface StoredUIState {
   collapsedSections: string[];
+  /** Sections that start closed and were opened — see `startsClosed`. */
+  openedSections: string[];
   /**
    * Hide all/Show all (iOS, 2026-09-22): true collapses every Scores section
    * that isn't Following or a followed table to the one control. Persisted
@@ -63,6 +68,7 @@ export interface UIState extends StoredUIState {
 
 const DEFAULTS: UIState = {
   collapsedSections: [],
+  openedSections: [],
   liveOnly: false,
   tightOnly: false,
   hideOtherSections: false,
@@ -83,6 +89,9 @@ export function sanitize(raw: unknown): UIState {
         (id): id is string => typeof id === "string"
       )
     : [];
+  const opened = Array.isArray(record.openedSections)
+    ? record.openedSections.filter((id): id is string => typeof id === "string")
+    : [];
   const filter =
     typeof record.scoreFilter === "string" &&
     isValidScoreFilterToken(record.scoreFilter)
@@ -98,6 +107,7 @@ export function sanitize(raw: unknown): UIState {
     : [];
   return {
     collapsedSections: collapsed,
+    openedSections: opened,
     liveOnly: false,
     tightOnly: false,
     hideOtherSections: record.hideOtherSections === true,
@@ -107,10 +117,21 @@ export function sanitize(raw: unknown): UIState {
   };
 }
 
+/**
+ * Whether a Scores section starts closed: a college basketball conference,
+ * or its "Other" bucket. A weeknight is ~180 Division I men's games and
+ * ~165 women's, each in two conference sections, and open by default that
+ * is seven hundred rows between NCAAF and the NFL.
+ */
+export function startsClosed(sectionId: string): boolean {
+  return /^(conf-|other-)(mcbb|wcbb)(:|$)/.test(sectionId);
+}
+
 /** The slice that is written: everything but the session-only filters. */
 export function toStored(state: UIState): StoredUIState {
   return {
     collapsedSections: state.collapsedSections,
+    openedSections: state.openedSections,
     hideOtherSections: state.hideOtherSections,
     scoreFilter: state.scoreFilter,
     tableOrder: state.tableOrder,
@@ -193,30 +214,48 @@ export function useUIState() {
   );
 
   const isCollapsed = useCallback(
-    (sectionId: string) => state.collapsedSections.includes(sectionId),
-    [state.collapsedSections]
+    (sectionId: string) =>
+      startsClosed(sectionId)
+        ? !state.openedSections.includes(sectionId)
+        : state.collapsedSections.includes(sectionId),
+    [state.collapsedSections, state.openedSections]
   );
 
   const toggleSection = useCallback(
     (sectionId: string) =>
-      update((prev) => ({
-        ...prev,
-        collapsedSections: prev.collapsedSections.includes(sectionId)
-          ? prev.collapsedSections.filter((id) => id !== sectionId)
-          : [...prev.collapsedSections, sectionId],
-      })),
+      update((prev) =>
+        startsClosed(sectionId)
+          ? {
+              ...prev,
+              openedSections: prev.openedSections.includes(sectionId)
+                ? prev.openedSections.filter((id) => id !== sectionId)
+                : [...prev.openedSections, sectionId],
+            }
+          : {
+              ...prev,
+              collapsedSections: prev.collapsedSections.includes(sectionId)
+                ? prev.collapsedSections.filter((id) => id !== sectionId)
+                : [...prev.collapsedSections, sectionId],
+            }
+      ),
     [update]
   );
 
   /** The pinch analog's bulk ops, scoped to the ids on screen. */
   const collapseAll = useCallback(
-    (sectionIds: string[]) =>
+    (sectionIds: string[]) => {
+      const closing = new Set(sectionIds);
       update((prev) => ({
         ...prev,
         collapsedSections: [
-          ...new Set([...prev.collapsedSections, ...sectionIds]),
+          ...new Set([
+            ...prev.collapsedSections,
+            ...sectionIds.filter((id) => !startsClosed(id)),
+          ]),
         ],
-      })),
+        openedSections: prev.openedSections.filter((id) => !closing.has(id)),
+      }));
+    },
     [update]
   );
 
@@ -228,6 +267,12 @@ export function useUIState() {
         collapsedSections: prev.collapsedSections.filter(
           (id) => !clearing.has(id)
         ),
+        openedSections: [
+          ...new Set([
+            ...prev.openedSections,
+            ...sectionIds.filter(startsClosed),
+          ]),
+        ],
       }));
     },
     [update]

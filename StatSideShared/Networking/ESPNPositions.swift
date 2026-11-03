@@ -23,8 +23,9 @@ nonisolated enum ESPNPositions {
     static func position(id: String, league: League) -> Position? {
         let table: [String: (String, String)] = switch league {
         case .collegeFootball, .nfl: football
-        case .nba: basketball
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: basketball
         case .nhl: hockey
+        case .mlb: baseball
         }
         guard let entry = table[id] else { return nil }
         return Position(abbreviation: entry.0, name: entry.1)
@@ -68,6 +69,16 @@ nonisolated enum ESPNPositions {
         "1": ("PG", "Point Guard"), "2": ("SG", "Shooting Guard"), "3": ("G", "Guard"),
         "4": ("GF", "Guard-Forward"), "5": ("SF", "Small Forward"), "6": ("PF", "Power Forward"),
         "7": ("F", "Forward"), "8": ("FC", "Forward-Center"), "9": ("C", "Center"),
+    ]
+
+    /// MLB's position ids, read off the core API's `positions/{id}`
+    /// 2026-11-03 — a game lineup names its fielders by these.
+    private static let baseball: [String: (String, String)] = [
+        "1": ("P", "Pitcher"), "2": ("C", "Catcher"), "3": ("1B", "First Baseman"),
+        "4": ("2B", "Second Baseman"), "5": ("3B", "Third Baseman"), "6": ("SS", "Shortstop"),
+        "7": ("LF", "Left Fielder"), "8": ("CF", "Center Fielder"), "9": ("RF", "Right Fielder"),
+        "10": ("DH", "Designated Hitter"), "11": ("PH", "Pinch Hitter"),
+        "12": ("PR", "Pinch Runner"), "13": ("IF", "Infielder"),
     ]
 
     private static let hockey: [String: (String, String)] = [

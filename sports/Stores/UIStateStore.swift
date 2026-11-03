@@ -250,10 +250,31 @@ final class UIStateStore {
     /// sections above the conferences (`allDivisionPrefix`), which never
     /// are: a whole division open by default would put the ACC eleven
     /// screens down.
+    ///
+    /// College basketball's conferences are the exception (2026-11-02):
+    /// they start closed. A weeknight is ~180 Division I men's games and
+    /// ~165 women's, each in two conference sections, and open by default
+    /// that is seven hundred rows between NCAAF and the NFL. Its Top 25
+    /// stays open, so the night's headline games are still one scroll down.
     private static func defaultsOpen(_ sectionId: String) -> Bool {
-        [GameSection.leaguePrefix, GameSection.conferencePrefix,
-         GameSection.pollPrefix, GameSection.otherPrefix]
+        if isCollegeBasketballConference(sectionId) { return false }
+        return [GameSection.leaguePrefix, GameSection.conferencePrefix,
+                GameSection.pollPrefix, GameSection.otherPrefix]
             .contains { sectionId.hasPrefix($0) }
+    }
+
+    /// A college basketball conference section, or its "Other" bucket.
+    static func isCollegeBasketballConference(_ sectionId: String) -> Bool {
+        // "conf-mcbb-8": the prefix, then the conference's own token.
+        if sectionId.hasPrefix(GameSection.conferencePrefix),
+           let id = ConferenceID(token: String(sectionId.dropFirst(GameSection.conferencePrefix.count))) {
+            return id.league.isCollege && id.league.isBasketball
+        }
+        if sectionId.hasPrefix(GameSection.otherPrefix),
+           let league = League(rawValue: String(sectionId.dropFirst(GameSection.otherPrefix.count))) {
+            return league.isCollege && league.isBasketball
+        }
+        return false
     }
 
     func toggle(_ sectionId: String) {

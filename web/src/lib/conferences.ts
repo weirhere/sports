@@ -9,6 +9,7 @@
 
 import {
   conferenceLogoBase,
+  isCollegeBasketball,
   leagueLogoUrl,
   type League,
 } from "./leagues";
@@ -122,6 +123,66 @@ const CFB_NAMES: Record<number, string> = {
 };
 
 const POWER_4 = new Set([1, 4, 5, 8]);
+
+/**
+ * College basketball's Division I conferences, shared by both leagues — read
+ * live off `standings?group=50` on 2026-11-02 (iOS `Conference.cbbSharedNames`,
+ * the same table). The men's and women's tables agree on every id but one:
+ * the Summit League is 49 for the men and 47 for the women.
+ */
+const CBB_SHARED_NAMES: Record<number, string> = {
+  1: "America East",
+  2: "ACC",
+  3: "Atlantic 10",
+  4: "Big East",
+  5: "Big Sky",
+  6: "Big South",
+  7: "Big Ten",
+  8: "Big 12",
+  9: "Big West",
+  10: "CAA",
+  11: "Conference USA",
+  12: "Ivy League",
+  13: "MAAC",
+  14: "MAC",
+  16: "MEAC",
+  18: "Missouri Valley",
+  19: "NEC",
+  20: "OVC",
+  21: "Pac-12",
+  22: "Patriot League",
+  23: "SEC",
+  24: "SoCon",
+  25: "Southland",
+  26: "SWAC",
+  27: "Sun Belt",
+  29: "WCC",
+  30: "UAC",
+  44: "Mountain West",
+  45: "Horizon League",
+  46: "ASUN",
+  62: "American",
+};
+
+const MCBB_NAMES: Record<number, string> = { ...CBB_SHARED_NAMES, 49: "Summit League" };
+const WCBB_NAMES: Record<number, string> = { ...CBB_SHARED_NAMES, 47: "Summit League" };
+
+/** The high majors: the power four plus the Big East, which plays no FBS
+ * football and is one of the five in basketball. */
+const CBB_POWER = new Set([2, 4, 7, 8, 23]);
+
+/** 31 of 32 verified 200 under `ncaa_conf/500/` on 2026-11-02; the UAC has
+ * no mark, exactly as in football. */
+const CBB_LOGO_SLUGS: Record<number, string> = {
+  1: "america_east", 2: "acc", 3: "atlantic_10", 4: "big_east",
+  5: "big_sky", 6: "big_south", 7: "big_ten", 8: "big_12",
+  9: "big_west", 10: "caa", 11: "conference_usa", 12: "ivy",
+  13: "maac", 14: "mid_american", 16: "meac", 18: "missouri_valley",
+  19: "northeast", 20: "ohio_valley", 21: "pac_12", 22: "patriot_league",
+  23: "sec", 24: "southern", 25: "southland", 26: "swac",
+  27: "sun_belt", 29: "west_coast", 44: "mountain_west", 45: "horizon",
+  46: "atlantic_sun", 47: "summit_league", 49: "summit_league", 62: "american",
+};
 
 /**
  * ESPN CDN slugs, verified live against the /scoreboard/conferences endpoint
@@ -268,13 +329,66 @@ const NHL_REGISTRY: Registry = {
   conferenceSlugs: {},
 };
 
+/**
+ * Ids read live from MLB's standings at `level=3`, 2026-11-03 (iOS's same
+ * table): the NFL's two-level shape, and every id collides with another
+ * league's — root 9, leagues 7/8, divisions 1–6.
+ */
+const MLB_REGISTRY: Registry = {
+  leagueWideId: 9,
+  leagueName: "MLB",
+  conferences: [
+    { id: 7, name: "American League", short: "AL" },
+    { id: 8, name: "National League", short: "NL" },
+  ],
+  divisionNames: {
+    1: "AL East", 2: "AL Central", 3: "AL West",
+    4: "NL East", 5: "NL Central", 6: "NL West",
+  },
+  divisionParents: { 1: 7, 2: 7, 3: 7, 4: 8, 5: 8, 6: 8 },
+  teamDivisions: {
+    1: 1, 2: 1, 3: 3, 4: 2, 5: 2, 6: 2, 7: 2, 8: 5, 9: 2, 10: 1,
+    11: 3, 12: 3, 13: 3, 14: 1, 15: 4, 16: 5, 17: 5, 18: 3, 19: 6, 20: 4,
+    21: 4, 22: 4, 23: 5, 24: 5, 25: 6, 26: 6, 27: 6, 28: 4, 29: 6, 30: 1,
+  },
+  // No AL or NL marks under any bucket; sections wear the MLB shield.
+  conferenceSlugs: {},
+};
+
+/** The WNBA's two conferences and fifteen teams, 2026-11-03 — no
+ * divisions, so a team maps straight to its conference. */
+const WNBA_REGISTRY: Registry = {
+  leagueWideId: 3,
+  leagueName: "WNBA",
+  conferences: [
+    { id: 1, name: "Eastern", short: "East" },
+    { id: 2, name: "Western", short: "West" },
+  ],
+  divisionNames: {},
+  divisionParents: {},
+  teamDivisions: {
+    3: 2, 5: 1, 6: 2, 8: 2, 9: 1, 11: 2, 14: 2, 16: 1, 17: 2, 18: 1,
+    19: 1, 20: 1, 129689: 2, 131935: 1, 132052: 2,
+  },
+  conferenceSlugs: {},
+};
+
 /** The pro leagues. College football is absent by design — its hierarchy
  * comes off the wire. */
 const REGISTRIES: Partial<Record<League, Registry>> = {
   nfl: NFL_REGISTRY,
   nba: NBA_REGISTRY,
   nhl: NHL_REGISTRY,
+  mlb: MLB_REGISTRY,
+  wnba: WNBA_REGISTRY,
 };
+
+/** Whether a league nests divisions under its conferences. The WNBA has
+ * conferences alone. */
+export function hasDivisions(league: League): boolean {
+  const registry = REGISTRIES[league];
+  return registry !== undefined && Object.keys(registry.divisionNames).length > 0;
+}
 
 function registryNames(registry: Registry): Record<number, string> {
   const names: Record<number, string> = { ...registry.divisionNames };
@@ -285,12 +399,15 @@ function registryNames(registry: Registry): Record<number, string> {
 
 function names(league: League): Record<number, string> {
   if (league === "cfb") return CFB_NAMES;
+  if (league === "mcbb") return MCBB_NAMES;
+  if (league === "wcbb") return WCBB_NAMES;
   const registry = REGISTRIES[league];
   return registry ? registryNames(registry) : {};
 }
 
 function logoSlugs(league: League): Record<number, string> {
   if (league === "cfb") return CFB_LOGO_SLUGS;
+  if (isCollegeBasketball(league)) return CBB_LOGO_SLUGS;
   return REGISTRIES[league]?.conferenceSlugs ?? {};
 }
 
@@ -412,11 +529,27 @@ export function conferenceName(
   if (parent === undefined || !registry) return name;
   const conference = registryNames(registry)[parent];
   if (conference === undefined) return name;
+  // "AL East" and "AFC East" lead with their conference's own short form,
+  // so they already say where they sit.
+  const short = registry.conferences.find((c) => c.id === parent)?.short;
+  if (short && name.startsWith(`${short} `)) return name;
   // "Eastern", not "East" — a compass point breaks the short form:
   // "Southeast" contains "east" and "Northwest" contains "west", so exactly
   // the divisions that need placing would decide they already said it.
   if (name.toLowerCase().includes(conference.toLowerCase())) return name;
   return `${name} (${conference})`;
+}
+
+/**
+ * Whether a women's college conference's name is a men's one too — iOS
+ * `Conference.sharesMensName` (2026-11-03): all 32 today, the Summit League
+ * under a different id. A shared name gets "(W)" on the conference page,
+ * where nothing else says which league's SEC it is.
+ */
+export function conferenceSharesMensName(ref: ConferenceRef): boolean {
+  if (ref.league !== "wcbb") return false;
+  const name = WCBB_NAMES[ref.id];
+  return name !== undefined && Object.values(MCBB_NAMES).includes(name);
 }
 
 export function conferenceNameFor(
@@ -460,6 +593,8 @@ export function tier(
   league: League
 ): ConferenceTier {
   if (id == null || names(league)[id] === undefined) return "other";
+  // College basketball: one flat list, high majors first, no division root.
+  if (isCollegeBasketball(league)) return CBB_POWER.has(id) ? "power4" : "group5";
   const registry = REGISTRIES[league];
   if (!registry) {
     // College football: one flat list of conferences, ranked — under a
@@ -544,9 +679,22 @@ export const orderedIds: number[] = orderedCollegeIds("FBS");
  * the divisions hang beneath them rather than sitting in the same list.
  */
 export function topLevelIds(league: League): number[] {
+  if (isCollegeBasketball(league)) return orderedCollegeBasketballIds(league);
   const registry = REGISTRIES[league];
   if (!registry) return orderedIds;
   return registry.conferences.map((c) => c.id);
+}
+
+/** A college basketball league's conferences: the high majors, then the
+ * rest, alphabetical within each. */
+export function orderedCollegeBasketballIds(league: League): number[] {
+  return Object.keys(names(league))
+    .map(Number)
+    .sort((lhs, rhs) => {
+      const [lt, rt] = [tierRank(tier(lhs, league)), tierRank(tier(rhs, league))];
+      if (lt !== rt) return lt - rt;
+      return conferenceName(lhs, league) < conferenceName(rhs, league) ? -1 : 1;
+    });
 }
 
 /**

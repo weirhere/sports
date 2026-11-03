@@ -24,6 +24,9 @@ nonisolated extension ScoresProviding {
                     currentSeason: Bool) async throws -> GameRoster {
         let league = game.home.team.league
         let away = game.away.team, home = game.home.team
+        // Not college basketball: its `depthcharts` answers 200 with no
+        // `depthchart` key at all (probed 2026-11-02), so asking is two
+        // requests for nothing.
         let wantsDepthChart = phase == .upcoming && (league == .nba || league == .nhl)
 
         async let awayRoster: TeamRoster? = currentSeason ? try? roster(teamId: away.id) : nil

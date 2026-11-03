@@ -23,7 +23,7 @@ private let unc = """
  {"athleteId":"4431452","headshot":"https://a.espncdn.com/i/headshots/nfl/players/full/4431452.png","jersey":"10","league":"nfl","name":"Drake Maye","position":"QB","positionName":"Quarterback","teamId":"17"},
  {"athleteId":"4395651","headshot":"https://a.espncdn.com/i/headshots/nba/players/full/4395651.png","jersey":"3","league":"nba","name":"Coby White","position":"G","positionName":"Guard","teamId":"30"},
  {"athleteId":"","league":"nfl","name":"No Id"},
- {"athleteId":"9","league":"mlb","name":"Wrong Sport"},
+ {"athleteId":"9","league":"xfl","name":"Wrong Sport"},
  {"athleteId":"10","league":"nfl"},
  7
 ]}}

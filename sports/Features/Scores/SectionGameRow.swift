@@ -20,6 +20,9 @@ struct SectionGameRow: View {
     let leagueTag: League?
     /// The conference this row's section is, for tagging a visitor.
     var sectionConference: ConferenceID? = nil
+    /// True in the Following section: a women's college game's teams
+    /// wear "(W)" there (2026-11-03).
+    var marksWomen = false
 
     @Environment(FollowingStore.self) private var following
     @Environment(UIStateStore.self) private var uiState
@@ -33,7 +36,8 @@ struct SectionGameRow: View {
         NavigationLink(value: game) {
             GameRow(game: game, timeOnly: true, leagueTag: leagueTag,
                     showsLine: uiState.showsLines, sectionConference: sectionConference,
-                    onReveal: concealed ? { spoiler.reveal(game) } : nil)
+                    onReveal: concealed ? { spoiler.reveal(game) } : nil,
+                    womensMarks: womensMarks)
         }
         // Not `.plain`: a full-width row is wider than any swipe, so the
         // day swipe used to end on this link.
@@ -75,6 +79,15 @@ struct SectionGameRow: View {
         } label: {
             Label(title, systemImage: following.isFollowing(team) ? "star.slash" : "star")
         }
+    }
+
+    /// Both sides of a women's college game: the opponent is a women's
+    /// team too, and an unmarked one reads as the men's (Andy,
+    /// 2026-11-03). Only NCAAW: its teams share their names with the
+    /// men's, which the WNBA's don't.
+    private var womensMarks: Set<String> {
+        guard marksWomen, game.home.team.league == .womensCollegeBasketball else { return [] }
+        return [game.away.team.id, game.home.team.id]
     }
 
     private func followActionTitle(for team: Team) -> String {

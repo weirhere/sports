@@ -71,7 +71,9 @@ final class LeagueStatsModel {
     /// lines their teams' identities. A failure just leaves the identities
     /// as `byteam` ships them.
     func loadFBSStandings(year: Int) async {
-        guard league == .collegeFootball, standingsByYear[year] == nil,
+        // Every college league: Division I standings name college
+        // basketball's teams the way FBS's name football's.
+        guard league.isCollege, standingsByYear[year] == nil,
               !standingsLoadingYears.contains(year) else { return }
         standingsLoadingYears.insert(year)
         defer { standingsLoadingYears.remove(year) }

@@ -11,7 +11,7 @@ struct StartersListCards: View {
     let roster: GameRoster
     let league: League
 
-    private var isFootball: Bool { league == .collegeFootball || league == .nfl }
+    private var isFootball: Bool { league.isFootball }
 
     var body: some View {
         VStack(spacing: Spacing.sm) {

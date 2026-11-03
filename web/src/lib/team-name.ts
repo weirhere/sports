@@ -22,6 +22,21 @@ export function teamFullName(team: Pick<Team, "school" | "name">): string {
 }
 
 /**
+ * Whether a women's college team's full name is a men's team's too — iOS
+ * `TeamDirectoryStore.sharesMensName` (2026-11-03). "UConn Huskies" is both,
+ * "Georgia Lady Bulldogs" isn't (330 of 362 share one). A shared name gets
+ * "(W)" on the team page, where nothing else says which program it is.
+ */
+export function sharesMensName(
+  team: Pick<Team, "league" | "school" | "name">,
+  mens: readonly Pick<Team, "school" | "name">[]
+): boolean {
+  if (team.league !== "wcbb") return false;
+  const name = teamFullName(team);
+  return mens.some((other) => teamFullName(other) === name);
+}
+
+/**
  * The group the team plays in, unprefixed: the conference, or for the NFL
  * the division — the directory files NFL teams under their conference, so
  * the team's own id would only ever say AFC or NFC.

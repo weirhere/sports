@@ -193,6 +193,11 @@ nonisolated struct CompetitionDTO: Decodable {
     /// playoff round under one `seasontype=3` week (verified live
     /// 2026-09-06: 46 games, all week 1).
     let notes: [CompetitionNoteDTO]?
+    /// A playoff game's series, as it stood after this game: "ATL leads
+    /// series 1-0" on Game 1, "ATL wins series 2-1" on Game 3 (probed
+    /// 2026-11-03 across MLB, the NBA, the NHL and the WNBA). Absent on
+    /// single games.
+    let series: SeriesDTO?
     /// The pre-game line, one entry per provider. Present on pre-game
     /// events and gone from finals (probed 2026-09-24, 0 of 76).
     let odds: LossyArray<OddsDTO>?
@@ -201,6 +206,21 @@ nonisolated struct CompetitionDTO: Decodable {
     /// top-level `format` (`SummaryResponseDTO.format`) is the fuller
     /// version with `clock`/`overtime`/`suddenDeath`.
     let format: FormatDTO?
+}
+
+nonisolated struct SeriesDTO: Decodable {
+    /// "playoff" for a postseason series; anything else isn't one.
+    let type: String?
+    let summary: String?
+    let completed: Bool?
+    /// Best of how many: 3, 5 or 7.
+    let totalCompetitions: Int?
+    let competitors: [SeriesCompetitorDTO]?
+}
+
+nonisolated struct SeriesCompetitorDTO: Decodable {
+    let id: String?
+    let wins: Int?
 }
 
 /// How long a game runs before it can end — `PeriodLabel`'s per-league
@@ -371,6 +391,10 @@ nonisolated struct StandingsGroupDTO: Decodable {
 
 nonisolated struct StandingsListDTO: Decodable {
     let entries: LossyArray<StandingsEntryDTO>?
+    /// The season this group's table is actually for. In the offseason it
+    /// can lag the response's own `season`: MLB's standings announced 2027
+    /// on 2026-11-03 while every table was still 2026's final.
+    let season: Int?
 }
 
 nonisolated struct StandingsEntryDTO: Decodable {
@@ -843,6 +867,17 @@ nonisolated struct PlayDTO: Decodable {
     /// carried none). Football's drive-nested plays don't ship this; the
     /// flat feed does.
     let participants: LossyArray<PlayParticipantDTO>?
+    /// Baseball's per-play state (2026-11-03): outs after the play, the
+    /// count after the pitch, the at-bat it belongs to, and the pitch
+    /// itself. Every MLB play ships the first three.
+    let outs: Int?
+    let resultCount: PitchCountDTO?
+    let atBatId: String?
+    let pitchType: PlayTypeDTO?
+    let pitchVelocity: FlexibleInt?
+    /// The result's own type where it's sharper than `type` ("Single"
+    /// under a "Play Result").
+    let alternativeType: PlayTypeDTO?
 }
 
 nonisolated struct PlayParticipantDTO: Decodable {
@@ -914,6 +949,10 @@ nonisolated struct HeaderCompetitorDTO: Decodable {
 
 nonisolated struct LinescoreDTO: Decodable {
     let displayValue: String?
+    /// Baseball's line score carries each inning's hits and errors beside
+    /// its runs; the R/H/E columns sum them.
+    let hits: Int?
+    let errors: Int?
 }
 
 nonisolated struct BoxscoreDTO: Decodable {
@@ -929,6 +968,9 @@ nonisolated struct BoxscorePlayersDTO: Decodable {
 nonisolated struct BoxscorePlayerGroupDTO: Decodable {
     let name: String?       // "passing"
     let text: String?       // "Miami Passing" — team name prefixed
+    /// MLB names neither of its groups; it types them, `batting` and
+    /// `pitching`.
+    let type: String?
     let labels: [String]?   // the column headers, live-vs-final variable
     /// Plain-English column meanings ("Yards Per Pass Attempt" beside
     /// "AVG"), positionally paired with `labels`.
@@ -962,6 +1004,9 @@ nonisolated struct BoxscoreStatDTO: Decodable {
     let name: String?
     let label: String?
     let displayValue: String?
+    /// MLB groups its team statistics — `batting`, `pitching`, `fielding`
+    /// — each a list of these. Nil in the flat leagues.
+    let stats: [BoxscoreStatDTO]?
 }
 
 nonisolated struct ScoringPlayDTO: Decodable {
@@ -977,6 +1022,9 @@ nonisolated struct ScoringPlayDTO: Decodable {
 
 nonisolated struct PeriodRefDTO: Decodable {
     let number: Int?
+    /// Baseball's half: "Top", "Bottom", "Middle", "End". Absent in every
+    /// other league.
+    let type: String?
 }
 
 nonisolated struct ClockRefDTO: Decodable {
@@ -986,6 +1034,18 @@ nonisolated struct ClockRefDTO: Decodable {
 nonisolated struct PlayTypeDTO: Decodable {
     let text: String?
     let abbreviation: String?
+    /// ESPN's slug: "strike-looking", "play-result". Baseball sorts pitches
+    /// from results by it.
+    let type: String?
+    /// A baseball result's sharper word: "Strikeout" on a strike-looking
+    /// play.
+    let alternativeText: String?
+}
+
+/// Baseball's count, before or after a pitch.
+nonisolated struct PitchCountDTO: Decodable {
+    let balls: Int?
+    let strikes: Int?
 }
 
 nonisolated struct SummaryTeamLeadersDTO: Decodable {

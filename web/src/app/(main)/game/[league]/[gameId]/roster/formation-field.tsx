@@ -13,7 +13,7 @@
 // nothing else on the section takes color.
 
 import { useLayoutEffect, useRef, useState } from "react";
-import type { League } from "@/lib/leagues";
+import { isBasketball, type League } from "@/lib/leagues";
 import type { Team } from "@/lib/types";
 import { teamShortName } from "@/lib/game-roster";
 import { rowPlayers, type Formation, type FormationRow } from "@/lib/formation";
@@ -170,7 +170,7 @@ function FieldMarkings({ league }: { league: League }) {
     <div ref={ref} aria-hidden="true" className="absolute inset-0">
       {w > 0 && h > 0 && (
         <svg width={w} height={h} className="block">
-          {league === "nba" ? (
+          {isBasketball(league) ? (
             <Court w={w} h={h} />
           ) : league === "nhl" ? (
             <Rink w={w} h={h} />
