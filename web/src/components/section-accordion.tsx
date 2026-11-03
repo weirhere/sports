@@ -160,7 +160,7 @@ export function SectionAccordion({
       {section.games.map((game, index) => (
         <div key={`${game.league}-${game.id}`}>
           {index > 0 && <div className="ml-4 border-t border-divider" />}
-          <GameRow game={game} />
+          <GameRow game={game} marksWomen={section.kind === "following"} />
         </div>
       ))}
     </div>

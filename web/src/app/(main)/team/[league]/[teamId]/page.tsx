@@ -6,6 +6,7 @@
 import { opensNews } from "@/lib/routes";
 import { notFound } from "next/navigation";
 import {
+  conferenceTeams,
   teamSchedule,
   teamRoster,
   hubStandings,
@@ -21,6 +22,7 @@ import {
   type League,
 } from "@/lib/leagues";
 import { teamCardModel } from "@/lib/og/entity";
+import { sharesMensName } from "@/lib/team-name";
 import { TeamView } from "./team-view";
 
 export const dynamic = "force-dynamic";
@@ -96,7 +98,7 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   // season — ESPN's numbers have no season axis to follow the chip with.
   const leaders = isCurrentSeason ? teamLeaders(league, teamId) : undefined;
 
-  const [scheduleResult, standingsResult, rankingsResult, rosterResult] =
+  const [scheduleResult, standingsResult, rankingsResult, rosterResult, mensResult] =
     await Promise.allSettled([
       teamSchedule(league, teamId, fetchYear),
       // The divisional response, so the scope chip can reach a team's
@@ -106,6 +108,9 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
       // No year: ESPN's roster endpoint has no season axis, so the roster
       // is the current one whatever season the rest of the page is showing.
       teamRoster(league, teamId),
+      // The men's directory, for a women's team whose name it shares —
+      // "(W)" on the title (2026-11-03). Asked only where it can matter.
+      league === "wcbb" ? conferenceTeams("mcbb") : Promise.resolve([]),
     ]);
 
   // Unknown team: no identity and no games. A dead ESPN response for the
@@ -127,10 +132,15 @@ export default async function TeamPage({ params, searchParams }: PageProps) {
   const apPoll = polls.find((poll) => poll.type === "ap") ?? polls[0];
   const apRank = apPoll?.ranks.find((rank) => rank.team.id === teamId)?.rank;
 
+  const mensTeams =
+    mensResult.status === "fulfilled" ? mensResult.value.flatMap((group) => group.teams) : [];
+  const womensMark = schedule.team !== undefined && sharesMensName(schedule.team, mensTeams);
+
   return (
     <TeamView
       league={league}
       teamId={teamId}
+      womensMark={womensMark}
       schedule={schedule}
       standingsGroups={standingsGroups}
       roster={roster}

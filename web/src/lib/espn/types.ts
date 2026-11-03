@@ -81,6 +81,19 @@ export interface EspnCompetition {
    */
   notes?: { type?: string; headline?: string }[];
   /**
+   * A playoff game's series as it stood after this game — "ATL leads series
+   * 1-0" on Game 1 (probed 2026-11-03 across MLB, the NBA, the NHL and the
+   * WNBA). Absent on single games; `type: "season"` is a regular-season
+   * head-to-head, not a series.
+   */
+  series?: {
+    type?: string;
+    summary?: string;
+    completed?: boolean;
+    totalCompetitions?: number;
+    competitors?: { id?: string; wins?: number }[];
+  };
+  /**
    * The scoreboard's betting lines, one per provider. Only the first
    * provider's per-team `favorite` flags are read — the Tight filter needs
    * to know who was favored, and nothing on the web prints a line off the

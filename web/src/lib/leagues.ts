@@ -347,6 +347,43 @@ export function isCollegeBasketball(league: League): boolean {
 }
 
 /**
+ * Whether the playoffs are best-of series rather than single games — what
+ * makes the bracket draw one card per series (iOS `League.playsSeries`,
+ * 2026-11-03).
+ */
+export function playsSeries(league: League): boolean {
+  return league === "nba" || league === "nhl" || league === "mlb" || league === "wnba";
+}
+
+/**
+ * Whether a page can load this league's whole season as one slate. College
+ * basketball can't: Division I is ~6,000 games at ~19 KB each, ~300 MB a
+ * season. Its Top 25 loads the tournament's days and the ranked teams'
+ * schedules instead (iOS `League.loadsWholeSeasonSlate`, 2026-11-03).
+ */
+export function loadsWholeSeasonSlate(league: League): boolean {
+  return !isCollegeBasketball(league);
+}
+
+/**
+ * The sport and who plays it, under a title that names neither — the Top
+ * 25's (iOS `League.pollSportName`, 2026-11-03). Undefined for the pros,
+ * which have no poll.
+ */
+export function pollSportName(league: League): string | undefined {
+  switch (league) {
+    case "cfb":
+      return "Men's Football";
+    case "mcbb":
+      return "Men's Basketball";
+    case "wcbb":
+      return "Women's Basketball";
+    default:
+      return undefined;
+  }
+}
+
+/**
  * The college league a pro's College row opens (iOS `League.collegeFeeder`,
  * 2026-11-02): an NBA player's school opens its men's basketball page; an
  * NFL's, and an NHL's as before, its football page. Undefined for a

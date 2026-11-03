@@ -4,6 +4,7 @@ import type { League } from "./leagues";
 import type { FollowedTable } from "./followed-tables";
 import {
   buildSections,
+  headlinersFirst,
   FOLLOWING_SECTION_ID,
   hiddenSectionsSummary,
   splitAtHideAll,
@@ -85,13 +86,37 @@ describe("the stack", () => {
       ],
       noFollows
     );
-    // NBA, NCAAF, NFL, NHL — the name on screen, not declaration order
-    // (2026-09-24).
+    // The big conferences lead, SEC before the Big Ten (2026-11-03); the
+    // rest stays A–Z by the name on screen — NBA, NFL (2026-09-24).
     expect(sections.map((s) => s.id)).toEqual([
-      "league-nba",
-      "conf-cfb:5",
       "conf-cfb:8",
+      "conf-cfb:5",
+      "league-nba",
       "league-nfl",
+    ]);
+  });
+
+  it("leads with the big conferences league by league, then the rest as it was", () => {
+    const sections = headlinersFirst([
+      { id: "league-nba", title: "NBA", kind: "league", games: [], league: "nba" },
+      { id: "conf-cfb:1", title: "ACC", kind: "conference", games: [], league: "cfb",
+        table: { kind: "conference", ref: { league: "cfb", id: 1 } } },
+      { id: "conf-mcbb:4", title: "Big East", kind: "conference", games: [], league: "mcbb",
+        table: { kind: "conference", ref: { league: "mcbb", id: 4 } } },
+      { id: "conf-cfb:15", title: "MAC", kind: "conference", games: [], league: "cfb",
+        table: { kind: "conference", ref: { league: "cfb", id: 15 } } },
+      { id: "conf-mcbb:23", title: "SEC", kind: "conference", games: [], league: "mcbb",
+        table: { kind: "conference", ref: { league: "mcbb", id: 23 } } },
+      { id: "conf-cfb:8", title: "SEC", kind: "conference", games: [], league: "cfb",
+        table: { kind: "conference", ref: { league: "cfb", id: 8 } } },
+    ]);
+    expect(sections.map((s) => s.id)).toEqual([
+      "conf-cfb:8",
+      "conf-cfb:1",
+      "conf-mcbb:23",
+      "conf-mcbb:4",
+      "league-nba",
+      "conf-cfb:15",
     ]);
   });
 

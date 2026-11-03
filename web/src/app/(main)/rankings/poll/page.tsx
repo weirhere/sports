@@ -7,12 +7,13 @@
 // of the same 25 teams read by different voters.
 
 import { opensNews } from "@/lib/routes";
-import { rankings, seasonGames } from "@/lib/espn";
+import { rankedSeasonGames, rankings, seasonGames } from "@/lib/espn";
 import { displayedPolls } from "@/lib/polls";
 import {
   SEASON_FLOOR,
   displayName,
   hasPoll,
+  loadsWholeSeasonSlate,
   parseLeague,
   seasonYear,
   type League,
@@ -59,15 +60,25 @@ export default async function PollPage({ searchParams }: PageProps) {
 
   // The poll and the slate fail independently: a season with no poll still
   // has games, and a slate that missed still leaves a table to read.
-  const [pollResult, gamesResult] = await Promise.allSettled([
-    rankings(LEAGUE, year),
-    seasonGames(LEAGUE, year),
-  ]);
-
-  const polls: Poll[] | null =
-    pollResult.status === "fulfilled" ? displayedPolls(pollResult.value) : null;
-  const games: Game[] | null =
-    gamesResult.status === "fulfilled" ? gamesResult.value : null;
+  let polls: Poll[] | null;
+  let games: Game[] | null;
+  if (loadsWholeSeasonSlate(LEAGUE)) {
+    const [pollResult, gamesResult] = await Promise.allSettled([
+      rankings(LEAGUE, year),
+      seasonGames(LEAGUE, year),
+    ]);
+    polls = pollResult.status === "fulfilled" ? displayedPolls(pollResult.value) : null;
+    games = gamesResult.status === "fulfilled" ? gamesResult.value : null;
+  } else {
+    // College basketball's season is too big to load whole (2026-11-03):
+    // the polls name the teams, and the slate is their seasons plus the
+    // tournament.
+    polls = await rankings(LEAGUE, year).then(displayedPolls).catch(() => null);
+    const teamIds = [
+      ...new Set((polls ?? []).flatMap((poll) => poll.ranks.map((entry) => entry.team.id))),
+    ];
+    games = await rankedSeasonGames(LEAGUE, year, teamIds).catch(() => null);
+  }
 
   return (
     <PollView

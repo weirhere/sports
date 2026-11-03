@@ -4,6 +4,7 @@ export {
   scoreboardForDateTokens,
   rankings,
   seasonGames,
+  rankedSeasonGames,
   conferenceTeams,
   conferenceStandings,
   hubStandings,

@@ -540,6 +540,18 @@ export function conferenceName(
   return `${name} (${conference})`;
 }
 
+/**
+ * Whether a women's college conference's name is a men's one too — iOS
+ * `Conference.sharesMensName` (2026-11-03): all 32 today, the Summit League
+ * under a different id. A shared name gets "(W)" on the conference page,
+ * where nothing else says which league's SEC it is.
+ */
+export function conferenceSharesMensName(ref: ConferenceRef): boolean {
+  if (ref.league !== "wcbb") return false;
+  const name = WCBB_NAMES[ref.id];
+  return name !== undefined && Object.values(MCBB_NAMES).includes(name);
+}
+
 export function conferenceNameFor(
   ref: ConferenceRef | null | undefined
 ): string {

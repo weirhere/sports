@@ -14,6 +14,7 @@ import type {
   Team,
   Game,
   GameStatus,
+  PlayoffSeries,
   GameTeam,
   Venue,
   ConferenceStanding,
@@ -411,7 +412,30 @@ export function transformEvent(
     // The only place a college-football playoff round is named — its whole
     // postseason is one `seasontype=3` week, bowls and bracket together.
     headline: comp.notes?.[0]?.headline,
+    series: playoffSeries(comp.series),
     favoriteIsHome: favoriteIsHome(comp.odds?.[0]),
+  };
+}
+
+/**
+ * A playoff series only — iOS `ESPNMapper.series(from:)`. The regular
+ * season's head-to-head isn't one, and a series with no team ids can't be
+ * drawn.
+ */
+export function playoffSeries(
+  series: EspnCompetition["series"]
+): PlayoffSeries | undefined {
+  if (series?.type !== "playoff") return undefined;
+  const wins: Record<string, number> = {};
+  for (const side of series.competitors ?? []) {
+    if (side.id) wins[side.id] = side.wins ?? 0;
+  }
+  if (Object.keys(wins).length === 0) return undefined;
+  return {
+    length: series.totalCompetitions,
+    summary: series.summary || undefined,
+    completed: series.completed ?? false,
+    wins,
   };
 }
 

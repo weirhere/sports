@@ -54,6 +54,7 @@ import {
   LEAGUE_DISPLAY_ORDER,
   displayName,
   hasCollegeDivisions,
+  isCollege,
   leagueLogoUrl,
   slateSplitsByConference,
   type League,
@@ -442,8 +443,50 @@ export function buildSections(
   return [
     ...result,
     ...hoisted,
-    ...stack.filter((section) => !hoistedIds.has(section.id)),
+    ...headlinersFirst(stack.filter((section) => !hoistedIds.has(section.id))),
   ];
+}
+
+/** The big conferences' running order: SEC, Big Ten, Big 12, ACC, and the
+ *  Big East where basketball has it. */
+const POWER_ORDER = ["SEC", "Big Ten", "Big 12", "ACC", "Big East"];
+
+/**
+ * The stack's headliners ahead of its resting A–Z order — iOS
+ * `LeagueScoreboards.headlinersFirst` (Andy, 2026-11-03): every Top 25, then
+ * the big conferences league by league, then everything else as it was.
+ * The web's stack carries no unfollowed Top 25 section, so here it's the
+ * big conferences that move: a college league's power tier, in
+ * `POWER_ORDER`, in the leagues' own display order.
+ */
+export function headlinersFirst(stack: readonly GameSection[]): GameSection[] {
+  const polls: GameSection[] = [];
+  const powers = new Map<League, { rank: number; section: GameSection }[]>();
+  const rest: GameSection[] = [];
+  for (const section of stack) {
+    const table = section.table;
+    if (table?.kind === "poll") {
+      polls.push(section);
+    } else if (
+      table?.kind === "conference" &&
+      isCollege(table.ref.league) &&
+      tier(table.ref.id, table.ref.league) === "power4"
+    ) {
+      const name = conferenceNameFor(table.ref);
+      const rank = POWER_ORDER.indexOf(name);
+      const bucket = powers.get(table.ref.league) ?? [];
+      bucket.push({ rank: rank === -1 ? POWER_ORDER.length : rank, section });
+      powers.set(table.ref.league, bucket);
+    } else {
+      rest.push(section);
+    }
+  }
+  const bigs = LEAGUE_DISPLAY_ORDER.flatMap((league) =>
+    (powers.get(league) ?? [])
+      .sort((a, b) => a.rank - b.rank)
+      .map((entry) => entry.section)
+  );
+  return [...polls, ...bigs, ...rest];
 }
 
 // --- Hide all / Show all -----------------------------------------------

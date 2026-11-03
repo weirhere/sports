@@ -60,6 +60,37 @@ export function espnDayTokens(start: Date, end: Date): string[] {
   return tokens;
 }
 
+/** A month token's own days, as `dates=` tokens: `202609` → `20260901`…`20260930`. */
+export function monthDayTokens(month: string): string[] {
+  if (!/^\d{6}$/.test(month)) return [];
+  const year = Number(month.slice(0, 4));
+  const index = Number(month.slice(4)) - 1;
+  return espnDayTokens(new Date(year, index, 1), new Date(year, index + 1, 0));
+}
+
+/**
+ * The days of a month its own response can't vouch for — iOS
+ * `ESPNClient.daysToReask(inMonth:after:)` (2026-11-03).
+ *
+ * A month request is trusted only up to the last day it returned a game for:
+ * that day and every one after it are asked again as days. ESPN cuts a
+ * `groups=` month short four ways and only the first says so with a count:
+ * at `limit`; by response size (NCAAW's March stopped at 454 games on the
+ * 15th, the whole NCAA tournament gone); by dropping its last day (every NHL
+ * month with `groups=9`); or by answering empty (college basketball's
+ * November). Every short response ran from the 1st and stopped early. A
+ * month at the limit is asked again whole, as it always was.
+ */
+export function daysToReask(month: string, eventDates: readonly string[]): string[] {
+  const days = monthDayTokens(month);
+  const parsed = eventDates
+    .map((date) => new Date(date))
+    .filter((date) => !Number.isNaN(date.getTime()));
+  if (eventDates.length >= WINDOW_LIMIT || parsed.length === 0) return days;
+  const last = espnDay(new Date(Math.max(...parsed.map((date) => date.getTime()))));
+  return days.filter((day) => day >= last);
+}
+
 /** Every calendar month a span touches, as `dates=` tokens, in order. */
 export function espnMonthTokens(start: Date, end: Date): string[] {
   const tokens: string[] = [];

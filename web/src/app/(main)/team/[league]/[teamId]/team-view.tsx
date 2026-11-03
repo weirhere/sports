@@ -89,6 +89,9 @@ const TABS: HeroTab[] = [
 interface TeamViewProps {
   league: League;
   teamId: string;
+  /** A women's college team whose full name a men's team shares: the title
+   *  wears "(W)" (2026-11-03). */
+  womensMark?: boolean;
   schedule: TeamScheduleData;
   /** All conferences' standings for the requested season; null = fetch failed. */
   standingsGroups: ConferenceStandingsGroup[] | null;
@@ -111,6 +114,7 @@ interface TeamViewProps {
 export function TeamView({
   league,
   teamId,
+  womensMark = false,
   schedule,
   standingsGroups,
   roster,
@@ -280,7 +284,7 @@ export function TeamView({
             />
           ) : null
         }
-        title={school}
+        title={womensMark ? `${school} (W)` : school}
         rank={apRank}
         subtitle={
           conferenceId !== undefined ? (

@@ -16,7 +16,7 @@
 // cards with no lines yet, and the bracket wires itself up as games finish. A
 // wrong line is far worse than a missing one.
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BRACKET_CARD_GAP,
@@ -40,6 +40,11 @@ import { cn } from "@/lib/utils";
 /** Both columns fit the pane, so the bracket never scrolls sideways itself —
  *  which is what frees the horizontal axis for the round swipe. */
 const COLUMN_GAP = 28;
+
+/** Each series card's real game, by card id — so a series opens the game
+ *  being played, the next one, or the one that decided it, never the card
+ *  itself, which no summary endpoint knows. Empty for single-game leagues. */
+const SeriesOpens = createContext<Record<string, Game>>({});
 
 export function PostseasonSection({
   rounds,
@@ -71,6 +76,10 @@ export function PostseasonSection({
     onSwipeLeft: () => step(1),
     onSwipeRight: () => step(-1),
   });
+  const opens = useMemo(
+    () => Object.assign({}, ...rounds.map((round) => round.opens ?? {})) as Record<string, Game>,
+    [rounds]
+  );
 
   if (!active) {
     return (
@@ -81,6 +90,7 @@ export function PostseasonSection({
   }
 
   return (
+    <SeriesOpens.Provider value={opens}>
     <div className="flex flex-col gap-2">
       <RoundChips
         rounds={rounds}
@@ -109,6 +119,7 @@ export function PostseasonSection({
         </div>
       )}
     </div>
+    </SeriesOpens.Provider>
   );
 }
 
@@ -389,11 +400,12 @@ function ByeCard({ team }: { team: Team }) {
  * too, so the card edge and the line that meets it are the same stroke.
  */
 function MatchCard({ game }: { game: Game }) {
+  const opens = useContext(SeriesOpens);
   const state = gameState(game.status);
   const status = bracketStatusLine(game);
   return (
     <Link
-      href={gamePath(game)}
+      href={gamePath(opens[game.id] ?? game)}
       aria-label={spokenLabel(game, status)}
       suppressHydrationWarning
       className="flex h-full flex-col gap-1 rounded-[10px] border border-divider bg-bg-card p-2 transition-colors hover:bg-bg-header"
@@ -461,6 +473,7 @@ function BracketSide({ game, side }: { game: Game; side: GameTeam }) {
 }
 
 function bracketStatusLine(game: Game): string {
+  if (game.series) return seriesStatusLine(game, game.series);
   switch (gameState(game.status)) {
     case "final":
       return game.statusDetail?.toUpperCase().includes("OT")
@@ -493,9 +506,51 @@ function bracketStatusLine(game: Game): string {
   }
 }
 
+/**
+ * A series card's line (iOS, 2026-11-03): the game being played, Game 1's
+ * date before a series starts, and ESPN's own sentence otherwise — "ATL leads
+ * series 1-0", "MIL wins series 4-1".
+ */
+function seriesStatusLine(game: Game, series: NonNullable<Game["series"]>): string {
+  const played = Object.values(series.wins).reduce((sum, wins) => sum + wins, 0);
+  const state = gameState(game.status);
+  if (state === "live") {
+    const clock =
+      liveStatusText({
+        league: game.league,
+        livePhase: game.livePhase,
+        quarter: game.quarter,
+        clock: game.clock,
+        detail: game.statusDetail,
+      }) ?? "Live";
+    return `Game ${played + 1} · ${clock}`;
+  }
+  if (played === 0 && state === "pre") {
+    const date = new Date(game.scheduledAt);
+    if (!Number.isNaN(date.getTime())) {
+      const when = game.timeTBD
+        ? date.toLocaleDateString("en-US", { month: "numeric", day: "numeric" })
+        : date.toLocaleString("en-US", {
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+      return `Game 1 · ${when}`;
+    }
+  }
+  if (series.summary) return series.summary;
+  return series.length !== undefined ? `Best of ${series.length}` : "Series";
+}
+
 function spokenLabel(game: Game, status: string): string {
   const parts: string[] = [];
   if (game.headline) parts.push(game.headline);
+  // A series has no host — and its line already says the record.
+  if (game.series) {
+    parts.push(`${game.awayTeam.team.school} versus ${game.homeTeam.team.school}`, status);
+    return parts.join(", ");
+  }
   parts.push(`${game.awayTeam.team.school} at ${game.homeTeam.team.school}`);
   if (game.awayTeam.score !== null && game.homeTeam.score !== null) {
     parts.push(`${game.awayTeam.score} to ${game.homeTeam.score}`);

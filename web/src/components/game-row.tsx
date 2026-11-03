@@ -37,6 +37,12 @@ interface GameRowProps {
   showsYear?: boolean;
   /** Runs before the navigation — search records the game as a recent. */
   onSelect?: () => void;
+  /**
+   * The Following section's rows (iOS, 2026-11-03): both names of a women's
+   * college game wear "(W)", where "UConn" is otherwise the men's name too.
+   * Off everywhere else — a women's section's header already says so.
+   */
+  marksWomen?: boolean;
 }
 
 type RowPhase = "pre" | "live" | "final" | "other";
@@ -81,8 +87,10 @@ export function GameRow({
   timeOnly = false,
   showsYear = false,
   onSelect,
+  marksWomen = false,
 }: GameRowProps) {
   const phase = phaseOf(game.status);
+  const womens = marksWomen && game.league === "wcbb";
 
   return (
     <Link
@@ -92,8 +100,8 @@ export function GameRow({
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-header"
     >
       <div aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-1">
-        <TeamLine game={game} side={game.awayTeam} phase={phase} isHome={false} />
-        <TeamLine game={game} side={game.homeTeam} phase={phase} isHome />
+        <TeamLine game={game} side={game.awayTeam} phase={phase} isHome={false} womens={womens} />
+        <TeamLine game={game} side={game.homeTeam} phase={phase} isHome womens={womens} />
       </div>
       <div aria-hidden="true" className="h-11 w-px shrink-0 bg-divider" />
       <div aria-hidden="true" className="w-20 shrink-0">
@@ -116,11 +124,13 @@ function TeamLine({
   side,
   phase,
   isHome,
+  womens = false,
 }: {
   game: Game;
   side: GameTeam;
   phase: RowPhase;
   isHome: boolean;
+  womens?: boolean;
 }) {
   // Final rows put the winner in heavier type; live rows emphasize both.
   // If ESPN omits the winner flag, nobody fades.
@@ -149,6 +159,19 @@ function TeamLine({
         >
           {side.team.school}
         </span>
+        {/* Part of the name — same font, weight and ink — but its own
+            span, so a long name truncates before the mark does. */}
+        {womens && (
+          <span
+            className={cn(
+              "shrink-0",
+              emphasized ? "type-row-name-em" : "type-row-name",
+              muted ? "text-text-secondary" : "text-text-primary"
+            )}
+          >
+            (W)
+          </span>
+        )}
         {side.ranking !== undefined && (
           <span className="type-row-meta shrink-0 text-text-secondary">
             {side.ranking}

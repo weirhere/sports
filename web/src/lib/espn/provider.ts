@@ -23,6 +23,7 @@ import { transformDepthChart, transformLineup } from "./game-roster-transformers
 import {
   SEASON_FLOOR,
   belongsToSeason,
+  espnSeason,
   hasPlayoffRanking,
   hasPoll,
   isCollege,
@@ -61,8 +62,9 @@ import {
   coreRankingUrl,
   coreWeeksUrl,
   dayWindowUrl,
+  daysToReask,
   espnDay,
-  espnDayTokens,
+  monthDayTokens,
   espnMonthTokens,
   espnWindow,
   gameSummaryUrl,
@@ -70,7 +72,6 @@ import {
   scoreboardUrl,
   seasonWindowUrl,
   standingsUrl,
-  WINDOW_LIMIT,
   teamRosterUrl,
   teamScheduleUrl,
   teamsUrl,
@@ -78,6 +79,8 @@ import {
   depthChartUrl,
 } from "./endpoints";
 import { FBS_GROUP_ID } from "@/lib/conferences";
+import { requestGate, SEASON_REQUEST_LIMIT } from "./request-gate";
+import { POSTSEASON_SEASON_TYPE } from "@/lib/postseason";
 import {
   transformCoreRanking,
   transformTeamDirectory,
@@ -446,6 +449,65 @@ export async function seasonGames(
   return conferenceGames(league, leagueGroupId(league) ?? FBS_GROUP_ID, year);
 }
 
+/**
+ * College basketball's Top 25 slate (iOS, 2026-11-03): the NCAA tournament's
+ * days plus each ranked team's own season, never the Division I season —
+ * ~6,000 games and ~300 MB, which timed out every other request on the page.
+ *
+ * The tournament is March 14 to April 10 of the year the season ends:
+ * Selection Sunday's weekend through the championship with slack either
+ * side. 22 of those days held all of 2026's 105 men's postseason games in
+ * 1.8 MB. Postseason games only — conference tournaments in the window are
+ * regular season to ESPN, and the ranked teams' schedules carry them.
+ * A ranked team whose schedule fails is left out rather than failing the
+ * slate; the tournament failing fails it, since the Playoffs tab is built
+ * from it.
+ */
+export async function rankedSeasonGames(
+  league: League,
+  year: number,
+  teamIds: readonly string[]
+): Promise<Game[]> {
+  const gate = requestGate(SEASON_REQUEST_LIMIT);
+  const endYear = espnSeason(league, year);
+  const days = [
+    ...monthDayTokens(`${endYear}03`).filter((day) => day.slice(6) >= "14"),
+    ...monthDayTokens(`${endYear}04`).filter((day) => day.slice(6) <= "10"),
+  ];
+  const groups = leagueGroupId(league);
+  const [tournament, schedules] = await Promise.all([
+    Promise.all(
+      days.map((day) =>
+        gate(() =>
+          fetchJson<EspnScoreboardResponse>(
+            seasonWindowUrl(league, day, { groups }),
+            REVALIDATE.conferenceGames
+          )
+        )
+      )
+    ),
+    Promise.all(
+      teamIds.map((id) =>
+        gate(() => teamSeasonGames(league, id, year)).catch(() => undefined)
+      )
+    ),
+  ]);
+  const seen = new Set<string>();
+  const games: Game[] = [];
+  const add = (game: Game) => {
+    if (seen.has(game.id)) return;
+    seen.add(game.id);
+    games.push(game);
+  };
+  for (const data of tournament) {
+    for (const game of transformScoreboard(data.events ?? [], league, { seasonYear: year })) {
+      if (game.seasonType === POSTSEASON_SEASON_TYPE) add(game);
+    }
+  }
+  for (const schedule of schedules) schedule?.games.forEach(add);
+  return games;
+}
+
 /** A league's conferences with alphabetical rosters, for browsing. */
 export async function conferenceTeams(
   league: League,
@@ -760,12 +822,10 @@ export async function teamTrophyCase(
  * The month is the granularity because the range form that used to state a
  * span whole was withdrawn (2026-09-17), and it replaces the November 1
  * split — which was a college-football date wearing the shape of a rule,
- * and which iOS had already retired. ESPN still truncates at `limit`
- * silently rather than paging, so a month that comes back at
- * `WINDOW_LIMIT` is re-asked as its own days, the one granularity below it.
- * Measured live 2026-09-17: college football's September is 323 events and
- * the NHL's January 231, so the fan-out is a guard that does not fire in
- * normal operation.
+ * and which iOS had already retired. ESPN truncates a `groups=` month
+ * silently in more ways than at `limit` (see `daysToReask`), so a month is
+ * trusted only up to its last returned day and the rest is asked again as
+ * days, six requests at a time (2026-11-03).
  *
  * **Every league tables its whole season** — the NBA and NHL included, which
  * until 2026-09-25 had a rolling four-week window here instead. That window
@@ -789,22 +849,25 @@ export async function conferenceGames(
   const span = seasonGamesSpan(league, seasonYear);
   const months = espnMonthTokens(span.start, span.end);
 
+  // Every request takes a turn through one gate, and a month is trusted only
+  // up to its last returned day — `daysToReask` (2026-11-03). A month that
+  // fails outright is asked again as days rather than failing the season.
+  const gate = requestGate(SEASON_REQUEST_LIMIT);
   const perMonth = await Promise.all(
-    months.map((month) =>
-      seasonWindowEvents(league, month, conferenceId).then((events) =>
-        // A month at the limit came back truncated — there is no flag, no
-        // count and no cursor, so the count *is* the signal — and its own
-        // days are the only way left to ask for less than a month.
-        events.length >= WINDOW_LIMIT
-          ? Promise.all(
-              espnDayTokens(
-                new Date(Number(month.slice(0, 4)), Number(month.slice(4)) - 1, 1),
-                new Date(Number(month.slice(0, 4)), Number(month.slice(4)), 0)
-              ).map((day) => seasonWindowEvents(league, day, conferenceId))
-            ).then((byDay) => byDay.flat())
-          : events
-      )
-    )
+    months.map(async (month) => {
+      const events = await gate(() => seasonWindowEvents(league, month, conferenceId)).catch(
+        () => [] as Awaited<ReturnType<typeof seasonWindowEvents>>
+      );
+      const days = daysToReask(
+        month,
+        events.map((event) => event.date ?? "")
+      );
+      if (days.length === 0) return events;
+      const byDay = await Promise.all(
+        days.map((day) => gate(() => seasonWindowEvents(league, day, conferenceId)))
+      );
+      return [...events, ...byDay.flat()];
+    })
   );
 
   const seen = new Set<string>();

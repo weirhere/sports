@@ -64,6 +64,17 @@ export interface Venue {
   state: string;
 }
 
+/** A best-of series' standing after one of its games — iOS `PlayoffSeries`. */
+export interface PlayoffSeries {
+  /** Best of how many: 3, 5 or 7. */
+  length?: number;
+  /** ESPN's own sentence: "MIL wins series 4-1", "Series tied 1-1". */
+  summary?: string;
+  completed: boolean;
+  /** Wins by team id. */
+  wins: Record<string, number>;
+}
+
 export interface Game {
   id: string;
   /** Which league's event-id space `id` belongs to. A summary fetched from
@@ -110,6 +121,12 @@ export interface Game {
    * the only thing separating a quarterfinal from a bowl.
    */
   headline?: string;
+  /**
+   * The playoff series this game belongs to, as it stood after this game —
+   * undefined for a single game. Only the scoreboard carries it (iOS
+   * `Game.series`, 2026-11-03).
+   */
+  series?: PlayoffSeries;
   /**
    * Who the scoreboard's pre-game line favored — ESPN's per-team `favorite`
    * flag on `odds[0]`; undefined for a pick'em or no line at all. Nothing
