@@ -32,6 +32,29 @@ private func game(status: GameStatus,
 
 @MainActor
 @Suite struct GameRowAccessibilityTests {
+    /// A followed women's college team wears "(W)" in the Following
+    /// section (2026-11-03); VoiceOver gets the league in its place when
+    /// no league tag already leads the sentence.
+    @Test func aWomensMarkSpeaksTheLeague() {
+        func team(_ id: String, _ location: String) -> Team {
+            Team(id: id, location: location, name: nil, abbreviation: nil, displayName: nil,
+                 shortDisplayName: nil, logoURL: nil, conferenceId: nil, league: .womensCollegeBasketball)
+        }
+        let game = Game(id: "w1", date: nil, name: nil, shortName: nil, weekNumber: nil,
+                        status: .final(detail: "Final"),
+                        home: Competitor(team: team("2579", "South Carolina"), score: 74, record: nil,
+                                         rank: nil, isHome: true, winner: true),
+                        away: Competitor(team: team("41", "UConn"), score: 70, record: nil,
+                                         rank: nil, isHome: false, winner: false),
+                        broadcast: nil)
+        let plain = GameRow(game: game)
+        let marked = GameRow(game: game, womensMarks: ["2579"])
+        #expect(plain.spokenLabel == plain.accessibilitySummary)
+        #expect(marked.spokenLabel == "\(League.womensCollegeBasketball.displayName), \(plain.accessibilitySummary)")
+        let tagged = GameRow(game: game, leagueTag: .womensCollegeBasketball, womensMarks: ["2579"])
+        #expect(tagged.spokenLabel == marked.spokenLabel)
+    }
+
     @Test func liveRowSpeaksScoresQuarterClockAndPossession() {
         let row = GameRow(game: game(
             status: .live(displayClock: "5:24", period: 3, detail: nil, phase: .playing, possessionTeamId: "61"),

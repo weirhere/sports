@@ -39,6 +39,11 @@ struct GameRow: View {
     /// nil everywhere else, where the row's tap already opens the game
     /// page and its own Reveal button. Drawn only while concealed.
     var onReveal: (() -> Void)? = nil
+    /// Teams (by id) whose name carries "(W)" after it — both sides of a
+    /// women's college game in the Following section, where "UConn" is
+    /// otherwise the men's name too (Andy, 2026-11-03). Empty everywhere
+    /// else: a women's section's header already says so.
+    var womensMarks: Set<String> = []
 
     @Environment(\.spoilerGuard) private var spoilerGuard
 
@@ -113,8 +118,10 @@ struct GameRow: View {
     /// a sighted reader. Internal, like `accessibilitySummary`, so the
     /// label shape is unit-testable.
     var spokenLabel: String {
-        guard let leagueTag else { return accessibilitySummary }
-        return "\(leagueTag.displayName), \(accessibilitySummary)"
+        // A marked row with no tag says which league the (W) means.
+        let league = leagueTag ?? (womensMarks.isEmpty ? nil : shown.home.team.league)
+        guard let league else { return accessibilitySummary }
+        return "\(league.displayName), \(accessibilitySummary)"
     }
 
     // MARK: - Compact layout (default text sizes)
@@ -163,6 +170,14 @@ struct GameRow: View {
                     // The stacked row has a full line to spend, so a long
                     // name wraps instead of truncating.
                     .lineLimit(isStacked ? 2 : 1)
+                // Part of the name — same font, weight and ink — but its
+                // own text, so a long name ellipsizes before the mark does.
+                if womensMarks.contains(competitor.team.id) {
+                    Text("(W)")
+                        .font(emphasize(competitor) ? .rowNameEmphasis : .rowName)
+                        .foregroundStyle(mute(competitor) ? .textSecondary : .textPrimary)
+                        .fixedSize()
+                }
                 if let rank = competitor.rank {
                     Text("\(rank)")
                         .font(.rowMeta)

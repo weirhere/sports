@@ -229,7 +229,8 @@ struct SectionAccordion: View, Equatable {
             // you're looking at.
             SectionGameRow(game: game,
                            leagueTag: section.spansLeagues ? game.home.team.league : nil,
-                           sectionConference: sectionConference)
+                           sectionConference: sectionConference,
+                           marksWomen: section.id == GameSection.followingId)
             if game.id != section.games.last?.id {
                 Divider()
                     .overlay(Color.divider)

@@ -61,6 +61,9 @@ struct ComponentSnapshotTests {
         /// College football's cells alone, for a surface only it has.
         static let football: [Variant] = all.filter { $0.sport == .football }
 
+        /// Basketball's cells alone, for a row only a basketball league draws.
+        static let basketball: [Variant] = all.filter { $0.sport == .basketball }
+
         static let all: [Variant] = SnapshotFixtures.Sport.allCases.flatMap { sport in
             Device.allCases.flatMap { device in
                 [ColorScheme.light, .dark].map { Variant(sport: sport, device: device, scheme: $0) }
@@ -87,6 +90,17 @@ struct ComponentSnapshotTests {
         // The Scores row as a day section draws it (`timeOnly`), on the
         // card surface: live with the ball, final, pre-game.
         let row = GameRow(game: SnapshotFixtures.game(variant.sport), timeOnly: true)
+            .background(Color.bgCard)
+        assert(row, variant)
+    }
+
+    @Test(.enabled(if: snapshotSelected("gameRowWomen")), arguments: Variant.basketball)
+    func gameRowWomen(_ variant: Variant) {
+        // A women's college game in the Following section: both names
+        // carry "(W)" (2026-11-03).
+        let game = SnapshotFixtures.womensGame
+        let row = GameRow(game: game, timeOnly: true,
+                          womensMarks: [game.away.team.id, game.home.team.id])
             .background(Color.bgCard)
         assert(row, variant)
     }

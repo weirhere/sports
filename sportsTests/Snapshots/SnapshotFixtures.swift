@@ -107,6 +107,19 @@ enum SnapshotFixtures {
         }
     }
 
+    static let uconnWomen = team("41", "UConn", "Huskies", "CONN", league: .womensCollegeBasketball)
+    static let southCarolinaWomen = team("2579", "South Carolina", "Gamecocks", "SC",
+                                         league: .womensCollegeBasketball)
+
+    /// A women's college final, for the Following row's (W) mark
+    /// (2026-11-03), which both sides wear.
+    static let womensGame = Game(
+        id: "snap-wcbb", date: day(2027, 1, 20), name: nil, shortName: "CONN @ SC", weekNumber: nil,
+        status: .final(detail: "Final"),
+        home: competitor(southCarolinaWomen, score: 74, record: "17-1", rank: 1, isHome: true, winner: true),
+        away: competitor(uconnWomen, score: 70, record: "16-2", rank: 3, isHome: false, winner: false),
+        broadcast: "ESPN")
+
     /// The same three matchups as finals, for spoiler mode's baselines
     /// (E30): football and hockey are `game(_:)`'s pairs played out,
     /// basketball is already a final. Hockey ends in overtime so the
