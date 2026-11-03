@@ -61,8 +61,11 @@ function roundName(game: Game, league: League): string | undefined {
       return nflRoundName(game.week);
     case "cfb":
       return collegeRoundName(game.headline);
+    // MLB's and the WNBA's playoffs are series too.
     case "nba":
     case "nhl":
+    case "mlb":
+    case "wnba":
       return undefined;
     case "mcbb":
     case "wcbb":

@@ -152,6 +152,20 @@ private func plays(through prefix: String, in summary: GameSummary) throws -> [P
             == ["W", "L", "PCT", "GB", "HOME", "AWAY", "RS", "RA", "DIFF", "STRK", "L10"])
     }
 
+    /// All winter ESPN announces next season over this one's final table;
+    /// MLB's current season is still the one just played, so the numbers
+    /// stay. (The NBA's equivalent stays blank — see
+    /// `aSeasonThatHasNotOpenedCarriesNoStats`.)
+    @Test func winterStandingsKeepLastSeasonsNumbers() throws {
+        let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("mlb-standings-level3"))
+        let november = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 3)) ?? .now
+        #expect(!ESPNMapper.seasonHasStarted(dto, now: november))
+        let divisions = ESPNMapper.divisionStandings(from: dto, league: .mlb, now: november)
+        let rows = divisions.flatMap(\.entries)
+        #expect(rows.count == 30)
+        #expect(rows.allSatisfy { $0.wins != nil && $0.lastTenGames != nil })
+    }
+
     @Test func standingsMapOntoTheSixDivisions() throws {
         let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("mlb-standings-level3"))
         let inSeason = Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 15)) ?? .now

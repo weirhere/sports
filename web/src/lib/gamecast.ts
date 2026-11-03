@@ -93,6 +93,7 @@ export function shotMapGamecast(
     case "nba":
     case "mcbb":
     case "wcbb":
+    case "wnba":
       return basketball(game, plays, last);
     case "nhl":
       return hockey(game, plays, last, allowsShootout);

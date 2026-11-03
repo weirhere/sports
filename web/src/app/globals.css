@@ -58,6 +58,8 @@
   --surface-ink: #121212; /* the last play; fixed so it never turns white */
   --surface-maple: #e6cc9c;
   --surface-paint: #d9b983;
+  /* Baseball's infield, cut into the turf (2026-11-03). */
+  --surface-infield-dirt: #b88d63;
   --surface-ice: #f5f8fa;
   --surface-boards: #9aa3ab;
   --surface-blue-line: #8f8f8f; /* gray: no blue joins the app for it */
@@ -91,6 +93,7 @@
   --surface-ice-heading: #d5dbe0;
   --surface-maple: #9c7f52;
   --surface-paint: #8a6e44;
+  --surface-infield-dirt: #98724e;
   --surface-ice: #dfe5ea;
   --surface-boards: #6b747c;
   --surface-mark-fallback: #4d4d4d;

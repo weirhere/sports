@@ -79,8 +79,10 @@ function kickoffHeadline(game: Game, options: HeadlineOptions): string {
 /** "Q3", "P2" in hockey, "OT" past regulation — mirrors
  *  `GameStatus.periodLabel(_:in:)`. */
 export function periodLabel(period: number, league: Game["league"]): string {
-  // "H2" for men's college basketball's halves (2026-11-02).
+  // "H2" for men's college basketball's halves (2026-11-02); an inning is
+  // just its number, extras included (2026-11-03).
   const { regulationCount: regulation, shortName: short } = periodFormat(league);
+  if (short === "") return String(period);
   if (period <= regulation) return `${short}${period}`;
   if (period === regulation + 1) return "OT";
   return `${period - regulation}OT`;

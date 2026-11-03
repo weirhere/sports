@@ -225,10 +225,10 @@ describe("behavioral gates", () => {
 
 describe("display order", () => {
   it("lists leagues A–Z by the name on screen", () => {
-    expect(LEAGUE_DISPLAY_ORDER).toEqual(["nba", "cfb", "mcbb", "wcbb", "nfl", "nhl"]);
+    expect(LEAGUE_DISPLAY_ORDER).toEqual(["mlb", "nba", "cfb", "mcbb", "wcbb", "nfl", "nhl", "wnba"]);
   });
 
   it("leaves the declaration order alone for fetches and spans", () => {
-    expect(LEAGUES).toEqual(["cfb", "nfl", "nba", "nhl", "mcbb", "wcbb"]);
+    expect(LEAGUES).toEqual(["cfb", "nfl", "nba", "nhl", "mcbb", "wcbb", "mlb", "wnba"]);
   });
 });

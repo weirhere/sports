@@ -2,6 +2,7 @@
 // abbreviations leading, the numeric columns as one block against the
 // trailing edge, totals emphasized. All numbers tabular.
 
+import { isBaseball } from "@/lib/leagues";
 import type { Game, GameTeam } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DetailCard } from "./detail-card";
@@ -12,12 +13,16 @@ export function LineScoreCard({ game }: { game: Game }) {
     game.homeTeam.linescores?.length ?? 0,
     1
   );
+  // Baseball ends R H E and counts its extra innings as innings
+  // (2026-11-03).
+  const baseball = isBaseball(game.league);
   // "1 2 3 4" plus "OT", "2OT", … past regulation.
   const periods = Array.from({ length: count }, (_, i) => {
     const period = i + 1;
-    if (period <= 4) return `${period}`;
+    if (baseball || period <= 4) return `${period}`;
     return period === 5 ? "OT" : `${period - 4}OT`;
   });
+  const cell = baseball ? "pl-2" : "pl-4";
 
   return (
     <DetailCard>
@@ -32,22 +37,40 @@ export function LineScoreCard({ game }: { game: Game }) {
                 <th
                   key={label}
                   scope="col"
-                  className="pb-1 pl-4 pt-2 text-right type-meta text-text-secondary"
+                  className={cn("pb-1 pt-2 text-right type-meta text-text-secondary", cell)}
                 >
                   {label}
                 </th>
               ))}
               <th
                 scope="col"
-                className="pb-1 pl-4 pr-4 pt-2 text-right type-meta-em text-text-secondary"
+                className={cn(
+                  "pb-1 pt-2 text-right type-meta-em text-text-secondary",
+                  cell,
+                  !baseball && "pr-4"
+                )}
               >
-                T
+                {baseball ? "R" : "T"}
               </th>
+              {baseball &&
+                ["H", "E"].map((caption, index) => (
+                  <th
+                    key={caption}
+                    scope="col"
+                    className={cn(
+                      "pb-1 pt-2 text-right type-meta-em text-text-secondary",
+                      cell,
+                      index === 1 && "pr-4"
+                    )}
+                  >
+                    {caption}
+                  </th>
+                ))}
             </tr>
           </thead>
           <tbody>
-            <LineScoreRow side={game.awayTeam} periodCount={count} />
-            <LineScoreRow side={game.homeTeam} periodCount={count} />
+            <LineScoreRow side={game.awayTeam} periodCount={count} baseball={baseball} />
+            <LineScoreRow side={game.homeTeam} periodCount={count} baseball={baseball} />
           </tbody>
         </table>
       </div>
@@ -58,10 +81,13 @@ export function LineScoreCard({ game }: { game: Game }) {
 function LineScoreRow({
   side,
   periodCount,
+  baseball = false,
 }: {
   side: GameTeam;
   periodCount: number;
+  baseball?: boolean;
 }) {
+  const cell = baseball ? "pl-2" : "pl-4";
   const linescores = side.linescores ?? [];
   return (
     <tr>
@@ -77,14 +103,33 @@ function LineScoreRow({
       {Array.from({ length: periodCount }, (_, index) => (
         <td
           key={index}
-          className="py-1.5 pl-4 text-right type-team-name tnum text-text-primary"
+          className={cn("py-1.5 text-right type-team-name tnum text-text-primary", cell)}
         >
           {index < linescores.length ? linescores[index] : "–"}
         </td>
       ))}
-      <td className="py-1.5 pl-4 pr-4 text-right type-team-name-em tnum text-text-primary">
+      <td
+        className={cn(
+          "py-1.5 text-right type-team-name-em tnum text-text-primary",
+          cell,
+          !baseball && "pr-4"
+        )}
+      >
         {side.score ?? "–"}
       </td>
+      {baseball &&
+        [side.hits, side.errors].map((value, index) => (
+          <td
+            key={index}
+            className={cn(
+              "py-1.5 text-right type-team-name tnum text-text-primary",
+              cell,
+              index === 1 && "pr-4"
+            )}
+          >
+            {value ?? "–"}
+          </td>
+        ))}
     </tr>
   );
 }

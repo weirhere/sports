@@ -11,7 +11,7 @@
  * The raw value is the persistence token. It is written into follow keys,
  * filter tokens and URLs, so it must never change.
  */
-export const LEAGUES = ["cfb", "nfl", "nba", "nhl", "mcbb", "wcbb"] as const;
+export const LEAGUES = ["cfb", "nfl", "nba", "nhl", "mcbb", "wcbb", "mlb", "wnba"] as const;
 
 export type League = (typeof LEAGUES)[number];
 
@@ -68,7 +68,7 @@ interface LeagueSpec {
   divisionGroupId: number | null;
 }
 
-export type Sport = "football" | "basketball" | "hockey";
+export type Sport = "football" | "basketball" | "hockey" | "baseball";
 
 const BASKETBALL_LEADERS = [
   { name: "points", label: "Points" },
@@ -246,6 +246,62 @@ const SPECS: Record<League, LeagueSpec> = {
     isCollege: true,
     divisionGroupId: 50,
   },
+  // MLB and the WNBA (2026-11-03, iOS's same day). Both run inside one
+  // calendar year (`seasonSpansNewYear`), so `seasonRollsOverAfter` is the
+  // month the season closes in, the same year.
+  mlb: {
+    sportSegment: "baseball",
+    pathSegment: "mlb",
+    shortName: "MLB",
+    displayName: "MLB",
+    // Spring training; ESPN's 2026 season object starts 2026-02-19.
+    seasonOpensIn: 2,
+    // The World Series can reach November.
+    seasonRollsOverAfter: 11,
+    seasonYearIsEndYear: false,
+    // Nine innings, each in halves; no letter — a live MLB line is ESPN's
+    // own "Top 5th".
+    periodFormat: { regulationCount: 9, longName: "INNING", shortName: "" },
+    // A run is an event, as a touchdown is; ESPN flags them on the feed.
+    scoringCardTitle: "Scoring",
+    startNoun: "First pitch",
+    startVerbPhrase: "throws the first pitch",
+    // The summary ships no `leaders` block.
+    leaderCategories: [],
+    // MLB's team statistics are grouped (batting/pitching/fielding); the
+    // transformer searches them in that order.
+    comparedStats: [
+      { name: "hits", label: "Hits" },
+      { name: "homeRuns", label: "Home Runs" },
+      { name: "walks", label: "Walks" },
+      { name: "strikeouts", label: "Strikeouts" },
+      { name: "runnersLeftOnBase", label: "Left on Base" },
+      { name: "errors", label: "Errors" },
+    ],
+    sport: "baseball",
+    isCollege: false,
+    divisionGroupId: null,
+  },
+  wnba: {
+    sportSegment: "basketball",
+    pathSegment: "wnba",
+    shortName: "WNBA",
+    displayName: "WNBA",
+    // Preseason; ESPN's season object starts 2026-04-03.
+    seasonOpensIn: 4,
+    // The 2026 Finals' Game 7 was October 31.
+    seasonRollsOverAfter: 10,
+    seasonYearIsEndYear: false,
+    periodFormat: { regulationCount: 4, longName: "QUARTER", shortName: "Q" },
+    scoringCardTitle: null,
+    startNoun: "Tip-off",
+    startVerbPhrase: "tips off",
+    leaderCategories: BASKETBALL_LEADERS,
+    comparedStats: BASKETBALL_COMPARED,
+    sport: "basketball",
+    isCollege: false,
+    divisionGroupId: null,
+  },
 };
 
 export function leagueSpec(league: League): LeagueSpec {
@@ -263,6 +319,16 @@ export function isFootball(league: League): boolean {
 
 export function isBasketball(league: League): boolean {
   return SPECS[league].sport === "basketball";
+}
+
+export function isBaseball(league: League): boolean {
+  return SPECS[league].sport === "baseball";
+}
+
+/** Whether a game runs on a clock. Baseball's doesn't: a live MLB game is
+ *  "Top 5th", and ESPN's `displayClock` sits at "0:00" all night. */
+export function hasGameClock(league: League): boolean {
+  return !isBaseball(league);
 }
 
 /**
@@ -293,6 +359,10 @@ export function collegeFeeder(league: League): League | undefined {
       return "cfb";
     case "nba":
       return "mcbb";
+    case "wnba":
+      return "wcbb";
+    // The app covers no college baseball.
+    case "mlb":
     case "cfb":
     case "mcbb":
     case "wcbb":
@@ -336,7 +406,10 @@ export function scoringCardTitle(league: League): string | undefined {
     case "nba":
     case "mcbb":
     case "wcbb":
+    case "wnba":
       return undefined;
+    case "mlb":
+      return "Scoring";
   }
 }
 
@@ -401,6 +474,7 @@ export function displayName(league: League): string {
  * dark mode, where a light-inked shield would vanish.
  */
 export function leagueLogoUrl(league: League): string {
+  // MLB's and the WNBA's sit in `leagues/` with the other pros.
   if (league === "cfb") {
     return "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-football-college.png";
   }
@@ -541,7 +615,10 @@ export function headToHeadSeasons(league: League): number {
     case "nhl":
     case "mcbb":
     case "wcbb":
+    case "wnba":
       return 3; // two to four times a year
+    case "mlb":
+      return 2; // thirteen meetings a year inside a division
   }
 }
 
@@ -554,7 +631,8 @@ export function headToHeadSeasons(league: League): number {
  * hockey rink (Andy, 2026-09-09).
  */
 export function playsOnASurface(league: League): boolean {
-  return isFootball(league);
+  // Baseball too: grass and turf are a real difference at a ballpark.
+  return isFootball(league) || isBaseball(league);
 }
 
 /**

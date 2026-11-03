@@ -30,6 +30,7 @@ function kickTime(iso: string): string {
 function liveLine(game: Game): string {
   return (
     liveStatusText({
+      league: game.league,
       livePhase: game.livePhase,
       quarter: game.quarter,
       clock: game.clock,

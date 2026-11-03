@@ -329,13 +329,66 @@ const NHL_REGISTRY: Registry = {
   conferenceSlugs: {},
 };
 
+/**
+ * Ids read live from MLB's standings at `level=3`, 2026-11-03 (iOS's same
+ * table): the NFL's two-level shape, and every id collides with another
+ * league's — root 9, leagues 7/8, divisions 1–6.
+ */
+const MLB_REGISTRY: Registry = {
+  leagueWideId: 9,
+  leagueName: "MLB",
+  conferences: [
+    { id: 7, name: "American League", short: "AL" },
+    { id: 8, name: "National League", short: "NL" },
+  ],
+  divisionNames: {
+    1: "AL East", 2: "AL Central", 3: "AL West",
+    4: "NL East", 5: "NL Central", 6: "NL West",
+  },
+  divisionParents: { 1: 7, 2: 7, 3: 7, 4: 8, 5: 8, 6: 8 },
+  teamDivisions: {
+    1: 1, 2: 1, 3: 3, 4: 2, 5: 2, 6: 2, 7: 2, 8: 5, 9: 2, 10: 1,
+    11: 3, 12: 3, 13: 3, 14: 1, 15: 4, 16: 5, 17: 5, 18: 3, 19: 6, 20: 4,
+    21: 4, 22: 4, 23: 5, 24: 5, 25: 6, 26: 6, 27: 6, 28: 4, 29: 6, 30: 1,
+  },
+  // No AL or NL marks under any bucket; sections wear the MLB shield.
+  conferenceSlugs: {},
+};
+
+/** The WNBA's two conferences and fifteen teams, 2026-11-03 — no
+ * divisions, so a team maps straight to its conference. */
+const WNBA_REGISTRY: Registry = {
+  leagueWideId: 3,
+  leagueName: "WNBA",
+  conferences: [
+    { id: 1, name: "Eastern", short: "East" },
+    { id: 2, name: "Western", short: "West" },
+  ],
+  divisionNames: {},
+  divisionParents: {},
+  teamDivisions: {
+    3: 2, 5: 1, 6: 2, 8: 2, 9: 1, 11: 2, 14: 2, 16: 1, 17: 2, 18: 1,
+    19: 1, 20: 1, 129689: 2, 131935: 1, 132052: 2,
+  },
+  conferenceSlugs: {},
+};
+
 /** The pro leagues. College football is absent by design — its hierarchy
  * comes off the wire. */
 const REGISTRIES: Partial<Record<League, Registry>> = {
   nfl: NFL_REGISTRY,
   nba: NBA_REGISTRY,
   nhl: NHL_REGISTRY,
+  mlb: MLB_REGISTRY,
+  wnba: WNBA_REGISTRY,
 };
+
+/** Whether a league nests divisions under its conferences. The WNBA has
+ * conferences alone. */
+export function hasDivisions(league: League): boolean {
+  const registry = REGISTRIES[league];
+  return registry !== undefined && Object.keys(registry.divisionNames).length > 0;
+}
 
 function registryNames(registry: Registry): Record<number, string> {
   const names: Record<number, string> = { ...registry.divisionNames };
@@ -476,6 +529,10 @@ export function conferenceName(
   if (parent === undefined || !registry) return name;
   const conference = registryNames(registry)[parent];
   if (conference === undefined) return name;
+  // "AL East" and "AFC East" lead with their conference's own short form,
+  // so they already say where they sit.
+  const short = registry.conferences.find((c) => c.id === parent)?.short;
+  if (short && name.startsWith(`${short} `)) return name;
   // "Eastern", not "East" — a compass point breaks the short form:
   // "Southeast" contains "east" and "Northwest" contains "west", so exactly
   // the divisions that need placing would decide they already said it.

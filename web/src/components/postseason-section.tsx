@@ -469,6 +469,7 @@ function bracketStatusLine(game: Game): string {
     case "live":
       return (
         liveStatusText({
+          league: game.league,
           livePhase: game.livePhase,
           quarter: game.quarter,
           clock: game.clock,

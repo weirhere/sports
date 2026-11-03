@@ -42,6 +42,10 @@ export const CLOSENESS_RULES: Record<League, ClosenessRule> = {
   // Two halves: the second is both late and the second half.
   mcbb: { latePeriod: 2, secondHalfPeriod: 2, oneScore: 6 },
   wcbb: { latePeriod: 4, secondHalfPeriod: 3, oneScore: 6 },
+  wnba: { latePeriod: 4, secondHalfPeriod: 3, oneScore: 6 },
+  // The seventh on is late; past the fifth is an official game; a run is
+  // one score, as a goal is.
+  mlb: { latePeriod: 7, secondHalfPeriod: 5, oneScore: 1 },
 };
 
 export function isTight(game: Game): boolean {

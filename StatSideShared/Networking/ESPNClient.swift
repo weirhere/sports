@@ -1320,7 +1320,8 @@ nonisolated enum ESPNMapper {
         let played = seasonHasStarted(dto, now: now)
         return standingsGroups(in: dto)
             .map { standings(from: $0.group, parentId: $0.parentId,
-                             league: league, played: played) }
+                             league: league,
+                             played: played || isEarlierSeason($0.group, of: dto, league: league)) }
             .sorted { lhs, rhs in
                 let (lt, rt) = (Conference.tier(for: lhs.id, in: league),
                                 Conference.tier(for: rhs.id, in: league))
@@ -1350,7 +1351,8 @@ nonisolated enum ESPNMapper {
             let id = group.id?.value
             guard let parent = Conference.parent(of: id, in: league) ?? payloadParent,
                   parent != id else { return nil }
-            return standings(from: group, parentId: parent, league: league, played: played)
+            return standings(from: group, parentId: parent, league: league,
+                             played: played || isEarlierSeason(group, of: dto, league: league))
         }
         .sorted { $0.name < $1.name }
     }
@@ -1371,6 +1373,26 @@ nonisolated enum ESPNMapper {
     ///
     /// True when ESPN ships no date at all, which is every football
     /// response we have ever read — absence must never blank a table.
+    /// Whether a calendar-year league's table is the season just played,
+    /// served under a pointer ESPN has already rolled to the next one.
+    ///
+    /// MLB's standings announced 2027 on 2026-11-03, opening 2027-02-18,
+    /// with every table still 2026's final. `SeasonYear` says MLB's current
+    /// season all winter *is* 2026, so those numbers are the right ones,
+    /// and the start-date gate below would blank them until February.
+    ///
+    /// Not for the leagues whose seasons cross New Year. The NBA's rolled
+    /// pointer means the app's current NBA season genuinely is the new one,
+    /// and last season's records under it are the thing
+    /// `aSeasonThatHasNotOpenedCarriesNoStats` exists to keep off screen.
+    static func isEarlierSeason(_ group: StandingsGroupDTO, of dto: StandingsResponseDTO,
+                                league: League) -> Bool {
+        guard !league.seasonSpansNewYear,
+              let table = group.standings?.season,
+              let announced = dto.season?.year else { return false }
+        return table < announced
+    }
+
     static func seasonHasStarted(_ dto: StandingsResponseDTO, now: Date = .now) -> Bool {
         guard let start = ESPNDate.parse(dto.season?.startDate) else { return true }
         return start <= now

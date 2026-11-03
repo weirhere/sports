@@ -25,6 +25,7 @@ import type {
   GameDrive,
   GameSituation,
   PlayItem,
+  BaseballPlayState,
   ScoringSide,
   BoxScoreTeam,
   BoxScoreCategory,
@@ -59,6 +60,7 @@ import {
   leagueSpec,
   playsOnASurface,
   scoringCardTitle,
+  seasonSpansNewYear,
   seasonYearFromEspn,
   teamLogoBase,
   type League,
@@ -763,6 +765,7 @@ function transformStandingsEntry(
     losses: count("losses"),
     ties: count("ties"),
     homeRecord: recordStat("home"),
+    lastTenGames: recordStat("lasttengames"),
     awayRecord: recordStat("road"),
     divisionRecord: recordStat("vsdiv") ?? recordStat("divisionrecord"),
     pointsFor: count("pointsfor"),
@@ -861,6 +864,25 @@ function transformStandingsGroup(
  * A group with children is still a group: the AFC is a real table as well
  * as the parent of four.
  */
+/**
+ * Whether a calendar-year league's table is the season just played, under a
+ * pointer ESPN has already rolled forward (iOS `isEarlierSeason`,
+ * 2026-11-03): MLB announced 2027 in November with 2026's final underneath,
+ * and MLB's current season all winter is 2026. Never for a league whose
+ * season crosses New Year — there the rolled pointer is the app's season
+ * too, and last season's records stay off screen until the opener.
+ */
+function isEarlierSeason(
+  group: EspnStandingsGroup,
+  response: EspnStandingsResponse,
+  league: League
+): boolean {
+  if (seasonSpansNewYear(league)) return false;
+  const table = group.standings?.season;
+  const announced = response.season?.year;
+  return table !== undefined && announced !== undefined && table < announced;
+}
+
 export function transformStandings(
   response: EspnStandingsResponse,
   league: League
@@ -888,7 +910,14 @@ export function transformStandings(
       // Guarded on having no entries rather than on having children, so a
       // response that ever carries both keeps what it carries.
       if (children.length === 0 || entries.length > 0) {
-        tables.push(transformStandingsGroup(group, league, parent, played));
+        tables.push(
+          transformStandingsGroup(
+            group,
+            league,
+            parent,
+            played || isEarlierSeason(group, response, league)
+          )
+        );
       }
       walk(children, id);
     }
@@ -1155,6 +1184,18 @@ export function transformTeamSchedule(
  * shape differs from the scoreboard's (score/rank are flexible numbers,
  * linescores carry displayValues).
  */
+/** A baseball line score's H or E, summed off the innings, or undefined
+ *  where no inning carries one — every league but MLB. */
+function lineTotal(
+  lines: { hits?: number; errors?: number }[] | undefined,
+  field: "hits" | "errors"
+): number | undefined {
+  const values = (lines ?? [])
+    .map((line) => line[field])
+    .filter((v): v is number => typeof v === "number");
+  return values.length === 0 ? undefined : values.reduce((a, b) => a + b, 0);
+}
+
 export function transformHeaderGame(
   gameId: string,
   summary: EspnGameSummaryResponse,
@@ -1182,6 +1223,8 @@ export function transformHeaderGame(
           ls.displayValue !== undefined ? parseInt(ls.displayValue, 10) : NaN
         )
         .filter((v) => !Number.isNaN(v)),
+      hits: lineTotal(competitor.linescores, "hits"),
+      errors: lineTotal(competitor.linescores, "errors"),
     };
   }
 
@@ -1470,6 +1513,49 @@ function playCoordinate(
  * side that wasn't on offense. A scoring play whose numbers ESPN didn't ship
  * gets no side rather than a guessed one.
  */
+/** ESPN's baseball half — "Top", "Bottom", "Mid", "End" — or undefined in
+ *  every other league. */
+export function inningHalf(type: string | undefined): PlayItem["half"] {
+  switch (type?.toLowerCase()) {
+    case "top":
+      return "top";
+    case "bottom":
+    case "bot":
+      return "bottom";
+    case "middle":
+    case "mid":
+      return "middle";
+    case "end":
+      return "end";
+    default:
+      return undefined;
+  }
+}
+
+/** An MLB play's state, or undefined for any other league's. */
+export function baseballState(play: EspnPlay): BaseballPlayState | undefined {
+  if (play.outs === undefined && play.atBatId === undefined) return undefined;
+  const roles = new Map(
+    (play.participants ?? []).map((p) => [p.type ?? "", p.athlete?.id])
+  );
+  const velocity = flexibleNumber(play.pitchVelocity);
+  return {
+    outs: play.outs,
+    balls: play.resultCount?.balls,
+    strikes: play.resultCount?.strikes,
+    atBatId: nonEmpty(play.atBatId),
+    pitchType: nonEmpty(play.pitchType?.text),
+    pitchVelocity: velocity,
+    kind: nonEmpty(play.type?.type),
+    resultText: nonEmpty(play.alternativeType?.alternativeText ?? play.alternativeType?.text),
+    onFirst: roles.has("onFirst"),
+    onSecond: roles.has("onSecond"),
+    onThird: roles.has("onThird"),
+    batterId: nonEmpty(roles.get("batter")),
+    pitcherId: nonEmpty(roles.get("pitcher")),
+  };
+}
+
 export function transformPlays(plays: EspnPlay[]): PlayItem[] {
   const mapped: PlayItem[] = [];
   let previousAway: number | undefined;
@@ -1505,6 +1591,8 @@ export function transformPlays(plays: EspnPlay[]): PlayItem[] {
       coordinate: playCoordinate(play.coordinate),
       isShootingPlay: play.shootingPlay ?? false,
       strength: nonEmpty(play.strength?.abbreviation),
+      half: inningHalf(play.period?.type),
+      baseball: baseballState(play),
     });
     if (away !== undefined) previousAway = away;
     if (home !== undefined) previousHome = home;
@@ -1537,7 +1625,8 @@ export function transformBoxScore(
       // is only one table to ship — and requiring a name dropped every NBA
       // box score on the floor. The columns are what a box score is; the
       // name is only how a section is labelled when there are several.
-      const name = group.name ?? group.text ?? "players";
+      // MLB types its two groups rather than naming them (iOS, 2026-11-03).
+      const name = group.name ?? group.text ?? group.type ?? "players";
       const columns = group.labels ?? [];
       if (columns.length === 0) continue;
 

@@ -53,6 +53,9 @@ export interface GameTeam {
   record?: string; // e.g., "8-2"
   isWinner?: boolean;
   linescores?: number[]; // Quarter-by-quarter scores
+  /** Baseball's H and E, summed off the line score's innings. */
+  hits?: number;
+  errors?: number;
 }
 
 export interface Venue {
@@ -176,6 +179,8 @@ export interface ConferenceStanding {
   pointsFor?: number;
   pointsAgainst?: number;
   pointDifferential?: string;
+  /** ESPN's `lasttengames` summary, "7-3" — MLB's L10 column. */
+  lastTenGames?: string;
 }
 
 /**
@@ -354,6 +359,32 @@ export interface PlayItem {
   /** Hockey's manpower, ESPN's abbreviation: "even-strength",
    *  "power-play", "short-handed", "empty-net". */
   strength?: string;
+  /** Baseball (2026-11-03): which half of `period` this is. */
+  half?: "top" | "bottom" | "middle" | "end";
+  /** Baseball's state as of this play — see `BaseballPlayState`. */
+  baseball?: BaseballPlayState;
+}
+
+/**
+ * What one MLB play says about the game (iOS `BaseballPlayState`). Every
+ * play in ESPN's feed carries it, so the live diamond is the last play read
+ * whole. Runners describe the bases *after* the play.
+ */
+export interface BaseballPlayState {
+  outs?: number;
+  balls?: number;
+  strikes?: number;
+  atBatId?: string;
+  pitchType?: string;
+  pitchVelocity?: number;
+  /** ESPN's `type.type` slug: "ball", "play-result", "start-batterpitcher". */
+  kind?: string;
+  resultText?: string;
+  onFirst: boolean;
+  onSecond: boolean;
+  onThird: boolean;
+  batterId?: string;
+  pitcherId?: string;
 }
 
 /**

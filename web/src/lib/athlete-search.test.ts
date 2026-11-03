@@ -164,7 +164,7 @@ describe("transformAthleteSearch", () => {
               uid: "s:40~l:59~a:60457",
               displayName: "Tia McDavid",
               subtitle: null,
-              defaultLeagueSlug: "wnba",
+              defaultLeagueSlug: "usa.1",
             },
             { displayName: "No Uid", defaultLeagueSlug: "nfl" },
           ],

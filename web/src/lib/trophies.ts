@@ -286,6 +286,29 @@ export function trophyKindFromHeadline(
         return { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" };
       }
       return conferenceFinals(headline, text);
+    case "mlb":
+      // "World Series - Game 5" on every game of the series; the champion
+      // is the last completed game's winner. The pennants are the LCS's.
+      if (text.startsWith("world series")) {
+        return { singular: "World Series", plural: "World Series", tier: "league" };
+      }
+      if (text.startsWith("alcs")) {
+        return { singular: "AL Pennant", plural: "AL Pennants", tier: "conference" };
+      }
+      if (text.startsWith("nlcs")) {
+        return { singular: "NL Pennant", plural: "NL Pennants", tier: "conference" };
+      }
+      return undefined;
+    case "wnba":
+      if (text.startsWith("wnba finals")) {
+        return { singular: "WNBA Finals", plural: "WNBA Finals", tier: "league" };
+      }
+      // One game decides it; its group games say "WNBA Commissioner's Cup"
+      // alone and win nothing.
+      if (text.includes("commissioner's cup championship")) {
+        return { singular: "Commissioner's Cup", plural: "Commissioner's Cups", tier: "league" };
+      }
+      return undefined;
     case "mcbb":
     case "wcbb":
       // The NCAA tournament's final only — the NIT and the Crown decide

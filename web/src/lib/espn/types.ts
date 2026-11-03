@@ -200,6 +200,9 @@ export interface EspnStandingsGroup {
   children?: EspnStandingsGroup[];
   standings?: {
     entries?: EspnStandingsEntry[];
+    /** The season this table is actually for — behind the response's own
+     *  `season` all winter for a calendar-year league. */
+    season?: number;
   };
 }
 
@@ -436,7 +439,8 @@ export interface EspnHeaderCompetitor {
   winner?: boolean;
   score?: FlexibleNumber;
   rank?: FlexibleNumber;
-  linescores?: { displayValue?: string }[];
+  /** Baseball's innings carry their hits and errors beside the runs. */
+  linescores?: { displayValue?: string; hits?: number; errors?: number }[];
   record?: EspnScheduleRecord[];
   team?: EspnTeam;
 }
@@ -461,6 +465,8 @@ export interface EspnBoxscoreGroup {
   text?: string;
   /** The column headers. The whole point: they change during the game. */
   labels?: string[];
+  /** MLB names neither group and types them: "batting", "pitching". */
+  type?: string;
   athletes?: EspnBoxscoreAthlete[];
   totals?: string[];
 }
@@ -490,8 +496,9 @@ export interface EspnPlay {
   id?: string;
   text?: string;
   clock?: { displayValue?: string };
-  period?: { number?: number };
-  type?: { text?: string; abbreviation?: string };
+  /** Baseball's `type` is its half: "Top", "Bottom", "Mid", "End". */
+  period?: { number?: number; type?: string };
+  type?: { text?: string; abbreviation?: string; type?: string };
   scoringPlay?: boolean;
   awayScore?: number;
   homeScore?: number;
@@ -504,6 +511,14 @@ export interface EspnPlay {
   shootingPlay?: boolean;
   /** Hockey's manpower: `abbreviation` is "power-play", "even-strength"… */
   strength?: { text?: string; abbreviation?: string };
+  /** Baseball's per-play state (2026-11-03). */
+  outs?: number;
+  resultCount?: { balls?: number; strikes?: number };
+  atBatId?: string;
+  pitchType?: { text?: string };
+  pitchVelocity?: number | string;
+  alternativeType?: { text?: string; alternativeText?: string };
+  participants?: { athlete?: { id?: string }; type?: string }[];
 }
 
 export interface EspnPlaySpot {

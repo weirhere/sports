@@ -57,6 +57,7 @@ export function statusLine(game: Game): string {
     case "end_period":
       return (
         liveStatusText({
+          league: game.league,
           livePhase: game.livePhase,
           quarter: game.quarter,
           clock: game.clock,

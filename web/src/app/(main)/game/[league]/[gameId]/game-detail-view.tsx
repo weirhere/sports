@@ -43,7 +43,7 @@ import { HeroTabBar, type HeroTab } from "@/components/hero-tab-bar";
 import {
   SlateToggleChip,
 } from "@/components/slate-control-row";
-import { periodFormat, scoringCardTitle, seasonYear } from "@/lib/leagues";
+import { isBaseball, periodFormat, scoringCardTitle, seasonYear } from "@/lib/leagues";
 import { isLiveStatus, showsScores } from "./game-status";
 import { GameHeader } from "./game-header";
 import { CompactGameHeader } from "./compact-game-header";
@@ -57,9 +57,11 @@ import {
 import { GetTheAppCard } from "@/components/get-the-app";
 import {
   DriveGamecastCard,
+  BaseballGamecastCard,
   ShotGamecastCard,
 } from "./live-situation-card";
 import { currentShotMap, shotMapGamecast } from "@/lib/gamecast";
+import { athleteNames, baseballGamecast, currentDiamond } from "@/lib/baseball-gamecast";
 import { allowsShootout } from "@/lib/period-label";
 
 import { LineScoreCard } from "./line-score-card";
@@ -206,6 +208,14 @@ export function GameDetailView({
     return map && content ? { map, content } : undefined;
   })();
 
+  // Baseball's diamond, live only like the court and rink (2026-11-03).
+  const baseballCard = (() => {
+    if (!isLiveStatus(game.status) || !isBaseball(game.league)) return undefined;
+    const diamond = currentDiamond(data.plays ?? []);
+    if (!diamond) return undefined;
+    return { diamond, content: baseballGamecast(diamond, athleteNames(data.boxScore)) };
+  })();
+
   const showsTabs = tabs.length > 1;
   // The strip's top sits this far above the sentinel (its negative margin).
   const [stickSentinel, stuck] = useStuck(showsTabs ? 52 : 44);
@@ -289,6 +299,14 @@ export function GameDetailView({
             {data.situation ? (
               <DetailCard title="Current drive">
                 <DriveGamecastCard game={game} situation={data.situation} />
+              </DetailCard>
+            ) : baseballCard ? (
+              <DetailCard title="Current inning">
+                <BaseballGamecastCard
+                  game={game}
+                  diamond={baseballCard.diamond}
+                  content={baseballCard.content}
+                />
               </DetailCard>
             ) : (
               shotGamecast && (

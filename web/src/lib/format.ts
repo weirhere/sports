@@ -3,6 +3,8 @@
 // THE single live formatter: every surface renders through it so "Q2 0:00"
 // can never reappear where the rest of the world says "Half".
 
+import { hasGameClock, type League } from "@/lib/leagues";
+
 export type LivePhase = "playing" | "halftime" | "endOfPeriod";
 
 export function periodLabel(period: number): string {
@@ -11,6 +13,9 @@ export function periodLabel(period: number): string {
 }
 
 export interface LiveStatusInput {
+  /** Whose game. A clockless league (MLB) reads ESPN's own detail —
+   *  "Top 5th" — rather than a period and a clock parked at 0:00. */
+  league?: League;
   /** Where the live clock cycle stands; defaults to "playing". */
   livePhase?: LivePhase;
   /** Current period (1–4, 5 = OT, 6 = 2OT, …). */
@@ -85,6 +90,9 @@ export function relativeKick(
 }
 
 export function liveStatusText(input: LiveStatusInput): string | undefined {
+  if (input.league !== undefined && !hasGameClock(input.league)) {
+    return input.detail;
+  }
   const phase = input.livePhase ?? "playing";
   switch (phase) {
     case "halftime":

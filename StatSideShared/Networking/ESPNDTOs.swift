@@ -371,6 +371,10 @@ nonisolated struct StandingsGroupDTO: Decodable {
 
 nonisolated struct StandingsListDTO: Decodable {
     let entries: LossyArray<StandingsEntryDTO>?
+    /// The season this group's table is actually for. In the offseason it
+    /// can lag the response's own `season`: MLB's standings announced 2027
+    /// on 2026-11-03 while every table was still 2026's final.
+    let season: Int?
 }
 
 nonisolated struct StandingsEntryDTO: Decodable {
