@@ -1828,9 +1828,26 @@ nonisolated enum ESPNMapper {
                 yardage: play.statYardage?.value,
                 shortText: play.shortDescription,
                 scoreValue: play.scoreValue,
-                participants: participants(from: play.participants?.elements ?? [])
+                participants: participants(from: play.participants?.elements ?? []),
+                half: InningHalf(espn: play.period?.type),
+                baseball: baseballState(play)
             )
         }
+    }
+
+    /// An MLB play's state, or nil for any other league's — a play with
+    /// neither `outs` nor an `atBatId` isn't baseball's.
+    static func baseballState(_ play: PlayDTO) -> BaseballPlayState? {
+        guard play.outs != nil || play.atBatId != nil else { return nil }
+        return BaseballPlayState(
+            outs: play.outs,
+            balls: play.resultCount?.balls,
+            strikes: play.resultCount?.strikes,
+            atBatId: play.atBatId,
+            pitchType: play.pitchType?.text,
+            pitchVelocity: play.pitchVelocity?.value,
+            kind: play.type?.type,
+            resultText: play.alternativeType?.alternativeText ?? play.alternativeType?.text)
     }
 
     /// A play's named participants, by role. Nil where ESPN gave no name
@@ -1942,6 +1959,8 @@ nonisolated enum ESPNMapper {
                 rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
                 winner: comp.winner,
                 linescores: (comp.linescores ?? []).compactMap(\.displayValue),
+                hits: Self.lineTotal(comp.linescores, \.hits),
+                errors: Self.lineTotal(comp.linescores, \.errors),
                 color: comp.team?.color,
                 alternateColor: comp.team?.alternateColor
             )
@@ -2128,6 +2147,13 @@ nonisolated enum ESPNMapper {
         )
     }
 
+    /// A baseball line score's H or E: the innings' own counts summed, or
+    /// nil where no inning carries one — every league but MLB.
+    static func lineTotal(_ lines: [LinescoreDTO]?, _ field: KeyPath<LinescoreDTO, Int?>) -> Int? {
+        let values = (lines ?? []).compactMap { $0[keyPath: field] }
+        return values.isEmpty ? nil : values.reduce(0, +)
+    }
+
     static func boxScore(from boxscore: BoxscoreDTO?) -> [BoxScore] {
         (boxscore?.players ?? []).compactMap { entry -> BoxScore? in
             guard let teamId = entry.team?.id else { return nil }
@@ -2139,7 +2165,10 @@ nonisolated enum ESPNMapper {
                 // on the floor. The columns are what a box score is; the
                 // name is only how we label a section when there are
                 // several.
-                let name = group.name ?? group.text ?? "players"
+                // MLB names neither of its two groups and types them
+                // instead — `batting`, `pitching` — so the type is the
+                // name, and the two tables don't collide as "players".
+                let name = group.name ?? group.text ?? group.type ?? "players"
                 // No headers, nothing to align stats against.
                 let columns = group.labels ?? []
                 guard !columns.isEmpty else { return nil }
@@ -2234,8 +2263,20 @@ nonisolated enum ESPNMapper {
         let away = teams.first { $0.homeAway == "away" } ?? teams[0]
         let home = teams.first { $0.homeAway == "home" } ?? teams[1]
 
+        // Flat in every league but MLB, whose statistics come grouped —
+        // batting, pitching, fielding — and are searched group by group
+        // in that order, so `hits` is the batting group's.
         func value(_ name: String, of team: BoxscoreTeamDTO) -> String? {
-            team.statistics?.first { $0.name == name }?.displayValue
+            let stats = team.statistics ?? []
+            if let flat = stats.first(where: { $0.name == name && $0.stats == nil })?.displayValue {
+                return flat
+            }
+            for group in stats {
+                if let value = group.stats?.first(where: { $0.name == name })?.displayValue {
+                    return value
+                }
+            }
+            return nil
         }
 
         return league.comparedStats.compactMap { stat in

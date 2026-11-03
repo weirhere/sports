@@ -514,7 +514,7 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         // fielding's `errors` (read off the World Series fixture).
         case .mlb:
             [("hits", "Hits"), ("homeRuns", "Home Runs"), ("walks", "Walks"),
-             ("strikeouts", "Strikeouts"), ("leftOnBase", "Left on Base"),
+             ("strikeouts", "Strikeouts"), ("runnersLeftOnBase", "Left on Base"),
              ("errors", "Errors")]
         }
     }
