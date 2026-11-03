@@ -4,6 +4,10 @@ import Foundation
 nonisolated struct PostseasonRound: Identifiable, Sendable {
     let name: String
     let games: [Game]
+    /// The real game each series card opens, by card id — the series'
+    /// live game, its next one, or the one that decided it. Empty for a
+    /// league of single games, whose cards are games already.
+    var opens: [String: Game] = [:]
 
     var id: String { name }
 
@@ -70,13 +74,14 @@ nonisolated enum Postseason {
         let grouped = Dictionary(grouping: bracketGames) {
             name(for: $0, league: league) ?? ""
         }
-        return grouped
+        let rounds = grouped
             .map { name, games in
-                PostseasonRound(name: name,
-                                games: games.sorted { ($0.date ?? .distantFuture)
-                                    < ($1.date ?? .distantFuture) })
+                let sorted = games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+                return league.playsSeries ? seriesRound(name: name, games: sorted)
+                                          : PostseasonRound(name: name, games: sorted)
             }
             .sorted { ($0.kickoff ?? .distantFuture) < ($1.kickoff ?? .distantFuture) }
+        return league.playsSeries ? settled(rounds) : rounds
     }
 
     /// The round a page should open on: the first one still being played,
@@ -92,18 +97,10 @@ nonisolated enum Postseason {
         switch league {
         case .nfl: nflName(week: game.weekNumber)
         case .collegeFootball: collegeName(headline: game.headline)
-        // The NBA and NHL playoffs are best-of-seven *series*, and this
-        // bracket models single-elimination games: `feeders(of:from:)`
-        // reads advancement off "a completed game's winner turns up in a
-        // later game", which is true of every game of a series against
-        // the same opponent. Naming no round means `rounds(from:league:)`
-        // produces none and the Postseason tab never appears — the
-        // deferral made explicit rather than accidental. The data is
-        // there when we build it: playoff games carry
-        // `competitions[].series` with each side's wins.
-        // MLB's and the WNBA's playoffs are series too (best-of-three to
-        // best-of-seven), so the same deferral holds.
-        case .nba, .nhl, .mlb, .wnba: nil
+        // Series leagues: each round's games become one card per series
+        // in `seriesRound`, so the bracket's results-only feeder rule
+        // reads a series winner the way it reads a game winner.
+        case .nba, .nhl, .mlb, .wnba: seriesName(headline: game.headline, league: league)
         case .mensCollegeBasketball, .womensCollegeBasketball:
             basketballName(headline: game.headline)
         }
@@ -182,6 +179,155 @@ nonisolated enum Postseason {
 }
 
 extension Postseason {
+    /// A series league's round, off headlines like "ALDS - Game 3", "West
+    /// 1st Round - Game 2", "WNBA Finals - Game 7" (probed 2026-11-03
+    /// against the 2026 playoffs). The two halves of a bracket are one
+    /// round — the ALDS and the NLDS are the Division Series — because
+    /// the bracket pairs a round against the next, and the World Series
+    /// is fed from both. The NBA's play-in never gets here: ESPN files it
+    /// as its own season type (5), not the postseason.
+    static func seriesName(headline: String?, league: League) -> String? {
+        guard let headline, !headline.isEmpty else { return nil }
+        let round = headline.components(separatedBy: " - Game").first ?? headline
+        let text = round.lowercased()
+        switch league {
+        case .mlb:
+            if text.contains("world series") { return "World Series" }
+            if text.hasSuffix("cs") || text.contains("championship series") { return "Championship Series" }
+            if text.hasSuffix("ds") || text.contains("division series") { return "Division Series" }
+            if text.hasSuffix("wc") || text.contains("wild card") { return "Wild Card" }
+        case .nba:
+            if text.hasPrefix("nba finals") { return "NBA Finals" }
+            // Before "finals", which "semifinals" contains.
+            if text.contains("semifinals") { return "Conference Semifinals" }
+            if text.contains("finals") { return "Conference Finals" }
+            if text.contains("1st round") || text.contains("first round") { return "First Round" }
+        case .nhl:
+            if text.contains("stanley cup") { return "Stanley Cup Final" }
+            if text.contains("final") { return "Conference Finals" }
+            if text.contains("2nd round") || text.contains("second round") { return "Second Round" }
+            if text.contains("1st round") || text.contains("first round") { return "First Round" }
+        case .wnba:
+            if text.contains("semifinals") { return "Semifinals" }
+            if text.contains("finals") { return "Finals" }
+            if text.contains("1st round") || text.contains("first round") { return "First Round" }
+        case .collegeFootball, .nfl, .mensCollegeBasketball, .womensCollegeBasketball:
+            return nil
+        }
+        // A playoff game in a round we don't know yet still shows.
+        return "Playoffs"
+    }
+
+    /// One card per series: the round's games grouped by their two teams,
+    /// each group drawn as a single `Game` whose scores are series wins and
+    /// whose winner is the series winner once it's decided — so `pairing`
+    /// and `feeders` wire a series bracket with no rule of their own.
+    static func seriesRound(name: String, games: [Game]) -> PostseasonRound {
+        let grouped = Dictionary(grouping: games) { [$0.home.team.id, $0.away.team.id].sorted() }
+        var opens: [String: Game] = [:]
+        let cards = grouped.values.compactMap { series -> Game? in
+            guard let card = seriesCard(series, round: name) else { return nil }
+            opens[card.id] = opening(series)
+            return card
+        }
+        .sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        return PostseasonRound(name: name, games: cards, opens: opens)
+    }
+
+    /// One series as a card. Game 1's sides keep their places — the better
+    /// seed hosts it — and the record is the latest played game's, which
+    /// ESPN stamps as it stood after that game.
+    static func seriesCard(_ games: [Game], round: String) -> Game? {
+        let sorted = games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        guard let first = sorted.first else { return nil }
+        let started = sorted.filter { if case .pre = $0.status { false } else { true } }
+        let record = started.last(where: { $0.series != nil })?.series
+            ?? sorted.last(where: { $0.series != nil })?.series
+        let wins = record?.wins ?? [:]
+        let decided = record?.completed == true
+        let leader = wins.max { $0.value < $1.value }?.key
+
+        func side(_ competitor: Competitor) -> Competitor {
+            Competitor(team: competitor.team,
+                       score: started.isEmpty ? nil : wins[competitor.team.id] ?? 0,
+                       record: competitor.record, rank: competitor.rank,
+                       isHome: competitor.isHome,
+                       winner: decided ? competitor.team.id == leader : nil)
+        }
+
+        let status: GameStatus
+        if decided {
+            status = .final(detail: record?.summary)
+        } else if let live = sorted.first(where: \.isLive) {
+            status = live.status
+        } else {
+            status = .pre(detail: record?.summary)
+        }
+        return Game(id: "series-\(first.id)", date: first.date,
+                    timeTBD: first.timeTBD,
+                    name: first.name, shortName: first.shortName, weekNumber: nil,
+                    seasonType: seasonType, seasonYear: first.seasonYear,
+                    headline: round,
+                    series: record ?? PlayoffSeries(length: nil, summary: nil, completed: false, wins: [:]),
+                    status: status, home: side(first.home), away: side(first.away),
+                    broadcast: nil)
+    }
+
+    /// A series whose deciding game the slate is missing, settled by who
+    /// played on: exactly one of its teams in a later round means that
+    /// team won it, with the wins it takes to clinch. Seen live on the
+    /// NHL's 2026 first round, where Minnesota–Dallas stopped at "MIN
+    /// leads series 3-2" because Game 6 never arrived — and Minnesota
+    /// was in the second round. Results-only, like `feeders`: a series
+    /// nobody has played on from stays as it reads.
+    static func settled(_ rounds: [PostseasonRound]) -> [PostseasonRound] {
+        rounds.enumerated().map { index, round in
+            let later = Set(rounds.dropFirst(index + 1).flatMap(\.games)
+                .flatMap { [$0.home.team.id, $0.away.team.id] })
+            let cards = round.games.map { card -> Game in
+                guard card.winnerTeamId == nil, let series = card.series else { return card }
+                let through = [card.home.team.id, card.away.team.id].filter(later.contains)
+                guard through.count == 1, let winner = through.first else { return card }
+                return settle(card, winner: winner, series: series)
+            }
+            return PostseasonRound(name: round.name, games: cards, opens: round.opens)
+        }
+    }
+
+    private static func settle(_ card: Game, winner: String, series: PlayoffSeries) -> Game {
+        let clinch = series.length.map { $0 / 2 + 1 }
+        func side(_ competitor: Competitor) -> Competitor {
+            let won = competitor.team.id == winner
+            let score = won ? max(clinch ?? 0, competitor.score ?? 0) : competitor.score
+            return Competitor(team: competitor.team, score: score, record: competitor.record,
+                              rank: competitor.rank, isHome: competitor.isHome, winner: won)
+        }
+        let home = side(card.home), away = side(card.away)
+        let (top, bottom) = home.winner == true ? (home, away) : (away, home)
+        let summary = "\(top.team.abbreviation ?? top.team.location) wins series "
+            + "\(top.score ?? 0)-\(bottom.score ?? 0)"
+        var wins = series.wins
+        wins[home.team.id] = home.score
+        wins[away.team.id] = away.score
+        return Game(id: card.id, date: card.date, timeTBD: card.timeTBD, name: card.name,
+                    shortName: card.shortName, weekNumber: card.weekNumber,
+                    seasonType: card.seasonType, seasonYear: card.seasonYear,
+                    headline: card.headline,
+                    series: PlayoffSeries(length: series.length, summary: summary,
+                                          completed: true, wins: wins),
+                    status: .final(detail: summary), home: home, away: away,
+                    broadcast: card.broadcast)
+    }
+
+    /// The game a series card opens: the one being played, else the next
+    /// one scheduled, else the last one played.
+    static func opening(_ games: [Game]) -> Game? {
+        let sorted = games.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
+        return sorted.first(where: \.isLive)
+            ?? sorted.first(where: { if case .pre = $0.status { true } else { false } })
+            ?? sorted.last
+    }
+
     /// The games in `previous` whose winner turns up in `game` — the only
     /// advancement we can prove.
     ///

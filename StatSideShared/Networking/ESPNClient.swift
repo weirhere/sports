@@ -490,19 +490,61 @@ actor ESPNClient: ScoresProviding {
         return order.compactMap { byId[$0] }
     }
 
-    /// One month, re-asked as its own days when it comes back at the limit.
+    /// One month, with the days it may have dropped re-asked one by one —
+    /// see `daysToReask(inMonth:after:)`. A month request that fails
+    /// outright is re-asked as days too, rather than failing the season.
     private func seasonBoard(month: String, groups: Int?) async throws -> [Game] {
-        let games = try await seasonBoard(token: month, groups: groups)
-        guard games.count >= Self.seasonWindowLimit else { return games }
-        // A month that legitimately holds exactly the limit costs a fan-out
-        // for nothing — the merge dedupes it away, and guessing the other
-        // way loses days in silence.
+        let games = (try? await seasonBoard(token: month, groups: groups)) ?? []
+        let days = Self.daysToReask(inMonth: month, after: games)
+        guard !days.isEmpty else { return games }
+        // The merge dedupes the overlap, so asking a day twice costs a
+        // request, never a duplicate row.
         return try await withThrowingTaskGroup(of: [Game].self) { group in
-            for day in Self.dayTokens(inMonth: month) {
+            for day in days {
                 group.addTask { try await self.seasonBoard(token: day, groups: groups) }
             }
-            return try await group.reduce(into: []) { $0 += $1 }
+            return try await group.reduce(into: games) { $0 += $1 }
         }
+    }
+
+    /// The days of a month its own response can't vouch for.
+    ///
+    /// A month request is trusted only up to the last day it returned a
+    /// game for: that day and every one after it are re-asked as days.
+    /// ESPN cuts a `groups=` month short four ways, and only the first
+    /// says so with a count (probed 2026-11-03):
+    /// - **at `limit`**: 500 games, ending mid-month (college basketball's
+    ///   December and March);
+    /// - **by size**: NCAAW's March stopped at 454 games on March 15, an
+    ///   8 MB response — the whole NCAA tournament missing behind a count
+    ///   the guard read as complete;
+    /// - **the last day**: every NHL month with `groups=9` leaves its final
+    ///   day out (164 of April's 166 games; Game 6 of two first-round
+    ///   series), while the same day asked alone has them;
+    /// - **empty**: college basketball's November answers with nothing.
+    ///
+    /// Every short response ran from the 1st and stopped early, so the days
+    /// after the last returned one are where the losses are. A month that
+    /// comes back at the limit is re-asked whole, as it always was, since a
+    /// count cap is the one cut nobody has seen the shape of. Costs a day
+    /// request or two per healthy month, ~15–30 for a short one.
+    static func daysToReask(inMonth month: String, after games: [Game]) -> [String] {
+        let days = dayTokens(inMonth: month)
+        guard games.count < seasonWindowLimit,
+              let last = games.compactMap(\.date).max()
+        else { return days }
+        let lastDay = dayToken(for: last)
+        return days.filter { $0 >= lastDay }
+    }
+
+    /// The `dates=` day a moment falls on — Eastern, which is how ESPN
+    /// files a game: a 10 PM Pacific puck drop is the next day in UTC and
+    /// the same day here.
+    static func dayToken(for date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DayFormat.eastern
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d%02d%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     /// One `dates=` token's worth of games, whatever its granularity.
@@ -1091,6 +1133,7 @@ nonisolated enum ESPNMapper {
             seasonType: event.season?.type,
             seasonYear: event.season?.year.map(league.seasonYear(fromESPN:)),
             headline: competition.notes?.first?.headline,
+            series: series(from: competition.series),
             status: status(from: event.status, situation: competition.situation),
             home: home,
             away: away,
@@ -1152,6 +1195,18 @@ nonisolated enum ESPNMapper {
     private static func nonEmpty(_ string: String?) -> String? {
         guard let string, !string.isEmpty else { return nil }
         return string
+    }
+
+    /// A playoff series only: the regular season's head-to-head record
+    /// isn't one, and a series with no team ids can't be drawn.
+    static func series(from dto: SeriesDTO?) -> PlayoffSeries? {
+        guard let dto, dto.type == "playoff" else { return nil }
+        let wins = (dto.competitors ?? []).reduce(into: [String: Int]()) { wins, side in
+            if let id = side.id { wins[id] = side.wins ?? 0 }
+        }
+        guard !wins.isEmpty else { return nil }
+        return PlayoffSeries(length: dto.totalCompetitions, summary: nonEmpty(dto.summary),
+                             completed: dto.completed ?? false, wins: wins)
     }
 
     static func status(from dto: StatusDTO?, situation: SituationDTO?) -> GameStatus {

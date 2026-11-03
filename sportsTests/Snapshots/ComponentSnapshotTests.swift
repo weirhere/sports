@@ -105,6 +105,20 @@ struct ComponentSnapshotTests {
         assert(row, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("seriesBracket")), arguments: Variant.basketball)
+    func seriesBracket(_ variant: Variant) {
+        // The Postseason tab for a series league (2026-11-03): one card
+        // per series, series wins where the score goes, the loser muted,
+        // the live Finals saying which game it is. On the recessed page,
+        // as the tab paints it; disabled ink offscreen, as with the
+        // story cards.
+        let rounds = SnapshotFixtures.seriesRounds
+        let bracket = PostseasonSection(rounds: rounds, selection: rounds.first?.name,
+                                        onSelectRound: { _ in })
+            .background(Color.bgRecessed)
+        assert(bracket, variant)
+    }
+
     @Test(.enabled(if: snapshotSelected("gameRowConcealed")), arguments: Variant.all)
     func gameRowConcealed(_ variant: Variant) {
         // Spoiler mode (E30): the same row with its result hidden —

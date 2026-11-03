@@ -193,6 +193,11 @@ nonisolated struct CompetitionDTO: Decodable {
     /// playoff round under one `seasontype=3` week (verified live
     /// 2026-09-06: 46 games, all week 1).
     let notes: [CompetitionNoteDTO]?
+    /// A playoff game's series, as it stood after this game: "ATL leads
+    /// series 1-0" on Game 1, "ATL wins series 2-1" on Game 3 (probed
+    /// 2026-11-03 across MLB, the NBA, the NHL and the WNBA). Absent on
+    /// single games.
+    let series: SeriesDTO?
     /// The pre-game line, one entry per provider. Present on pre-game
     /// events and gone from finals (probed 2026-09-24, 0 of 76).
     let odds: LossyArray<OddsDTO>?
@@ -201,6 +206,21 @@ nonisolated struct CompetitionDTO: Decodable {
     /// top-level `format` (`SummaryResponseDTO.format`) is the fuller
     /// version with `clock`/`overtime`/`suddenDeath`.
     let format: FormatDTO?
+}
+
+nonisolated struct SeriesDTO: Decodable {
+    /// "playoff" for a postseason series; anything else isn't one.
+    let type: String?
+    let summary: String?
+    let completed: Bool?
+    /// Best of how many: 3, 5 or 7.
+    let totalCompetitions: Int?
+    let competitors: [SeriesCompetitorDTO]?
+}
+
+nonisolated struct SeriesCompetitorDTO: Decodable {
+    let id: String?
+    let wins: Int?
 }
 
 /// How long a game runs before it can end — `PeriodLabel`'s per-league

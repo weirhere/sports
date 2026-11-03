@@ -338,8 +338,9 @@ private func plays(through prefix: String, in summary: GameSummary) throws -> [P
         #expect(TrophyKind.from(headline: "NLWC - Game 2", league: .mlb) == nil)
     }
 
-    /// Series, like the NBA's: no round named, so no bracket tab.
-    @Test func seriesNameNoBracketRounds() {
+    /// Series, like the NBA's: the World Series is a round of one series
+    /// card (2026-11-03), where it used to name no round at all.
+    @Test func theWorldSeriesIsARoundOfOneSeries() {
         let team = { (id: String) in
             Team(id: id, location: id, name: nil, abbreviation: nil, displayName: id,
                  shortDisplayName: id, logoURL: nil, conferenceId: nil)
@@ -352,6 +353,8 @@ private func plays(through prefix: String, in summary: GameSummary) throws -> [P
                         away: Competitor(team: team("8"), score: 4, record: nil, rank: nil,
                                          isHome: false, winner: true),
                         broadcast: nil)
-        #expect(Postseason.rounds(from: [game], league: .mlb).isEmpty)
+        let rounds = Postseason.rounds(from: [game], league: .mlb)
+        #expect(rounds.map(\.name) == ["World Series"])
+        #expect(rounds.first?.games.count == 1)
     }
 }

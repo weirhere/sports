@@ -29,6 +29,9 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
     /// or the playoff round. Only postseason games carry it, and college
     /// football's postseason is unreadable without it.
     var headline: String? = nil
+    /// The playoff series this game belongs to, as it stood after this
+    /// game — nil for a single game. Only the scoreboard carries it.
+    var series: PlayoffSeries? = nil
     let status: GameStatus
     let home: Competitor
     let away: Competitor
@@ -97,6 +100,19 @@ nonisolated struct Game: Identifiable, Hashable, Sendable {
         if (mine ?? 0) < (theirs ?? 0) { return .losing }
         return .tied
     }
+}
+
+/// A best-of series' standing after one of its games (2026-11-03): what
+/// the bracket draws for MLB, the NBA, the NHL and the WNBA, whose
+/// playoffs are series rather than single games.
+nonisolated struct PlayoffSeries: Hashable, Sendable {
+    /// Best of how many — 3, 5 or 7.
+    let length: Int?
+    /// ESPN's own sentence: "MIL wins series 4-1", "Series tied 1-1".
+    let summary: String?
+    let completed: Bool
+    /// Wins by team id.
+    let wins: [String: Int]
 }
 
 /// A live game's answer to "how's my team doing" — the standings dot's

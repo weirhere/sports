@@ -68,6 +68,15 @@ nonisolated enum League: String, Sendable, Codable, CaseIterable, Identifiable, 
         }
     }
 
+    /// Whether the playoffs are best-of series rather than single games —
+    /// what makes the bracket draw one card per series (2026-11-03).
+    var playsSeries: Bool {
+        switch self {
+        case .nba, .nhl, .mlb, .wnba: true
+        case .collegeFootball, .nfl, .mensCollegeBasketball, .womensCollegeBasketball: false
+        }
+    }
+
     /// The `groups=` a league's scoreboard and standings are scoped to:
     /// FBS (80) for college football, Division I (50) for college
     /// basketball (verified live 2026-11-02: 182 men's and 164 women's

@@ -857,4 +857,44 @@ private func fixture(_ name: String) throws -> Data {
         // (bisected live 2026-09-17).
         #expect(ESPNClient.seasonWindowLimit == 500)
     }
+
+    /// The NHL's April with `groups=9`, as ESPN served it on 2026-11-03:
+    /// 164 games through April 29 and none on the 30th, where the two
+    /// Game 6s were. Well under the limit, so only the last-day rule
+    /// catches it: the 29th and the 30th are re-asked.
+    @Test func aMonthIsReaskedFromItsLastGameDay() {
+        let april = (1...29).map { clipStub("a\($0)", on: noon(2026, 4, $0)) }
+        #expect(ESPNClient.daysToReask(inMonth: "202604", after: april) == ["20260429", "20260430"])
+    }
+
+    /// NCAAW's March stopped on the 15th at 454 games — cut by size, not
+    /// count — so the rest of the month, the NCAA tournament, is re-asked.
+    @Test func aMonthCutShortBelowTheLimitIsReaskedFromWhereItStopped() {
+        let march = (1...15).map { clipStub("m\($0)", on: noon(2026, 3, $0)) }
+        let days = ESPNClient.daysToReask(inMonth: "202603", after: march)
+        #expect(days.first == "20260315" && days.last == "20260331" && days.count == 17)
+    }
+
+    /// An empty month — college basketball's November — and a month that
+    /// came back at the limit are both re-asked whole.
+    @Test func anEmptyOrFullMonthIsReaskedWhole() {
+        #expect(ESPNClient.daysToReask(inMonth: "202511", after: []).count == 30)
+        let full = (0..<ESPNClient.seasonWindowLimit).map { clipStub("f\($0)", on: noon(2025, 12, 31)) }
+        #expect(ESPNClient.daysToReask(inMonth: "202512", after: full).count == 31)
+    }
+
+    /// A healthy month whose last game is on its last day re-asks that
+    /// one day and nothing else.
+    @Test func aCompleteMonthCostsOneDay() {
+        let june = [clipStub("j1", on: noon(2026, 6, 1)), clipStub("j30", on: noon(2026, 6, 30))]
+        #expect(ESPNClient.daysToReask(inMonth: "202606", after: june) == ["20260630"])
+    }
+
+    /// Late games file under their Eastern day: 10:30 PM Pacific on the
+    /// 30th is May 1 in UTC and still April 30 to ESPN.
+    @Test func theDayTokenIsEastern() {
+        let lateWest = calendar.date(from: DateComponents(timeZone: TimeZone(identifier: "UTC"), year: 2026,
+                                                          month: 5, day: 1, hour: 1, minute: 30))!
+        #expect(ESPNClient.dayToken(for: lateWest) == "20260430")
+    }
 }
