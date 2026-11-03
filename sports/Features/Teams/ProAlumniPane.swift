@@ -13,7 +13,7 @@ struct ProAlumniPane: View {
 
     @Environment(TeamDirectoryStore.self) private var directory: TeamDirectoryStore?
 
-    private static let leagues: [League] = [.nfl, .nba, .nhl]
+    private static let leagues: [League] = [.nfl, .nba, .nhl, .wnba]
 
     var body: some View {
         VStack(spacing: Spacing.sm) {

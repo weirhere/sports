@@ -172,6 +172,31 @@ extension TrophyKind {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
             return conferenceFinals(headline: headline, text: text)
+        case .mlb:
+            // "World Series - Game 5" on every game of the series; the
+            // champion is the last completed game's winner, as with the
+            // NBA Finals. The pennants are the LCS's: "ALCS - Game 6".
+            if text.hasPrefix("world series") {
+                return TrophyKind(singular: "World Series", plural: "World Series", tier: .league)
+            }
+            if text.hasPrefix("alcs") {
+                return TrophyKind(singular: "AL Pennant", plural: "AL Pennants", tier: .conference)
+            }
+            if text.hasPrefix("nlcs") {
+                return TrophyKind(singular: "NL Pennant", plural: "NL Pennants", tier: .conference)
+            }
+            return nil
+        case .wnba:
+            // "WNBA Finals - Game 7"; the Commissioner's Cup is one game,
+            // "WNBA Commissioner's Cup Championship" — its group games say
+            // "WNBA Commissioner's Cup" alone and win nothing (June 2026).
+            if text.hasPrefix("wnba finals") {
+                return TrophyKind(singular: "WNBA Finals", plural: "WNBA Finals", tier: .league)
+            }
+            if text.contains("commissioner's cup championship") {
+                return TrophyKind(singular: "Commissioner's Cup", plural: "Commissioner's Cups", tier: .league)
+            }
+            return nil
         case .mensCollegeBasketball, .womensCollegeBasketball:
             // The NCAA tournament's final only: "NIT - Championship" and
             // "College Basketball Crown Championship Game" decide trophies

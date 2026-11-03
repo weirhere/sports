@@ -59,10 +59,15 @@ nonisolated struct TeamSeasonStats: Sendable, Hashable {
         switch league {
         case .collegeFootball, .nfl:
             ["totalPointsPerGame", "yardsPerGame", "thirdDownConvPct", "turnOverDifferential"]
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba:
             ["avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct"]
         case .nhl:
             ["goals", "avgGoalsAgainst", "savePct", "faceoffPercent"]
+        // Names unique across MLB's batting/pitching/fielding groups
+        // (`homeRuns` is in both batting and pitching, so it isn't here).
+        // Read off `teams/{id}/statistics`, 2026-11-03.
+        case .mlb:
+            ["runs", "avg", "OPS", "ERA"]
         }
     }
 }
@@ -88,10 +93,13 @@ nonisolated struct TeamLeader: Sendable, Hashable, Identifiable {
         switch league {
         case .collegeFootball, .nfl:
             ["passingLeader", "rushingLeader", "receivingLeader", "totalTackles", "sacks", "interceptions"]
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball:
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba:
             ["pointsPerGame", "reboundsPerGame", "assistsPerGame", "stealsPerGame", "blocksPerGame"]
         case .nhl:
             ["points", "goals", "assists", "wins", "savePct"]
+        // The core API's team-leaders categories, 2026-11-03.
+        case .mlb:
+            ["avg", "homeRuns", "RBIs", "ERA", "wins", "saves"]
         }
     }
 

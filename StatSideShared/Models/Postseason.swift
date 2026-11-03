@@ -101,7 +101,9 @@ nonisolated enum Postseason {
         // deferral made explicit rather than accidental. The data is
         // there when we build it: playoff games carry
         // `competitions[].series` with each side's wins.
-        case .nba, .nhl: nil
+        // MLB's and the WNBA's playoffs are series too (best-of-three to
+        // best-of-seven), so the same deferral holds.
+        case .nba, .nhl, .mlb, .wnba: nil
         case .mensCollegeBasketball, .womensCollegeBasketball:
             basketballName(headline: game.headline)
         }

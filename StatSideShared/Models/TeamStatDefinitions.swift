@@ -12,8 +12,9 @@ nonisolated extension League {
     var teamStatDefinitions: [TeamStatDefinition] {
         switch self {
         case .collegeFootball, .nfl: Self.footballDefinitions(isNFL: self == .nfl)
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: Self.basketballDefinitions
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: Self.basketballDefinitions
         case .nhl: Self.hockeyDefinitions
+        case .mlb: Self.baseballDefinitions
         }
     }
 
@@ -156,6 +157,40 @@ nonisolated extension League {
                    source: team("general", "avgFouls"), higherIsBetter: false, format: .decimal(1)),
         Definition(id: "technicalFouls", title: "Technical fouls", section: .discipline,
                    source: team("general", "technicalFouls"), higherIsBetter: false, format: .integer),
+    ]
+
+    /// MLB's team tables (2026-11-03), off `byteam`'s `batting`,
+    /// `pitching` and `fielding` categories, read live. Season totals and
+    /// rates only: `perGame` divides by a games count, and baseball's
+    /// sits inside each category rather than where the others keep it.
+    /// Batting is the offense, pitching the defense, as fans read them.
+    private static let baseballDefinitions: [TeamStatDefinition] = [
+        Definition(id: "runs", title: "Runs", section: .top,
+                   source: team("batting", "runs"), higherIsBetter: true, format: .integer),
+        Definition(id: "era", title: "ERA", section: .top,
+                   source: team("pitching", "ERA"), higherIsBetter: false, format: .decimal(2)),
+        Definition(id: "avg", title: "Batting average", section: .top,
+                   source: team("batting", "avg"), higherIsBetter: true, format: .fraction),
+        Definition(id: "homeRuns", title: "Home runs", section: .top,
+                   source: team("batting", "homeRuns"), higherIsBetter: true, format: .integer),
+        Definition(id: "ops", title: "OPS", section: .offense,
+                   source: team("batting", "OPS"), higherIsBetter: true, format: .fraction),
+        Definition(id: "onBasePct", title: "On-base percentage", section: .offense,
+                   source: team("batting", "onBasePct"), higherIsBetter: true, format: .fraction),
+        Definition(id: "stolenBases", title: "Stolen bases", section: .offense,
+                   source: team("batting", "stolenBases"), higherIsBetter: true, format: .integer),
+        Definition(id: "whip", title: "WHIP", section: .defense,
+                   source: team("pitching", "WHIP"), higherIsBetter: false, format: .decimal(2)),
+        Definition(id: "pitchingStrikeouts", title: "Strikeouts (pitching)", section: .defense,
+                   source: team("pitching", "strikeouts"), higherIsBetter: true, format: .integer),
+        Definition(id: "saves", title: "Saves", section: .defense,
+                   source: team("pitching", "saves"), higherIsBetter: true, format: .integer),
+        Definition(id: "opponentAvg", title: "Opponent batting average", section: .defense,
+                   source: team("pitching", "opponentAvg"), higherIsBetter: false, format: .fraction),
+        Definition(id: "fieldingPct", title: "Fielding percentage", section: .defense,
+                   source: team("fielding", "fieldingPct"), higherIsBetter: true, format: .fraction),
+        Definition(id: "errors", title: "Errors", section: .discipline,
+                   source: team("fielding", "errors"), higherIsBetter: false, format: .integer),
     ]
 
     private static let hockeyDefinitions: [TeamStatDefinition] = [

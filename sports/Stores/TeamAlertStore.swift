@@ -40,15 +40,19 @@ nonisolated enum TeamAlert: String, CaseIterable, Codable, Sendable, Identifiabl
     /// A basketball game scores 200 points; an alert per basket is noise,
     /// and "scoring" has no quieter meaning there that the payload carries.
     /// College basketball's 140 are the same noise.
+    /// Baseball has no halftime and no intermission worth a buzz: the
+    /// break between half-innings comes seventeen times a night.
     func applies(to league: League) -> Bool {
-        !(self == .scoring && league.isBasketball)
+        if self == .scoring && league.isBasketball { return false }
+        if self == .breakInPlay && league.isBaseball { return false }
+        return true
     }
 
     func title(in league: League) -> String {
         switch self {
         case .kickoffReminder: "30 min before \(league.startNoun.lowercased())"
         case .gameStart: league.startNoun
-        case .scoring: league == .nhl ? "Goals" : "Scoring plays"
+        case .scoring: league == .nhl ? "Goals" : league.isBaseball ? "Runs" : "Scoring plays"
         case .breakInPlay: league == .nhl ? "Intermissions" : "Halftime"
         case .final: "Final score"
         case .news: "News"
@@ -82,6 +86,16 @@ nonisolated enum TeamAlert: String, CaseIterable, Codable, Sendable, Identifiabl
 final class TeamAlertStore {
     static let defaultAlerts: Set<TeamAlert> = [.kickoffReminder]
 
+    /// An untouched team's alerts, by league (2026-11-03). MLB's is empty:
+    /// a followed baseball team plays six nights a week, and the kickoff
+    /// scheduler's window is the nearest 24 reminders across every team
+    /// (iOS holds 64 pending), so two baseball follows would push a
+    /// football team's Saturday out. A baseball fan turns the reminder on
+    /// from the team's bell. Every other league keeps `defaultAlerts`.
+    static func defaultAlerts(for key: String) -> Set<TeamAlert> {
+        FollowKey(key)?.league == .mlb ? [] : defaultAlerts
+    }
+
     private static let alertsKey = "notifications.teamAlerts"
     private static let mutedKey = "notifications.mutedTeams"
     private static let pinnedKey = "notifications.pinnedTeams"
@@ -106,7 +120,7 @@ final class TeamAlertStore {
     // MARK: - Reading
 
     func alerts(for key: String) -> Set<TeamAlert> {
-        chosen[key] ?? Self.defaultAlerts
+        chosen[key] ?? Self.defaultAlerts(for: key)
     }
 
     func isMuted(_ key: String) -> Bool { muted.contains(key) }

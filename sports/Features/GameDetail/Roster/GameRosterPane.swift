@@ -143,8 +143,9 @@ struct GameRosterPane: View {
     private var inactiveTitle: String {
         switch league {
         case .collegeFootball, .nfl: "Inactive"
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: "Did not play"
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: "Did not play"
         case .nhl: "Scratched"
+        case .mlb: "Bench"
         }
     }
 }

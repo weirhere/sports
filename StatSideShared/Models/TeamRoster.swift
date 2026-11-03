@@ -141,7 +141,7 @@ nonisolated extension League {
     var rosterMetric: RosterMetric {
         switch self {
         case .collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball: .classYear
-        case .nfl, .nba, .nhl: .age
+        case .nfl, .nba, .nhl, .mlb, .wnba: .age
         }
     }
 }

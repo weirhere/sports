@@ -84,6 +84,31 @@ nonisolated enum PopularTeams {
             "222",   // Villanova
             "84",    // Indiana
         ],
+        // MLB and the WNBA verified 2026-11-03 against the live `/teams`.
+        .mlb: [
+            "10",    // New York Yankees
+            "19",    // Los Angeles Dodgers
+            "2",     // Boston Red Sox
+            "16",    // Chicago Cubs
+            "15",    // Atlanta Braves
+            "21",    // New York Mets
+            "22",    // Philadelphia Phillies
+            "26",    // San Francisco Giants
+            "24",    // St. Louis Cardinals
+            "18",    // Houston Astros
+        ],
+        .wnba: [
+            "5",     // Indiana Fever
+            "9",     // New York Liberty
+            "17",    // Las Vegas Aces
+            "129689", // Golden State Valkyries
+            "19",    // Chicago Sky
+            "8",     // Minnesota Lynx
+            "14",    // Seattle Storm
+            "6",     // Los Angeles Sparks
+            "11",    // Phoenix Mercury
+            "20",    // Atlanta Dream
+        ],
         .womensCollegeBasketball: [
             "41",    // UConn
             "2579",  // South Carolina

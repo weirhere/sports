@@ -61,7 +61,7 @@ nonisolated struct GameRoster: Sendable {
     static func unitGroups(away: [Person], home: [Person], league: League) -> [UnitGroup] {
         let units: [Unit?] = switch league {
         case .collegeFootball, .nfl: Unit.allCases.map { $0 } + [nil]
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .nhl: [nil]
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba, .nhl, .mlb: [nil]
         }
         return units
             .map { unit in

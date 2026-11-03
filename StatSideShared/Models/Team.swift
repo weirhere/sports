@@ -366,9 +366,58 @@ nonisolated enum Conference {
 
     /// The pro leagues, by league. College football is absent by design —
     /// its hierarchy comes off the wire.
+    /// Ids read live from `apis/v2/sports/baseball/mlb/standings?level=3`,
+    /// 2026-11-03 — the NFL's two-level shape, and the loudest collision
+    /// in the app: root 9 is the NFL's and the NHL's too, the leagues 7/8
+    /// are the NHL's East/West and the NFL's NFC/AFC, and divisions 1–6
+    /// are the ACC, Big 12, Big Ten and SEC in college football.
+    private static let mlbRegistry = Registry(
+        leagueWideId: 9,
+        leagueName: "MLB",
+        conferences: [(7, "American League", "AL"), (8, "National League", "NL")],
+        divisionNames: [
+            1: "AL East", 2: "AL Central", 3: "AL West",
+            4: "NL East", 5: "NL Central", 6: "NL West",
+        ],
+        divisionParents: [1: 7, 2: 7, 3: 7, 4: 8, 5: 8, 6: 8],
+        teamDivisions: [
+            1: 1, 2: 1, 3: 3, 4: 2, 5: 2, 6: 2, 7: 2, 8: 5, 9: 2, 10: 1,
+            11: 3, 12: 3, 13: 3, 14: 1, 15: 4, 16: 5, 17: 5, 18: 3, 19: 6, 20: 4,
+            21: 4, 22: 4, 23: 5, 24: 5, 25: 6, 26: 6, 27: 6, 28: 4, 29: 6, 30: 1,
+        ],
+        // No league marks for the AL or NL under any bucket; their
+        // sections wear the MLB shield.
+        conferenceSlugs: [:]
+    )
+
+    /// Ids read live from `apis/v2/sports/basketball/wnba/standings`,
+    /// 2026-11-03: two conferences and no divisions, so a team maps
+    /// straight to its conference. Fifteen teams, the 2026 expansion's
+    /// Toronto Tempo (131935) and Portland Fire (132052) among them.
+    private static let wnbaRegistry = Registry(
+        leagueWideId: 3,
+        leagueName: "WNBA",
+        conferences: [(1, "Eastern", "East"), (2, "Western", "West")],
+        divisionNames: [:],
+        divisionParents: [:],
+        teamDivisions: [
+            3: 2, 5: 1, 6: 2, 8: 2, 9: 1, 11: 2, 14: 2, 16: 1, 17: 2, 18: 1,
+            19: 1, 20: 1, 129689: 2, 131935: 1, 132052: 2,
+        ],
+        conferenceSlugs: [:]
+    )
+
     private static let registries: [League: Registry] = [
         .nfl: nflRegistry, .nba: nbaRegistry, .nhl: nhlRegistry,
+        .mlb: mlbRegistry, .wnba: wnbaRegistry,
     ]
+
+    /// Whether a league nests divisions under its conferences — the NFL,
+    /// the NBA, the NHL and MLB. The WNBA has conferences alone, so a
+    /// Division rung on its slate would have nothing to group by.
+    static func hasDivisions(in league: League) -> Bool {
+        !(registries[league]?.divisionNames.isEmpty ?? true)
+    }
 
     /// The group id standing for a whole league, where the league has one.
     ///
@@ -391,7 +440,7 @@ nonisolated enum Conference {
         switch league {
         case .collegeFootball: cfbNames
         case .mensCollegeBasketball, .womensCollegeBasketball: cbbNames(in: league)
-        case .nfl, .nba, .nhl: registries[league]?.allNames ?? [:]
+        case .nfl, .nba, .nhl, .mlb, .wnba: registries[league]?.allNames ?? [:]
         }
     }
 
@@ -435,7 +484,7 @@ nonisolated enum Conference {
         switch league {
         case .collegeFootball: cfbLogoSlugs
         case .mensCollegeBasketball, .womensCollegeBasketball: cbbLogoSlugs
-        case .nfl, .nba, .nhl: registries[league]?.conferenceSlugs ?? [:]
+        case .nfl, .nba, .nhl, .mlb, .wnba: registries[league]?.conferenceSlugs ?? [:]
         }
     }
 
@@ -454,6 +503,9 @@ nonisolated enum Conference {
         guard let parent = parent(of: id, in: league),
               let registry = registries[league],
               let conference = registry.allNames[parent],
+              // "AL East" and "AFC East" lead with their conference's own
+              // short form, so they already say where they sit.
+              !(registry.conferenceShorts[parent].map { name.hasPrefix($0 + " ") } ?? false),
               // "Eastern", not "East" (Andy, 2026-09-09) — and the same
               // full form is what the containment test needs anyway. A
               // compass point breaks the short one: "Southeast" contains
@@ -513,7 +565,8 @@ nonisolated enum Conference {
     /// NHL's bare "Eastern" doesn't. Everything else — college football, a
     /// league, anything unplaced — is `name(for:)`.
     static func slateName(for conference: ConferenceID) -> String {
-        guard conference.league != .nfl,
+        // MLB's "American League" is already a full name, like "AFC".
+        guard conference.league != .nfl, conference.league != .mlb,
               registries[conference.league] != nil,
               tier(for: conference.id, in: conference.league) == .conference
         else { return name(for: conference) }

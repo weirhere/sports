@@ -145,6 +145,9 @@ nonisolated struct PlayerStatQuery: Sendable, Hashable {
 nonisolated struct PlayerStatDefinition: Sendable, Hashable, Identifiable {
     enum Section: Int, Sendable, Hashable, CaseIterable {
         case top, passing, rushing, receiving, shooting, allAround, scoring, defense, goaltending, specialTeams, discipline
+        // Baseball's two halves of the game (2026-11-03), appended so the
+        // other sports' raw values don't move.
+        case batting, pitching
 
         var title: String {
             switch self {
@@ -159,6 +162,8 @@ nonisolated struct PlayerStatDefinition: Sendable, Hashable, Identifiable {
             case .goaltending: "Goaltending"
             case .specialTeams: "Special teams"
             case .discipline: "Discipline"
+            case .batting: "Batting"
+            case .pitching: "Pitching"
             }
         }
     }

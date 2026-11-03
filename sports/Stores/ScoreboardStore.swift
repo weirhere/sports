@@ -103,7 +103,9 @@ enum SlateGrouping: String, CaseIterable, Hashable, Sendable {
     /// alone. The Conference rung adds the conferences beneath them, with
     /// FBS and FCS folded.
     static func options(for league: League) -> [SlateGrouping] {
-        league.isCollege ? [.league, .conference] : allCases
+        if league.isCollege { return [.league, .conference] }
+        // The WNBA nests nothing under its two conferences.
+        return Conference.hasDivisions(in: league) ? allCases : [.league, .conference]
     }
 
     /// The college leagues keep their conference split, which is what fans

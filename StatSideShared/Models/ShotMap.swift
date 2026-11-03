@@ -104,9 +104,9 @@ extension ShotMap {
 
     static func surface(for league: League) -> Surface? {
         switch league {
-        case .nba, .mensCollegeBasketball, .womensCollegeBasketball: .court
+        case .nba, .mensCollegeBasketball, .womensCollegeBasketball, .wnba: .court
         case .nhl: .rink
-        case .collegeFootball, .nfl: nil
+        case .collegeFootball, .nfl, .mlb: nil
         }
     }
 
