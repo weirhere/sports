@@ -53,12 +53,30 @@ final class LiveDetailHoldUITests: XCTestCase {
     @MainActor
     private func pushDetail(containing text: String,
                             in app: XCUIApplication) -> XCUIElement {
-        let row = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS %@", text))
-            .firstMatch
-        XCTAssertTrue(scrollUntilExists(row, in: app), "fixture row \(text) never appeared")
+        let rows = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'scores-game' AND label CONTAINS %@", text))
+        XCTAssertTrue(scrollUntilExists(rows.firstMatch, in: app), "fixture row \(text) never appeared")
+        // The fixture serves its one slate to every league it's asked for,
+        // so since college basketball joined (2026-11-03) the same game is
+        // a row under more than one league, and the first in tree order can
+        // sit below the fold. Tap the first copy that is on screen: a
+        // coordinate tap at an off-screen frame lands nowhere (it went to
+        // y 1316 on an 874pt screen at the 3.0.0 cut).
+        let screen = app.windows.firstMatch.frame
+        var target: CGRect?
+        for _ in 0..<4 {
+            target = rows.allElementsBoundByIndex
+                .map(\.frame)
+                .first { screen.contains(CGPoint(x: $0.midX, y: $0.midY)) && $0.midY > 180 && $0.midY < screen.maxY - 120 }
+            if target != nil { break }
+            app.swipeUp()
+        }
+        guard let target else {
+            XCTFail("fixture row \(text) never came on screen")
+            return app.buttons["Share this game"]
+        }
         app.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: row.frame.midX, dy: row.frame.midY))
+            .withOffset(CGVector(dx: target.midX, dy: target.midY))
             .tap()
         let landmark = app.buttons["Share this game"]
         XCTAssertTrue(landmark.waitForExistence(timeout: 10), "game detail never presented")
