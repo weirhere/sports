@@ -137,7 +137,8 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
         #expect(League.nfl.collegeFeeder == .collegeFootball)
         #expect(League.mensCollegeBasketball.collegeFeeder == nil)
         #expect(League.mensCollegeBasketball.proAlumniLeagues == [.nba])
-        #expect(League.womensCollegeBasketball.proAlumniLeagues.isEmpty)
+        // The WNBA's own, now that the app has it (2026-11-03).
+        #expect(League.womensCollegeBasketball.proAlumniLeagues == [.wnba])
         #expect(League.collegeFootball.proAlumniLeagues == [.nfl, .nba, .nhl])
     }
 }
@@ -260,8 +261,9 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
                                ("wcbb-standings", .womensCollegeBasketball)] {
             let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture(name))
             let tables = ESPNMapper.conferenceStandings(from: dto, league: league, now: inSeason)
-            #expect(Set(tables.compactMap(\.id)) == [2, 4], "\(name)")
-            #expect(Set(tables.map(\.name)) == ["ACC", "Big East"])
+            // The fixtures are trimmed to the ACC alone.
+            #expect(tables.compactMap(\.id) == [2], "\(name)")
+            #expect(tables.map(\.name) == ["ACC"])
             #expect(tables.allSatisfy { !$0.entries.isEmpty })
         }
     }

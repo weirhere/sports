@@ -1584,15 +1584,30 @@ export function transformPlays(plays: EspnPlay[]): PlayItem[] {
   const mapped: PlayItem[] = [];
   let previousAway: number | undefined;
   let previousHome: number | undefined;
+  // The score as of the last scoring play. Baseball's feed is pitch by
+  // pitch, and the run lands on the pitch row a step *before* the at-bat
+  // result ESPN flags as scoring, so a flagged play that moved nothing
+  // against the row before is read against this instead (iOS, 2026-11-03).
+  // A hockey shootout attempt still matches neither.
+  let scoredAway = 0;
+  let scoredHome = 0;
 
   for (const [index, play] of plays.entries()) {
     const away = play.awayScore;
     const home = play.homeScore;
     let scoringSide: ScoringSide | undefined;
     if (play.scoringPlay === true && away !== undefined && home !== undefined) {
+      // The very first play has nothing to compare against and claims no
+      // side, the fallback included.
       if (previousAway !== undefined && previousHome !== undefined) {
         if (away > previousAway) scoringSide = "away";
         else if (home > previousHome) scoringSide = "home";
+        else if (away > scoredAway) scoringSide = "away";
+        else if (home > scoredHome) scoringSide = "home";
+      }
+      if (scoringSide !== undefined) {
+        scoredAway = away;
+        scoredHome = home;
       }
     }
     mapped.push({

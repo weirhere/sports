@@ -1880,14 +1880,30 @@ nonisolated enum ESPNMapper {
     /// The same stamp over a flat feed. Hockey's goals are the reason:
     /// which side scored is the row's whole point, and a flat play carries
     /// no drive to read it off.
+    ///
+    /// Baseball's feed is pitch by pitch, and the run lands on the pitch
+    /// row a step *before* the at-bat result ESPN flags as scoring — "Pratt
+    /// singled to center, Turang scored" reads 1-0 after a pitch that was
+    /// already 1-0 (2026-11-03), so a row-to-row comparison credited no
+    /// one and MLB's Scoring card came up empty. A flagged play that moved
+    /// nothing against the row before is read against the score as of the
+    /// last scoring play instead. A hockey shootout attempt still matches
+    /// neither: its 1-2 tally never tops the game's 2-2.
     static func attributingScores(_ plays: [Play]) -> [Play] {
         var away = 0
         var home = 0
+        var scoredAway = 0
+        var scoredHome = 0
         return plays.map { play in
             guard let a = play.awayScore, let h = play.homeScore else { return play }
             var play = play
             if play.isScoringPlay {
                 play.scoringSide = a > away ? .away : (h > home ? .home : nil)
+                    ?? (a > scoredAway ? .away : (h > scoredHome ? .home : nil))
+                if play.scoringSide != nil {
+                    scoredAway = a
+                    scoredHome = h
+                }
             }
             away = a
             home = h
