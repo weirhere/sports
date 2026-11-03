@@ -374,7 +374,7 @@ struct TeamPage: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(team.location)
+                Text(team.location + womensMark)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(headerInk)
                     .lineLimit(1)
@@ -417,6 +417,12 @@ struct TeamPage: View {
         .accessibilityLabel("Share this team")
     }
 
+    /// " (W)" after both titles — the hero and the bar's — for a women's
+    /// college team whose name a men's team also has (2026-11-03).
+    private var womensMark: String {
+        directory?.sharesMensName(team) == true ? " (W)" : ""
+    }
+
     // MARK: - Hero
 
     /// Just the identity now — the tab row moved into `pinnedControls`
@@ -433,11 +439,13 @@ struct TeamPage: View {
                     // allowed rather than shrinking the masthead: a hero
                     // title scaled to 70% to keep one line reads as a
                     // mistake, where a wrap reads as a long name.
-                    Text(team.displayName ?? team.location)
+                    Text((team.displayName ?? team.location) + womensMark)
                         .font(.heroTitle)
                         .foregroundStyle(headerInk)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
+                        .accessibilityLabel((team.displayName ?? team.location)
+                                            + (womensMark.isEmpty ? "" : ", women's"))
                     conferenceLine
                 }
                 Spacer(minLength: 0)

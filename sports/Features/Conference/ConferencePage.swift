@@ -407,7 +407,7 @@ struct ConferencePage: View {
         .task(id: logoURL) { markHexLoaded = await HeaderPaint.loadMarkHex(for: logoURL) }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(destination.name)
+                Text(destination.name + womensMark)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(headerInk)
                     .lineLimit(1)
@@ -460,6 +460,13 @@ struct ConferencePage: View {
         return ConferenceDestination(conference: id, name: Conference.name(for: id))
     }
 
+    /// " (W)" after both titles — the hero and the bar's — for a women's
+    /// college conference whose name the men's league uses too
+    /// (2026-11-03).
+    private var womensMark: String {
+        Conference.sharesMensName(destination.conference) ? " (W)" : ""
+    }
+
     private var heroIdentity: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Spacing.md) {
@@ -472,11 +479,12 @@ struct ConferencePage: View {
                     .background(Circle().fill(Color.logoBacking).padding(-6))
                     .padding(6)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(destination.name)
+                    Text(destination.name + womensMark)
                         .font(.heroTitle)
                         .foregroundStyle(headerInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .accessibilityLabel(destination.name + (womensMark.isEmpty ? "" : ", women's"))
                     subtitle
                 }
                 Spacer(minLength: 0)

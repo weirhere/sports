@@ -522,6 +522,16 @@ nonisolated enum Conference {
         return name(for: conference.id, in: conference.league)
     }
 
+    /// Whether a women's college conference's name is a men's one too —
+    /// all 32 today, the Summit League under a different id. A shared name
+    /// gets "(W)" on the conference page, where nothing else says which
+    /// league's SEC it is (Andy, 2026-11-03).
+    static func sharesMensName(_ conference: ConferenceID) -> Bool {
+        guard conference.league == .womensCollegeBasketball,
+              let name = names(in: .womensCollegeBasketball)[conference.id] else { return false }
+        return names(in: .mensCollegeBasketball).values.contains(name)
+    }
+
     /// The tag a visiting team wears in a conference section it doesn't
     /// belong to: its own group at the section's rung, "NFC" in the AFC's
     /// section, "Big Sky" in the SEC's (Andy, 2026-09-26: "call out which

@@ -20,6 +20,17 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
 @Suite struct CollegeBasketballLeagueTests {
     /// The raw values are persistence tokens — follow keys, filter tokens,
     /// widget snapshots — and must never change once shipped.
+    /// A women's conference page wears "(W)" when the men's league has a
+    /// conference by the same name — the SEC, and the Summit League under
+    /// its other id — and nothing outside NCAAW is ever marked.
+    @Test func womensConferencesSharingAMensNameAreMarked() {
+        #expect(Conference.sharesMensName(.wcbb(23)))
+        #expect(Conference.sharesMensName(.wcbb(47)))
+        #expect(!Conference.sharesMensName(ConferenceID(.mensCollegeBasketball, 23)))
+        #expect(!Conference.sharesMensName(.cfb(8)))
+        #expect(!Conference.sharesMensName(.wcbb(9999)))
+    }
+
     @Test func rawValuesAreTheStoredTokens() {
         #expect(League.mensCollegeBasketball.rawValue == "mcbb")
         #expect(League.womensCollegeBasketball.rawValue == "wcbb")
