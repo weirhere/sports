@@ -56,20 +56,30 @@ final class LiveDetailHoldUITests: XCTestCase {
         let rows = app.buttons.matching(NSPredicate(
             format: "identifier BEGINSWITH 'scores-game' AND label CONTAINS %@", text))
         XCTAssertTrue(scrollUntilExists(rows.firstMatch, in: app), "fixture row \(text) never appeared")
-        // The fixture serves its one slate to every league it's asked for,
-        // so since college basketball joined (2026-11-03) the same game is
-        // a row under more than one league, and the first in tree order can
-        // sit below the fold. Tap the first copy that is on screen: a
-        // coordinate tap at an off-screen frame lands nowhere (it went to
-        // y 1316 on an 874pt screen at the 3.0.0 cut).
+        // A game is a row in every section it belongs to (Top 25 and its
+        // conference), and the first in tree order can sit below the fold:
+        // a coordinate tap at an off-screen frame lands nowhere (y 1316 on
+        // an 874pt screen at the 3.0.0 cut). Tap the first copy on screen,
+        // and only once its frame has held still across two reads — a frame
+        // read while a swipe's momentum is still carrying the list put the
+        // tap on a section header and collapsed it.
         let screen = app.windows.firstMatch.frame
-        var target: CGRect?
-        for _ in 0..<4 {
-            target = rows.allElementsBoundByIndex
+        func onScreenFrame() -> CGRect? {
+            rows.allElementsBoundByIndex
                 .map(\.frame)
-                .first { screen.contains(CGPoint(x: $0.midX, y: $0.midY)) && $0.midY > 180 && $0.midY < screen.maxY - 120 }
-            if target != nil { break }
-            app.swipeUp()
+                .first { screen.contains(CGPoint(x: $0.midX, y: $0.midY))
+                    && $0.midY > 180 && $0.midY < screen.maxY - 120 }
+        }
+        var target: CGRect?
+        for _ in 0..<6 {
+            let first = onScreenFrame()
+            Thread.sleep(forTimeInterval: 0.4)
+            let second = onScreenFrame()
+            if let first, let second, first == second {
+                target = second
+                break
+            }
+            if second == nil { app.swipeUp() }
         }
         guard let target else {
             XCTFail("fixture row \(text) never came on screen")
