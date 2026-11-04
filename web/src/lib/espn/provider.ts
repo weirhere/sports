@@ -43,6 +43,7 @@ import {
 } from "@/lib/trophies";
 import {
   registryCoveredKinds,
+  registrySources,
   registryTrophies,
 } from "@/lib/trophy-registry";
 import type {
@@ -807,6 +808,7 @@ export async function teamTrophyCase(
     registry: registryTrophies(teamId, league),
     allTimeKinds: registryCoveredKinds(league),
     derivedFloor: SEASON_FLOOR,
+    sources: registrySources(league),
   });
 }
 

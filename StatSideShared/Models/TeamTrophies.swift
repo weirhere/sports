@@ -297,6 +297,11 @@ nonisolated struct TrophyGroup: Identifiable, Hashable, Sendable {
     /// Newest first — a fan reads the most recent one as the headline.
     let years: [Int]
     let coverage: Coverage
+    /// Which selector the count is by, when that is a choice the app made
+    /// rather than a fact — "AP poll 1936–97 · title game since 1998" for
+    /// college football's national titles. Printed in the card's caption,
+    /// because a count that depends on a source has to name it.
+    var source: String? = nil
 
     var id: String { kind.singular }
     var count: Int { years.count }
@@ -385,7 +390,8 @@ extension TrophyCase {
     /// rendered before that point, since a half-loaded case would show a
     /// count that changes under the reader.
     static func assemble(derived: [Trophy], registry: [Trophy],
-                         allTimeKinds: Set<String>, derivedFloor: Int) -> TrophyCase {
+                         allTimeKinds: Set<String>, derivedFloor: Int,
+                         sources: [String: String] = [:]) -> TrophyCase {
         // Merged on identity, so a title both sources know about is one
         // row rather than two. The registry's window and the derivation's
         // are meant to abut rather than overlap, but a registry populated
@@ -417,7 +423,11 @@ extension TrophyCase {
             let coverage: TrophyGroup.Coverage = allTimeKinds.contains(entry.kind.identity)
                 ? .allTime
                 : .since(derivedFloor)
-            return TrophyGroup(kind: entry.kind, years: years, coverage: coverage)
+            // A source names what an all-time count is counted by, so it
+            // rides only on a row the registry speaks for.
+            let source = coverage == .allTime ? sources[entry.kind.identity] : nil
+            return TrophyGroup(kind: entry.kind, years: years, coverage: coverage,
+                               source: source)
         }
 
         return TrophyCase(groups: groups.sorted { lhs, rhs in

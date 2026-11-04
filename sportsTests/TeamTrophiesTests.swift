@@ -390,13 +390,131 @@ private let sec = TrophyKind(singular: "SEC Championship",
 // MARK: - The registry's gate
 
 @Suite struct TrophyRegistryGate {
-    /// It ships empty on purpose (see `TrophyRegistry`), and what has to
-    /// hold while it is empty is that nothing claims to be all-time.
-    @Test("An unpopulated registry contributes nothing and claims nothing")
-    func shipsEmptyAndGated() {
-        for league in League.allCases {
+    /// A league without a list contributes nothing and claims nothing:
+    /// nothing reads as all-time that the registry doesn't speak for.
+    @Test("A league with no list contributes nothing and claims nothing")
+    func unpopulatedLeaguesAreGated() {
+        for league in League.allCases where league != .collegeFootball {
             #expect(TrophyRegistry.trophies(teamId: "61", league: league).isEmpty)
             #expect(TrophyRegistry.coveredKinds(in: league).isEmpty)
+            #expect(TrophyRegistry.sources(in: league).isEmpty)
         }
+    }
+
+    /// The other half of the gate: a list's rows are read only once it is
+    /// marked verified.
+    @Test("College football's list is the verified one, and it names its source")
+    func collegeFootballIsCovered() {
+        #expect(TrophyRegistry.collegeFootballNationalTitles.verified)
+        #expect(TrophyRegistry.coveredKinds(in: .collegeFootball) == ["national championship"])
+        #expect(TrophyRegistry.sources(in: .collegeFootball)
+            == ["national championship": "AP poll 1936–97 · title game since 1998"])
+    }
+}
+
+// MARK: - College football's honour roll (COR-97)
+
+/// Every program's ESPN id, by the `location` ESPN prints for it, read off
+/// the captured FBS standings — so a test written in school names checks the
+/// ids as well as the counts, and a mistyped id fails as a wrong total rather
+/// than passing as someone else's title.
+private func fbsIds() throws -> [String: String] {
+    let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("standings-live"))
+    let teams = ESPNMapper.conferences(from: dto).flatMap(\.teams)
+    var ids: [String: String] = [:]
+    for team in teams { ids[team.location] = team.id }
+    return ids
+}
+
+/// The per-school totals, derived independently of the rows: the AP
+/// National Championship Trophy's own by-team table, cut at 2013 and adjusted
+/// for the only two seasons where the BCS game and the AP disagree — 2003 (AP
+/// USC, BCS LSU) and 2004 (vacated). An omitted, duplicated or misattributed
+/// season moves at least one of these.
+private let cfbTotals: [(String, Int)] = [
+    ("Alabama", 9), ("Notre Dame", 8), ("Oklahoma", 7), ("Miami", 5),
+    ("Ohio State", 4), ("Minnesota", 4), ("Nebraska", 4),
+    ("USC", 3), ("LSU", 3), ("Texas", 3), ("Florida", 3), ("Florida State", 3),
+    ("Michigan", 2), ("Tennessee", 2), ("Auburn", 2), ("Army", 2),
+    ("Penn State", 2), ("Pittsburgh", 2),
+    ("Georgia", 1), ("Clemson", 1), ("BYU", 1), ("Colorado", 1),
+    ("Maryland", 1), ("Michigan State", 1), ("Syracuse", 1),
+    ("TCU", 1), ("Texas A&M", 1),
+]
+
+private var cfbTitles: [Int: String] { TrophyRegistry.collegeFootballNationalTitles.winners }
+
+@Suite struct CollegeFootballTitles {
+    /// The rule (COR-94): one winner a season, from 1936, the AP's pick
+    /// through 1997 and the BCS game through 2013 — with 2004, USC's
+    /// vacated title, left empty. Seventy-eight seasons less that one.
+    @Test("Every season from 1936 to 2013 has one champion, except vacated 2004")
+    func seasonSpan() {
+        let expected = Set(1936...2013).subtracting([2004])
+        #expect(Set(cfbTitles.keys) == expected)
+        #expect(cfbTitles.count == 77)
+    }
+
+    /// The registry stops where the derivation starts, so the CFP era is
+    /// only ever the wire's answer — never a hand-kept row that could
+    /// disagree with it.
+    @Test("No row reaches the derived era")
+    func stopsAtTheSeasonFloor() {
+        #expect(cfbTitles.keys.allSatisfy { $0 < League.collegeFootball.seasonFloor })
+    }
+
+    @Test("Every winner is a program the FBS standings know")
+    func everyIdResolves() throws {
+        let known = Set(try fbsIds().values)
+        #expect(Set(cfbTitles.values).isSubset(of: known))
+    }
+
+    @Test("Each program's total matches the source", arguments: cfbTotals)
+    func perProgramTotals(location: String, titles: Int) throws {
+        let id = try #require(try fbsIds()[location], "no FBS program at \(location)")
+        #expect(TrophyRegistry.trophies(teamId: id, league: .collegeFootball).count == titles)
+    }
+
+    /// The totals above, summed, are the whole list — so no row is filed
+    /// under a program the table above doesn't name.
+    @Test("The listed programs account for every row")
+    func totalsAccountForEveryRow() {
+        #expect(cfbTotals.map(\.1).reduce(0, +) == cfbTitles.count)
+    }
+
+    @Test("The famous split seasons resolve to the AP's pick")
+    func splitSeasonsAreTheAPs() throws {
+        let ids = try fbsIds()
+        #expect(cfbTitles[1997] == ids["Michigan"])   // coaches: Nebraska
+        #expect(cfbTitles[1970] == ids["Nebraska"])   // UPI: Texas
+        #expect(cfbTitles[1990] == ids["Colorado"])   // UPI: Georgia Tech
+        #expect(cfbTitles[2003] == ids["LSU"])        // BCS era: the game, not the AP's USC
+    }
+
+    /// Alabama end to end, as its page assembles it: nine registry titles
+    /// and the two CFP games the wire derives (2015, 2017) on one row,
+    /// all-time, saying what it counts by.
+    @Test("A registry title and a derived one land on the same row")
+    func alabamaShelf() throws {
+        let alabama = try #require(try fbsIds()["Alabama"])
+        let derived = [Trophy(kind: national, year: 2015), Trophy(kind: national, year: 2017),
+                       Trophy(kind: sec, year: 2023)]
+        let shelf = TrophyCase.assemble(
+            derived: derived,
+            registry: TrophyRegistry.trophies(teamId: alabama, league: .collegeFootball),
+            allTimeKinds: TrophyRegistry.coveredKinds(in: .collegeFootball),
+            derivedFloor: League.collegeFootball.seasonFloor,
+            sources: TrophyRegistry.sources(in: .collegeFootball)
+        )
+        let titles = try #require(shelf.groups.first)
+        #expect(titles.title == "National Championships")
+        #expect(titles.count == 11)
+        #expect(titles.years.first == 2017)
+        #expect(titles.years.last == 1961)
+        #expect(titles.coverage == .allTime)
+        #expect(titles.source == "AP poll 1936–97 · title game since 1998")
+        // The conference row stays scoped and carries no source.
+        #expect(shelf.groups.last?.coverage == .since(2014))
+        #expect(shelf.groups.last?.source == nil)
     }
 }
