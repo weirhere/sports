@@ -225,6 +225,15 @@ export interface ConferenceStandingsGroup {
   entries: ConferenceStanding[];
 }
 
+/**
+ * The game page's Standings tab payload: every table either side could be
+ * shown at, and the season they describe (a past game reads its own).
+ */
+export interface GameStandings {
+  year: number;
+  groups: ConferenceStandingsGroup[];
+}
+
 /** One conference with its member teams (alphabetical), for browsing. */
 export interface ConferenceTeams {
   id?: string;
