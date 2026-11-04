@@ -70,37 +70,77 @@ final class LiveDetailHoldUITests: XCTestCase {
                 .first { screen.contains(CGPoint(x: $0.midX, y: $0.midY))
                     && $0.midY > 180 && $0.midY < screen.maxY - 120 }
         }
-        var target: CGRect?
-        for _ in 0..<6 {
-            let first = onScreenFrame()
-            Thread.sleep(forTimeInterval: 0.4)
-            let second = onScreenFrame()
-            if let first, let second, first == second {
-                target = second
-                break
+        // Off the band, scroll *toward* the row, by a measured drag. A swipe
+        // that only ever went up stranded the row above the fold: one
+        // momentum swipe carried the slate to its end with Charlie A&M
+        // scrolled off the top, and every later swipe pushed against the
+        // bottom of the list (WEIR-90, 2026-11-03). A press-and-drag has no
+        // momentum, so the row lands where the drag puts it.
+        func nudgeTowardRow() {
+            let frames = rows.allElementsBoundByIndex.map(\.frame).filter { !$0.isEmpty }
+            guard let nearest = frames.min(by: {
+                abs($0.midY - screen.midY) < abs($1.midY - screen.midY)
+            }) else {
+                app.swipeUp(velocity: .slow)
+                return
             }
-            if second == nil { app.swipeUp() }
+            let reach = screen.height * 0.35
+            let delta = max(-reach, min(reach, screen.midY - nearest.midY))
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: screen.maxX - 24, dy: screen.midY))
+            let end = origin.withOffset(CGVector(dx: screen.maxX - 24, dy: screen.midY + delta))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
-        guard let target else {
-            XCTFail("fixture row \(text) never came on screen")
-            return app.buttons["Share this game"]
+        func settledFrame() -> CGRect? {
+            for _ in 0..<8 {
+                let first = onScreenFrame()
+                Thread.sleep(forTimeInterval: 0.4)
+                let second = onScreenFrame()
+                if let first, let second, first == second { return second }
+                if second == nil { nudgeTowardRow() }
+            }
+            return nil
         }
-        app.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: target.midX, dy: target.midY))
-            .tap()
+        // The pushed page must be the game asked for. The fixture adds and
+        // drops rows on its own schedule, so a row can slide under a tap
+        // between the frame read and the touch: one run opened Kilo State,
+        // the row above Charlie A&M (WEIR-90). The header's team names are
+        // the check — the Scores rows are single combined buttons, so a
+        // non-row element carrying the name is the detail's.
         let landmark = app.buttons["Share this game"]
-        XCTAssertTrue(landmark.waitForExistence(timeout: 10), "game detail never presented")
+        let header = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND NOT (identifier BEGINSWITH 'scores-game')", text))
+        for _ in 0..<3 {
+            guard let target = settledFrame() else {
+                XCTFail("fixture row \(text) never came on screen")
+                return landmark
+            }
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: target.midX, dy: target.midY))
+                .tap()
+            guard landmark.waitForExistence(timeout: 10) else { continue }
+            if header.firstMatch.waitForExistence(timeout: 3) { return landmark }
+            app.navigationBars.buttons.firstMatch.tap()
+            _ = rows.firstMatch.waitForExistence(timeout: 5)
+        }
+        XCTFail("game detail for \(text) never presented")
         return landmark
     }
 
     /// Asserts the detail stays up until `deadline`, checking every second.
+    /// A miss has to last: one read of a landmark that's on screen the
+    /// whole time can come back false on iOS 26.5 (WEIR-90 — the video and
+    /// the `scoresnav` path log both had the detail still pushed), and a
+    /// real pop doesn't come back, so a two-second recheck still catches it.
     @MainActor
     private func hold(_ landmark: XCUIElement, seconds: TimeInterval,
                       message: String) {
         let deadline = Date(timeIntervalSinceNow: seconds)
         while Date() < deadline {
             Thread.sleep(forTimeInterval: 1)
-            XCTAssertTrue(landmark.exists, message)
+            if !landmark.exists {
+                XCTAssertTrue(landmark.waitForExistence(timeout: 2), message)
+            }
         }
     }
 
