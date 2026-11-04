@@ -367,4 +367,25 @@ enum SnapshotFixtures {
         defaults.removePersistentDomain(forName: "snapshot-no-follows")
         return FollowingStore(defaults: defaults)
     }
+
+    // MARK: - Poll mentions
+
+    /// The AP's tail (COR-58): three teams drawing votes, two that fell out
+    /// — one of them, as in the live payload, still drawing votes too.
+    static let pollOthers: [PollMention] = [
+        PollMention(team: team("12", "Arizona", "Wildcats", "ARIZ", league: .collegeFootball),
+                    points: 54, firstPlaceVotes: 0, previousRank: 21),
+        PollMention(team: team("2483", "Oregon", "Ducks", "ORE", league: .collegeFootball),
+                    points: 31, firstPlaceVotes: 0, previousRank: 0),
+        PollMention(team: team("2641", "Texas Tech", "Red Raiders", "TTU", league: .collegeFootball),
+                    points: 4, firstPlaceVotes: 0, previousRank: 0),
+    ]
+
+    static let pollDroppedOut: [PollMention] = [
+        PollMention(team: team("12", "Arizona", "Wildcats", "ARIZ", league: .collegeFootball),
+                    points: 54, firstPlaceVotes: 0, previousRank: 21),
+        PollMention(team: team("245", "Texas A&M", "Aggies", "TA&M", league: .collegeFootball),
+                    points: nil, firstPlaceVotes: 0, previousRank: 24),
+    ]
 }
+

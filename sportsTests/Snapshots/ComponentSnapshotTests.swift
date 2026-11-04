@@ -270,6 +270,22 @@ struct ComponentSnapshotTests {
         assert(card, variant)
     }
 
+    @Test(.enabled(if: snapshotSelected("pollMentionsCards")), arguments: Variant.football)
+    func pollMentionsCards(_ variant: Variant) {
+        // The two cards under a poll's Top 25 (COR-58): Receiving votes,
+        // then Dropped out, on the recessed page at the pane's inset.
+        // Disabled ink offscreen, as with the stat cards: the layout is
+        // the baseline.
+        let cards = VStack(spacing: Spacing.sm) {
+            PollMentionsCard(mentions: SnapshotFixtures.pollOthers, kind: .votes)
+            PollMentionsCard(mentions: SnapshotFixtures.pollDroppedOut, kind: .droppedOut)
+        }
+        .padding(Spacing.sm)
+        .background(Color.bgRecessed)
+        .environment(SnapshotFixtures.noFollows)
+        assert(cards, variant)
+    }
+
     // MARK: - Rendering
 
     /// The component at the device's width, in the appearance, named for

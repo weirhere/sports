@@ -45,7 +45,9 @@ nonisolated struct PollMention: Identifiable, Hashable, Sendable {
     /// The rank this team held last week, per ESPN's `previous` (0 when
     /// it was never ranked — a team just picking up votes).
     let previousRank: Int?
-    let record: String?
+    // No record: ESPN ships `recordSummary: "0-0"` on every mention, in
+    // every week checked (Week 10 live and the held Final Rankings), so
+    // it is a placeholder, not Northwestern's 0-0 (COR-58, 2026-11-04).
 
     var id: String { team.id }
 }

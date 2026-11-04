@@ -631,7 +631,18 @@ struct PollScreen: View {
     @ViewBuilder
     private var standingsContent: some View {
         if let poll = selectedPoll, !poll.ranks.isEmpty {
-            pollCard(poll)
+            VStack(spacing: Spacing.sm) {
+                pollCard(poll)
+                // The two lists a printed poll ends with (COR-58). Only the
+                // site API ships them, so a CFP table or a past week from
+                // the core API simply has no cards here.
+                if !poll.others.isEmpty {
+                    PollMentionsCard(mentions: poll.others, kind: .votes)
+                }
+                if !poll.droppedOut.isEmpty {
+                    PollMentionsCard(mentions: poll.droppedOut, kind: .droppedOut)
+                }
+            }
         } else if tableIsLoading {
             // A lone spinner gets no card — a surface around it hugs into
             // a floating pill (Andy, 2026-08-31).

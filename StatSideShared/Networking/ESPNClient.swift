@@ -2549,8 +2549,7 @@ nonisolated enum ESPNMapper {
                         team: team,
                         points: rank.points,
                         firstPlaceVotes: rank.firstPlaceVotes,
-                        previousRank: rank.previous,
-                        record: rank.recordSummary
+                        previousRank: rank.previous
                     )
                 }
             }
