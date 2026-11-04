@@ -34,11 +34,22 @@ function spokenList(values: string[]): string {
  * is all-time, which is the only case where silence is the truth.
  */
 export function trophyFootnote(shelf: TrophyCase): string | undefined {
+  // A row counted by a chosen selector names it on its own line first —
+  // "National Championships: AP poll 1936–97 · title game since 1998" —
+  // because an all-time count is only as meaningful as what it counts.
+  const lines = shelf.groups.flatMap((group) =>
+    group.source ? [`${trophyGroupTitle(group)}: ${group.source}`] : []
+  );
   const floor = coverageFloor(shelf);
-  if (floor === undefined) return undefined;
-  const scoped = shelf.groups.filter((group) => group.coverage.kind !== "allTime");
-  if (scoped.length === shelf.groups.length) return `Since ${floor}`;
-  return `${spokenList(scoped.map(trophyGroupTitle))} since ${floor}`;
+  if (floor !== undefined) {
+    const scoped = shelf.groups.filter((group) => group.coverage.kind !== "allTime");
+    lines.push(
+      scoped.length === shelf.groups.length
+        ? `Since ${floor}`
+        : `${spokenList(scoped.map(trophyGroupTitle))} since ${floor}`
+    );
+  }
+  return lines.length > 0 ? lines.join("\n") : undefined;
 }
 
 export function TeamTrophiesCard({ trophyCase }: { trophyCase: TrophyCase }) {
@@ -58,7 +69,7 @@ export function TeamTrophiesCard({ trophyCase }: { trophyCase: TrophyCase }) {
           // Spoken once, at the foot of the card, rather than repeated into
           // every row's sentence.
           aria-label={`Coverage: ${footnote}`}
-          className="px-4 pt-1 pb-2 type-row-meta text-text-secondary"
+          className="px-4 pt-1 pb-2 type-row-meta text-text-secondary whitespace-pre-line"
         >
           {footnote}
         </p>

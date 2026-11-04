@@ -3,52 +3,37 @@ import Foundation
 /// The closed history a trophy case can't derive: the seasons before
 /// `League.seasonFloor`, which ESPN's season axis cannot reach at all.
 ///
-/// **This ships empty, deliberately, and the reason is the point.** The
-/// mechanism is here, tested and gated; the rows are not, because a trophy
-/// count is a claim about history printed as a fact, and every route to
-/// verifying one was closed from the session that built this (ESPN, every
-/// reference site and every encyclopedia are blocked by the egress policy;
-/// only search summaries came through, truncated). Hand-transcribing a few
-/// hundred rows of sports history out of snippets would have produced a
-/// number no one could check — which is the failure this codebase keeps
-/// catching late, and the one thing a shelf of trophies must never be.
+/// A trophy count is a claim about history printed as a fact, so **only a
+/// list checked against a citable source is ever read** (`verified`), and a
+/// league with no list here is not broken: its case reports what the wire
+/// says, captioned `since 2014` — correct, and never a wrong number. That
+/// gate is `coveredKinds(in:)`.
 ///
-/// A league with no rows here is not broken. Its case simply reports what
-/// the wire says, captioned `since 2014` — correct, and never a wrong
-/// number. That gate is `coveredKinds(in:)`.
+/// ## What counts (decided 2026-11-04, COR-94)
 ///
-/// ## Populating it
+/// 1. **College football's national title is the AP poll's champion for
+///    1936–1997, then the title game** — the BCS game 1998–2013, the CFP
+///    game from 2014, which the derived path already reads. One named source
+///    per era and one winner per season, so a split year (1970, 1997) is the
+///    AP's pick, nothing before 1936 counts, and USC's vacated 2004 BCS title
+///    has no row. Because the count depends on that choice, the list carries
+///    it as `source` and the card prints it.
+/// 2. **Pre-Super-Bowl NFL championships count, as their own kind** — "NFL
+///    Championship", 1920–1965 only, so a season never holds two titles.
+/// 3. **Titles follow the franchise, not the name.** A franchise with no
+///    successor (the original Senators, the Maroons) contributes nothing.
 ///
-/// Three definitional calls have to be made first, and they are product
-/// decisions rather than engineering ones — which is the other reason this
-/// is empty. Each changes what a famous team's page claims:
-///
-/// 1. **Which selector is a college football national title?** Alabama's
-///    case says 18 under its own claims, 13 under the AP, and 6 under
-///    BCS-and-CFP-title-games-only. The polls split in plenty of seasons
-///    (1997 was Michigan by the AP and Nebraska by the coaches; 1970 went
-///    three ways), so "the champion" is not a fact the app can look up —
-///    it is a source the app has to name. Whatever is chosen belongs in
-///    `TrophyGroup.Coverage`'s caption so the page says it out loud.
-/// 2. **Do pre-Super-Bowl NFL championships count?** The Packers won nine
-///    of them. If they do, they need a trophy kind of their own — a
-///    "Super Bowls" row must never absorb a title won before the game
-///    existed, and naming the trophy is what makes that row self-scoping.
-/// 3. **Where do a defunct franchise's titles go?** The original Ottawa
-///    Senators won eleven Stanley Cups and the current Senators are a 1992
-///    expansion team that has won none; the Montreal Maroons and Victoria
-///    Cougars have no successor at all. Assigning those to a present-day
-///    id by name is the wrong-number failure this gate exists to prevent.
+/// Every list speaks only for its own league, and no list carries conference
+/// titles: those are always as old as the derivation.
 ///
 /// ## Keying
 ///
-/// By ESPN team id, and those are already verifiable without a network:
-/// every id in the pro leagues' `teamDivisions` maps was cross-checked
-/// against the division it is filed under, 32/32 for the NFL, and the
-/// captured fixtures carry an id, an abbreviation and a display name for
-/// all 30 NBA teams, all 32 NHL teams and 316 college football programs.
-/// An id that matches nothing contributes nothing, so a bad row costs a
-/// missing trophy rather than a misplaced one.
+/// By ESPN team id, and those are verifiable without a network: every id in
+/// the pro leagues' `teamDivisions` maps was cross-checked against the
+/// division it is filed under, and the captured fixtures carry an id, an
+/// abbreviation and a display name for all 30 NBA teams, all 32 NHL teams and
+/// 316 college football programs. An id that matches nothing contributes
+/// nothing, so a bad row costs a missing trophy rather than a misplaced one.
 nonisolated enum TrophyRegistry {
     /// One trophy's whole honour roll, as it is published: a list of
     /// seasons and who won each. Champion-list shaped rather than
@@ -64,11 +49,15 @@ nonisolated enum TrophyRegistry {
         /// half-entered honour roll can't reach a team page and print a
         /// count that is quietly short.
         let verified: Bool
+        /// The selector behind the list, printed in the card's caption when
+        /// the count depends on which one was chosen. Nil where the trophy is
+        /// its own source (a Stanley Cup is won on the ice).
+        var source: String? = nil
     }
 
-    /// Empty until the three calls above are made and the rows are sourced.
-    /// See BACKLOG E15.
-    private static let lists: [League: [TitleList]] = [:]
+    private static let lists: [League: [TitleList]] = [
+        .collegeFootball: [collegeFootballNationalTitles],
+    ]
 
     /// Every registry trophy this team holds.
     static func trophies(teamId: String, league: League) -> [Trophy] {
@@ -92,5 +81,16 @@ nonisolated enum TrophyRegistry {
     /// already answers correctly.
     static func coveredKinds(in league: League) -> Set<String> {
         Set((lists[league] ?? []).filter(\.verified).map(\.kind.identity))
+    }
+
+    /// The selector each covered trophy is counted by, by
+    /// `TrophyKind.identity`, for the card's caption. Only verified lists,
+    /// like everything else read from here.
+    static func sources(in league: League) -> [String: String] {
+        var sources: [String: String] = [:]
+        for list in (lists[league] ?? []) where list.verified {
+            if let source = list.source { sources[list.kind.identity] = source }
+        }
+        return sources
     }
 }

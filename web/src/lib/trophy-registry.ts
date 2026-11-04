@@ -4,29 +4,21 @@
 // as a separate module for the same reason it is a separate file there — the
 // mechanism is code, the rows are data, and they are added at different times.
 //
-// **This ships empty, deliberately, and the reason is the point.** A trophy
-// count is a claim about history printed as a fact, and hand-transcribing a
-// few hundred rows of it produces a number no one can check. A league with no
-// rows here is not broken: its case simply reports what the wire says,
+// A trophy count is a claim about history printed as a fact, so **only a list
+// checked against a citable source is ever read** (`verified`), and a league
+// with no list here is not broken: its case reports what the wire says,
 // captioned "since 2014" — correct, and never a wrong number. That gate is
 // `registryCoveredKinds`.
 //
-// ## Populating it
+// ## What counts (decided 2026-11-04, COR-94)
 //
-// Three definitional calls have to be made first, and they are product
-// decisions rather than engineering ones. Each changes what a famous team's
-// page claims:
-//
-// 1. **Which selector is a college football national title?** Alabama's case
-//    says 18 under its own claims, 13 under the AP, and 6 under
-//    BCS-and-CFP-title-games-only. Whatever is chosen belongs in the coverage
-//    caption so the page says it out loud.
-// 2. **Do pre-Super-Bowl NFL championships count?** The Packers won nine of
-//    them. If they do, they need a trophy kind of their own — a "Super Bowls"
-//    row must never absorb a title won before the game existed.
-// 3. **Where do a defunct franchise's titles go?** The original Ottawa
-//    Senators won eleven Stanley Cups and the current Senators are a 1992
-//    expansion team that has won none.
+// 1. **College football's national title is the AP poll's champion for
+//    1936–1997, then the title game** (BCS 1998–2013, CFP from 2014, which the
+//    derived path reads). One winner a season; USC's vacated 2004 has no row.
+//    The list carries that choice as `source`, and the card prints it.
+// 2. **Pre-Super-Bowl NFL championships count, as their own kind**, 1920–1965.
+// 3. **Titles follow the franchise, not the name**; a franchise with no
+//    successor contributes nothing.
 //
 // ## Keying
 //
@@ -36,6 +28,7 @@
 import type { League } from "@/lib/leagues";
 import { trophyKindIdentity } from "@/lib/trophies";
 import type { Trophy, TrophyKind } from "@/lib/trophies";
+import { COLLEGE_FOOTBALL_NATIONAL_TITLES } from "@/lib/trophy-registry-college-football";
 
 /**
  * One trophy's whole honour roll, as it is published: a list of seasons and
@@ -53,10 +46,16 @@ export interface TitleList {
    * can't reach a team page and print a count that is quietly short.
    */
   verified: boolean;
+  /**
+   * The selector behind the list, printed in the card's caption when the count
+   * depends on which one was chosen. Absent where the trophy is its own source.
+   */
+  source?: string;
 }
 
-/** Empty until the three calls above are made and the rows are sourced. */
-const LISTS: Partial<Record<League, TitleList[]>> = {};
+const LISTS: Partial<Record<League, TitleList[]>> = {
+  cfb: [COLLEGE_FOOTBALL_NATIONAL_TITLES],
+};
 
 /** Every registry trophy this team holds. */
 export function registryTrophies(teamId: string, league: League): Trophy[] {
@@ -86,4 +85,18 @@ export function registryCoveredKinds(league: League): Set<string> {
       .filter((list) => list.verified)
       .map((list) => trophyKindIdentity(list.kind))
   );
+}
+
+/**
+ * The selector each covered trophy is counted by, by `trophyKindIdentity`, for
+ * the card's caption. Only verified lists, like everything else read here.
+ */
+export function registrySources(league: League): Map<string, string> {
+  const sources = new Map<string, string>();
+  for (const list of LISTS[league] ?? []) {
+    if (list.verified && list.source) {
+      sources.set(trophyKindIdentity(list.kind), list.source);
+    }
+  }
+  return sources;
 }

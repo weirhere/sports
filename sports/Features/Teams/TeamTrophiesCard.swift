@@ -83,13 +83,22 @@ struct TeamTrophiesCard: View {
     /// six with no caption is the omission the whole feature is built
     /// against. Nil when every row is all-time, which is the only case
     /// where silence is the truth.
+    ///
+    /// A row counted by a chosen selector names it on its own line first —
+    /// "National Championships: AP poll 1936–97 · title game since 1998" —
+    /// because an all-time count is only as meaningful as what it counts.
     private var footnote: String? {
-        guard let floor = trophyCase.coverageFloor else { return nil }
-        let scoped = trophyCase.groups.filter { $0.coverage != .allTime }
-        let allScoped = scoped.count == trophyCase.groups.count
-        return allScoped
-            ? "Since \(floor)"
-            : "\(scoped.map(\.title).formatted(.list(type: .and))) since \(floor)"
+        var lines = trophyCase.groups.compactMap { group in
+            group.source.map { "\(group.title): \($0)" }
+        }
+        if let floor = trophyCase.coverageFloor {
+            let scoped = trophyCase.groups.filter { $0.coverage != .allTime }
+            let allScoped = scoped.count == trophyCase.groups.count
+            lines.append(allScoped
+                ? "Since \(floor)"
+                : "\(scoped.map(\.title).formatted(.list(type: .and))) since \(floor)")
+        }
+        return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 
     private var footnoteAccessibilityLabel: String? {
@@ -107,7 +116,8 @@ private let previewSEC = TrophyKind(singular: "SEC Championship",
         // A shelf the registry speaks for, beside one it only knows the
         // derived era of — the two coverage captions side by side.
         TeamTrophiesCard(trophyCase: TrophyCase(groups: [
-            TrophyGroup(kind: previewNational, years: [2022, 2021], coverage: .allTime),
+            TrophyGroup(kind: previewNational, years: [2022, 2021, 1980], coverage: .allTime,
+                        source: "AP poll 1936–97 · title game since 1998"),
             TrophyGroup(kind: previewSEC, years: [2025, 2022, 2017], coverage: .since(2014)),
         ]))
         .cardSurface()

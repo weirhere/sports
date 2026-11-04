@@ -66,6 +66,13 @@ export interface TrophyGroup {
   /** Newest first — a fan reads the most recent one as the headline. */
   years: number[];
   coverage: TrophyCoverage;
+  /**
+   * Which selector the count is by, when that is a choice the app made rather
+   * than a fact — "AP poll 1936–97 · title game since 1998" for college
+   * football's national titles. Printed in the card's caption, because a count
+   * that depends on a source has to name it.
+   */
+  source?: string;
 }
 
 /** A team's shelf, assembled and ready to render. */
@@ -421,6 +428,8 @@ export function assembleTrophyCase(input: {
    */
   allTimeKinds: Set<string>;
   derivedFloor: number;
+  /** The selector each covered trophy is counted by, by identity. */
+  sources?: Map<string, string>;
 }): TrophyCase {
   // Merged on identity, so a title both sources know about is one row rather
   // than two. The registry's window and the derivation's are meant to abut
@@ -440,21 +449,28 @@ export function assembleTrophyCase(input: {
     bucket.years.add(trophy.year);
   }
 
-  const groups: TrophyGroup[] = [...wins.values()].map(({ kind, years }) => ({
-    id: kind.singular,
-    kind,
-    years: [...years].sort((a, b) => b - a),
-    // All-time only where the registry says it speaks for this trophy's whole
-    // history. Inferring it from the rows instead would read "the oldest one
-    // we happen to know about" as "the oldest one there is" — so a team whose
-    // only league title came in the derived era would claim a complete shelf,
-    // which is the omission this caption exists to prevent.
-    // Matched on identity, like everything else here — a registry row and a
-    // derived one must not miss each other over a capital.
-    coverage: input.allTimeKinds.has(trophyKindIdentity(kind))
-      ? { kind: "allTime" as const }
-      : { kind: "since" as const, year: input.derivedFloor },
-  }));
+  const groups: TrophyGroup[] = [...wins.values()].map(({ kind, years }) => {
+    const allTime = input.allTimeKinds.has(trophyKindIdentity(kind));
+    // A source names what an all-time count is counted by, so it rides only on
+    // a row the registry speaks for.
+    const source = allTime ? input.sources?.get(trophyKindIdentity(kind)) : undefined;
+    return {
+      id: kind.singular,
+      kind,
+      years: [...years].sort((a, b) => b - a),
+      // All-time only where the registry says it speaks for this trophy's whole
+      // history. Inferring it from the rows instead would read "the oldest one
+      // we happen to know about" as "the oldest one there is" — so a team whose
+      // only league title came in the derived era would claim a complete shelf,
+      // which is the omission this caption exists to prevent.
+      // Matched on identity, like everything else here — a registry row and a
+      // derived one must not miss each other over a capital.
+      coverage: allTime
+        ? { kind: "allTime" as const }
+        : { kind: "since" as const, year: input.derivedFloor },
+      ...(source ? { source } : {}),
+    };
+  });
 
   groups.sort((lhs, rhs) => {
     if (lhs.kind.tier !== rhs.kind.tier) {

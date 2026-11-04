@@ -902,7 +902,8 @@ struct TeamPage: View {
             derived: derived,
             registry: TrophyRegistry.trophies(teamId: team.id, league: pageLeague),
             allTimeKinds: TrophyRegistry.coveredKinds(in: pageLeague),
-            derivedFloor: pageLeague.seasonFloor
+            derivedFloor: pageLeague.seasonFloor,
+            sources: TrophyRegistry.sources(in: pageLeague)
         )
     }
 
