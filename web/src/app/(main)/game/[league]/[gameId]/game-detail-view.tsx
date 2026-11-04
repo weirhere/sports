@@ -5,7 +5,7 @@
 // leaders. Live games poll every 1s through useLiveGame; a pre-game summary
 // never demotes a live snapshot (the merge lives in the hook).
 //
-// **Preview or Facts / News / Plays / Box score / Roster / H2H**, and a tab
+// **Preview or Facts / News / Plays / Box score / Roster / Standings / H2H**, and a tab
 // only exists where its data does: a game ESPN hasn't filled in shows the
 // first tab and the series alone. The first tab is "Preview" before kickoff
 // and "Facts" from the first snap on — the same cards, renamed by state
@@ -13,7 +13,9 @@
 // rosters, and the Drives card lives inside it: leaving it on Summary would
 // print the same rows in two tabs. Roster (E29) sits after the box score,
 // which is the rosters' nearest neighbour; it reads its own endpoints, so
-// like News it is there from the first frame.
+// like News it is there from the first frame. Standings (iOS, 2026-10-24)
+// sits between Roster and H2H: every table either side is in, both rows
+// tinted, fetched on the tab's first open and never polled.
 //
 // H2H reads the pushed row rather than the summary, so it is offered from the
 // first frame — which is the point: before kickoff it is the only other tab
@@ -34,7 +36,12 @@ import type { ConferenceStandingsGroup, GameDetail } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
 import { useLiveGame } from "@/lib/hooks/use-live-game";
 import { useOnDemand } from "@/lib/hooks/use-on-demand";
-import { getGameRosterSources, getHeadToHead, getTeamsNews } from "@/lib/api";
+import {
+  getGameRosterSources,
+  getGameStandings,
+  getHeadToHead,
+  getTeamsNews,
+} from "@/lib/api";
 import { factsTabTitle, rosterPhase } from "@/lib/game-roster";
 import { GameRosterPane } from "./roster/game-roster-pane";
 import { StoryListCard, StoryListCardSkeleton } from "@/components/story-list-card";
@@ -76,6 +83,7 @@ import {
 import { BoxScoreList } from "./box-score-list";
 import { DrivePlayList, PeriodPlayList } from "./play-lists";
 import { HeadToHeadPane } from "./head-to-head-pane";
+import { GameStandingsPane } from "./game-standings-pane";
 import { DetailCard } from "./detail-card";
 import { StoryRow } from "@/components/story-row";
 import { storyForGame, storyKindTitle } from "@/lib/news";
@@ -128,6 +136,7 @@ export function GameDetailView({
     ...(hasPlays ? [{ id: "plays", label: "Plays" }] : []),
     ...(boxScore.length > 0 ? [{ id: "boxScore", label: "Box score" }] : []),
     ...(hasHeadToHead ? [{ id: "roster", label: "Roster" }] : []),
+    ...(hasHeadToHead ? [{ id: "standings", label: "Standings" }] : []),
     ...(hasHeadToHead ? [{ id: "h2h", label: "H2H" }] : []),
   ];
   // A tab whose data went away between polls falls back rather than
@@ -141,11 +150,13 @@ export function GameDetailView({
   const [seriesRequested, setSeriesRequested] = useState(false);
   const [newsRequested, setNewsRequested] = useState(false);
   const [rosterRequested, setRosterRequested] = useState(false);
+  const [standingsRequested, setStandingsRequested] = useState(false);
   const selectTab = (id: string) => {
     setTab(id);
     if (id === "h2h") setSeriesRequested(true);
     if (id === "news") setNewsRequested(true);
     if (id === "roster") setRosterRequested(true);
+    if (id === "standings") setStandingsRequested(true);
   };
   const series = useOnDemand(
     seriesRequested ? `${game.league}:${game.id}` : undefined,
@@ -166,6 +177,12 @@ export function GameDetailView({
   const rosterSources = useOnDemand(
     rosterRequested ? `${game.league}:${game.id}:${phase}` : undefined,
     () => getGameRosterSources(game.league, game.id)
+  );
+  // The Standings tab's tables, on the same terms. The game's own season is
+  // the route's to read, so a past game's tab tables that season.
+  const standingsTab = useOnDemand(
+    standingsRequested ? `${game.league}:${game.id}` : undefined,
+    () => getGameStandings(game.league, game.id)
   );
   const hasScoringPlays =
     drives.length > 0
@@ -466,6 +483,16 @@ export function GameDetailView({
           state={rosterSources.state}
           onRetry={rosterSources.reload}
           possessionTeamId={possessionTeamId}
+        />
+      )}
+
+      {activeTab === "standings" && (
+        <GameStandingsPane
+          league={game.league}
+          awayId={awayId}
+          homeId={homeId}
+          state={standingsTab.state}
+          onRetry={standingsTab.reload}
         />
       )}
 

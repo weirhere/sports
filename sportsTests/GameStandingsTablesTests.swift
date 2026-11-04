@@ -126,9 +126,13 @@ private let afcEast = table(4, "AFC East", [buffalo], parentId: 8)
     }
 
     @Test func scopesFollowTheLeaguesHierarchy() {
-        #expect(GameStandingsModel.scopes(in: .collegeFootball).isEmpty)
-        for league in [League.nfl, .nba, .nhl] {
+        for league in [League.collegeFootball, .mensCollegeBasketball, .womensCollegeBasketball] {
+            #expect(GameStandingsModel.scopes(in: league).isEmpty)
+        }
+        for league in [League.nfl, .nba, .nhl, .mlb] {
             #expect(GameStandingsModel.scopes(in: league) == [.league, .conference, .division])
         }
+        // Two conferences and no divisions: a Division chip would table nothing.
+        #expect(GameStandingsModel.scopes(in: .wnba) == [.league, .conference])
     }
 }

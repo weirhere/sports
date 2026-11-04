@@ -1,4 +1,10 @@
-import type { Game, GameDetail, GameRosterSources, Scoreboard } from "./types";
+import type {
+  Game,
+  GameDetail,
+  GameRosterSources,
+  GameStandings,
+  Scoreboard,
+} from "./types";
 import type { HeadToHead } from "./head-to-head";
 import type { TrophyCase } from "./trophies";
 import type { PlayerGameLog } from "./player-stats";
@@ -143,6 +149,18 @@ export async function getGameRosterSources(
   gameId: string
 ): Promise<GameRosterSources> {
   return fetchJson(`${BASE}/game/${gameId}/roster?league=${league}`);
+}
+
+/**
+ * The Standings tab's tables (iOS, 2026-10-24): the league's conference and
+ * divisional responses, or each side's college-football division, for the
+ * game's own season. Spent on the tab's first open and never polled.
+ */
+export async function getGameStandings(
+  league: League,
+  gameId: string
+): Promise<GameStandings> {
+  return fetchJson(`${BASE}/game/${gameId}/standings?league=${league}`);
 }
 
 /**

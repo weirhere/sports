@@ -38,6 +38,18 @@ interface StandingsListProps {
   showsCut?: boolean;
   /** Highlight (and scroll to) this team's own row. */
   highlightTeamId?: string;
+  /**
+   * Highlight these rows without scrolling to them — the game page's two
+   * sides (iOS, 2026-10-24). A page that tints two rows has no one row to
+   * land on, and a tab switch must never yank the page.
+   */
+  highlightTeamIds?: readonly string[];
+  /**
+   * How strong the tint is. The entity pages' one anchored row whispers
+   * (`header`); the game page's two rows have to be *found* in a 32-team
+   * table, so they wear `elevated`, one step up. Monochrome either way.
+   */
+  highlightFill?: "header" | "elevated";
 }
 
 
@@ -50,7 +62,15 @@ export function StandingsList({
   year,
   showsCut = true,
   highlightTeamId,
+  highlightTeamIds,
+  highlightFill = "header",
 }: StandingsListProps) {
+  // Spelled out whole so Tailwind sees every class; the hover keeps a
+  // highlighted row at its own tint rather than lightening it.
+  const fill =
+    highlightFill === "elevated"
+      ? "bg-bg-elevated hover:bg-bg-elevated group-hover:bg-bg-elevated"
+      : "bg-bg-header";
   const highlightRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
@@ -127,7 +147,9 @@ export function StandingsList({
         ))}
       </div>
       {entries.map((standing, index) => {
-        const isHighlighted = standing.team.id === highlightTeamId;
+        const isAnchor = standing.team.id === highlightTeamId;
+        const isHighlighted =
+          isAnchor || (highlightTeamIds?.includes(standing.team.id) ?? false);
         const qualifies = cutIsVisible && index < 2;
         // The row speaks its own sentence, since the captions above are
         // decoration — and it says "in the championship game" out loud,
@@ -139,12 +161,12 @@ export function StandingsList({
           <Fragment key={standing.team.id}>
             {index > 0 && <div className="ml-4 border-t border-divider" />}
             <Link
-              ref={isHighlighted ? highlightRef : undefined}
+              ref={isAnchor ? highlightRef : undefined}
               href={teamPath(standing.team)}
               aria-label={label}
               className={cn(
                 "group relative flex items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-bg-header",
-                isHighlighted && "bg-bg-header"
+                isHighlighted && fill
               )}
             >
               <span
@@ -153,7 +175,7 @@ export function StandingsList({
                   // The pinned half needs a ground of its own, or the
                   // numbers would scroll through the names.
                   pinned && "self-stretch bg-bg-card group-hover:bg-bg-header",
-                  pinned && isHighlighted && "bg-bg-header"
+                  pinned && isHighlighted && fill
                 )}
               >
                 {/* The championship cut: a bar down the qualifying rows'

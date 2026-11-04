@@ -39,12 +39,15 @@ final class GameStandingsModel {
     private var isLoadingConferences = false
     private var isLoadingDivisions = false
 
-    /// The scopes a league can offer. Every pro league nests a conference
-    /// and its divisions under one league table, so all three; college
-    /// football keeps no 136-team table and nests no divisions, so none,
-    /// and the chip hides — the team page's rule.
+    /// The scopes a league can offer — the team page's rule. The NFL, NBA,
+    /// NHL and MLB nest conferences and their divisions under one league
+    /// table, so all three; the WNBA has conferences alone, so League and
+    /// Conference; college football and basketball keep no league-wide
+    /// table, so none, and the chip hides.
     static func scopes(in league: League) -> [StandingsScope] {
-        Conference.leagueWideId(in: league) == nil ? [] : StandingsScope.allCases
+        guard Conference.leagueWideId(in: league) != nil else { return [] }
+        return Conference.hasDivisions(in: league)
+            ? StandingsScope.allCases : [.league, .conference]
     }
 
     func select(scope value: StandingsScope) {
@@ -55,9 +58,11 @@ final class GameStandingsModel {
     func state(for game: Game) -> State {
         guard key == game.routeKey else { return .loading }
         let league = game.home.team.league
-        // College football has no scopes, so it reads its conferences
-        // whatever the property says.
-        let shownScope: StandingsScope? = Self.scopes(in: league).isEmpty ? nil : self.scope
+        // A league without scopes reads its conferences whatever the
+        // property says, and one without divisions never shows Division.
+        let scopes = Self.scopes(in: league)
+        let shownScope: StandingsScope? = scopes.isEmpty ? nil
+            : scopes.contains(self.scope) ? self.scope : .conference
         if shownScope == .division {
             guard let divisions else { return divisionsFailed ? .failed : .loading }
             return .loaded(Self.tables(at: .division, conferences: [], divisions: divisions,
@@ -132,7 +137,7 @@ final class GameStandingsModel {
         // Nil for the current season keeps the shipped request shape; a
         // past game's page reads that season's tables, membership included.
         let askedYear = year == SeasonYear.year(for: league) ? nil : year
-        if scope == .division, !Self.scopes(in: league).isEmpty {
+        if scope == .division, Self.scopes(in: league).contains(.division) {
             await loadDivisions(key: gameKey, year: askedYear, client: client, force: force)
         } else {
             await loadConferences(key: gameKey, game: game, year: askedYear,
@@ -150,7 +155,7 @@ final class GameStandingsModel {
         // FCS visitor needs FCS's tables beside FBS's. The pro leagues
         // ignore the division and answer the whole league once.
         let league = game.home.team.league
-        let wanted = league == .collegeFootball
+        let wanted = league.hasCollegeDivisions
             ? Array(Set([game.away.team, game.home.team].map {
                 Conference.division(for: $0.conferenceId, in: league) ?? .fbs
             })).sorted { $0.rawValue < $1.rawValue }
