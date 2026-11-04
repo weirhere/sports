@@ -40,8 +40,14 @@ final class PostseasonSwipeUITests: XCTestCase {
     }
 
     private func openPostseason(_ app: XCUIApplication) -> Bool {
-        app.buttons["tables-league-cfb"].firstMatch.waitForExistence(timeout: 20)
+        // The hub's league cards open closed (2026-09-21), so the Top 25
+        // row isn't in the tree until college football's card is tapped.
+        // Asked of the tree, as `openRankingsPoll` does, so either default
+        // works.
+        let cfbSection = app.buttons["tables-league-cfb"].firstMatch
+        guard cfbSection.waitForExistence(timeout: 20) else { return false }
         let top25 = app.buttons["rankings-top25-row"].firstMatch
+        if !top25.waitForExistence(timeout: 3) { cfbSection.tap() }
         guard top25.waitForExistence(timeout: 20) else { return false }
         top25.tap()
         guard selectPreviousSeason(app) else { return false }
