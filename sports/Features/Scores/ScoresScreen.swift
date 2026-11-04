@@ -207,7 +207,7 @@ struct ScoresScreen: View {
         // close. Anything further down folds out of sight or under the
         // deck, and waiting on it reads as a dead beat after the tap.
         let anyOpen = others(in: sections).prefix(StackCollapse.depth + 1)
-            .contains { uiState.isExpanded($0.id) }
+            .contains { uiState.isExpanded($0) }
         let lead = reduceMotion ? 0 : (anyOpen ? 0.06 : 0)
         let fadeStart = reduceMotion ? 0 : lead + 0.1
         if !reduceMotion {
@@ -810,8 +810,8 @@ struct ScoresScreen: View {
                             case .section(let section):
                                 SectionAccordion(
                                     section: section,
-                                    isExpanded: uiState.isExpanded(section.id),
-                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section.id) } }
+                                    isExpanded: uiState.isExpanded(section),
+                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section) } }
                                 )
                                 .equatable()
                                 .cardSurface()
@@ -832,9 +832,9 @@ struct ScoresScreen: View {
                                     // rest fade as they are. Closing a section far
                                     // down relays out the whole stack and stalls the
                                     // first frames of the motion.
-                                    isExpanded: uiState.isExpanded(section.id)
+                                    isExpanded: uiState.isExpanded(section)
                                         && !(stackFolded && index <= StackCollapse.depth),
-                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section.id) } }
+                                    onToggle: { withAnimation(Self.accordionAnimation) { uiState.toggle(section) } }
                                 )
                                 .equatable()
                                 .cardSurface()
@@ -886,10 +886,10 @@ struct ScoresScreen: View {
                             guard !pinchHandled else { return }
                             if value.magnification < 0.8 {
                                 pinchHandled = true
-                                withAnimation(Self.accordionAnimation) { uiState.collapseAll(sections.map(\.id)) }
+                                withAnimation(Self.accordionAnimation) { uiState.collapseAll(sections) }
                             } else if value.magnification > 1.25 {
                                 pinchHandled = true
-                                withAnimation(Self.accordionAnimation) { uiState.expandAll(sections.map(\.id)) }
+                                withAnimation(Self.accordionAnimation) { uiState.expandAll(sections) }
                             }
                         }
                         .onEnded { _ in pinchHandled = false }
@@ -960,13 +960,13 @@ struct ScoresScreen: View {
                             switch row {
                             case .section(let section):
                                 SectionAccordion(section: section,
-                                                 isExpanded: uiState.isExpanded(section.id),
+                                                 isExpanded: uiState.isExpanded(section),
                                                  onToggle: {})
                                     .equatable()
                                     .cardSurface()
                             case .otherSection(let section, _):
                                 SectionAccordion(section: section,
-                                                 isExpanded: uiState.isExpanded(section.id),
+                                                 isExpanded: uiState.isExpanded(section),
                                                  onToggle: {})
                                     .equatable()
                                     .cardSurface()

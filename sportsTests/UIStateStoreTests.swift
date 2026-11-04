@@ -129,8 +129,8 @@ import Testing
         #expect(!store.isExpanded("something-else"))
         #expect(store.isExpanded(leagueId))
 
-        store.expandAll([])
-        store.collapseAll([])
+        store.expandAll([String]())
+        store.collapseAll([String]())
         #expect(store.isExpanded(leagueId))
     }
 

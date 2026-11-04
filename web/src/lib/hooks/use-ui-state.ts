@@ -121,10 +121,21 @@ export function sanitize(raw: unknown): UIState {
  * Whether a Scores section starts closed: a college basketball conference,
  * or its "Other" bucket. A weeknight is ~180 Division I men's games and
  * ~165 women's, each in two conference sections, and open by default that
- * is seven hundred rows between NCAAF and the NFL.
+ * is seven hundred rows between NCAAF and the NFL. A followed one, hoisted
+ * under Following, opens like the rest of what's yours (iOS, WEIR-93).
  */
-export function startsClosed(sectionId: string): boolean {
-  return /^(conf-|other-)(mcbb|wcbb)(:|$)/.test(sectionId);
+export function startsClosed(section: SectionRef): boolean {
+  const { id, isFollowed } = sectionRef(section);
+  return !isFollowed && /^(conf-|other-)(mcbb|wcbb)(:|$)/.test(id);
+}
+
+/** A Scores section, or a bare id for one that is never followed. */
+export type SectionRef = string | { id: string; isFollowed?: boolean };
+
+function sectionRef(section: SectionRef): { id: string; isFollowed: boolean } {
+  return typeof section === "string"
+    ? { id: section, isFollowed: false }
+    : { id: section.id, isFollowed: section.isFollowed === true };
 }
 
 /** The slice that is written: everything but the session-only filters. */
@@ -214,17 +225,20 @@ export function useUIState() {
   );
 
   const isCollapsed = useCallback(
-    (sectionId: string) =>
-      startsClosed(sectionId)
+    (section: SectionRef) => {
+      const sectionId = sectionRef(section).id;
+      return startsClosed(section)
         ? !state.openedSections.includes(sectionId)
-        : state.collapsedSections.includes(sectionId),
+        : state.collapsedSections.includes(sectionId);
+    },
     [state.collapsedSections, state.openedSections]
   );
 
   const toggleSection = useCallback(
-    (sectionId: string) =>
+    (section: SectionRef) => {
+      const sectionId = sectionRef(section).id;
       update((prev) =>
-        startsClosed(sectionId)
+        startsClosed(section)
           ? {
               ...prev,
               openedSections: prev.openedSections.includes(sectionId)
@@ -237,20 +251,24 @@ export function useUIState() {
                 ? prev.collapsedSections.filter((id) => id !== sectionId)
                 : [...prev.collapsedSections, sectionId],
             }
-      ),
+      );
+    },
     [update]
   );
 
   /** The pinch analog's bulk ops, scoped to the ids on screen. */
   const collapseAll = useCallback(
-    (sectionIds: string[]) => {
+    (sections: SectionRef[]) => {
+      const sectionIds = sections.map((section) => sectionRef(section).id);
       const closing = new Set(sectionIds);
       update((prev) => ({
         ...prev,
         collapsedSections: [
           ...new Set([
             ...prev.collapsedSections,
-            ...sectionIds.filter((id) => !startsClosed(id)),
+            ...sections
+              .filter((section) => !startsClosed(section))
+              .map((section) => sectionRef(section).id),
           ]),
         ],
         openedSections: prev.openedSections.filter((id) => !closing.has(id)),
@@ -260,7 +278,8 @@ export function useUIState() {
   );
 
   const expandAll = useCallback(
-    (sectionIds: string[]) => {
+    (sections: SectionRef[]) => {
+      const sectionIds = sections.map((section) => sectionRef(section).id);
       const clearing = new Set(sectionIds);
       update((prev) => ({
         ...prev,
@@ -270,7 +289,9 @@ export function useUIState() {
         openedSections: [
           ...new Set([
             ...prev.openedSections,
-            ...sectionIds.filter(startsClosed),
+            ...sections
+              .filter(startsClosed)
+              .map((section) => sectionRef(section).id),
           ]),
         ],
       }));
