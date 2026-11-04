@@ -313,6 +313,39 @@ private func game(status: GameStatus,
 }
 
 @MainActor
+@Suite struct PollMentionAccessibilityTests {
+    private func mention(_ team: Team = georgia, points: Double?, previous: Int?) -> PollMention {
+        PollMention(team: team, points: points, firstPlaceVotes: 0, previousRank: previous)
+    }
+
+    @Test func votesSpeakThePoints() {
+        let row = PollMentionRow(mention: mention(points: 54, previous: 21), kind: .votes)
+        #expect(row.accessibilitySummary == "Georgia, 54 points")
+        let one = PollMentionRow(mention: mention(points: 1, previous: 0), kind: .votes)
+        #expect(one.accessibilitySummary == "Georgia, 1 point")
+    }
+
+    @Test func dropOutSpeaksTheRankItHeld() {
+        let row = PollMentionRow(mention: mention(points: 54, previous: 21), kind: .droppedOut)
+        #expect(row.accessibilitySummary == "Georgia, ranked 21 last week")
+        // previous: 0 is ESPN's never-ranked: say nothing rather than "ranked 0".
+        let never = PollMentionRow(mention: mention(points: nil, previous: 0), kind: .droppedOut)
+        #expect(never.accessibilitySummary == "Georgia")
+    }
+
+    @Test func cardsOrderVotesMostFirstAndDropOutsByHeldRank() {
+        let a = mention(georgia, points: 12, previous: 0)
+        let b = mention(tennessee, points: 54, previous: 21)
+        let votes = PollMentionsCard(mentions: [a, b], kind: .votes)
+        #expect(votes.ordered.map(\.team.id) == [tennessee.id, georgia.id])
+        let unranked = mention(georgia, points: nil, previous: 0)
+        let dropped = mention(tennessee, points: nil, previous: 24)
+        let card = PollMentionsCard(mentions: [unranked, dropped], kind: .droppedOut)
+        #expect(card.ordered.map(\.team.id) == [tennessee.id, georgia.id])
+    }
+}
+
+@MainActor
 @Suite struct ScheduleRowAccessibilityTests {
     @Test func finalSpeaksOutcomeFromTeamPerspective() {
         // Georgia's page, Georgia won on the road: "at Tennessee, won 27 to 24".
