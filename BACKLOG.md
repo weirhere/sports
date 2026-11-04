@@ -1,5 +1,7 @@
 # BACKLOG.md — sports
 
+> **Moved to Linear (2026-11-03).** Open items now live in the StatSide project in Linear (team WeirHere, issues WEIR-11 to WEIR-93), with one milestone per epic. Add new work and close items there, not here. This file is kept as history.
+
 Priorities: **P0** = must exist before the season starts (~5 weeks). **P1** = in-season. **P2** = when it earns its spot. Nothing gets built that isn't here; new ideas get added here first and discussed.
 
 ## E0 — Foundation
