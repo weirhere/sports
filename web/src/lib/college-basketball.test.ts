@@ -170,6 +170,9 @@ describe("college basketball payloads", () => {
     expect(conferences.every((section) => startsClosed(section.id))).toBe(true);
     expect(startsClosed("conf-cfb:8")).toBe(false);
     expect(startsClosed("league-nba")).toBe(false);
+    // A followed conference is hoisted under Following and opens (WEIR-93).
+    expect(startsClosed({ ...conferences[0], isFollowed: true })).toBe(false);
+    expect(startsClosed(conferences[0])).toBe(true);
   });
 
   it("decode a conference table", () => {

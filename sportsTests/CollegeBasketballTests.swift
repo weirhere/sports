@@ -198,6 +198,29 @@ private let bothLeagues: [League] = [.mensCollegeBasketball, .womensCollegeBaske
         #expect(!UIStateStore.isCollegeBasketballConference(GameSection.conferencePrefix + ConferenceID.cfb(8).token))
         #expect(!UIStateStore.isCollegeBasketballConference(GameSection.pollPrefix + "mcbb"))
     }
+
+    /// A followed conference hoisted under Following starts open; the rest
+    /// of college basketball's conferences still start closed (WEIR-93).
+    @Test func followedCollegeBasketballConferenceStartsOpen() throws {
+        let defaults = try #require(UserDefaults(suiteName: "followed-mcbb-\(UUID().uuidString)"))
+        let store = UIStateStore(defaults: defaults)
+        let id = GameSection.conferencePrefix + ConferenceID.mcbb(2).token
+        var followed = GameSection(id: id, title: "ACC", games: [])
+        followed.isFollowed = true
+        let unfollowed = GameSection(id: id, title: "ACC", games: [])
+
+        #expect(store.isExpanded(followed))
+        #expect(!store.isExpanded(unfollowed))
+
+        // Its own toggle and the pinch both route by the followed state.
+        store.toggle(followed)
+        #expect(!store.isExpanded(followed))
+        store.expandAll([followed])
+        #expect(store.isExpanded(followed))
+        store.collapseAll([followed])
+        #expect(!UIStateStore(defaults: defaults).isExpanded(followed))
+        #expect(!store.isExpanded(unfollowed))
+    }
 }
 
 @MainActor

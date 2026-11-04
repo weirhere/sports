@@ -235,9 +235,8 @@ export function ScoresView({ seed }: ScoresViewProps) {
     favoriteConferences.length === 0 &&
     !uiState.followPromptDismissed;
 
-  const sectionIds = sections.map((section) => section.id);
   const allCollapsed =
-    sectionIds.length > 0 && sectionIds.every(uiState.isCollapsed);
+    sections.length > 0 && sections.every(uiState.isCollapsed);
 
   // What's yours above the Hide all/Show all line, everything else below.
   const { mine, others, hasBoundary } = splitAtHideAll(sections);
@@ -247,8 +246,8 @@ export function ScoresView({ seed }: ScoresViewProps) {
     <SectionAccordion
       key={section.id}
       section={section}
-      isExpanded={!uiState.isCollapsed(section.id)}
-      onToggle={() => uiState.toggleSection(section.id)}
+      isExpanded={!uiState.isCollapsed(section)}
+      onToggle={() => uiState.toggleSection(section)}
     />
   );
 
@@ -292,11 +291,11 @@ export function ScoresView({ seed }: ScoresViewProps) {
             onSelectFocus={handleSelectFocus}
             allCollapsed={allCollapsed}
             onToggleCollapseAll={
-              sectionIds.length > 0
+              sections.length > 0
                 ? () =>
                     allCollapsed
-                      ? uiState.expandAll(sectionIds)
-                      : uiState.collapseAll(sectionIds)
+                      ? uiState.expandAll(sections)
+                      : uiState.collapseAll(sections)
                 : null
             }
           />

@@ -233,8 +233,12 @@ final class UIStateStore {
         slateGroupings = groupings
     }
 
-    func isExpanded(_ sectionId: String) -> Bool {
-        if Self.defaultsOpen(sectionId) {
+    func isExpanded(_ section: GameSection) -> Bool {
+        isExpanded(section.id, followed: section.isFollowed)
+    }
+
+    func isExpanded(_ sectionId: String, followed: Bool = false) -> Bool {
+        if Self.defaultsOpen(sectionId, followed: followed) {
             return !collapsedDays.contains(sectionId)
         }
         return expandedSections.contains(sectionId)
@@ -256,8 +260,13 @@ final class UIStateStore {
     /// ~165 women's, each in two conference sections, and open by default
     /// that is seven hundred rows between NCAAF and the NFL. Its Top 25
     /// stays open, so the night's headline games are still one scroll down.
-    private static func defaultsOpen(_ sectionId: String) -> Bool {
-        if isCollegeBasketballConference(sectionId) { return false }
+    /// A followed one is hoisted under Following and opens like any other
+    /// section there (WEIR-93, 2026-11-04): that is the one conference the
+    /// fan asked for, and a closed card at the top of the page reads as
+    /// nothing on tonight. Its state then lives in `collapsedDays` while
+    /// it is followed and falls back to `expandedSections` after.
+    private static func defaultsOpen(_ sectionId: String, followed: Bool) -> Bool {
+        if isCollegeBasketballConference(sectionId) { return followed }
         return [GameSection.leaguePrefix, GameSection.conferencePrefix,
                 GameSection.pollPrefix, GameSection.otherPrefix]
             .contains { sectionId.hasPrefix($0) }
@@ -277,8 +286,12 @@ final class UIStateStore {
         return false
     }
 
-    func toggle(_ sectionId: String) {
-        if Self.defaultsOpen(sectionId) {
+    func toggle(_ section: GameSection) {
+        toggle(section.id, followed: section.isFollowed)
+    }
+
+    func toggle(_ sectionId: String, followed: Bool = false) {
+        if Self.defaultsOpen(sectionId, followed: followed) {
             if collapsedDays.contains(sectionId) {
                 collapsedDays.remove(sectionId)
             } else {
@@ -295,8 +308,8 @@ final class UIStateStore {
         persist()
     }
 
-    func expand(_ sectionId: String) {
-        if Self.defaultsOpen(sectionId) {
+    func expand(_ sectionId: String, followed: Bool = false) {
+        if Self.defaultsOpen(sectionId, followed: followed) {
             guard collapsedDays.contains(sectionId) else { return }
             collapsedDays.remove(sectionId)
             persistCollapsedDays()
@@ -311,7 +324,23 @@ final class UIStateStore {
     /// passes (the sections currently on screen) so day state for other
     /// weeks is never touched. Guards keep a no-op pinch from invalidating
     /// views or rewriting defaults.
+    func collapseAll(_ sections: [GameSection]) {
+        collapseAll(sections.map { ($0.id, $0.isFollowed) })
+    }
+
+    func expandAll(_ sections: [GameSection]) {
+        expandAll(sections.map { ($0.id, $0.isFollowed) })
+    }
+
     func collapseAll(_ sectionIds: [String]) {
+        collapseAll(sectionIds.map { ($0, false) })
+    }
+
+    func expandAll(_ sectionIds: [String]) {
+        expandAll(sectionIds.map { ($0, false) })
+    }
+
+    private func collapseAll(_ sectionIds: [(id: String, followed: Bool)]) {
         let (dayIds, otherIds) = partition(sectionIds)
         if !collapsedDays.isSuperset(of: dayIds) {
             collapsedDays.formUnion(dayIds)
@@ -323,7 +352,7 @@ final class UIStateStore {
         }
     }
 
-    func expandAll(_ sectionIds: [String]) {
+    private func expandAll(_ sectionIds: [(id: String, followed: Bool)]) {
         let (dayIds, otherIds) = partition(sectionIds)
         if !collapsedDays.isDisjoint(with: dayIds) {
             collapsedDays.subtract(dayIds)
@@ -337,11 +366,11 @@ final class UIStateStore {
 
     /// Defaults-open sections track collapsed state; everything else
     /// tracks expanded.
-    private func partition(_ sectionIds: [String]) -> (dayIds: Set<String>, otherIds: Set<String>) {
+    private func partition(_ sectionIds: [(id: String, followed: Bool)]) -> (dayIds: Set<String>, otherIds: Set<String>) {
         var dayIds = Set<String>()
         var otherIds = Set<String>()
-        for id in sectionIds {
-            if Self.defaultsOpen(id) {
+        for (id, followed) in sectionIds {
+            if Self.defaultsOpen(id, followed: followed) {
                 dayIds.insert(id)
             } else {
                 otherIds.insert(id)
