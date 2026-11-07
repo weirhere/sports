@@ -910,6 +910,89 @@ private var nbaTitles: [Int: String] { TrophyRegistry.nbaChampionships.winners }
     }
 }
 
+// MARK: - The wire's own postseason wording
+
+/// Every headline here is verbatim from a live probe of ESPN's team
+/// schedules (2026-11-06, seasontype 3 and the in-season cups), across
+/// both of its spellings eras where it has two. Before this suite, the
+/// pro leagues' trophy wording was reasoned rather than seen, and the
+/// reasoning was wrong twice: the NHL's title carries a " - Game N" tail
+/// the round test read as the last word, and neither league's conference
+/// round says "Conference" any more.
+@Suite struct ProPostseasonHeadlines {
+    @Test("Each league's title and conference round, as ESPN prints them", arguments: [
+        ("Super Bowl LIX", League.nfl, "Super Bowl"),
+        ("Super Bowl XLIX", League.nfl, "Super Bowl"),
+        ("AFC Championship", League.nfl, "AFC Championship"),
+        ("AFC CHAMPIONSHIP", League.nfl, "AFC Championship"),
+        ("NBA Finals - Game 5", League.nba, "NBA Finals"),
+        ("NBA FINALS - GAME 7", League.nba, "NBA Finals"),
+        ("East Finals - Game 4", League.nba, "Eastern Conference Finals"),
+        ("West Finals - Game 5", League.nba, "Western Conference Finals"),
+        ("EASTERN CONFERENCE FINALS - GAME 6", League.nba, "Eastern Conference Finals"),
+        ("WESTERN CONFERENCE FINALS - GAME 5", League.nba, "Western Conference Finals"),
+        ("NBA Cup Championship", League.nba, "NBA Cup"),
+        ("NBA In-Season Tournament Championship", League.nba, "NBA Cup"),
+        ("Stanley Cup Final - Game 6", League.nhl, "Stanley Cup"),
+        ("STANLEY CUP FINAL - GAME 6", League.nhl, "Stanley Cup"),
+        ("East Final - Game 5", League.nhl, "Eastern Conference Final"),
+        ("West Final - Game 6", League.nhl, "Western Conference Final"),
+        ("WESTERN CONFERENCE FINALS - GAME 7", League.nhl, "Western Conference Final"),
+        ("World Series - Game 5", League.mlb, "World Series"),
+        ("NLCS - Game 6", League.mlb, "NL Pennant"),
+        ("WNBA Finals - Game 5", League.wnba, "WNBA Finals"),
+        ("WNBA Commissioner's Cup Championship", League.wnba, "Commissioner's Cup"),
+    ])
+    func recognized(headline: String, league: League, trophy: String) {
+        #expect(TrophyKind.from(headline: headline, league: league)?.singular == trophy)
+    }
+
+    @Test("Every earlier round wins nothing", arguments: [
+        ("NFC Wild Card Playoffs", League.nfl),
+        ("AFC DIVISIONAL PLAYOFF", League.nfl),
+        ("East 1st Round - Game 1", League.nba),
+        ("East Semifinals - Game 5", League.nba),
+        ("EASTERN CONFERENCE SEMIFINALS - GAME 4", League.nba),
+        ("WESTERN CONFERENCE 1st ROUND - GAME 4", League.nba),
+        ("NBA In-Season Tournament - Semifinals", League.nba),
+        ("NBA Cup - Semifinals", League.nba),
+        ("East 2nd Round - Game 7", League.nhl),
+        ("WESTERN CONFERENCE SECOND ROUND - GAME 4", League.nhl),
+        ("Stanley Cup Semifinals - Game 1", League.nhl),
+        ("Central 1st Round - Game 1", League.nhl),
+        ("NLDS - Game 5", League.mlb),
+        ("First Round - Game 2", League.wnba),
+        ("WNBA Semifinals - Game 4", League.wnba),
+        ("WNBA Commissioner's Cup", League.wnba),
+    ])
+    func earlierRounds(headline: String, league: League) {
+        #expect(TrophyKind.from(headline: headline, league: league) == nil)
+    }
+
+    /// The bug the old wording produced on the 2010s spelling: the game
+    /// number stayed in the name, so each game of the conference final was
+    /// a trophy of its own and every one the team won was a row.
+    @Test("A conference final is one trophy across its games and its spellings")
+    func conferenceFinalIsOneTrophy() {
+        let kinds = ["EASTERN CONFERENCE FINALS - GAME 1", "EASTERN CONFERENCE FINALS - GAME 6",
+                     "East Finals - Game 4"]
+            .map { TrophyKind.from(headline: $0, league: .nba) }
+        #expect(Set(kinds).count == 1)
+    }
+
+    /// The Panthers' 2025 run, as the wire shows it: a Final won in six.
+    @Test("A Stanley Cup Final series derives one Stanley Cup")
+    func stanleyCupSeries() {
+        let results = [false, true, true, false, true, true]
+        let games = results.enumerated().map { index, won in
+            titledGame("\(index)", headline: "Stanley Cup Final - Game \(index + 1)",
+                       day: index * 2 + 1, mineWon: won)
+        }
+        let trophies = TrophyCase.derive(from: season(games), league: .nhl)
+        #expect(trophies.map(\.kind.singular) == ["Stanley Cup"])
+    }
+}
+
 // MARK: - The NHL's honour roll (COR-100)
 
 /// Every NHL team's ESPN id by its abbreviation, read off the captured NHL

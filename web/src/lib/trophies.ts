@@ -292,7 +292,12 @@ export function trophyKindFromHeadline(
       // The in-season tournament is a real trophy; its group stage and its
       // earlier rounds are not. "NBA Cup - Group Play" and "NBA Cup -
       // Quarterfinals" are both confirmed headlines on regular-season games.
-      if (text.includes("nba cup") && decidesATrophy(text)) {
+      // Its first edition (2023) was still the "In-Season Tournament" on the
+      // wire — "NBA In-Season Tournament Championship" — and it is the same cup.
+      if (
+        (text.includes("nba cup") || text.includes("in-season tournament")) &&
+        decidesATrophy(text)
+      ) {
         return { singular: "NBA Cup", plural: "NBA Cups", tier: "league" };
       }
       return conferenceFinals(text, "nba");

@@ -154,7 +154,11 @@ extension TrophyKind {
             // regular-season games, which is why this asks whether the
             // round *decided* anything rather than whether the string
             // mentions a final.
-            if text.contains("nba cup"), decidesATrophy(text) {
+            // Its first edition (2023) was still the "In-Season Tournament"
+            // on the wire — "NBA In-Season Tournament Championship", the
+            // Lakers' (probed 2026-11-06) — and it is the same cup.
+            if text.contains("nba cup") || text.contains("in-season tournament"),
+               decidesATrophy(text) {
                 return TrophyKind(singular: "NBA Cup", plural: "NBA Cups", tier: .league)
             }
             return conferenceFinals(text: text, league: .nba)
