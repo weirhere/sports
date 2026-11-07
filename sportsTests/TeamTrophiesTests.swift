@@ -394,7 +394,7 @@ private let sec = TrophyKind(singular: "SEC Championship",
     /// nothing reads as all-time that the registry doesn't speak for.
     @Test("A league with no list contributes nothing and claims nothing")
     func unpopulatedLeaguesAreGated() {
-        for league in League.allCases where league != .collegeFootball {
+        for league in League.allCases where ![.collegeFootball, .nfl].contains(league) {
             #expect(TrophyRegistry.trophies(teamId: "61", league: league).isEmpty)
             #expect(TrophyRegistry.coveredKinds(in: league).isEmpty)
             #expect(TrophyRegistry.sources(in: league).isEmpty)
@@ -516,5 +516,155 @@ private var cfbTitles: [Int: String] { TrophyRegistry.collegeFootballNationalTit
         // The conference row stays scoped and carries no source.
         #expect(shelf.groups.last?.coverage == .since(2014))
         #expect(shelf.groups.last?.source == nil)
+    }
+}
+
+// MARK: - The NFL's honour rolls (COR-98)
+
+/// Every NFL team's ESPN id by its abbreviation, read off the captured
+/// `nfl/teams` payload — the NFL twin of `fbsIds()`, so a mistyped id fails
+/// as a wrong total rather than passing as another franchise's title.
+private func nflIds() throws -> [String: String] {
+    let dto = try JSONDecoder().decode(TeamsResponseDTO.self, from: fixture("nfl-teams"))
+    var ids: [String: String] = [:]
+    for team in ESPNMapper.teamsById(from: dto, league: .nfl).values {
+        if let abbreviation = team.abbreviation { ids[abbreviation] = team.id }
+    }
+    return ids
+}
+
+/// Pre-Super-Bowl titles by today's franchise, counted from Wikipedia's
+/// year-by-year list rather than from the rows. Ten franchises, forty
+/// seasons: the other six of 1920–1965 went to teams with no successor.
+private let nflChampionshipTotals: [(String, Int)] = [
+    ("GB", 9), ("CHI", 8), ("NYG", 4), ("DET", 4), ("CLE", 4),
+    ("PHI", 3), ("IND", 2), ("ARI", 2), ("LAR", 2), ("WSH", 2),
+]
+
+/// Super Bowls I–XLVIII by today's franchise, counted the same way.
+private let superBowlTotals: [(String, Int)] = [
+    ("PIT", 6), ("SF", 5), ("DAL", 5), ("GB", 4), ("NYG", 4),
+    ("NE", 3), ("WSH", 3), ("LV", 3), ("DEN", 2), ("MIA", 2),
+    ("BAL", 2), ("IND", 2), ("NYJ", 1), ("KC", 1), ("CHI", 1),
+    ("TB", 1), ("NO", 1), ("SEA", 1), ("LAR", 1),
+]
+
+private let superBowl = TrophyKind(singular: "Super Bowl", plural: "Super Bowls", tier: .league)
+private let afc = TrophyKind(singular: "AFC Championship",
+                             plural: "AFC Championships", tier: .conference)
+
+private func nflCount(_ list: TrophyRegistry.TitleList, _ abbreviation: String) throws -> Int {
+    let id = try #require(try nflIds()[abbreviation], "no NFL team \(abbreviation)")
+    return list.winners.values.filter { $0 == id }.count
+}
+
+private func nflShelf(_ abbreviation: String, derived: [Trophy] = []) throws -> TrophyCase {
+    let id = try #require(try nflIds()[abbreviation])
+    return TrophyCase.assemble(
+        derived: derived,
+        registry: TrophyRegistry.trophies(teamId: id, league: .nfl),
+        allTimeKinds: TrophyRegistry.coveredKinds(in: .nfl),
+        derivedFloor: League.nfl.seasonFloor,
+        sources: TrophyRegistry.sources(in: .nfl)
+    )
+}
+
+@Suite struct NFLTitles {
+    private var championships: [Int: String] { TrophyRegistry.nflChampionships.winners }
+    private var superBowls: [Int: String] { TrophyRegistry.superBowls.winners }
+
+    /// COR-94: 1920–1965 only, so no season holds both an NFL Championship
+    /// and a Super Bowl, and the six seasons whose champion has no
+    /// successor are left empty.
+    @Test("NFL Championships span 1920–65, less the six defunct champions")
+    func championshipSpan() {
+        let defunct: Set = [1920, 1922, 1923, 1924, 1926, 1928]
+        #expect(Set(championships.keys) == Set(1920...1965).subtracting(defunct))
+        #expect(championships.count == 40)
+    }
+
+    @Test("Super Bowls run 1966–2013, one a season, and stop at the floor")
+    func superBowlSpan() {
+        #expect(Set(superBowls.keys) == Set(1966...2013))
+        #expect(superBowls.keys.allSatisfy { $0 < League.nfl.seasonFloor })
+    }
+
+    @Test("Every winner is a team ESPN knows")
+    func everyIdResolves() throws {
+        let known = Set(try nflIds().values)
+        #expect(known.count == 32)
+        #expect(Set(championships.values).union(superBowls.values).isSubset(of: known))
+    }
+
+    @Test("Each franchise's NFL Championships match the source", arguments: nflChampionshipTotals)
+    func perFranchiseChampionships(abbreviation: String, titles: Int) throws {
+        #expect(try nflCount(TrophyRegistry.nflChampionships, abbreviation) == titles)
+    }
+
+    @Test("Each franchise's Super Bowls match the source", arguments: superBowlTotals)
+    func perFranchiseSuperBowls(abbreviation: String, titles: Int) throws {
+        #expect(try nflCount(TrophyRegistry.superBowls, abbreviation) == titles)
+    }
+
+    @Test("The listed franchises account for every row")
+    func totalsAccountForEveryRow() {
+        #expect(nflChampionshipTotals.map(\.1).reduce(0, +) == championships.count)
+        #expect(superBowlTotals.map(\.1).reduce(0, +) == superBowls.count)
+    }
+
+    /// The third call, case by case: a title follows the franchise through a
+    /// move, and never follows a name to a team that only took it.
+    @Test("Titles follow the franchise, not the city")
+    func titlesFollowTheFranchise() throws {
+        let ids = try nflIds()
+        #expect(championships[1945] == ids["LAR"])   // Cleveland Rams
+        #expect(championships[1958] == ids["IND"])   // Baltimore Colts
+        #expect(championships[1925] == ids["ARI"])   // Chicago Cardinals
+        #expect(superBowls[1970] == ids["IND"])      // Baltimore Colts
+        #expect(superBowls[1999] == ids["LAR"])      // St. Louis Rams
+        #expect(superBowls[1983] == ids["LV"])       // Los Angeles Raiders
+        // The Browns' history stayed in Cleveland; the Ravens hold only theirs.
+        #expect(try nflCount(TrophyRegistry.nflChampionships, "BAL") == 0)
+    }
+
+    @Test("Both lists are verified, covered, and carry no source")
+    func nflIsCovered() {
+        #expect(TrophyRegistry.superBowls.verified)
+        #expect(TrophyRegistry.nflChampionships.verified)
+        #expect(TrophyRegistry.coveredKinds(in: .nfl) == ["super bowl", "nfl championship"])
+        #expect(TrophyRegistry.sources(in: .nfl).isEmpty)
+    }
+
+    /// The decision's own check: Packers 9 + 4 = 13, their own count, on two
+    /// all-time rows — the most-won leads its tier.
+    @Test("The Packers' shelf reads nine and four")
+    func packersShelf() throws {
+        let shelf = try nflShelf("GB")
+        #expect(shelf.groups.map(\.title) == ["NFL Championships", "Super Bowls"])
+        #expect(shelf.groups.map(\.count) == [9, 4])
+        #expect(shelf.groups.allSatisfy { $0.coverage == .allTime })
+        #expect(shelf.coverageFloor == nil)
+    }
+
+    @Test("The Steelers hold six Super Bowls and no NFL Championship")
+    func steelersShelf() throws {
+        let shelf = try nflShelf("PIT")
+        #expect(shelf.groups.map(\.title) == ["Super Bowls"])
+        #expect(shelf.groups.first?.count == 6)
+    }
+
+    /// The Patriots end to end: three registry Super Bowls and the three the
+    /// wire derives (2014, 2016, 2018) on one all-time row; the AFC title
+    /// stays scoped to the derivation.
+    @Test("A registry Super Bowl and a derived one land on the same row")
+    func patriotsShelf() throws {
+        let derived = [Trophy(kind: superBowl, year: 2014), Trophy(kind: superBowl, year: 2016),
+                       Trophy(kind: superBowl, year: 2018), Trophy(kind: afc, year: 2017)]
+        let shelf = try nflShelf("NE", derived: derived)
+        let titles = try #require(shelf.groups.first)
+        #expect(titles.title == "Super Bowls")
+        #expect(titles.years == [2018, 2016, 2014, 2004, 2003, 2001])
+        #expect(titles.coverage == .allTime)
+        #expect(shelf.groups.last?.coverage == .since(2014))
     }
 }
