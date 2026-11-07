@@ -63,9 +63,10 @@ export function playerHref(
  * player's school is the team badge already over the card. `collegeHref` is
  * the school's team page, when the caller found one.
  *
- * **No hometown row yet.** The athlete payload carries `displayBirthPlace`
- * (found 2026-11-02, while probing for college); the row is a BACKLOG item,
- * not a missing source.
+ * **Born** sits right after the league's own row (2026-11-07). It is "Born"
+ * and not "Hometown" because ESPN's `displayBirthPlace` is a birthplace,
+ * which for a lot of pros isn't where they grew up, and the coach page
+ * already labels the same field "Born".
  */
 export function playerProfileRows(
   player: RosterPlayer,
@@ -93,6 +94,7 @@ export function playerProfileRows(
           : spoken.charAt(0).toUpperCase() + spoken.slice(1),
     });
   }
+  if (player.birthPlace) rows.push({ label: "Born", value: player.birthPlace });
 
   if (player.positionName) {
     rows.push({ label: "Position", value: player.positionName });
@@ -148,6 +150,8 @@ export interface AthleteProfile {
   teamLogoUrl?: string;
   /** Absent, not empty, for a player who didn't play college. */
   college?: PlayerCollege;
+  /** `displayBirthPlace`, "Akron, OH". */
+  birthPlace?: string;
 }
 
 /**
@@ -180,6 +184,7 @@ export function mergePlayer(
     headshotUrl: base.headshotUrl ?? athlete.headshotUrl,
     injuryStatus: base.injuryStatus ?? athlete.injuryStatus,
     college: base.college ?? athlete.college,
+    birthPlace: base.birthPlace ?? athlete.birthPlace,
   };
 }
 

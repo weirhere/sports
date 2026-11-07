@@ -45,6 +45,10 @@ nonisolated struct PlayerIdentity: Sendable, Hashable, Identifiable {
     /// Where a pro played college (2026-11-02). The roster door carries it;
     /// the others get it from the athlete fetch the page already makes.
     var college: College?
+    /// Where they were born, as ESPN formats it ("Akron, OH"). The athlete
+    /// payload's `displayBirthPlace` (2026-11-07); no roster door carries
+    /// it, so every page gets it from the athlete fetch.
+    var birthPlace: String?
 
     /// A school, as ESPN names it on a pro's roster row and athlete payload.
     struct College: Sendable, Hashable {
@@ -114,9 +118,10 @@ nonisolated extension PlayerIdentity {
     /// **College** is the pro leagues' only (2026-11-02): a college football
     /// player's school is the team badge already over the card.
     ///
-    /// **No hometown row yet.** The athlete payload carries
-    /// `displayBirthPlace` (found 2026-11-02, while probing for college); the
-    /// row is a BACKLOG item, not a missing source.
+    /// **Born** sits right after the league's own row (2026-11-07). It is
+    /// "Born" and not "Hometown" because ESPN's field is a birthplace, which
+    /// for a lot of pros isn't where they grew up — and the coach page
+    /// already labels the same field "Born".
     var profileRows: [(label: String, value: String)] {
         var rows: [(label: String, value: String)] = []
         if let height, !height.isEmpty { rows.append((label: "Height", value: height)) }
@@ -134,6 +139,9 @@ nonisolated extension PlayerIdentity {
                 let value = spoken == classAbbreviation ? classAbbreviation : spoken.capitalized
                 rows.append((label: "Class", value: value))
             }
+        }
+        if let birthPlace, !birthPlace.isEmpty {
+            rows.append((label: Self.birthPlaceLabel, value: birthPlace))
         }
         if let positionName, !positionName.isEmpty {
             rows.append((label: "Position", value: positionName))
@@ -159,6 +167,8 @@ nonisolated extension PlayerIdentity {
     /// both with their own names attached.
     /// The College row's label, so the page can find the row it links.
     static let collegeLabel = "College"
+    /// The birthplace row's label, the coach page's word for the same field.
+    static let birthPlaceLabel = "Born"
 
     var spokenSummary: String {
         var parts: [String] = [name]

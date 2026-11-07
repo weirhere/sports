@@ -230,6 +230,10 @@ nonisolated struct AthleteProfileClient {
         filled.weight = filled.weight ?? athlete.displayWeight
         filled.headshotURL = filled.headshotURL ?? athlete.headshot?.href
         filled.college = filled.college ?? PlayerIdentity.College(dto: athlete.college)
+        let birthPlace = athlete.displayBirthPlace?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let birthPlace, !birthPlace.isEmpty {
+            filled.birthPlace = filled.birthPlace ?? birthPlace
+        }
         // `status` is the roster's injury line in the other door's data, and
         // ESPN says "Active" here for everyone who isn't hurt — which is not
         // a fact worth a row of its own.
@@ -258,6 +262,8 @@ nonisolated struct ProfileAthleteDTO: Decodable {
     /// The roster row's shape (2026-11-02). Absent, not null, for a player
     /// who didn't play college.
     let college: CollegeRefDTO?
+    /// "Akron, OH" (2026-11-07). A birthplace, not where they grew up.
+    let displayBirthPlace: String?
 }
 
 nonisolated struct ProfileTeamDTO: Decodable {
