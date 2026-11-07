@@ -59,6 +59,7 @@ nonisolated enum TrophyRegistry {
         .collegeFootball: [collegeFootballNationalTitles],
         .nfl: [superBowls, nflChampionships],
         .nba: [nbaChampionships],
+        .nhl: [stanleyCups],
     ]
 
     /// Every registry trophy this team holds.
