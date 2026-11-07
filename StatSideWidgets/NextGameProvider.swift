@@ -100,7 +100,9 @@ nonisolated struct NextGameProvider: TimelineProvider {
             let entry = NextGameEntry(date: now, state: .games(widgetGames, stale: false))
             return (entry, GameSelection.nextRefresh(after: now, games: relevant))
         } else {
-            Self.logger.error("Widget fetch failed for every followed league")
+            // The per-league reasons are already logged above; this line says
+            // what the card did about it.
+            Self.logger.error("widget fetch: every followed league failed")
             // Last-good beats blank: re-serve the snapshot marked stale and
             // retry on a short leash.
             if let snapshot = WidgetSnapshot.load(from: defaults) {
@@ -128,9 +130,11 @@ nonisolated struct NextGameProvider: TimelineProvider {
                 }
                 // Dated at the snapshot's save, not now: the stale marker's
                 // "as of" should say when the data was true.
+                Self.logger.info("widget fetch: snapshot from \(snapshot.savedAt.formatted(), privacy: .public) served as stale")
                 return (NextGameEntry(date: snapshot.savedAt, state: .games(games, stale: true)),
                         now.addingTimeInterval(15 * 60))
             }
+            Self.logger.error("widget fetch: no snapshot to fall back on, showing the empty state")
             return (NextGameEntry(date: now, state: .noGames), now.addingTimeInterval(15 * 60))
         }
     }
@@ -139,13 +143,27 @@ nonisolated struct NextGameProvider: TimelineProvider {
     /// flight together. `nil` marks a league that failed, so the caller can
     /// tell "nobody plays" from "nobody answered" — the two look identical
     /// in a flattened list of games.
+    ///
+    /// Every league logs its outcome (COR-13, 2026-11-07): `widget fetch:
+    /// ok` with the count, or `widget fetch: failed` with the reason
+    /// (`WidgetFetchFailure`). This used to be a `try?`, which kept the card
+    /// alive and threw the reason away, and a league that failed while the
+    /// other answered left no trace at all.
     private static func currentGames(in leagues: [League]) async -> [[Game]?] {
         let window = GameSelection.fetchWindow(around: .now)
         return await withTaskGroup(of: [Game]?.self) { group in
             for league in leagues {
                 group.addTask {
-                    try? await DataProvider.makeClient(league: league)
-                        .scoreboard(days: window).games
+                    do {
+                        let games = try await DataProvider.makeClient(league: league)
+                            .scoreboard(days: window).games
+                        Self.logger.info("widget fetch: ok \(league.rawValue, privacy: .public), \(games.count) games")
+                        return games
+                    } catch {
+                        let failure = WidgetFetchFailure(error)
+                        Self.logger.error("widget fetch: failed \(league.rawValue, privacy: .public), \(failure.label, privacy: .public)")
+                        return nil
+                    }
                 }
             }
             return await group.reduce(into: [[Game]?]()) { $0.append($1) }
