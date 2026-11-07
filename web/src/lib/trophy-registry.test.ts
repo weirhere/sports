@@ -4,6 +4,7 @@ import { LEAGUES } from "./leagues";
 import { assembleTrophyCase, type TrophyKind } from "./trophies";
 import { registryCoveredKinds, registrySources, registryTrophies } from "./trophy-registry";
 import { COLLEGE_FOOTBALL_NATIONAL_TITLES } from "./trophy-registry-college-football";
+import { NBA_CHAMPIONSHIPS } from "./trophy-registry-nba";
 import { NFL_CHAMPIONSHIPS, SUPER_BOWLS } from "./trophy-registry-nfl";
 import { STANLEY_CUPS } from "./trophy-registry-nhl";
 
@@ -57,7 +58,7 @@ describe("college football's honour roll", () => {
   it("covers the national title, names its source, and nothing else", () => {
     expect(registryCoveredKinds("cfb")).toEqual(new Set(["national championship"]));
     expect(registrySources("cfb").get("national championship")).toBe(SOURCE);
-    for (const league of LEAGUES.filter((l) => l !== "cfb" && l !== "nfl" && l !== "nhl")) {
+    for (const league of LEAGUES.filter((l) => l !== "cfb" && l !== "nfl" && l !== "nba" && l !== "nhl")) {
       expect(registryCoveredKinds(league).size).toBe(0);
       expect(registrySources(league).size).toBe(0);
     }
@@ -174,6 +175,58 @@ describe("the NFL's honour rolls", () => {
     expect(titles.years).toEqual([2018, 2016, 2014, 2004, 2003, 2001]);
     expect(titles.coverage).toEqual({ kind: "allTime" });
     expect(conference.coverage).toEqual({ kind: "since", year: 2014 });
+  });
+});
+
+const nbaFinals: TrophyKind = { singular: "NBA Finals", plural: "NBA Finals", tier: "league" };
+
+/**
+ * Each franchise's titles through 2013–14, from the NBA's champions table with
+ * relocations carried. iOS's twin resolves the same ids from abbreviations in
+ * the captured NBA standings.
+ */
+const NBA_TOTALS: [string, string, number][] = [
+  ["BOS", "2", 17], ["LAL", "13", 16], ["CHI", "4", 6], ["SA", "24", 5],
+  ["GS", "9", 3], ["PHI", "20", 3], ["DET", "8", 3], ["MIA", "14", 3],
+  ["NY", "18", 2], ["HOU", "10", 2], ["ATL", "1", 1], ["SAC", "23", 1],
+  ["MIL", "15", 1], ["POR", "22", 1], ["WSH", "27", 1], ["OKC", "25", 1],
+  ["DAL", "6", 1],
+];
+
+const nbaYears = Object.keys(NBA_CHAMPIONSHIPS.winners).map(Number);
+
+describe("the NBA's honour roll", () => {
+  it("has one champion every season 1946–47 to 2013–14, bar 1947–48", () => {
+    const expected = [];
+    for (let year = 1946; year <= 2013; year++) if (year !== 1947) expected.push(year);
+    expect(nbaYears.sort((a, b) => a - b)).toEqual(expected);
+  });
+
+  it.each(NBA_TOTALS)("%s (%s) holds %i", (_, id, titles) => {
+    expect(registryTrophies(id, "nba")).toHaveLength(titles);
+  });
+
+  it("accounts for every row through the franchises listed", () => {
+    expect(NBA_TOTALS.reduce((sum, [, , n]) => sum + n, 0)).toBe(nbaYears.length);
+  });
+
+  it("covers the NBA Finals with no source", () => {
+    expect(registryCoveredKinds("nba")).toEqual(new Set(["nba finals"]));
+    expect(registrySources("nba").size).toBe(0);
+  });
+
+  it("reads the Celtics at 18, all-time", () => {
+    const shelf = assembleTrophyCase({
+      derived: [{ kind: nbaFinals, year: 2023 }],
+      registry: registryTrophies("2", "nba"),
+      allTimeKinds: registryCoveredKinds("nba"),
+      derivedFloor: 2014,
+      sources: registrySources("nba"),
+    });
+    const [titles] = shelf.groups;
+    expect(titles.years).toHaveLength(18);
+    expect(titles.coverage).toEqual({ kind: "allTime" });
+    expect(titles.source).toBeUndefined();
   });
 });
 
