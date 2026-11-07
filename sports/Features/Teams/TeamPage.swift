@@ -55,6 +55,9 @@ struct TeamPage: View {
     /// appearance of the Trophies tab.
     @State private var trophyHistoryKey: String?
     @State private var trophyHistoryLoading = false
+    /// Every season of the history fetch failed — the Retry state, told
+    /// apart from a team that has won nothing.
+    @State private var trophyHistoryFailed = false
     /// The built shelf. Nil until the history fetch finishes — a shelf
     /// that fills in season by season shows a count that changes under the
     /// reader, which for a number the page presents as a fact is worse
@@ -884,22 +887,17 @@ struct TeamPage: View {
         .padding(.bottom, Spacing.sm)
     }
 
-    /// Every season's derivation plus the registry's closed history.
+    /// The derivation over the fetched window plus the registry's closed
+    /// history.
     ///
     /// Built **once**, when the history fetch finishes, and held in
     /// `shelf` — not computed in `body`. This page's body re-evaluates on
     /// scroll (the inline title tracks scroll geometry), and classifying a
     /// dozen seasons of games on every frame is the cost the 2026-09-01
     /// memoization pass took off the Scores pipeline for the same reason.
-    ///
-    /// Reads straight off the schedule cache, so a season the page already
-    /// fetched for another tab costs nothing.
-    private func assembleTrophyCase() -> TrophyCase {
-        let derived = availableSeasons
-            .compactMap { schedules[$0] }
-            .flatMap { TrophyCase.derive(from: $0, league: pageLeague) }
-        return TrophyCase.assemble(
-            derived: derived,
+    private func assembleTrophyCase(from games: [Game]) -> TrophyCase {
+        TrophyCase.assemble(
+            derived: TrophyCase.derive(from: games, teamId: team.id, league: pageLeague),
             registry: TrophyRegistry.trophies(teamId: team.id, league: pageLeague),
             allTimeKinds: TrophyRegistry.coveredKinds(in: pageLeague),
             derivedFloor: pageLeague.seasonFloor,
@@ -930,7 +928,7 @@ struct TeamPage: View {
                     TeamTrophiesCard(trophyCase: shelf)
                         .cardSurface()
                 }
-            } else if trophyHistoryFailedWholesale {
+            } else if trophyHistoryFailed {
                 StatusMessage(text: "Couldn't load the trophy case.",
                               retry: { Task { await loadTrophyHistory(force: true) } })
                     .cardSurface()
@@ -943,13 +941,6 @@ struct TeamPage: View {
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
         .task(id: team.followKey) { await loadTrophyHistory() }
-    }
-
-    /// Told apart from a genuinely empty shelf: a team that has won nothing
-    /// and a network that answered nothing look identical on this tab, and
-    /// only one of them is worth a Retry button.
-    private var trophyHistoryFailedWholesale: Bool {
-        availableSeasons.allSatisfy { failedYears.contains($0) }
     }
 
     private var gamesContent: some View {
@@ -1259,44 +1250,53 @@ struct TeamPage: View {
         }
     }
 
-    /// Fills the schedule cache back to the league's season floor, which is
-    /// what a trophy case is derived from.
+    /// Fetches the league's season floor through now and derives the shelf
+    /// from it (COR-24).
     ///
-    /// **Sequential, and deliberately so.** Each season is three parallel
-    /// requests already (`load(year:)` asks for all three season types), so
-    /// firing a dozen seasons at once would queue thirteen behind
-    /// `URLSession`'s six-connection ceiling and put ~39 requests on ESPN in
-    /// one burst — the pile-up the day-fetch debounce exists to stop. One
-    /// season at a time costs a couple of seconds behind a spinner and is
-    /// the politest shape available; the tab is opened deliberately, once
-    /// per visit, and never polled.
+    /// The same window fetch the head-to-head tab walks a series with,
+    /// `ScoresProviding.seasons(of:from:through:)`: two requests a season
+    /// rather than `load(year:)`'s three (a preseason can't win a trophy),
+    /// three seasons in flight at a time — about two dozen requests in four
+    /// waves where the old sequential loop was three dozen in twelve. The
+    /// tab is opened deliberately, once per visit, and never polled.
     ///
-    /// Cheap on a page that has been browsed: a season already in the cache
-    /// is skipped, so the current season never refetches and flipping
-    /// through the season chip warms this for free.
+    /// The games stay the shelf's own and never enter `schedules`: a
+    /// preseason-less season in that cache would empty the Games tab's
+    /// Preseason card for the season it landed in.
+    ///
+    /// A season that fails is dropped from the derivation; only a window
+    /// where every season failed throws, and that one leaves the shelf nil
+    /// for the Retry state — a team that has won nothing and a network that
+    /// answered nothing would otherwise look identical on this tab.
     private func loadTrophyHistory(force: Bool = false) async {
         let key = team.followKey
         // A page handed a different team starts over — the same trap the
-        // roster fetch is keyed against, and the schedule cache is keyed by
-        // year alone, so it cannot tell two teams apart on its own.
+        // roster fetch is keyed against.
         if trophyHistoryKey != key {
             trophyHistoryKey = nil
             shelf = nil
+            trophyHistoryFailed = false
         }
         guard force || trophyHistoryKey != key, !trophyHistoryLoading else { return }
         trophyHistoryLoading = true
         defer { trophyHistoryLoading = false }
-        if force { shelf = nil }
-        for year in availableSeasons where schedules[year] == nil {
-            if force { failedYears.remove(year) }
-            await load(year: year)
-            // The page may have been handed another team mid-flight.
-            guard team.followKey == key else { return }
+        if force {
+            shelf = nil
+            trophyHistoryFailed = false
         }
-        // A shelf assembled from nothing is an empty shelf, which is a
-        // different claim from "we couldn't ask" — so a wholesale failure
-        // leaves it nil for the Retry state to pick up.
-        shelf = trophyHistoryFailedWholesale ? nil : assembleTrophyCase()
+        let window = (earliest: pageLeague.seasonFloor, latest: seasonNow)
+        let assembled: TrophyCase?
+        do {
+            let games = try await client.seasons(of: team.id, from: window.earliest,
+                                                 through: window.latest)
+            assembled = assembleTrophyCase(from: games)
+        } catch {
+            assembled = nil
+        }
+        // The page may have been handed another team mid-flight.
+        guard team.followKey == key else { return }
+        shelf = assembled
+        trophyHistoryFailed = assembled == nil
         trophyHistoryKey = key
     }
 

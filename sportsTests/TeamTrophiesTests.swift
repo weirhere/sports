@@ -279,6 +279,66 @@ private let sec = TrophyKind(singular: "SEC Championship",
     }
 }
 
+// MARK: - Deriving from a window of seasons (COR-24)
+
+/// A game moved onto another season: its own stamp and, where given, its date.
+private func restamped(_ game: Game, season: Int?, year: Int? = nil, month: Int = 12) -> Game {
+    var moved = game
+    moved.seasonYear = season
+    if let year {
+        moved = Game(id: game.id,
+                     date: DateComponents(calendar: .current, year: year, month: month,
+                                          day: 10, hour: 12).date,
+                     name: nil, shortName: nil, weekNumber: game.weekNumber,
+                     seasonType: game.seasonType, seasonYear: season,
+                     headline: game.headline, status: game.status,
+                     home: game.home, away: game.away, broadcast: nil)
+    }
+    return moved
+}
+
+@Suite struct TrophyWindowDerivation {
+    /// The schedule wrapper used to keep seasons apart; a flat window has to
+    /// do it itself, or one season's lost final would decide another's.
+    @Test("Each season's final decides only that season")
+    func seasonsKeptApart() {
+        let won = restamped(titledGame("1", headline: "SEC Championship", day: 6,
+                                       mineWon: true), season: 2022)
+        let lost = restamped(titledGame("2", headline: "SEC Championship", day: 7,
+                                        mineWon: false), season: 2023, year: 2023)
+        let trophies = TrophyCase.derive(from: [won, lost], teamId: "61",
+                                         league: .collegeFootball)
+        #expect(trophies == [Trophy(kind: sec, year: 2022)])
+    }
+
+    /// The 2019-20 NBA Finals ended October 11, 2020 — a day the rollover
+    /// rule files under 2020-21.
+    @Test("ESPN's season stamp beats the date")
+    func stampBeatsDate() {
+        let bubble = restamped(titledGame("1", headline: "NBA Finals", day: 1, mineWon: true),
+                               season: 2019, year: 2020, month: 10)
+        let trophies = TrophyCase.derive(from: [bubble], teamId: "61", league: .nba)
+        #expect(trophies.map(\.year) == [2019])
+    }
+
+    @Test("With no stamp, the date names the season")
+    func dateWhenUnstamped() {
+        // January 2026 is still the 2025 college season.
+        let bowl = restamped(titledGame("1", headline: "SEC Championship", day: 6,
+                                        mineWon: true), season: nil, year: 2026, month: 1)
+        let trophies = TrophyCase.derive(from: [bowl], teamId: "61", league: .collegeFootball)
+        #expect(trophies.map(\.year) == [2025])
+    }
+
+    @Test("The captured season reads the same through either entry point")
+    func entryPointsAgree() throws {
+        let loaded = try schedule("team-schedule-live", league: .collegeFootball)
+        let teamId = try #require(loaded.team?.id)
+        #expect(TrophyCase.derive(from: loaded.games, teamId: teamId, league: .collegeFootball)
+                == TrophyCase.derive(from: loaded, league: .collegeFootball))
+    }
+}
+
 // MARK: - Assembling the shelf
 
 @Suite struct TrophyShelf {

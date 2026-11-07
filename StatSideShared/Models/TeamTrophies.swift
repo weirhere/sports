@@ -360,16 +360,45 @@ extension TrophyCase {
     /// which is the deferral the postseason bracket already made.
     static func derive(from schedule: TeamSchedule, league: League) -> [Trophy] {
         guard let teamId = schedule.team?.id, let year = schedule.year else { return [] }
+        return derive(from: schedule.games, teamId: teamId, league: league) { _ in year }
+    }
 
-        var byKind: [TrophyKind: [Game]] = [:]
-        for game in schedule.games {
-            guard let kind = TrophyKind.from(headline: game.headline, league: league),
-                  game.home.team.id == teamId || game.away.team.id == teamId
-            else { continue }
-            byKind[kind, default: []].append(game)
+    /// The same rules over games from **many** seasons at once — what
+    /// `ScoresProviding.seasons(of:from:through:)` hands back, with no
+    /// schedule wrapper left to say which season a game was.
+    ///
+    /// Each game's season is ESPN's own stamp (`Game.seasonYear`, which the
+    /// schedule payload carries per event) and the date only when the stamp
+    /// is missing. The stamp comes first because a date can't always say:
+    /// the 2019-20 NBA Finals ended October 11, 2020, a day the rollover
+    /// rule files under 2020-21 (`SeasonSpan.overruns`).
+    static func derive(from games: [Game], teamId: String, league: League,
+                       calendar: Calendar = .current) -> [Trophy] {
+        derive(from: games, teamId: teamId, league: league) { game in
+            game.seasonYear
+                ?? game.date.map { SeasonYear.year(for: league, now: $0, calendar: calendar) }
+        }
+    }
+
+    /// Grouped by kind **and** season: a five-season window holds five
+    /// finals, and only within one season is the last game the decider.
+    private static func derive(from games: [Game], teamId: String, league: League,
+                               season: (Game) -> Int?) -> [Trophy] {
+        struct Contest: Hashable {
+            let kind: TrophyKind
+            let year: Int
         }
 
-        return byKind.compactMap { kind, games -> Trophy? in
+        var byContest: [Contest: [Game]] = [:]
+        for game in games {
+            guard let kind = TrophyKind.from(headline: game.headline, league: league),
+                  game.home.team.id == teamId || game.away.team.id == teamId,
+                  let year = season(game)
+            else { continue }
+            byContest[Contest(kind: kind, year: year), default: []].append(game)
+        }
+
+        return byContest.compactMap { contest, games -> Trophy? in
             let decided = games
                 .filter { if case .final = $0.status { true } else { false } }
                 .sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
@@ -378,7 +407,7 @@ extension TrophyCase {
                       .first(where: { $0.team.id == teamId }),
                   mine.winner == true
             else { return nil }
-            return Trophy(kind: kind, year: year)
+            return Trophy(kind: contest.kind, year: contest.year)
         }
     }
 
