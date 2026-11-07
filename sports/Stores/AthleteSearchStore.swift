@@ -43,18 +43,21 @@ final class AthleteSearchStore {
 
     /// Call on every query change. Cheap when nothing changed.
     ///
-    /// `collegeTeamsInScope` is the display names of every college football
-    /// team the app has a page for — FBS *and* FCS, which is what the
-    /// directory loads. ESPN's `college-football` slug is wider than that:
-    /// it indexes Division II and III too, so a "McDavid" query returns
-    /// Mars Hill Lions beside Harvard Crimson. Harvard is a real FCS page
-    /// here; Mars Hill is nothing, and a row that opens nothing is worse
-    /// than no row. Verified 2026-09-21 against both standings groups —
-    /// Tarleton State and Harvard are in group 81, Mars Hill is in neither.
+    /// `collegeTeamsInScope` is, per college league, the display names of
+    /// every team the app has a page for. ESPN's college slugs are wider
+    /// than that: `college-football` indexes Division II and III too, so a
+    /// "McDavid" query returns Mars Hill Lions beside Harvard Crimson, and
+    /// `mens-college-basketball` returns Chadron State, a Division II school
+    /// (2026-11-06). Harvard is a real FCS page here; Mars Hill and Chadron
+    /// State are nothing, and a row that opens nothing is worse than no row.
+    /// Verified 2026-09-21 for football against both standings groups, and
+    /// 2026-11-06 for basketball: the men's directory has 365 schools and the
+    /// women's 363, Wofford and Arkansas State among them, Chadron State in
+    /// neither.
     ///
     /// The directory is the arbiter rather than a hardcoded division list,
     /// so the day the app adds a division the filter follows it for free.
-    func search(_ text: String, collegeTeamsInScope: Set<String>) {
+    func search(_ text: String, collegeTeamsInScope: [League: Set<String>]) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed != query else { return }
         query = trimmed
@@ -78,16 +81,42 @@ final class AthleteSearchStore {
             guard !Task.isCancelled else { return }
             guard let self, self.query == trimmed else { return }
             self.stories = found.stories
-            self.athletes = found.athletes.filter { player in
-                // Only college football is filtered. The three pro leagues
-                // have complete directories and exact slugs, so a name that
-                // failed to match there would be a string bug dropping a
-                // real player rather than a division this app doesn't cover.
-                guard player.league == .collegeFootball else { return true }
-                guard let team = player.teamName else { return false }
-                return collegeTeamsInScope.contains(team)
-            }
+            self.athletes = Self.inScope(found.athletes, collegeTeams: collegeTeamsInScope)
             self.isSearching = false
+        }
+    }
+
+    /// The athletes worth a row: one per person, and, in a college league,
+    /// only those whose school has a page.
+    ///
+    /// One per person is keyed on league, name and team, not the athlete id.
+    /// ESPN keeps some players under two ids: "mcdav" returned Wofford's
+    /// Jamari McDavid as `4281043`, with a headshot, and again as
+    /// "Jamari Mcdavid", `4902079`, without one (2026-11-06). The first is
+    /// kept, because ESPN ranked it higher. Two different people with one
+    /// name on one roster would lose a row here, which is rarer than the
+    /// duplicate it prevents.
+    ///
+    /// The pro leagues aren't filtered. Their directories are complete and
+    /// their slugs exact, so a name that failed to match there would be a
+    /// string bug dropping a real player, not a division this app doesn't
+    /// cover. And a college league whose directory has no teams is let
+    /// through whole: that league's standings request failed, which says
+    /// nothing about who plays in it, so the filter can't judge.
+    nonisolated static func inScope(_ athletes: [PlayerIdentity],
+                                    collegeTeams: [League: Set<String>]) -> [PlayerIdentity] {
+        var seen = Set<String>()
+        return athletes.filter { player in
+            let person = [player.league.pathSegment, player.name, player.teamName ?? ""]
+                .map { $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) }
+                .joined(separator: "|")
+            guard seen.insert(person).inserted else {
+                return false
+            }
+            guard player.league.isCollege,
+                  let teams = collegeTeams[player.league], !teams.isEmpty else { return true }
+            guard let team = player.teamName else { return false }
+            return teams.contains(team)
         }
     }
 
