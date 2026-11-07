@@ -102,10 +102,15 @@ nonisolated struct TrophyKind: Hashable, Sendable {
 }
 
 extension String {
-    /// All caps, and not merely for want of a lowercase form — "NFC
-    /// CHAMPIONSHIP" is shouting, "Big 12" and "2018" are not.
-    fileprivate var isShouting: Bool {
-        contains(where: \.isUppercase) && !contains(where: \.isLowercase)
+    /// The headline without a series game's number: "Stanley Cup Final
+    /// - Game 6" is "Stanley Cup Final". Any other " - " tail is kept —
+    /// "SEC Tournament - Final" names its round there.
+    fileprivate var withoutSeriesGame: String {
+        guard let dash = range(of: " - game ", options: [.caseInsensitive, .backwards]),
+              !self[dash.upperBound...].isEmpty,
+              self[dash.upperBound...].allSatisfy(\.isNumber)
+        else { return trimmingCharacters(in: .whitespaces) }
+        return String(self[..<dash.lowerBound]).trimmingCharacters(in: .whitespaces)
     }
 
     /// How loud a spelling is, for choosing between two of them.
@@ -130,8 +135,16 @@ extension TrophyKind {
     /// The league title is always checked first: "College Football Playoff
     /// National Championship" contains "championship", so a conference rule
     /// that ran first would claim it.
+    ///
+    /// A series game's number comes off first. ESPN headlines every game
+    /// of a pro series with its place in it — "Stanley Cup Final - Game
+    /// 6", "East Finals - Game 4", "NBA FINALS - GAME 7" (probed live
+    /// 2026-11-06, every season back to 2014) — and a rule that reads the
+    /// round's last word would read "6". Until that probe the NHL's title
+    /// never matched at all.
     static func from(headline: String?, league: League) -> TrophyKind? {
-        guard let headline else { return nil }
+        guard let raw = headline else { return nil }
+        let headline = raw.withoutSeriesGame
         let text = headline.lowercased()
         guard !text.isEmpty else { return nil }
 
@@ -159,10 +172,15 @@ extension TrophyKind {
             // regular-season games, which is why this asks whether the
             // round *decided* anything rather than whether the string
             // mentions a final.
-            if text.contains("nba cup"), decidesATrophy(text) {
+            // Its first edition (2023) was still the "In-Season
+            // Tournament" on the wire — "NBA In-Season Tournament
+            // Championship", the Lakers' — and it is the same cup.
+            if text.contains("nba cup") || text.contains("in-season tournament"),
+               decidesATrophy(text) {
                 return TrophyKind(singular: "NBA Cup", plural: "NBA Cups", tier: .league)
             }
-            return conferenceFinals(headline: headline, text: text)
+            return conferenceFinals(text: text, singular: "Conference Finals",
+                                    plural: "Conference Finals")
         case .nhl:
             // Same guard as the cup above, and for a documented reason: the
             // NHL called its earlier rounds "Stanley Cup Quarterfinals" and
@@ -171,7 +189,8 @@ extension TrophyKind {
             if text.contains("stanley cup"), decidesATrophy(text) {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
-            return conferenceFinals(headline: headline, text: text)
+            return conferenceFinals(text: text, singular: "Conference Final",
+                                    plural: "Conference Finals")
         case .mlb:
             // "World Series - Game 5" on every game of the series; the
             // champion is the last completed game's winner, as with the
@@ -277,17 +296,30 @@ extension TrophyKind {
         return text.hasSuffix("final") || text.hasSuffix("finals")
     }
 
-    /// The NBA's and NHL's conference round: "Eastern Conference Finals".
-    /// Already plural, like the NBA Finals it sits under.
-    private static func conferenceFinals(headline: String, text: String) -> TrophyKind? {
-        guard text.contains("conference final") else { return nil }
-        var name = headline.trimmingCharacters(in: .whitespaces)
-        // The same shout as above, and here it can be fixed outright rather
-        // than a word at a time: this path only matches "<side> Conference
-        // Final(s)", which is ordinary words with no acronym for a
-        // capitalization pass to mangle.
-        if name.isShouting { name = name.capitalized }
-        return TrophyKind(singular: name, plural: name, tier: .conference)
+    /// The NBA's and NHL's conference round, which ESPN has spelled two
+    /// ways in the app's window: "EASTERN CONFERENCE FINALS" through the
+    /// late 2010s and "East Finals" (NBA) / "West Final" (NHL) now. Both
+    /// are one trophy, so the name is the league's own — "Eastern
+    /// Conference Finals", "Western Conference Final" — rather than the
+    /// wire's, or a franchise with titles either side of the rename would
+    /// show two rows of one. Matched whole, so "Eastern Conference
+    /// Semifinals" and "East 1st Round" win nothing.
+    private static func conferenceFinals(text: String, singular: String,
+                                         plural: String) -> TrophyKind? {
+        let words = text.split(separator: " ").map(String.init)
+        guard let side = words.first,
+              let round = words.last, round == "final" || round == "finals"
+        else { return nil }
+        let middle = words.dropFirst().dropLast()
+        guard middle.isEmpty || Array(middle) == ["conference"] else { return nil }
+        let name: String
+        switch side {
+        case "east", "eastern": name = "Eastern"
+        case "west", "western": name = "Western"
+        default: return nil
+        }
+        return TrophyKind(singular: "\(name) \(singular)",
+                          plural: "\(name) \(plural)", tier: .conference)
     }
 }
 

@@ -379,3 +379,70 @@ describe("assembling the shelf", () => {
     expect(trophyFootnote(allTime)).toBeUndefined();
   });
 });
+
+// Every headline here is verbatim from a live probe of ESPN's team schedules
+// (2026-11-06, seasontype 3 and the in-season cups), across both spelling eras
+// where it has two. Before this, the pro leagues' wording was reasoned rather
+// than seen, and wrong twice: the NHL's title carries a " - Game N" tail the
+// round test read as the last word, and neither league's conference round
+// says "Conference" any more. Twin of `ProPostseasonHeadlines` on iOS.
+describe("the wire's own postseason wording", () => {
+  it.each([
+    ["Super Bowl LIX", "nfl", "Super Bowl"],
+    ["AFC CHAMPIONSHIP", "nfl", "AFC Championship"],
+    ["NBA Finals - Game 5", "nba", "NBA Finals"],
+    ["NBA FINALS - GAME 7", "nba", "NBA Finals"],
+    ["East Finals - Game 4", "nba", "Eastern Conference Finals"],
+    ["West Finals - Game 5", "nba", "Western Conference Finals"],
+    ["EASTERN CONFERENCE FINALS - GAME 6", "nba", "Eastern Conference Finals"],
+    ["NBA Cup Championship", "nba", "NBA Cup"],
+    ["NBA In-Season Tournament Championship", "nba", "NBA Cup"],
+    ["Stanley Cup Final - Game 6", "nhl", "Stanley Cup"],
+    ["STANLEY CUP FINAL - GAME 6", "nhl", "Stanley Cup"],
+    ["East Final - Game 5", "nhl", "Eastern Conference Final"],
+    ["WESTERN CONFERENCE FINALS - GAME 7", "nhl", "Western Conference Final"],
+    ["World Series - Game 5", "mlb", "World Series"],
+    ["NLCS - Game 6", "mlb", "NL Pennant"],
+    ["WNBA Finals - Game 5", "wnba", "WNBA Finals"],
+    ["WNBA Commissioner's Cup Championship", "wnba", "Commissioner's Cup"],
+  ] as const)("reads %s (%s) as %s", (headline, league, trophy) => {
+    expect(kind(headline, league)?.singular).toBe(trophy);
+  });
+
+  it.each([
+    ["AFC DIVISIONAL PLAYOFF", "nfl"],
+    ["East 1st Round - Game 1", "nba"],
+    ["East Semifinals - Game 5", "nba"],
+    ["EASTERN CONFERENCE SEMIFINALS - GAME 4", "nba"],
+    ["NBA In-Season Tournament - Semifinals", "nba"],
+    ["East 2nd Round - Game 7", "nhl"],
+    ["Stanley Cup Semifinals - Game 1", "nhl"],
+    ["Central 1st Round - Game 1", "nhl"],
+    ["NLDS - Game 5", "mlb"],
+    ["WNBA Semifinals - Game 4", "wnba"],
+  ] as const)("wins nothing from %s (%s)", (headline, league) => {
+    expect(kind(headline, league)).toBeUndefined();
+  });
+
+  it("keeps a conference final one trophy across its games and spellings", () => {
+    const identities = new Set(
+      ["EASTERN CONFERENCE FINALS - GAME 1", "EASTERN CONFERENCE FINALS - GAME 6", "East Finals - Game 4"]
+        .map((headline) => kind(headline, "nba"))
+        .map((found) => (found ? trophyKindIdentity(found) : "none"))
+    );
+    expect(identities.size).toBe(1);
+  });
+
+  it("derives one Stanley Cup from a Final won in six", () => {
+    const games = [false, true, true, false, true, true].map((won, index) =>
+      titledGame({
+        headline: `Stanley Cup Final - Game ${index + 1}`,
+        won,
+        day: index * 2 + 1,
+        league: "nhl",
+      })
+    );
+    const trophies = deriveTrophies(games, { teamId: MINE.id, year: 2025, league: "nhl" });
+    expect(trophies.map((trophy) => trophy.kind.singular)).toEqual(["Stanley Cup"]);
+  });
+});
