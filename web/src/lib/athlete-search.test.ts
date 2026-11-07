@@ -117,6 +117,18 @@ describe("linkableAthletes", () => {
     const twice = athlete({ athleteId: "5", teamName: "Harvard Crimson" });
     expect(linkableAthletes([twice, { ...twice }], directory)).toHaveLength(1);
   });
+
+  it("keeps one row for a person ESPN lists under two ids, the first", () => {
+    const first = athlete({ athleteId: "4281043", name: "Jamari McDavid", teamName: "Harvard Crimson" });
+    const again = athlete({ athleteId: "4902079", name: "Jamari Mcdavid", teamName: "Harvard Crimson" });
+    expect(linkableAthletes([first, again], directory).map((a) => a.athleteId)).toEqual(["4281043"]);
+  });
+
+  it("keeps two people who share a name in different leagues", () => {
+    const college = athlete({ athleteId: "1", name: "Pat Smith", teamName: "Auburn Tigers" });
+    const pro = athlete({ athleteId: "2", league: "nfl", name: "Pat Smith", teamName: "Buffalo Bills" });
+    expect(linkableAthletes([college, pro], directory)).toHaveLength(2);
+  });
 });
 
 describe("athleteIdFromUid", () => {

@@ -58,8 +58,13 @@ export function linkableAthletes(
   return athletes.flatMap((athlete) => {
     if (!athlete.teamName) return [];
     const team = teams.get(directoryKey(athlete.league, athlete.teamName));
-    // Keyed per league: ESPN reuses athlete ids across them.
-    const key = `${athlete.league}:${athlete.athleteId}`;
+    // One row per person, keyed on league, name and club rather than the
+    // id: ESPN keeps some players under two ids ("mcdav" sends Wofford's
+    // Jamari McDavid as 4281043 and again as "Jamari Mcdavid", 4902079,
+    // 2026-11-06), and the first is the one it ranked higher. Per league,
+    // because ESPN reuses names and ids across them. iOS:
+    // `AthleteSearchStore.inScope`.
+    const key = directoryKey(athlete.league, `${athlete.name}\u0000${athlete.teamName}`);
     if (!team || seen.has(key)) return [];
     seen.add(key);
     return [{ ...athlete, teamId: team.id }];
