@@ -394,7 +394,7 @@ private let sec = TrophyKind(singular: "SEC Championship",
     /// nothing reads as all-time that the registry doesn't speak for.
     @Test("A league with no list contributes nothing and claims nothing")
     func unpopulatedLeaguesAreGated() {
-        for league in League.allCases where league != .collegeFootball {
+        for league in League.allCases where ![.collegeFootball, .nba].contains(league) {
             #expect(TrophyRegistry.trophies(teamId: "61", league: league).isEmpty)
             #expect(TrophyRegistry.coveredKinds(in: league).isEmpty)
             #expect(TrophyRegistry.sources(in: league).isEmpty)
@@ -409,6 +409,15 @@ private let sec = TrophyKind(singular: "SEC Championship",
         #expect(TrophyRegistry.coveredKinds(in: .collegeFootball) == ["national championship"])
         #expect(TrophyRegistry.sources(in: .collegeFootball)
             == ["national championship": "AP poll 1936–97 · title game since 1998"])
+    }
+
+    /// A Larry O'Brien Trophy is won on the court, so the NBA's list names
+    /// no selector and its caption carries none.
+    @Test("The NBA's list is verified and names no source")
+    func nbaIsCovered() {
+        #expect(TrophyRegistry.nbaChampionships.verified)
+        #expect(TrophyRegistry.coveredKinds(in: .nba) == ["nba finals"])
+        #expect(TrophyRegistry.sources(in: .nba).isEmpty)
     }
 }
 
@@ -516,5 +525,113 @@ private var cfbTitles: [Int: String] { TrophyRegistry.collegeFootballNationalTit
         // The conference row stays scoped and carries no source.
         #expect(shelf.groups.last?.coverage == .since(2014))
         #expect(shelf.groups.last?.source == nil)
+    }
+}
+
+// MARK: - The NBA's honour roll (COR-99)
+
+/// Every NBA team's ESPN id, by the abbreviation ESPN prints for it, read off
+/// the captured standings — so the totals below are written in franchises
+/// and a mistyped id fails as a wrong count, not as someone else's title.
+private func nbaIds() throws -> [String: String] {
+    let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nba-standings"))
+    let teams = ESPNMapper.conferences(from: dto, league: .nba).flatMap(\.teams)
+    var ids: [String: String] = [:]
+    for team in teams { if let abbreviation = team.abbreviation { ids[abbreviation] = team.id } }
+    return ids
+}
+
+private let nbaFinals = TrophyKind(singular: "NBA Finals", plural: "NBA Finals", tier: .league)
+
+/// Each franchise's titles through 2013–14, from the NBA's own champions
+/// table, with relocations carried (Minneapolis to the Lakers, Rochester to
+/// the Kings, Syracuse to the 76ers, Philadelphia to the Warriors, St. Louis
+/// to the Hawks, the Bullets to the Wizards, Seattle to the Thunder). A
+/// dropped, doubled or misfiled season moves at least one of these.
+private let nbaTotals: [(String, Int)] = [
+    ("BOS", 17), ("LAL", 16), ("CHI", 6), ("SA", 5),
+    ("GS", 3), ("PHI", 3), ("DET", 3), ("MIA", 3),
+    ("NY", 2), ("HOU", 2),
+    ("ATL", 1), ("SAC", 1), ("MIL", 1), ("POR", 1), ("WSH", 1), ("OKC", 1), ("DAL", 1),
+]
+
+private var nbaTitles: [Int: String] { TrophyRegistry.nbaChampionships.winners }
+
+@Suite struct NBATitles {
+    /// The BAA's first season through the last before the derivation's
+    /// floor, less 1947–48: the original Baltimore Bullets have no successor.
+    @Test("Every season from 1946–47 to 2013–14 has one champion, except 1947–48")
+    func seasonSpan() {
+        let expected = Set(1946..<League.nba.seasonFloor).subtracting([1947])
+        #expect(Set(nbaTitles.keys) == expected)
+        #expect(nbaTitles.count == 67)
+    }
+
+    @Test("Every winner is a current NBA team")
+    func everyIdResolves() throws {
+        let known = Set(try nbaIds().values)
+        #expect(known.count == 30)
+        #expect(Set(nbaTitles.values).isSubset(of: known))
+    }
+
+    @Test("Each franchise's total matches the source", arguments: nbaTotals)
+    func perFranchiseTotals(abbreviation: String, titles: Int) throws {
+        let id = try #require(try nbaIds()[abbreviation], "no NBA team \(abbreviation)")
+        #expect(TrophyRegistry.trophies(teamId: id, league: .nba).count == titles)
+    }
+
+    @Test("The listed franchises account for every row")
+    func totalsAccountForEveryRow() {
+        #expect(nbaTotals.map(\.1).reduce(0, +) == nbaTitles.count)
+    }
+
+    /// COR-94's third call, season by season.
+    @Test("Relocated titles follow the franchise")
+    func titlesFollowTheFranchise() throws {
+        let ids = try nbaIds()
+        #expect(nbaTitles[1948] == ids["LAL"])   // Minneapolis Lakers
+        #expect(nbaTitles[1950] == ids["SAC"])   // Rochester Royals
+        #expect(nbaTitles[1954] == ids["PHI"])   // Syracuse Nationals
+        #expect(nbaTitles[1946] == ids["GS"])    // Philadelphia Warriors
+        #expect(nbaTitles[1957] == ids["ATL"])   // St. Louis Hawks
+        #expect(nbaTitles[1977] == ids["WSH"])   // Washington Bullets
+        #expect(nbaTitles[1978] == ids["OKC"])   // Seattle SuperSonics
+        #expect(nbaTitles[1947] == nil)          // original Baltimore Bullets
+    }
+
+    /// The Celtics end to end, as their page assembles it: seventeen
+    /// registry titles and 2023–24 off the wire make the eighteen COR-94
+    /// names, all-time and with no source line.
+    @Test("The Celtics' shelf reads 18, all-time")
+    func celticsShelf() throws {
+        let celtics = try #require(try nbaIds()["BOS"])
+        let shelf = TrophyCase.assemble(
+            derived: [Trophy(kind: nbaFinals, year: 2023)],
+            registry: TrophyRegistry.trophies(teamId: celtics, league: .nba),
+            allTimeKinds: TrophyRegistry.coveredKinds(in: .nba),
+            derivedFloor: League.nba.seasonFloor,
+            sources: TrophyRegistry.sources(in: .nba)
+        )
+        let titles = try #require(shelf.groups.first)
+        #expect(titles.title == "NBA Finals")
+        #expect(titles.count == 18)
+        #expect(titles.years.first == 2023)
+        #expect(titles.years.last == 1956)
+        #expect(titles.coverage == .allTime)
+        #expect(titles.source == nil)
+    }
+
+    /// The Lakers' 2019–20 title comes off the wire; a registry row for a
+    /// derived season (none today) would merge rather than double.
+    @Test("The Lakers' shelf reads 17, and an overlapping season counts once")
+    func lakersShelf() throws {
+        let lakers = try #require(try nbaIds()["LAL"])
+        let shelf = TrophyCase.assemble(
+            derived: [Trophy(kind: nbaFinals, year: 2019), Trophy(kind: nbaFinals, year: 2009)],
+            registry: TrophyRegistry.trophies(teamId: lakers, league: .nba),
+            allTimeKinds: TrophyRegistry.coveredKinds(in: .nba),
+            derivedFloor: League.nba.seasonFloor
+        )
+        #expect(shelf.groups.first?.count == 17)
     }
 }

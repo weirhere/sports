@@ -57,6 +57,7 @@ nonisolated enum TrophyRegistry {
 
     private static let lists: [League: [TitleList]] = [
         .collegeFootball: [collegeFootballNationalTitles],
+        .nba: [nbaChampionships],
     ]
 
     /// Every registry trophy this team holds.
