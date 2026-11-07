@@ -194,7 +194,7 @@ struct SearchScreen: View {
             // before anything has been opened there is nothing to hand back
             // and the corpus is worth naming (Andy, 2026-09-21).
             if scopedRecents.isEmpty {
-                centeredMessage("Search teams, conferences, and this week's games")
+                centeredMessage("Search teams, players, conferences, games, and news")
             } else {
                 recentsList
             }

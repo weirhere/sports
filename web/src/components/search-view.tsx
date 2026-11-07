@@ -260,7 +260,7 @@ export function SearchView() {
       // naming.
       content = (
         <CenteredMessage>
-          Search teams, conferences, and this week&rsquo;s games
+          Search teams, players, conferences, games, and news
         </CenteredMessage>
       );
     } else {

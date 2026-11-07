@@ -394,7 +394,7 @@ private let sec = TrophyKind(singular: "SEC Championship",
     /// nothing reads as all-time that the registry doesn't speak for.
     @Test("A league with no list contributes nothing and claims nothing")
     func unpopulatedLeaguesAreGated() {
-        for league in League.allCases where ![.collegeFootball, .nfl, .nba].contains(league) {
+        for league in League.allCases where ![.collegeFootball, .nfl, .nba, .nhl].contains(league) {
             #expect(TrophyRegistry.trophies(teamId: "61", league: league).isEmpty)
             #expect(TrophyRegistry.coveredKinds(in: league).isEmpty)
             #expect(TrophyRegistry.sources(in: league).isEmpty)
@@ -866,5 +866,128 @@ private var nbaTitles: [Int: String] { TrophyRegistry.nbaChampionships.winners }
         }
         let trophies = TrophyCase.derive(from: season(games), league: .nhl)
         #expect(trophies.map(\.kind.singular) == ["Stanley Cup"])
+    }
+}
+
+// MARK: - The NHL's honour roll (COR-100)
+
+/// Every NHL team's ESPN id by its abbreviation, read off the captured NHL
+/// standings — the hockey twin of `nflIds()`, so a mistyped id fails as a
+/// wrong total rather than passing as another franchise's Cup.
+private func nhlIds() throws -> [String: String] {
+    let dto = try JSONDecoder().decode(StandingsResponseDTO.self, from: fixture("nhl-standings"))
+    var ids: [String: String] = [:]
+    for team in ESPNMapper.conferences(from: dto, league: .nhl).flatMap(\.teams) {
+        if let abbreviation = team.abbreviation { ids[abbreviation] = team.id }
+    }
+    return ids
+}
+
+/// Stanley Cups from 1917–18 through 2013–14 by today's franchise, counted
+/// from Wikipedia's year-by-year list rather than from the rows. Eighteen
+/// franchises, eighty-eight Cups: ninety-seven seasons, less two with no Cup
+/// awarded and seven won by teams with no successor.
+private let stanleyCupTotals: [(String, Int)] = [
+    ("MTL", 23), ("TOR", 13), ("DET", 11), ("BOS", 6), ("CHI", 5),
+    ("EDM", 5), ("NYR", 4), ("NYI", 4), ("PIT", 3), ("NJ", 3),
+    ("COL", 2), ("PHI", 2), ("LA", 2), ("TB", 1), ("CGY", 1),
+    ("DAL", 1), ("CAR", 1), ("ANA", 1),
+]
+
+private let stanleyCup = TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups",
+                                    tier: .league)
+private let westernFinal = TrophyKind(singular: "Western Conference Final",
+                                      plural: "Western Conference Finals", tier: .conference)
+
+private func nhlShelf(_ abbreviation: String, derived: [Trophy] = []) throws -> TrophyCase {
+    let id = try #require(try nhlIds()[abbreviation])
+    return TrophyCase.assemble(
+        derived: derived,
+        registry: TrophyRegistry.trophies(teamId: id, league: .nhl),
+        allTimeKinds: TrophyRegistry.coveredKinds(in: .nhl),
+        derivedFloor: League.nhl.seasonFloor,
+        sources: TrophyRegistry.sources(in: .nhl)
+    )
+}
+
+@Suite struct NHLTitles {
+    private var cups: [Int: String] { TrophyRegistry.stanleyCups.winners }
+
+    /// COR-94: from the NHL's first season, so the NHA-era Cups are out.
+    /// 1918–19 and 2004–05 awarded none; seven seasons went to a team with
+    /// no successor and have no row.
+    @Test("Stanley Cups span 1917–2013, less no-Cup and defunct seasons")
+    func cupSpan() {
+        let noCup: Set = [1918, 2004]
+        let defunct: Set = [1919, 1920, 1922, 1926,   // original Senators
+                            1924,                     // Victoria Cougars
+                            1925, 1934]               // Montreal Maroons
+        #expect(Set(cups.keys) == Set(1917...2013).subtracting(noCup).subtracting(defunct))
+        #expect(cups.count == 88)
+        #expect(cups.keys.allSatisfy { $0 < League.nhl.seasonFloor })
+    }
+
+    @Test("Every winner is a team ESPN knows")
+    func everyIdResolves() throws {
+        let known = Set(try nhlIds().values)
+        #expect(known.count == 32)
+        #expect(Set(cups.values).isSubset(of: known))
+    }
+
+    @Test("Each franchise's Stanley Cups match the source", arguments: stanleyCupTotals)
+    func perFranchiseCups(abbreviation: String, titles: Int) throws {
+        let id = try #require(try nhlIds()[abbreviation], "no NHL team \(abbreviation)")
+        #expect(TrophyRegistry.trophies(teamId: id, league: .nhl).count == titles)
+    }
+
+    @Test("The listed franchises account for every row")
+    func totalsAccountForEveryRow() {
+        #expect(stanleyCupTotals.map(\.1).reduce(0, +) == cups.count)
+    }
+
+    /// The third call, case by case: a Cup follows the franchise through a
+    /// rename, and never follows a name to a team that only took it.
+    @Test("Cups follow the franchise, not the name")
+    func cupsFollowTheFranchise() throws {
+        let ids = try nhlIds()
+        #expect(cups[1917] == ids["TOR"])   // Toronto Arenas
+        #expect(cups[1921] == ids["TOR"])   // Toronto St. Patricks
+        #expect(cups[1933] == ids["CHI"])   // Chicago Black Hawks
+        // Today's Senators are a 1992 franchise; the original's four Cups
+        // went nowhere.
+        let ottawa = try #require(ids["OTT"])
+        #expect(TrophyRegistry.trophies(teamId: ottawa, league: .nhl).isEmpty)
+    }
+
+    @Test("The list is verified, covered, and carries no source")
+    func nhlIsCovered() {
+        #expect(TrophyRegistry.stanleyCups.verified)
+        #expect(TrophyRegistry.coveredKinds(in: .nhl) == ["stanley cup"])
+        #expect(TrophyRegistry.sources(in: .nhl).isEmpty)
+    }
+
+    @Test("The Canadiens' shelf reads twenty-three, all-time")
+    func canadiensShelf() throws {
+        let shelf = try nhlShelf("MTL")
+        #expect(shelf.groups.map(\.title) == ["Stanley Cups"])
+        #expect(shelf.groups.first?.count == 23)
+        #expect(shelf.groups.first?.years.first == 1992)
+        #expect(shelf.groups.first?.years.last == 1923)
+        #expect(shelf.groups.first?.coverage == .allTime)
+        #expect(shelf.coverageFloor == nil)
+    }
+
+    /// The Blackhawks end to end: five registry Cups and the 2014–15 one the
+    /// wire derives on one all-time row; the conference title stays scoped
+    /// to the derivation.
+    @Test("A registry Cup and a derived one land on the same row")
+    func blackhawksShelf() throws {
+        let derived = [Trophy(kind: stanleyCup, year: 2014), Trophy(kind: westernFinal, year: 2014)]
+        let shelf = try nhlShelf("CHI", derived: derived)
+        let cups = try #require(shelf.groups.first)
+        #expect(cups.title == "Stanley Cups")
+        #expect(cups.years == [2014, 2012, 2009, 1960, 1937, 1933])
+        #expect(cups.coverage == .allTime)
+        #expect(shelf.groups.last?.coverage == .since(2014))
     }
 }
