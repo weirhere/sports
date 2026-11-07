@@ -20,6 +20,8 @@
 // 3. **Titles follow the franchise, not the name**; a franchise with no
 //    successor contributes nothing.
 //
+// Stanley Cups count from the NHL's first season, 1917–18.
+//
 // ## Keying
 //
 // By ESPN team id. An id that matches nothing contributes nothing, so a bad
@@ -31,6 +33,7 @@ import type { Trophy, TrophyKind } from "@/lib/trophies";
 import { COLLEGE_FOOTBALL_NATIONAL_TITLES } from "@/lib/trophy-registry-college-football";
 import { NBA_CHAMPIONSHIPS } from "@/lib/trophy-registry-nba";
 import { NFL_CHAMPIONSHIPS, SUPER_BOWLS } from "@/lib/trophy-registry-nfl";
+import { STANLEY_CUPS } from "@/lib/trophy-registry-nhl";
 
 /**
  * One trophy's whole honour roll, as it is published: a list of seasons and
@@ -59,6 +62,7 @@ const LISTS: Partial<Record<League, TitleList[]>> = {
   cfb: [COLLEGE_FOOTBALL_NATIONAL_TITLES],
   nfl: [SUPER_BOWLS, NFL_CHAMPIONSHIPS],
   nba: [NBA_CHAMPIONSHIPS],
+  nhl: [STANLEY_CUPS],
 };
 
 /** Every registry trophy this team holds. */
