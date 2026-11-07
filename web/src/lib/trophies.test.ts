@@ -154,6 +154,80 @@ describe("reading a trophy off a headline", () => {
   });
 });
 
+describe("a series round, whichever game and era it was printed in", () => {
+  // Every spelling below is ESPN's own, probed live 2026-11-06 across 2014–26.
+  it("reads the Stanley Cup off a game of the final", () => {
+    // The whole NHL shelf was empty before this: "... - Game 7" doesn't end
+    // in "final", so the deciding round was read as no round at all.
+    expect(kind("Stanley Cup Final - Game 7", "nhl")?.singular).toBe("Stanley Cup");
+    expect(kind("Stanley Cup Final - Game 1", "nhl")?.tier).toBe("league");
+  });
+
+  it("names the NBA's conference round one way in every era", () => {
+    for (const headline of [
+      "Eastern Conference Finals",
+      "EASTERN CONFERENCE FINALS - GAME 3",
+      "East Finals - Game 4",
+    ]) {
+      expect(kind(headline, "nba")?.singular).toBe("Eastern Conference Finals");
+    }
+    expect(kind("West Finals - Game 2", "nba")?.singular).toBe(
+      "Western Conference Finals"
+    );
+  });
+
+  it("names the NHL's conference round one way in every era", () => {
+    for (const headline of [
+      "Eastern Conference Finals - Game 7",
+      "East Finals - Game 5",
+      "East Final - Game 6",
+    ]) {
+      expect(kind(headline, "nhl")?.singular).toBe("Eastern Conference Final");
+    }
+  });
+
+  it("gives an earlier round nothing, under either dash", () => {
+    expect(kind("East Semifinals - Game 7", "nba")).toBeUndefined();
+    expect(kind("West Semifinals \u2013 Game 1", "nba")).toBeUndefined();
+    expect(kind("Eastern Conference First Round - Game 2", "nhl")).toBeUndefined();
+    expect(kind("East 2nd Round - Game 4", "nhl")).toBeUndefined();
+    expect(kind("Stanley Cup Semifinals - Game 6", "nhl")).toBeUndefined();
+  });
+
+  it("decides a numbered series on its last game, not on a game it won", () => {
+    // The Celtics' 2017 conference final: won Game 3, lost the series 4-1.
+    // Keyed per game, Game 3 was a trophy of its own.
+    const lost = [false, false, true, false, false].map((won, index) =>
+      titledGame({
+        headline: `EASTERN CONFERENCE FINALS - GAME ${index + 1}`,
+        won,
+        day: index * 2 + 1,
+        league: "nba",
+      })
+    );
+    expect(
+      deriveTrophies(lost, { teamId: MINE.id, year: 2017, league: "nba" })
+    ).toHaveLength(0);
+    // The Panthers' 2024 final: lost Games 4-6, won Game 7.
+    const won = [false, false, false, true].map((result, index) =>
+      titledGame({
+        headline: `Stanley Cup Final - Game ${index + 4}`,
+        won: result,
+        day: index * 2 + 1,
+        league: "nhl",
+      })
+    );
+    expect(
+      deriveTrophies(won, { teamId: MINE.id, year: 2024, league: "nhl" })
+    ).toEqual([
+      {
+        kind: { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" },
+        year: 2024,
+      },
+    ]);
+  });
+});
+
 describe("the payload gap this closed", () => {
   it("carries ESPN's printed game name on a team schedule", () => {
     // The schedule path decoded no `notes` at all before this — the field is

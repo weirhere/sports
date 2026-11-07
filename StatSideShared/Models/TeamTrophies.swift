@@ -102,17 +102,6 @@ nonisolated struct TrophyKind: Hashable, Sendable {
 }
 
 extension String {
-    /// The headline without a series game's number: "Stanley Cup Final
-    /// - Game 6" is "Stanley Cup Final". Any other " - " tail is kept —
-    /// "SEC Tournament - Final" names its round there.
-    fileprivate var withoutSeriesGame: String {
-        guard let dash = range(of: " - game ", options: [.caseInsensitive, .backwards]),
-              !self[dash.upperBound...].isEmpty,
-              self[dash.upperBound...].allSatisfy(\.isNumber)
-        else { return trimmingCharacters(in: .whitespaces) }
-        return String(self[..<dash.lowerBound]).trimmingCharacters(in: .whitespaces)
-    }
-
     /// How loud a spelling is, for choosing between two of them.
     fileprivate var shoutiness: Int {
         reduce(0) { $0 + ($1.isUppercase ? 1 : 0) }
@@ -135,16 +124,9 @@ extension TrophyKind {
     /// The league title is always checked first: "College Football Playoff
     /// National Championship" contains "championship", so a conference rule
     /// that ran first would claim it.
-    ///
-    /// A series game's number comes off first. ESPN headlines every game
-    /// of a pro series with its place in it — "Stanley Cup Final - Game
-    /// 6", "East Finals - Game 4", "NBA FINALS - GAME 7" (probed live
-    /// 2026-11-06, every season back to 2014) — and a rule that reads the
-    /// round's last word would read "6". Until that probe the NHL's title
-    /// never matched at all.
     static func from(headline: String?, league: League) -> TrophyKind? {
-        guard let raw = headline else { return nil }
-        let headline = raw.withoutSeriesGame
+        guard let printed = headline else { return nil }
+        let headline = withoutSeriesGame(printed.trimmingCharacters(in: .whitespaces))
         let text = headline.lowercased()
         guard !text.isEmpty else { return nil }
 
@@ -172,15 +154,14 @@ extension TrophyKind {
             // regular-season games, which is why this asks whether the
             // round *decided* anything rather than whether the string
             // mentions a final.
-            // Its first edition (2023) was still the "In-Season
-            // Tournament" on the wire — "NBA In-Season Tournament
-            // Championship", the Lakers' — and it is the same cup.
+            // Its first edition (2023) was still the "In-Season Tournament"
+            // on the wire — "NBA In-Season Tournament Championship", the
+            // Lakers' (probed 2026-11-06) — and it is the same cup.
             if text.contains("nba cup") || text.contains("in-season tournament"),
                decidesATrophy(text) {
                 return TrophyKind(singular: "NBA Cup", plural: "NBA Cups", tier: .league)
             }
-            return conferenceFinals(text: text, singular: "Conference Finals",
-                                    plural: "Conference Finals")
+            return conferenceFinals(text: text, league: .nba)
         case .nhl:
             // Same guard as the cup above, and for a documented reason: the
             // NHL called its earlier rounds "Stanley Cup Quarterfinals" and
@@ -189,8 +170,7 @@ extension TrophyKind {
             if text.contains("stanley cup"), decidesATrophy(text) {
                 return TrophyKind(singular: "Stanley Cup", plural: "Stanley Cups", tier: .league)
             }
-            return conferenceFinals(text: text, singular: "Conference Final",
-                                    plural: "Conference Finals")
+            return conferenceFinals(text: text, league: .nhl)
         case .mlb:
             // "World Series - Game 5" on every game of the series; the
             // champion is the last completed game's winner, as with the
@@ -296,30 +276,42 @@ extension TrophyKind {
         return text.hasSuffix("final") || text.hasSuffix("finals")
     }
 
-    /// The NBA's and NHL's conference round, which ESPN has spelled two
-    /// ways in the app's window: "EASTERN CONFERENCE FINALS" through the
-    /// late 2010s and "East Finals" (NBA) / "West Final" (NHL) now. Both
-    /// are one trophy, so the name is the league's own — "Eastern
-    /// Conference Finals", "Western Conference Final" — rather than the
-    /// wire's, or a franchise with titles either side of the rename would
-    /// show two rows of one. Matched whole, so "Eastern Conference
-    /// Semifinals" and "East 1st Round" win nothing.
-    private static func conferenceFinals(text: String, singular: String,
-                                         plural: String) -> TrophyKind? {
-        let words = text.split(separator: " ").map(String.init)
-        guard let side = words.first,
-              let round = words.last, round == "final" || round == "finals"
-        else { return nil }
-        let middle = words.dropFirst().dropLast()
-        guard middle.isEmpty || Array(middle) == ["conference"] else { return nil }
-        let name: String
-        switch side {
-        case "east", "eastern": name = "Eastern"
-        case "west", "western": name = "Western"
-        default: return nil
-        }
-        return TrophyKind(singular: "\(name) \(singular)",
-                          plural: "\(name) \(plural)", tier: .conference)
+    /// The NBA's and NHL's conference round, under one name per league
+    /// whatever the season called it.
+    ///
+    /// ESPN has spelled the round three ways (probed live 2026-11-06 across
+    /// 2014–26): "Eastern Conference Finals" until 2017, "East Finals" from
+    /// 2018, and in the NHL "East Final" from 2022. Kept as written, those
+    /// are three trophies on one shelf — and before that, the "- Game N" on
+    /// every game of the series made each game its own trophy, so a team
+    /// that won Game 3 of a series it lost was credited with the title. So
+    /// the round is matched whole, on the side alone, and named the league's
+    /// way: the NBA's "Finals", the NHL's "Final". Matching the whole text is
+    /// also what keeps the earlier rounds out — "East Semifinals" and
+    /// "Eastern Conference First Round" don't qualify.
+    private static func conferenceFinals(text: String, league: League) -> TrophyKind? {
+        let sides = ["east": "Eastern", "eastern": "Eastern", "west": "Western", "western": "Western"]
+        var words = text.split(separator: " ").map(String.init)
+        guard words.count >= 2, let side = sides[words.removeFirst()] else { return nil }
+        if words.first == "conference" { words.removeFirst() }
+        guard words == ["final"] || words == ["finals"] else { return nil }
+        let name = "\(side) Conference \(league == .nhl ? "Final" : "Finals")"
+        return TrophyKind(singular: name, plural: name, tier: .conference)
+    }
+
+    /// A headline without the series game it names: "Stanley Cup Final -
+    /// Game 7" is the Stanley Cup Final. Every game of a best-of-seven
+    /// carries the same round with its own number, and the trophy is the
+    /// round's — so the number comes off before anything is matched, which
+    /// is what lets the games of one series share a key and the last
+    /// completed one decide it. ESPN separates the two with a hyphen almost
+    /// everywhere and an en dash at least once ("West Semifinals – Game 1",
+    /// 2023).
+    private static func withoutSeriesGame(_ headline: String) -> String {
+        guard let range = headline.range(of: #"\s+[-–—]\s+game\s+\d+\s*$"#,
+                                         options: [.regularExpression, .caseInsensitive])
+        else { return headline }
+        return String(headline[..<range.lowerBound])
     }
 }
 

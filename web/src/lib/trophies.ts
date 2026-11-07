@@ -209,44 +209,38 @@ function conferenceChampionship(
 }
 
 /**
- * The NBA's and NHL's conference round, which ESPN has spelled two ways in the
- * app's window: "EASTERN CONFERENCE FINALS" through the late 2010s and "East
- * Finals" (NBA) / "West Final" (NHL) now. Both are one trophy, so the name is
- * the league's own — "Eastern Conference Finals", "Western Conference Final" —
- * rather than the wire's, or a franchise with titles either side of the rename
- * would show two rows of one. Matched whole, so "Eastern Conference
- * Semifinals" and "East 1st Round" win nothing.
+ * The NBA's and NHL's conference round, under one name per league whatever
+ * the season called it.
+ *
+ * ESPN has spelled the round three ways (probed live 2026-11-06 across
+ * 2014–26): "Eastern Conference Finals" until 2017, "East Finals" from 2018,
+ * and in the NHL "East Final" from 2022. Kept as written, those are three
+ * trophies on one shelf — and before that, the "- Game N" on every game of the
+ * series made each game its own trophy, so a team that won Game 3 of a series
+ * it lost was credited with the title. So the round is matched whole, on the
+ * side alone, and named the league's way: the NBA's "Finals", the NHL's
+ * "Final". Matching the whole text is also what keeps the earlier rounds out —
+ * "East Semifinals" and "Eastern Conference First Round" don't qualify.
  */
-function conferenceFinals(
-  text: string,
-  singular: string,
-  plural: string
-): TrophyKind | undefined {
-  const words = text.split(/\s+/).filter((word) => word.length > 0);
-  const side = words[0];
-  const round = words[words.length - 1];
-  if (words.length < 2 || (round !== "final" && round !== "finals")) return undefined;
-  const middle = words.slice(1, -1);
-  if (!(middle.length === 0 || (middle.length === 1 && middle[0] === "conference"))) {
-    return undefined;
-  }
-  let name: string;
-  if (side === "east" || side === "eastern") name = "Eastern";
-  else if (side === "west" || side === "western") name = "Western";
-  else return undefined;
-  return { singular: `${name} ${singular}`, plural: `${name} ${plural}`, tier: "conference" };
+function conferenceFinals(text: string, league: "nba" | "nhl"): TrophyKind | undefined {
+  const match = /^(east|eastern|west|western)( conference)? finals?$/.exec(text);
+  if (!match) return undefined;
+  const side = match[1].startsWith("east") ? "Eastern" : "Western";
+  const name = `${side} Conference ${league === "nhl" ? "Final" : "Finals"}`;
+  return { singular: name, plural: name, tier: "conference" };
 }
 
 /**
- * The headline without a series game's number: "Stanley Cup Final - Game 6"
- * is "Stanley Cup Final". ESPN headlines every game of a pro series with its
- * place in it (probed live 2026-11-06, every season back to 2014), and a rule
- * that reads the round's last word would read "6" — until that probe the
- * NHL's title never matched at all. Any other " - " tail is kept: "SEC
- * Tournament - Final" names its round there.
+ * A headline without the series game it names: "Stanley Cup Final - Game 7"
+ * is the Stanley Cup Final. Every game of a best-of-seven carries the same
+ * round with its own number, and the trophy is the round's — so the number
+ * comes off before anything is matched, which is what lets the games of one
+ * series share a key and the last completed one decide it. ESPN separates
+ * the two with a hyphen almost everywhere and an en dash at least once
+ * ("West Semifinals – Game 1", 2023).
  */
 function withoutSeriesGame(headline: string): string {
-  return headline.replace(/ - game \d+\s*$/i, "").trim();
+  return headline.replace(/\s+[-\u2013\u2014]\s+game\s+\d+\s*$/i, "");
 }
 
 /**
@@ -270,7 +264,7 @@ export function trophyKindFromHeadline(
   league: League
 ): TrophyKind | undefined {
   if (!headline) return undefined;
-  headline = withoutSeriesGame(headline);
+  headline = withoutSeriesGame(headline.trim());
   const text = headline.toLowerCase();
   if (text.length === 0) return undefined;
 
@@ -306,12 +300,12 @@ export function trophyKindFromHeadline(
       ) {
         return { singular: "NBA Cup", plural: "NBA Cups", tier: "league" };
       }
-      return conferenceFinals(text, "Conference Finals", "Conference Finals");
+      return conferenceFinals(text, "nba");
     case "nhl":
       if (text.includes("stanley cup") && decidesATrophy(text)) {
         return { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" };
       }
-      return conferenceFinals(text, "Conference Final", "Conference Finals");
+      return conferenceFinals(text, "nhl");
     case "mlb":
       // "World Series - Game 5" on every game of the series; the champion
       // is the last completed game's winner. The pennants are the LCS's.
