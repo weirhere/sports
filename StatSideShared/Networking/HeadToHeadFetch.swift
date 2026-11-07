@@ -39,13 +39,19 @@ nonisolated extension ScoresProviding {
 
     /// One team's seasons across a window, fetched a few at a time.
     ///
+    /// Two callers: the head-to-head series above and the team page's
+    /// trophy case (COR-24), which both want a run of seasons and both need
+    /// "every season failed" told apart from "nothing in them" — so a
+    /// season that fails is dropped, and only a window where every one did
+    /// throws `ESPNError.nothingFetched`.
+    ///
     /// Bounded rather than fired off at once: ten seasons is twenty
     /// requests, and twenty at once is not what "be a polite guest" means
     /// even for a one-shot. `URLSession` would queue them at six per host
     /// anyway — this just makes the throttle ours and deliberate, at a
     /// width that still hides the round-trip latency.
-    private func seasons(of teamId: String, from earliest: Int,
-                         through latest: Int) async throws -> [Game] {
+    func seasons(of teamId: String, from earliest: Int,
+                 through latest: Int) async throws -> [Game] {
         guard earliest <= latest else { return [] }
         let width = 3
         var collected: [Game] = []
