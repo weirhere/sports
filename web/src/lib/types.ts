@@ -822,6 +822,9 @@ export interface RosterPlayer {
   injuryStatus?: string;
   /** Where a pro played college (2026-11-02) — iOS `PlayerIdentity.College`. */
   college?: PlayerCollege;
+  /** Where they were born, "Akron, OH" (2026-11-07). Only the athlete
+   *  payload carries it — iOS `PlayerIdentity.birthPlace`. */
+  birthPlace?: string;
 }
 
 /** A school as ESPN names it on a pro's roster row and athlete payload. The

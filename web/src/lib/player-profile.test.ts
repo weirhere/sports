@@ -256,3 +256,46 @@ describe("ESPN's college reference", () => {
     expect(collegeFromEspn(undefined)).toBeUndefined();
   });
 });
+
+// The Born row (COR-150, 2026-11-07) — iOS `PlayerBirthPlaceTests`.
+describe("the Born row", () => {
+  it("sits right after Age for a pro", () => {
+    const maye = player({
+      age: 24,
+      classAbbreviation: undefined,
+      birthPlace: "Huntersville, NC",
+      college: { id: "153", name: "North Carolina" },
+    });
+    expect(labels(maye, "nfl")).toEqual([
+      "Height",
+      "Weight",
+      "Age",
+      "Born",
+      "Position",
+      "College",
+      "Jersey",
+    ]);
+  });
+
+  it("sits right after Class for a college football player", () => {
+    expect(labels(player({ birthPlace: "Athens, GA" }), "cfb")).toEqual([
+      "Height",
+      "Weight",
+      "Class",
+      "Born",
+      "Position",
+      "Jersey",
+    ]);
+  });
+
+  it("is absent when ESPN sent no birthplace", () => {
+    expect(labels(player(), "nba")).not.toContain("Born");
+  });
+
+  it("fills from the athlete payload and keeps the roster's when both answer", () => {
+    expect(mergePlayer("1966", undefined, { name: "LeBron James", birthPlace: "Akron, OH" })
+      ?.birthPlace).toBe("Akron, OH");
+    expect(mergePlayer("1", player({ birthPlace: "Door, OH" }), { birthPlace: "Akron, OH" })
+      ?.birthPlace).toBe("Door, OH");
+  });
+});

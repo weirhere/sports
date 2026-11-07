@@ -87,6 +87,8 @@ export interface EspnAthleteResponse {
     /** The roster row's shape (2026-11-02); absent for a player who didn't
      *  play college. */
     college?: { id?: EspnId; name?: string; shortName?: string };
+    /** "Akron, OH" (2026-11-07). A birthplace, not where they grew up. */
+    displayBirthPlace?: string;
     team?: {
       id?: EspnId;
       displayName?: string;
@@ -199,6 +201,7 @@ export function transformAthleteProfile(
     teamName: nonEmpty(team?.displayName) ?? nonEmpty(team?.location),
     teamLogoUrl: nonEmpty(logo),
     college: collegeFromEspn(athlete.college),
+    birthPlace: nonEmpty(athlete.displayBirthPlace?.trim()),
   };
 }
 

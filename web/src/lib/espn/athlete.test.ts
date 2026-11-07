@@ -41,6 +41,7 @@ describe("the athlete profile", () => {
       position: { abbreviation: "F", displayName: "Forward" },
       headshot: { href: "https://a.espncdn.com/i/headshots/nba/players/full/1966.png" },
       status: { name: "Active", type: "active" },
+      displayBirthPlace: "Akron, OH",
       team: {
         id: "20",
         displayName: "Philadelphia 76ers",
@@ -67,6 +68,7 @@ describe("the athlete profile", () => {
       teamId: "20",
       teamName: "Philadelphia 76ers",
       teamLogoUrl: "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+      birthPlace: "Akron, OH",
     });
   });
 
@@ -91,6 +93,9 @@ describe("the athlete profile", () => {
     const bare = transformAthleteProfile({ athlete: {} });
     expect(bare?.name).toBeUndefined();
     expect(bare?.teamId).toBeUndefined();
+    expect(bare?.birthPlace).toBeUndefined();
+    expect(transformAthleteProfile({ athlete: { displayBirthPlace: " " } })?.birthPlace)
+      .toBeUndefined();
   });
 });
 
