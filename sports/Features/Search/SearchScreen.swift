@@ -58,13 +58,13 @@ struct SearchScreen: View {
     /// it rather than clip.
     private static let cardHeight: CGFloat = 34 + (7 * 2) + (Spacing.xs * 2)
 
-    /// Every college football team the app has a page for — FBS and FCS
-    /// both, since the directory is division-complete for the sport.
-    private var collegeTeamNames: Set<String> {
-        Set(directory.conferences
-            .filter { $0.league == .collegeFootball }
-            .flatMap(\.teams)
-            .compactMap(\.displayName))
+    /// Every college team the app has a page for, per league: FBS and FCS
+    /// for football, Division I for basketball, since those are what the
+    /// directory loads.
+    private var collegeTeamNames: [League: Set<String>] {
+        Dictionary(grouping: directory.conferences.filter { $0.league.isCollege },
+                   by: \.league)
+            .mapValues { Set($0.flatMap(\.teams).compactMap(\.displayName)) }
     }
 
     /// The slate's games for this query, plus the matched teams' remaining
