@@ -29,6 +29,7 @@ import type { League } from "@/lib/leagues";
 import { trophyKindIdentity } from "@/lib/trophies";
 import type { Trophy, TrophyKind } from "@/lib/trophies";
 import { COLLEGE_FOOTBALL_NATIONAL_TITLES } from "@/lib/trophy-registry-college-football";
+import { NBA_CHAMPIONSHIPS } from "@/lib/trophy-registry-nba";
 import { NFL_CHAMPIONSHIPS, SUPER_BOWLS } from "@/lib/trophy-registry-nfl";
 
 /**
@@ -57,6 +58,7 @@ export interface TitleList {
 const LISTS: Partial<Record<League, TitleList[]>> = {
   cfb: [COLLEGE_FOOTBALL_NATIONAL_TITLES],
   nfl: [SUPER_BOWLS, NFL_CHAMPIONSHIPS],
+  nba: [NBA_CHAMPIONSHIPS],
 };
 
 /** Every registry trophy this team holds. */
