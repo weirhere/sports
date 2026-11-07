@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Its own client rather than a method on `ESPNClient`, because that type is
 /// league-scoped by construction — it builds a base URL per league in `init`
-/// — and this endpoint is league-agnostic: one request answers for all four
-/// at once. Hanging it off a league-scoped client would mean either four
+/// — and this endpoint is league-agnostic: one request answers for every league
+/// at once. Hanging it off a league-scoped client would mean either eight
 /// identical requests or a league parameter that does nothing.
 ///
 /// **Why this exists at all.** Search's other corpora are already in memory
@@ -24,7 +24,7 @@ nonisolated struct AthleteSearchClient {
         self.session = session
     }
 
-    /// Athletes matching `query`, in the four leagues this app covers.
+    /// Athletes matching `query`, in the leagues this app covers.
     ///
     /// Returns `[]` rather than throwing on an empty or whitespace query, so
     /// a cleared search field costs no request.
@@ -137,9 +137,9 @@ nonisolated struct SearchImageDTO: Decodable {
 nonisolated extension PlayerIdentity {
     /// A search hit, as far as it goes.
     ///
-    /// `nil` for anyone outside the four leagues — ESPN indexes every sport
-    /// it covers, so a query for a common surname returns soccer and
-    /// baseball players this app has no page for. Dropping them is the only
+    /// `nil` for anyone outside the app's leagues — ESPN indexes every sport
+    /// it covers, so a query for a common surname returns soccer players
+    /// and NASCAR drivers this app has no page for. Dropping them is the only
     /// honest answer: a row that opens an empty page is worse than no row.
     init?(searchResult content: SearchContentDTO) {
         guard let uid = content.uid,
