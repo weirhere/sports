@@ -279,6 +279,70 @@ private let sec = TrophyKind(singular: "SEC Championship",
     }
 }
 
+/// Every spelling here is ESPN's own, probed live 2026-11-06 across
+/// 2014–26 — the numbered games of a series, and three eras of the
+/// conference round's name.
+@Suite struct SeriesRounds {
+    /// The whole NHL shelf was empty before this: "... - Game 7" doesn't
+    /// end in "final", so the deciding round read as no round at all.
+    @Test("A game of the Stanley Cup Final is the Stanley Cup's")
+    func stanleyCupGame() {
+        #expect(TrophyKind.from(headline: "Stanley Cup Final - Game 7",
+                                league: .nhl)?.singular == "Stanley Cup")
+    }
+
+    @Test("The NBA's conference round has one name in every era", arguments: [
+        "Eastern Conference Finals",
+        "EASTERN CONFERENCE FINALS - GAME 3",
+        "East Finals - Game 4",
+    ])
+    func nbaConferenceRound(headline: String) {
+        #expect(TrophyKind.from(headline: headline,
+                                league: .nba)?.singular == "Eastern Conference Finals")
+    }
+
+    @Test("The NHL's conference round has one name in every era", arguments: [
+        "Western Conference Finals - Game 7",
+        "West Finals - Game 5",
+        "West Final - Game 6",
+    ])
+    func nhlConferenceRound(headline: String) {
+        #expect(TrophyKind.from(headline: headline,
+                                league: .nhl)?.singular == "Western Conference Final")
+    }
+
+    @Test("An earlier round wins nothing, under either dash", arguments: [
+        ("East Semifinals - Game 7", League.nba),
+        ("West Semifinals – Game 1", League.nba),
+        ("Eastern Conference First Round - Game 2", League.nhl),
+        ("East 2nd Round - Game 4", League.nhl),
+        ("Stanley Cup Semifinals - Game 6", League.nhl),
+    ])
+    func earlierRounds(headline: String, league: League) {
+        #expect(TrophyKind.from(headline: headline, league: league) == nil)
+    }
+
+    /// The Celtics' 2017 conference final: won Game 3, lost the series
+    /// 4-1. Keyed per game, Game 3 was a trophy of its own.
+    @Test("A numbered series is decided by its last game")
+    func numberedSeries() {
+        let lost = [false, false, true, false, false].enumerated().map { index, won in
+            titledGame("\(index)", headline: "EASTERN CONFERENCE FINALS - GAME \(index + 1)",
+                       day: index * 2 + 1, mineWon: won)
+        }
+        #expect(TrophyCase.derive(from: season(lost), league: .nba).isEmpty)
+
+        // The Panthers' 2024 final: lost Games 4-6, won Game 7.
+        let won = [false, false, false, true].enumerated().map { index, result in
+            titledGame("\(index)", headline: "Stanley Cup Final - Game \(index + 4)",
+                       day: index * 2 + 1, mineWon: result)
+        }
+        let trophies = TrophyCase.derive(from: season(won), league: .nhl)
+        #expect(trophies.count == 1)
+        #expect(trophies.first?.kind.singular == "Stanley Cup")
+    }
+}
+
 // MARK: - Assembling the shelf
 
 @Suite struct TrophyShelf {

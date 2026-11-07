@@ -108,14 +108,6 @@ function trophyKindKey(kind: TrophyKind): string {
   return `${kind.tier}\u0000${trophyKindIdentity(kind)}`;
 }
 
-/**
- * All caps, and not merely for want of a lowercase form — "NFC CHAMPIONSHIP"
- * is shouting, "Big 12" and "2018" are not.
- */
-function isShouting(text: string): boolean {
-  return text !== text.toLowerCase() && text === text.toUpperCase();
-}
-
 /** How loud a spelling is, for choosing between two of them. */
 function shoutiness(text: string): number {
   let loud = 0;
@@ -217,23 +209,38 @@ function conferenceChampionship(
 }
 
 /**
- * The NBA's and NHL's conference round: "Eastern Conference Finals". Already
- * plural, like the NBA Finals it sits under.
+ * The NBA's and NHL's conference round, under one name per league whatever
+ * the season called it.
+ *
+ * ESPN has spelled the round three ways (probed live 2026-11-06 across
+ * 2014–26): "Eastern Conference Finals" until 2017, "East Finals" from 2018,
+ * and in the NHL "East Final" from 2022. Kept as written, those are three
+ * trophies on one shelf — and before that, the "- Game N" on every game of the
+ * series made each game its own trophy, so a team that won Game 3 of a series
+ * it lost was credited with the title. So the round is matched whole, on the
+ * side alone, and named the league's way: the NBA's "Finals", the NHL's
+ * "Final". Matching the whole text is also what keeps the earlier rounds out —
+ * "East Semifinals" and "Eastern Conference First Round" don't qualify.
  */
-function conferenceFinals(
-  headline: string,
-  text: string
-): TrophyKind | undefined {
-  if (!text.includes("conference final")) return undefined;
-  const trimmed = headline.trim();
-  // The same shout as above, and here it can be fixed outright rather than a
-  // word at a time: this path only matches "<side> Conference Final(s)",
-  // which is ordinary words with no acronym for a capitalization pass to
-  // mangle.
-  const name = isShouting(trimmed)
-    ? trimmed.replace(/\S+/g, (word) => word[0] + word.slice(1).toLowerCase())
-    : trimmed;
+function conferenceFinals(text: string, league: "nba" | "nhl"): TrophyKind | undefined {
+  const match = /^(east|eastern|west|western)( conference)? finals?$/.exec(text);
+  if (!match) return undefined;
+  const side = match[1].startsWith("east") ? "Eastern" : "Western";
+  const name = `${side} Conference ${league === "nhl" ? "Final" : "Finals"}`;
   return { singular: name, plural: name, tier: "conference" };
+}
+
+/**
+ * A headline without the series game it names: "Stanley Cup Final - Game 7"
+ * is the Stanley Cup Final. Every game of a best-of-seven carries the same
+ * round with its own number, and the trophy is the round's — so the number
+ * comes off before anything is matched, which is what lets the games of one
+ * series share a key and the last completed one decide it. ESPN separates
+ * the two with a hyphen almost everywhere and an en dash at least once
+ * ("West Semifinals – Game 1", 2023).
+ */
+function withoutSeriesGame(headline: string): string {
+  return headline.replace(/\s+[-\u2013\u2014]\s+game\s+\d+\s*$/i, "");
 }
 
 /**
@@ -257,6 +264,7 @@ export function trophyKindFromHeadline(
   league: League
 ): TrophyKind | undefined {
   if (!headline) return undefined;
+  headline = withoutSeriesGame(headline.trim());
   const text = headline.toLowerCase();
   if (text.length === 0) return undefined;
 
@@ -287,12 +295,12 @@ export function trophyKindFromHeadline(
       if (text.includes("nba cup") && decidesATrophy(text)) {
         return { singular: "NBA Cup", plural: "NBA Cups", tier: "league" };
       }
-      return conferenceFinals(headline, text);
+      return conferenceFinals(text, "nba");
     case "nhl":
       if (text.includes("stanley cup") && decidesATrophy(text)) {
         return { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" };
       }
-      return conferenceFinals(headline, text);
+      return conferenceFinals(text, "nhl");
     case "mlb":
       // "World Series - Game 5" on every game of the series; the champion
       // is the last completed game's winner. The pennants are the LCS's.
