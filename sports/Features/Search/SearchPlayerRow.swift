@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// The league tag is not optional here, where `SearchTeamRow` makes it a
 /// choice. ESPN's search spans every sport it covers, so a name can return
-/// people from several of our four leagues at once, and the tag is the only
+/// people from several of our leagues at once, and the tag is the only
 /// thing on the row that says which page a tap opens.
 struct SearchPlayerRow: View {
     let player: PlayerIdentity
