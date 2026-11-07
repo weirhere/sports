@@ -5,6 +5,7 @@ import { assembleTrophyCase, type TrophyKind } from "./trophies";
 import { registryCoveredKinds, registrySources, registryTrophies } from "./trophy-registry";
 import { COLLEGE_FOOTBALL_NATIONAL_TITLES } from "./trophy-registry-college-football";
 import { NFL_CHAMPIONSHIPS, SUPER_BOWLS } from "./trophy-registry-nfl";
+import { STANLEY_CUPS } from "./trophy-registry-nhl";
 
 const SOURCE = "AP poll 1936–97 · title game since 1998";
 const national: TrophyKind = {
@@ -56,7 +57,7 @@ describe("college football's honour roll", () => {
   it("covers the national title, names its source, and nothing else", () => {
     expect(registryCoveredKinds("cfb")).toEqual(new Set(["national championship"]));
     expect(registrySources("cfb").get("national championship")).toBe(SOURCE);
-    for (const league of LEAGUES.filter((l) => l !== "cfb" && l !== "nfl")) {
+    for (const league of LEAGUES.filter((l) => l !== "cfb" && l !== "nfl" && l !== "nhl")) {
       expect(registryCoveredKinds(league).size).toBe(0);
       expect(registrySources(league).size).toBe(0);
     }
@@ -172,6 +173,70 @@ describe("the NFL's honour rolls", () => {
     const [titles, conference] = shelf.groups;
     expect(titles.years).toEqual([2018, 2016, 2014, 2004, 2003, 2001]);
     expect(titles.coverage).toEqual({ kind: "allTime" });
+    expect(conference.coverage).toEqual({ kind: "since", year: 2014 });
+  });
+});
+
+/**
+ * Stanley Cups 1917–18 through 2013–14 by today's franchise, counted from
+ * Wikipedia's year-by-year list rather than from the rows. Keyed by ESPN id;
+ * iOS's twin resolves the same ids from abbreviations in the captured NHL
+ * standings.
+ */
+const STANLEY_CUP_TOTALS: [string, string, number][] = [
+  ["MTL", "10", 23], ["TOR", "21", 13], ["DET", "5", 11], ["BOS", "1", 6], ["CHI", "4", 5],
+  ["EDM", "6", 5], ["NYR", "13", 4], ["NYI", "12", 4], ["PIT", "16", 3], ["NJ", "11", 3],
+  ["COL", "17", 2], ["PHI", "15", 2], ["LA", "8", 2], ["TB", "20", 1], ["CGY", "3", 1],
+  ["DAL", "9", 1], ["CAR", "7", 1], ["ANA", "25", 1],
+];
+const stanleyCup: TrophyKind = { singular: "Stanley Cup", plural: "Stanley Cups", tier: "league" };
+const westernFinal: TrophyKind = {
+  singular: "Western Conference Final",
+  plural: "Western Conference Finals",
+  tier: "conference",
+};
+
+describe("the NHL's honour roll", () => {
+  it("has Stanley Cups 1917–2013, less no-Cup and defunct seasons", () => {
+    const skipped = [1918, 2004, 1919, 1920, 1922, 1926, 1924, 1925, 1934];
+    const expected = [];
+    for (let year = 1917; year <= 2013; year++) if (!skipped.includes(year)) expected.push(year);
+    expect(seasons(STANLEY_CUPS.winners)).toEqual(expected);
+  });
+
+  it.each(STANLEY_CUP_TOTALS)("%s (%s) holds %i Stanley Cups", (_, id, titles) => {
+    expect(count(STANLEY_CUPS.winners, id)).toBe(titles);
+  });
+
+  it("accounts for every row through the franchises listed", () => {
+    const sum = STANLEY_CUP_TOTALS.reduce((total, [, , n]) => total + n, 0);
+    expect(sum).toBe(88);
+    expect(Object.keys(STANLEY_CUPS.winners)).toHaveLength(88);
+  });
+
+  it("gives today's Senators none of the original's Cups", () => {
+    expect(registryTrophies("14", "nhl")).toEqual([]);
+  });
+
+  it("covers the Stanley Cup and names no source", () => {
+    expect(registryCoveredKinds("nhl")).toEqual(new Set(["stanley cup"]));
+    expect(registrySources("nhl").size).toBe(0);
+  });
+
+  it("puts the Blackhawks' registry and derived Cups on one row", () => {
+    const shelf = assembleTrophyCase({
+      derived: [
+        { kind: stanleyCup, year: 2014 },
+        { kind: westernFinal, year: 2014 },
+      ],
+      registry: registryTrophies("4", "nhl"),
+      allTimeKinds: registryCoveredKinds("nhl"),
+      derivedFloor: 2014,
+      sources: registrySources("nhl"),
+    });
+    const [cups, conference] = shelf.groups;
+    expect(cups.years).toEqual([2014, 2012, 2009, 1960, 1937, 1933]);
+    expect(cups.coverage).toEqual({ kind: "allTime" });
     expect(conference.coverage).toEqual({ kind: "since", year: 2014 });
   });
 });
